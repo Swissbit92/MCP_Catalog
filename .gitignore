@@ -1,0 +1,10 @@
+__pycache__/
+bin/
+etc/
+include/
+lib/
+lib64/
+Scripts/
+share/
+
+
