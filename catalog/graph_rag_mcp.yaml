@@ -1,50 +1,42 @@
+# catalog/graph_rag_mcp.yaml
 version: 1
+
+network: graph_rag_dev   # the Docker network Coordinator will use for the servers
+
 servers:
   rag:
-    kind: stdio
-    launch:
-      cmd: docker
-      args:
-        - run
-        - --rm
-        - -i
-        - --network=graph_rag_dev
-        - -v ${PWD}:/workspace
-        - -w /workspace
-        # If your images are named differently, update these:
-        - graphdb_desktop-rag
-        - python
-        - -m
-        - src.mcp.rag_server
+    type: stdio
+    docker:
+      image: graphdb_desktop-rag:latest
+      # if your image ENTRYPOINT already runs `python -m src.mcp.rag_server`, you can omit "cmd"
+      cmd: []
+      network: ${NETWORK:-graph_rag_dev}
       env:
         PYTHONUNBUFFERED: "1"
-        CHROMA_DIR: /workspace/.chroma
-        CHROMA_COLLECTION: whitepapers
-        RAG_OUTPUTS_DIR: /workspace/outputs/run_simple
+        CHROMA_DIR: "/work/.chroma"
+        CHROMA_COLLECTION: "whitepapers"
+        RAG_OUTPUTS_DIR: "/work/outputs/run_simple"
         RAG_EXPAND_PER_ENTITY: "true"
-        OLLAMA_BASE: http://ollama:11434
-        OLLAMA_EMBED_MODEL: nomic-embed-text
+        OLLAMA_BASE: "http://ollama:11434"
+        OLLAMA_EMBED_MODEL: "nomic-embed-text"
+      volumes:
+        - ${PWD:-.}:/work
 
   kg:
-    kind: stdio
-    launch:
-      cmd: docker
-      args:
-        - run
-        - --rm
-        - -i
-        - --network=graph_rag_dev
-        - -v ${PWD}:/workspace
-        - -w /workspace
-        - graphdb_desktop-kg
-        - python
-        - -m
-        - src.mcp.kg_server
+    type: stdio
+    docker:
+      image: graphdb_desktop-kg:latest
+      cmd: []
+      network: ${NETWORK:-graph_rag_dev}
       env:
         PYTHONUNBUFFERED: "1"
-        GRAPHDB_URL: http://graphdb:7200
-        GRAPHDB_REPOSITORY: mcp_kg
-        GRAPHDB_USERNAME: admin
+        GRAPHDB_URL: "http://graphdb:7200"
+        GRAPHDB_REPOSITORY: "mcp_kg"
+        GRAPHDB_PUSH: "true"
         KG_ENTITY_ONLY: "true"
-        KG_LABELS_DIR: /workspace/outputs/run_simple/labels
-        KG_DOCS_DIR: /workspace/outputs/run_simple/docs
+        KG_ONTOLOGY_PATH: "/work/src/kg/ontology/mcp-core.ttl"
+        KG_SHAPES_PATH: "/work/src/kg/ontology/mcp-crypto.ttl"
+        KG_LABELS_DIR: "/work/outputs/run_simple/labels"
+        KG_DOCS_DIR: "/work/outputs/run_simple/docs"
+      volumes:
+        - ${PWD:-.}:/work
