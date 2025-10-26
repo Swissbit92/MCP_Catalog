@@ -1,7 +1,31 @@
 # ui/app.py
-import streamlit as st, requests, json
+import os
+import json
+import requests
+import streamlit as st
 
-COORD = st.secrets.get("COORD_URL", "http://127.0.0.1:8000")
+# Optional: load .env if python-dotenv is installed; otherwise it's a no-op.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+def _get_coord_url() -> str:
+    """
+    Resolve Coordinator base URL, preferring env, then (if present) st.secrets,
+    finally falling back to localhost. Avoids Streamlit's secrets error if no secrets.toml exists.
+    """
+    env = os.getenv("COORD_URL")
+    if env:
+        return env
+    try:
+        # Only touch st.secrets inside try/except to avoid StreamlitSecretNotFoundError
+        return st.secrets["COORD_URL"]
+    except Exception:
+        return "http://127.0.0.1:8000"
+
+COORD = _get_coord_url()
 
 st.set_page_config(page_title="GraphRAG MCP — Coordinator UI", layout="wide")
 st.title("GraphRAG MCP — Local Coordinator UI")
