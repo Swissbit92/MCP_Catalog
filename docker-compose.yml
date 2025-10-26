@@ -1,30 +1,29 @@
 version: "3.9"
+name: graph_rag_dev
 services:
   ollama:
     image: ollama/ollama:latest
-    container_name: ollama
     restart: unless-stopped
     ports: ["11434:11434"]
-    networks: [graph_rag_dev]
     volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_KEEP_ALIVE=24h
+      - ollama-data:/root/.ollama
+    networks: [graph_rag_dev]
 
   graphdb:
     image: ontotext/graphdb:10.6.3
-    container_name: graphdb
     restart: unless-stopped
     ports: ["7200:7200"]
-    networks: [graph_rag_dev]
     environment:
-      GDB_HEAP_SIZE: "2G"
+      GDB_HEAP_SIZE: 2g
     volumes:
-      - graphdb_data:/opt/graphdb/home
+      - graphdb-data:/opt/graphdb/home
+    networks: [graph_rag_dev]
 
 networks:
   graph_rag_dev:
+    name: graph_rag_dev
+    driver: bridge
 
 volumes:
-  ollama_data:
-  graphdb_data:
+  ollama-data:
+  graphdb-data:
