@@ -1,74 +1,36 @@
 # src/coordinator/llm_client.py
-import requests
+# LLM client wrapper for GraphRAG Local QA Chat with Personas
+# Uses LangChain's OllamaLLM with ChatPromptTemplate for prompt formatting.
+# Handles Ollama connectivity errors.
+
 from typing import List, Dict, Any
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama.llms import OllamaLLM
+from ollama._types import ResponseError
 
-class OllamaClient:
-    def __init__(self, base: str = "http://localhost:11434", model: str = "llama3.1:8b"):
-        self.base = base.rstrip("/")
-        self.model = model
+class LC_OllamaClient:
+    """Thin wrapper around LangChain's OllamaLLM using ChatPromptTemplate."""
 
-    def complete(self, system: str, user_prompt: str, temperature: float = 0.1, max_tokens: int | None = None) -> str:
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_prompt},
-            ],
-            "stream": False,
-            "options": {"temperature": temperature},
-        }
-        if max_tokens is not None:
-            payload["options"]["num_predict"] = max_tokens
+    def __init__(self, base: str, model: str, temperature: float = 0.1):
+        self.llm = OllamaLLM(base_url=base, model=model, temperature=temperature)
 
-        r = requests.post(f"{self.base}/api/chat", json=payload, timeout=180)
-        r.raise_for_status()
-        data = r.json()
-        return data["message"]["content"]
+    def _invoke(self, prompt: str) -> str:
+        try:
+            return self.llm.invoke(prompt).strip()
+        except ResponseError as e:
+            msg = str(e)
+            if "not found" in msg.lower():
+                raise RuntimeError(
+                    "Ollama model not found.\n"
+                    f"Pull it:\n  ollama pull {self.llm.model}\n"
+                    f"base_url={self.llm.base_url}\n"
+                )
+            raise
 
-    def chat_with_tools(self, system: str, messages: List[Dict[str, str]], tools: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Single-step router: ask the model to either produce a direct answer
-        or emit a single tool call as strict JSON. Output protocol:
-          - If answering directly:    "FINAL:\n<text>"
-          - If calling a tool:        "TOOL:\n{\"name\":\"...\",\"arguments\":{...}}"
-        Returns:
-          {"text": "..."}  OR  {"tool": {"name": "...", "arguments": {...}}}
-        """
-        tool_block = (
-            "Available tools (JSON Schemas):\n" +
-            "\n".join([f"- {t['name']}: {t['description']}" for t in tools]) +
-            "\n\n"
-            "Output exactly one of the following:\n"
-            "1) DIRECT ANSWER:\n"
-            "   FINAL:\\n<your concise answer>\n\n"
-            "2) A SINGLE TOOL CALL as strict JSON:\n"
-            "   TOOL:\\n{\"name\":\"tool_name\",\"arguments\":{...}}\n\n"
-            "Rules:\n"
-            "- Prefer tools for factual/document/date-sensitive questions.\n"
-            "- If small talk or opinion, answer directly.\n"
-            "- Use only ONE tool call.\n"
-            "- Do not include extra text before or after the required format.\n"
-        )
-
-        chat = [{"role": "system", "content": system}]
-        chat.extend(messages)
-        chat.append({"role": "user", "content": tool_block})
-
-        r = requests.post(
-            f"{self.base}/api/chat",
-            json={"model": self.model, "messages": chat, "stream": False, "options": {"temperature": 0.1}},
-            timeout=180,
-        )
-        r.raise_for_status()
-        content = r.json()["message"]["content"].strip()
-
-        if content.startswith("TOOL:"):
-            import json as _json
-            json_part = content[len("TOOL:"):].strip()
-            tool = _json.loads(json_part)
-            return {"tool": tool}
-        elif content.startswith("FINAL:"):
-            return {"text": content[len("FINAL:"):].strip()}
-        else:
-            # Fallback: treat as direct answer
-            return {"text": content}
+    def complete(self, system: str, user_prompt: str) -> str:
+        template = ChatPromptTemplate.from_messages([
+            ("system", "{system}"),
+            ("user", "{user}")
+        ])
+        rendered = template.format_prompt(system=system, user=user_prompt).to_string()
+        return self._invoke(rendered)

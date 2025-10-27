@@ -1,6 +1,11 @@
+# requirements.txt
 fastapi
 uvicorn[standard]
+streamlit
+requests
+python-dotenv
+langchain-core
+langchain-ollama
+ollama
 pyyaml
 pydantic
-requests
-streamlit
