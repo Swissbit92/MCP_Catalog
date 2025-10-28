@@ -1,5 +1,7 @@
 # src/coordinator/persona_memory.py
 # Persona memory and prompt construction (dynamic discovery + resolver).
+# Inserts an optional, compact "behavioral block" into the system prompt
+# when persona JSON includes fields like behavior, emotional_profile, etc.
 
 from __future__ import annotations
 
@@ -109,10 +111,159 @@ def _summarize(display_name: str, style: str, lore: List[str]) -> str:
     except ResponseError as e:
         raise RuntimeError(str(e))
 
+def _join_list(vals: Optional[List[str]], sep: str = ", ") -> str:
+    return sep.join([v for v in (vals or []) if isinstance(v, str) and v.strip()])
+
+def _fmt_slider_block(sliders: Optional[Dict[str, float]]) -> str:
+    if not isinstance(sliders, dict) or not sliders:
+        return ""
+    # keep stable order for readability
+    keys = ["warmth", "assertiveness", "playfulness", "skepticism"]
+    parts = []
+    for k in keys:
+        v = sliders.get(k)
+        if isinstance(v, (int, float)):
+            parts.append(f"{k}={float(v):.2f}")
+    # include any extra keys deterministically
+    for k in sorted(sliders.keys()):
+        if k in keys:
+            continue
+        v = sliders.get(k)
+        if isinstance(v, (int, float)):
+            parts.append(f"{k}={float(v):.2f}")
+    return ", ".join(parts)
+
+def _build_behavior_block(card: Dict) -> str:
+    """
+    Construct a compact, bullet-style behavior block from optional persona fields.
+    Skips silently if nothing is provided. Keeps the block short & prompt-friendly.
+    """
+    behavior = card.get("behavior") or {}
+    emprof   = card.get("emotional_profile") or {}
+    bounds   = card.get("boundaries") or {}
+    dialog   = card.get("dialogue_prefs") or {}
+    sig      = card.get("signature_moves") or []
+    phrases  = card.get("example_phrases") or []
+    expert   = card.get("expertise") or {}
+    esc      = card.get("escalation_policy") or {}
+
+    lines: List[str] = []
+
+    # Behavior
+    traits = _join_list(behavior.get("traits"))
+    pace = behavior.get("pace"); formality = behavior.get("formality")
+    humor = behavior.get("humor"); emoji_pol = behavior.get("emoji_policy")
+    small_talk = behavior.get("small_talk")
+    clar_q = behavior.get("clarifying_questions")
+    beh_parts = []
+    if traits: beh_parts.append(f"Traits: {traits}")
+    sub_parts = []
+    if pace: sub_parts.append(f"Pace: {pace}")
+    if formality: sub_parts.append(f"Formality: {formality}")
+    if humor: sub_parts.append(f"Humor: {humor}")
+    if emoji_pol: sub_parts.append(f"Emoji: {emoji_pol}")
+    if small_talk: sub_parts.append(f"Small talk: {small_talk}")
+    if clar_q: sub_parts.append(f"Clarify: {clar_q}")
+    if sub_parts: beh_parts.append(" | ".join(sub_parts))
+    if beh_parts:
+        lines.append("Behavior:")
+        for p in beh_parts:
+            lines.append(f"- {p}")
+
+    # Emotional profile
+    baseline = emprof.get("baseline")
+    strengths = _join_list(emprof.get("strengths"))
+    pitfalls  = _join_list(emprof.get("pitfalls"))
+    sliders   = _fmt_slider_block(emprof.get("sliders"))
+    ep_parts = []
+    if baseline: ep_parts.append(f"Baseline: {baseline}")
+    if strengths: ep_parts.append(f"Strengths: {strengths}")
+    if pitfalls:  ep_parts.append(f"Pitfalls: {pitfalls}")
+    if sliders:   ep_parts.append(f"Knobs: {sliders}")
+    if ep_parts:
+        lines.append("Emotions:")
+        for p in ep_parts:
+            lines.append(f"- {p}")
+
+    # Dialogue prefs
+    reply_shape = dialog.get("reply_shape")
+    reason_vis  = dialog.get("reasoning_visibility")
+    cite_style  = dialog.get("citations_style")
+    dp_parts = []
+    if reply_shape: dp_parts.append(f"Shape: {reply_shape}")
+    if reason_vis:  dp_parts.append(f"Reasoning: {reason_vis}")
+    if cite_style:  dp_parts.append(f"Citations: {cite_style}")
+    if dp_parts:
+        lines.append("Dialogue:")
+        for p in dp_parts:
+            lines.append(f"- {p}")
+
+    # Expertise
+    strong = _join_list(expert.get("strong"))
+    familiar = _join_list(expert.get("familiar"))
+    avoid = _join_list(expert.get("avoid"))
+    ex_parts = []
+    if strong:   ex_parts.append(f"Strong: {strong}")
+    if familiar: ex_parts.append(f"Familiar: {familiar}")
+    if avoid:    ex_parts.append(f"Avoid: {avoid}")
+    if ex_parts:
+        lines.append("Expertise:")
+        for p in ex_parts:
+            lines.append(f"- {p}")
+
+    # Signature moves (limit to 3 to keep prompt tight)
+    if isinstance(sig, list) and sig:
+        lines.append("Habits:")
+        for s in sig[:3]:
+            if isinstance(s, str) and s.strip():
+                lines.append(f"- {s.strip()}")
+
+    # Example phrase (pick 1 as a tone anchor)
+    if isinstance(phrases, list):
+        for ex in phrases:
+            if isinstance(ex, str) and ex.strip():
+                lines.append(f'Example: "{ex.strip()}"')
+                break
+
+    # Boundaries (ethics/content/personal)
+    b_eth = _join_list(bounds.get("ethics"))
+    b_con = _join_list(bounds.get("content"))
+    b_per = _join_list(bounds.get("personal"))
+    b_parts = []
+    if b_eth: b_parts.append(f"Ethics: {b_eth}")
+    if b_con: b_parts.append(f"Content: {b_con}")
+    if b_per: b_parts.append(f"Personal: {b_per}")
+    if b_parts:
+        lines.append("Boundaries:")
+        for p in b_parts:
+            lines.append(f"- {p}")
+
+    # Escalation policy (brief)
+    ask = _join_list(esc.get("when_to_ask_user"))
+    decline = _join_list(esc.get("when_to_decline"))
+    intent = _join_list(esc.get("tool_intent"))
+    es_parts = []
+    if ask:     es_parts.append(f"Ask user when: {ask}")
+    if decline: es_parts.append(f"Decline when: {decline}")
+    if intent:  es_parts.append(f"Tools: {intent}")
+    if es_parts:
+        lines.append("Escalation:")
+        for p in es_parts:
+            lines.append(f"- {p}")
+
+    if not lines:
+        return ""
+    # Keep total size compact
+    max_lines = 18
+    if len(lines) > max_lines:
+        lines = lines[:max_lines] + ["- (truncated)"]
+    return "\n".join(lines)
+
 @lru_cache(maxsize=32)
 def build_system_prompt(selector: Optional[str]) -> str:
     """
     Build system prompt for a persona resolved by label/key; falls back to first card.
+    Adds a compact behavioral block if present in the persona JSON.
     """
     card = resolve_persona_to_card(selector)
     if not card:
@@ -120,16 +271,26 @@ def build_system_prompt(selector: Optional[str]) -> str:
         name = "Persona"
         style = "helpful, concise"
         identity = "A helpful, concise assistant."
+        beh_block = ""
     else:
         name = (card.get("display_name") or card.get("key") or "Persona")
         style = (card.get("style") or "helpful & concise")
         identity = _summarize(name, style, card.get("lore", []))
+        beh_block = _build_behavior_block(card)
+
     who = name.split(" — ")[0].strip()
-    return (
-        f"You are {who}, a {style} assistant.\n\n"
-        f"Identity:\n{identity}\n\n"
-        f"{BASE_ROUTING_RULES}"
-    )
+
+    parts = [
+        f"You are {who}, a {style} assistant.",
+        "",
+        "Identity:",
+        identity.strip() if isinstance(identity, str) else "A helpful, concise assistant.",
+    ]
+    if beh_block:
+        parts.extend(["", beh_block.strip()])
+    parts.extend(["", BASE_ROUTING_RULES])
+
+    return "\n".join(parts)
 
 def get_persona_card(selector: Optional[str]) -> Dict:
     card = resolve_persona_to_card(selector)
