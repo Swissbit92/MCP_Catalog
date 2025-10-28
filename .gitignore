@@ -10,3 +10,4 @@ pyvenv.cfg
 images/
 lib
 *.log
+gwen_NSFW.json
