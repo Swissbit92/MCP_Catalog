@@ -1,4 +1,3 @@
-# ui/app.py
 # Streamlit UI for GraphRAG Local QA Chat with Personas
 # - WhatsApp-like chat with avatars
 # - Per-persona logos and icons
@@ -9,6 +8,7 @@
 # - Header chips auto-adapt to dark/light theme
 # - Status chip reflects greeting lifecycle: Loading → Ready (or Error)
 # - Immediate header update after greeting via st.rerun()
+# - UPDATED: replace deprecated use_container_width with width="stretch"
 
 import os
 import time
@@ -65,7 +65,8 @@ def persona_assets(name: str):
 # -------------------- Sidebar: Persona + Settings --------------------
 with st.sidebar:
     if APP_LOGO:
-        st.image(APP_LOGO, use_container_width=True)
+        # UPDATED: use width="stretch" instead of use_container_width
+        st.image(APP_LOGO, width="stretch")
 
     st.markdown("### 🤖 Persona")
     persona = st.selectbox(
@@ -91,7 +92,8 @@ with st.sidebar:
     # Persona bio card (short)
     pa = persona_assets(persona)
     if pa["logo"]:
-        st.image(pa["logo"], use_container_width=True)
+        # UPDATED: use width="stretch" instead of use_container_width
+        st.image(pa["logo"], width="stretch")
     if "Eeva" in persona:
         st.info("**Eeva** · nerdy, charming, concise\n\n"
                 "• Clears up complex ideas\n"
