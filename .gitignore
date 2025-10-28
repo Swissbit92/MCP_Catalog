@@ -7,3 +7,6 @@ lib64/
 Scripts/
 share/
 pyvenv.cfg
+images/
+lib
+*.log
