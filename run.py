@@ -22,6 +22,14 @@ ROOT = Path(__file__).parent.resolve()
 # 2) Make local src importable
 sys.path.append(str(ROOT / "src"))
 
+# 2b) Import UI helper for persona listing (doesn't pull Streamlit)
+try:
+    from ui.personas import load_persona_cards, build_coordinator_label, persona_dir
+except Exception:
+    load_persona_cards = None
+    build_coordinator_label = None
+    persona_dir = lambda: os.getenv("PERSONA_DIR", "personas")  # type: ignore
+
 # 3) Ollama helpers (reuse your coordinator utilities)
 try:
     from coordinator.ollama_utils import (
@@ -42,7 +50,21 @@ def _required_env(name: str, default: str | None = None) -> str:
         sys.exit(1)
     return val
 
+def _discover_persona_labels() -> str:
+    try:
+        if not (load_persona_cards and build_coordinator_label):
+            return "—"
+        cards = load_persona_cards(persona_dir())
+        labels = []
+        for c in cards:
+            key = (c.get("key") or "AI").split()[0].capitalize()
+            labels.append(build_coordinator_label(c, key))
+        return ", ".join(labels) if labels else "—"
+    except Exception:
+        return "—"
+
 def welcome_banner(coord_port: str, model: str, base: str):
+    personas_line = _discover_persona_labels()
     print("\n" + "=" * 78)
     print("  🎉 Welcome to GraphRAG — Local Coordinator + UI (Chat-Only)")
     print("=" * 78)
@@ -51,7 +73,7 @@ def welcome_banner(coord_port: str, model: str, base: str):
     print(f"  • Coordinator   : http://127.0.0.1:{coord_port}")
     print(f"  • Streamlit UI  : http://localhost:8501")
     print("-" * 78)
-    print("  Personas: Eeva (Nerdy Charming), Cindy (Pragmatic Builder)")
+    print(f"  Personas: {personas_line}")
     print("  Tip: Press Ctrl+C to stop both services gracefully.")
     print("=" * 78 + "\n")
 
