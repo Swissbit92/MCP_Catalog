@@ -1,134 +1,72 @@
-# ui/ui_helpers.py
-# Streamlit UI rendering, CSS/JS, async HTTP, and chat/greet logic.
+# ui/ui_tabs.py
+# Header + Characters/Chat/Bio tabs + greeting + sidebar logo resolver
 
 import time
 import threading
 from datetime import datetime
 
-import requests
 import streamlit as st
-import streamlit.components.v1 as components
+import streamlit.components.v1 as components  # for maybe_jump_to_chat animation
 
 # --- dual-mode imports: absolute first, then local fallback ---
 try:
     from ui.personas import (
-        APP_LOGO, USER_AVATAR, persona_assets_by_key,
-        load_persona_cards, build_coordinator_label, resolve_card_image,
+        USER_AVATAR, persona_assets_by_key, load_persona_cards,
+        build_coordinator_label, resolve_card_image,
         display_name_to_tag, _file_to_data_uri
     )
 except ImportError:
     from personas import (  # type: ignore
-        APP_LOGO, USER_AVATAR, persona_assets_by_key,
-        load_persona_cards, build_coordinator_label, resolve_card_image,
+        USER_AVATAR, persona_assets_by_key, load_persona_cards,
+        build_coordinator_label, resolve_card_image,
         display_name_to_tag, _file_to_data_uri
     )
 
-# ---------- CSS + JS injection ----------
-def inject_global_css_js():
-    st.markdown("""
-    <style>
-    .block-container { padding-top: 1.0rem; padding-bottom: 7.5rem; }
-    div[data-testid="column"] { padding-left: 4px !important; padding-right: 4px !important; }
+try:
+    from ui.ui_net import post_async
+except ImportError:
+    from ui_net import post_async  # type: ignore
 
-    button[role="tab"], button[role="tab"] * { color: #1f2937 !important; }
-    button[role="tab"][aria-selected="true"], button[role="tab"][aria-selected="true"] * {
-      color: #111827 !important; font-weight: 700 !important;
-    }
-    @media (prefers-color-scheme: dark) {
-      button[role="tab"], button[role="tab"] * { color: #e5e7eb !important; }
-      button[role="tab"][aria-selected="true"], button[role="tab"][aria-selected="true"] * { color: #ffffff !important; }
-    }
-
-    .eeva-header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 4px 0; }
-    .eeva-title { font-size:22px; font-weight:600; }
-    .chip { padding:2px 10px; border-radius:12px; background:#f7f7f9; border:1px solid #d0d0d6; color:#222; font-size:0.85rem; }
-    .chip-success { background:#e6ffe6; border:1px solid #b3ffb3; color:#155e2b; }
-    .chip-soft  { background:#eef; border:1px solid #ccd; color:#1f2a44; }
-    .chip-warn  { background:#fff7e6; border:1px solid #ffd699; color:#8a6100; }
-    .chip-error { background:#ffe6e6; border:1px solid #ffb3b3; color:#7a1f1f; }
-    @media (prefers-color-scheme: dark) {
-      .chip { background:#1f2937; border:1px solid #374151; color:#e5e7eb; }
-      .chip-success { background:#064e3b; border:1px solid #10b981; color:#d1fae5; }
-      .chip-soft { background:#1e293b; border:1px solid #334155; color:#e2e8f0; }
-      .chip-warn { background:#4a3b13; border:1px solid #f59e0b; color:#fde68a; }
-      .chip-error { background:#4c1d1d; border:1px solid #f87171; color:#fecaca; }
-    }
-    .eeva-subtle { color:#6b6b6b; margin-bottom:10px; }
-    @media (prefers-color-scheme: dark) { .eeva-subtle { color:#a3a3a3; } }
-
-    .card-outer { width:192px; height:288px; border-radius:16px; position:relative; overflow:hidden;
-      box-shadow:0 10px 18px rgba(0,0,0,0.25);
-      background:linear-gradient(135deg, rgba(255,255,255,0.75), rgba(200,220,255,0.55), rgba(255,215,240,0.55));
-      border:1px solid rgba(255,255,255,0.6); transition:transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-      backdrop-filter:blur(6px); margin-bottom:8px;
-    }
-    .card-outer:hover { transform:translateY(-3px) rotateZ(-0.35deg); box-shadow:0 14px 24px rgba(0,0,0,0.3); filter:saturate(1.05); }
-    .card-outer.revealed { box-shadow:0 0 20px 3px rgba(80,200,255,0.85), inset 0 0 16px rgba(255,255,255,0.5); border-color:rgba(80,200,255,0.85); }
-    .card-rarity { position:absolute; inset:0; background:conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,0.12), rgba(0,0,0,0.12), rgba(255,255,255,0.12)); mix-blend-mode:soft-light; pointer-events:none; }
-    .card-body { position:relative; height:100%; display:flex; flex-direction:column; align-items:center; padding:10px; }
-    .card-img { width:100%; height:60%; object-fit:cover; border-radius:12px; border:1px solid rgba(0,0,0,0.05); }
-    .card-name { margin-top:8px; font-weight:700; font-size:0.98rem; text-align:center; }
-    .card-tagline { font-size:0.82rem; opacity:0.95; text-align:center; min-height: 2.1em; }
-
-    @media (prefers-color-scheme: dark) {
-      .card-outer { border-color:#2f3542; background:linear-gradient(135deg, rgba(23,30,45,0.85), rgba(32,40,60,0.7)); }
-    }
-
-    [data-testid="stChatInput"] {
-      position: fixed !important; bottom: 0 !important; z-index: 999 !important;
-      padding-top: 0.35rem; padding-bottom: 0.35rem;
-      background: rgba(255,255,255,0.88); backdrop-filter: blur(6px);
-      border-top: 1px solid rgba(0,0,0,0.08);
-    }
-    @media (prefers-color-scheme: dark) {
-      [data-testid="stChatInput"] {
-        background: rgba(17,24,39,0.88);
-        border-top: 1px solid rgba(255,255,255,0.12);
-      }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    components.html(
-        """
-        <script>
-        const fitChatInput = () => {
-          const input = parent.document.querySelector('[data-testid="stChatInput"]');
-          const main  = parent.document.querySelector('.block-container');
-          if (!input || !main) return;
-          const rect = main.getBoundingClientRect();
-          input.style.left = rect.left + 'px';
-          input.style.width = rect.width + 'px';
-        };
-        new ResizeObserver(fitChatInput).observe(parent.document.body);
-        window.addEventListener('resize', fitChatInput);
-        setTimeout(fitChatInput, 60);
-        setTimeout(fitChatInput, 300);
-        </script>
-        """,
-        height=0
-    )
-
-# ---------- HTTP helper ----------
-def post_async(url: str, payload: dict, timeout: int, out_dict: dict):
-    try:
-        resp = requests.post(url, json=payload, timeout=timeout)
-        try:
-            out_dict["json"] = resp.json()
-        except Exception:
-            out_dict["json"] = None
-        out_dict["text"] = resp.text
-        out_dict["ok"] = resp.ok
-        out_dict["status_code"] = resp.status_code
-    except Exception as e:
-        out_dict["error"] = str(e)
-        out_dict["ok"] = False
-
+# ---------- helpers ----------
 def _assets_for_selected():
     key = st.session_state.selected_key
     if not key:
         return {"logo": None, "avatar": "🤖", "tag": "—"}
     return persona_assets_by_key(key)
+
+def _resolve_persona_logo_for_sidebar() -> str | None:
+    """
+    Resolve a clean logo for sidebar (prefer JSON logo → JSON image → env logo → card image → None).
+    Returns data URI if resolvable.
+    """
+    key = st.session_state.selected_key
+    if not key:
+        return None
+    cards = load_persona_cards(st.session_state.P_DIR)
+    card = next((c for c in cards if str(c.get("key","")).lower().startswith(key.lower())), None)
+
+    # 1) Persona JSON explicit logo
+    if card and isinstance(card.get("logo"), str):
+        uri = _file_to_data_uri(card["logo"])
+        if uri:
+            return uri
+    # 2) Persona JSON image (card art)
+    if card and isinstance(card.get("image"), str):
+        uri = _file_to_data_uri(card["image"])
+        if uri:
+            return uri
+    # 3) Env-based fallback
+    assets = persona_assets_by_key(key)
+    if assets.get("logo"):
+        uri = _file_to_data_uri(assets["logo"])
+        if uri:
+            return uri
+    # 4) As a last resort, try derived card image resolver
+    if card:
+        img = resolve_card_image(card, key)
+        if img:
+            return img
+    return None
 
 # ---------- Header ----------
 def render_header(model_name: str):
@@ -175,16 +113,43 @@ def render_header(model_name: str):
 # ---------- Characters tab ----------
 def render_characters_tab():
     st.subheader("Characters")
-    st.caption("Pick your assistant. Cards are 2:3 — click **Choose** to select and unlock Chat & Bio.")
 
+    # Persona search (stable size)
+    with st.container():
+        st.markdown('<div class="persona-search-wrap">', unsafe_allow_html=True)
+        q = st.text_input(
+            label="Search personas",
+            value=st.session_state.get("persona_search",""),
+            placeholder="Search by name, style, traits…",
+            key="persona_search"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.caption("Pick your assistant. Cards are 2:3 — click **Choose** to select and unlock Chat & Bio.")
     cards = load_persona_cards(st.session_state.P_DIR)
+
+    # Filter by query
+    if q:
+        ql = q.strip().lower()
+        def match(card):
+            fields = [
+                str(card.get("key","")),
+                str(card.get("display_name","")),
+                str(card.get("style","")),
+            ]
+            fields += [d for d in (card.get("do") or []) if isinstance(d, str)]
+            fields += [d for d in (card.get("dont") or []) if isinstance(d, str)]
+            return any(ql in f.lower() for f in fields)
+        cards = [c for c in cards if match(c)]
+
+    # Render in rows of up to 5
     idx = 0
+    MAX_COLS = 5
     while idx < len(cards):
-        row_cards = cards[idx:idx+3]
-        cols = st.columns(3, gap="small")
-        positions = [0] if len(row_cards) == 1 else ([0,1] if len(row_cards) == 2 else [0,1,2])
-        for rpos, card in zip(positions, row_cards):
-            with cols[rpos]:
+        row_cards = cards[idx:idx+MAX_COLS]
+        cols = st.columns(len(row_cards), gap="small")
+        for col, card in zip(cols, row_cards):
+            with col:
                 key = (card.get("key") or "Eeva").split()[0].capitalize()
                 disp = card.get("display_name", f"{key} — Nerdy Charming")
                 tagline = card.get("style", "curious & kind")
@@ -222,7 +187,7 @@ def render_characters_tab():
                     st.session_state.jump_to_chat = True
                     st.balloons()
                     st.rerun()
-        idx += 3
+        idx += MAX_COLS
 
 # ---------- Greeting (strictly once per persona) ----------
 def maybe_greet_once(coord_url: str):
@@ -397,9 +362,18 @@ def render_bio_tab():
     assets = _assets_for_selected()
     left, right = st.columns([1,2], vertical_alignment="top")
     with left:
-        logo_uri = resolve_card_image(card, chosen) or _file_to_data_uri(assets["logo"] or "")
+        # Prefer persona 'logo' → env logo → fallback to card image
+        logo_uri = None
+        if isinstance(card.get("logo"), str):
+            logo_uri = _file_to_data_uri(card["logo"])
+        if not logo_uri:
+            env_logo = assets.get("logo")
+            logo_uri = _file_to_data_uri(env_logo) if env_logo else None
+        if not logo_uri:
+            logo_uri = resolve_card_image(card, chosen)
         if logo_uri:
             st.image(logo_uri, width=240)
+
         st.markdown(f"**Persona:** {card.get('display_name','—')}")
         st.markdown(f"**Style:** {card.get('style','—')}")
         st.markdown("**Personality tics:**")
