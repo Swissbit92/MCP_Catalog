@@ -1,5 +1,5 @@
 # ui/app.py
-# Orchestrator for GraphRAG Coordinator UI — imports helpers and personas.
+# Orchestrator for GraphRAG Coordinator UI — imports styles, tabs, personas.
 
 import os
 import streamlit as st
@@ -12,16 +12,18 @@ except Exception:
 
 # --- dual-mode imports: absolute first, then local fallback ---
 try:
-    from ui.personas import coord_url, persona_model, persona_dir, APP_LOGO
-    from ui.ui_helpers import (
-        inject_global_css_js, render_characters_tab, render_chat_tab,
-        render_bio_tab, maybe_jump_to_chat
+    from ui.personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards
+    from ui.ui_style import inject_global_css_js
+    from ui.ui_tabs import (
+        render_characters_tab, render_chat_tab, render_bio_tab,
+        maybe_jump_to_chat, _resolve_persona_logo_for_sidebar
     )
 except ImportError:
-    from personas import coord_url, persona_model, persona_dir, APP_LOGO  # type: ignore
-    from ui_helpers import (  # type: ignore
-        inject_global_css_js, render_characters_tab, render_chat_tab,
-        render_bio_tab, maybe_jump_to_chat
+    from personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards  # type: ignore
+    from ui_style import inject_global_css_js  # type: ignore
+    from ui_tabs import (  # type: ignore
+        render_characters_tab, render_chat_tab, render_bio_tab,
+        maybe_jump_to_chat, _resolve_persona_logo_for_sidebar
     )
 
 # ---------- page config ----------
@@ -32,7 +34,7 @@ COORD = coord_url()
 MODEL = persona_model()
 P_DIR = persona_dir()
 
-# make available to helpers via session_state (simple and explicit)
+# expose to tabs via session_state
 st.session_state.setdefault("P_DIR", P_DIR)
 st.session_state.setdefault("MODEL", MODEL)
 
@@ -48,19 +50,79 @@ st.session_state.setdefault("greeting_error", {})
 st.session_state.setdefault("last_latency_ms", None)
 st.session_state.setdefault("greet_done", {})
 st.session_state.setdefault("clear_on_switch", True)
+st.session_state.setdefault("active_tab", "characters")  # characters | chat | bio
+st.session_state.setdefault("mode_radio", "Local (Chat-only)")
 
 # ---------- assets & CSS/JS ----------
 inject_global_css_js()
+
+# Reflect ?tab=... into session state (set by JS in inject_global_css_js)
+try:
+    qp = st.query_params  # new API (replaces deprecated experimental_get_query_params)
+    tab_q = qp.get("tab", "characters")
+    if isinstance(tab_q, list):
+        tab_q = tab_q[0] if tab_q else "characters"
+    if tab_q in ("characters", "chat", "bio"):
+        st.session_state.active_tab = tab_q
+except Exception:
+    pass
 
 # ---------- Sidebar ----------
 with st.sidebar:
     if APP_LOGO:
         st.image(APP_LOGO, width=180)
+
     st.markdown("### ⚙️ Settings")
-    st.toggle("Clear Chat on Persona Switch", key="clear_on_switch",
-              help="If on, picking a different card clears the chat.")
+    st.session_state.mode_radio = st.radio(
+        "Mode (future-ready):",
+        options=["Local (Chat-only)", "Local + MCP (soon)"],
+        index=0 if st.session_state.mode_radio.startswith("Local (Chat-only)") else 1,
+        help="UI only for now. MCP routing to be enabled in a later update."
+    )
+
     st.caption(f"Coordinator: {COORD}")
     st.caption(f"Model: {MODEL}")
+
+    # Persona summary + logo (only if selected)
+    sel_key = st.session_state.selected_key
+    sel_label = st.session_state.selected_persona
+    if sel_key and sel_label:
+        # Embed persona logo only in Chat tab
+        if st.session_state.active_tab == "chat":
+            logo_uri = _resolve_persona_logo_for_sidebar()
+            if logo_uri:
+                st.image(logo_uri, width=160)
+            else:
+                # emoji fallback from persona json
+                emoji = "🧠"
+                try:
+                    cards = load_persona_cards(P_DIR)
+                    card = next((c for c in cards if str(c.get("key","")).lower().startswith(sel_key.lower())), None)
+                    if card and isinstance(card.get("emoji"), str) and card["emoji"].strip():
+                        emoji = card["emoji"].strip()
+                except Exception:
+                    pass
+                st.markdown(f"<div style='font-size:42px;line-height:1;'>{emoji}</div>", unsafe_allow_html=True)
+
+        # Always show summary + highlights
+        try:
+            cards = load_persona_cards(P_DIR)
+            card = next((c for c in cards if str(c.get("key","")).lower().startswith(sel_key.lower())), None)
+        except Exception:
+            card = None
+        if card:
+            name_line = f"{card.get('key','—')} · {card.get('style','').strip()}"
+            st.markdown(f"**{name_line}**")
+            st.markdown("**Highlights:**")
+            do_list = [d for d in (card.get("do") or []) if isinstance(d, str)]
+            for d in do_list[:3]:
+                st.write(f"• {d}")
+
+    st.toggle(
+        "Clear Chat on Persona Switch",
+        key="clear_on_switch",
+        help="If on, picking a different card clears the chat."
+    )
 
 # ---------- Tabs ----------
 tab_chars, tab_chat, tab_bio = st.tabs(["🃏 Characters", "💬 Chat", "📜 Bio"])
