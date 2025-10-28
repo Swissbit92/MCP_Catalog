@@ -1,18 +1,20 @@
 # Streamlit UI for GraphRAG Local QA Chat with Personas
 # - WhatsApp-like chat with avatars
 # - Per-persona logos and icons
-# - Greeting once per persona
+# - Greeting once per persona with animated typing indicator
 # - Clear-on-switch option
 # - Export transcript as JSON (single-click)
 # - Latency indicator rendered separately (doesn't break on next query)
 # - Header chips auto-adapt to dark/light theme
 # - Status chip reflects greeting lifecycle: Loading → Ready (or Error)
 # - Immediate header update after greeting via st.rerun()
-# - UPDATED: replace deprecated use_container_width with width="stretch"
+# - Animated three-dot typing for both greeting and chat calls
+# - Deprecation fixed: replace use_container_width with width="stretch"
 
 import os
 import time
 import json
+import threading
 from datetime import datetime
 import requests
 import streamlit as st
@@ -65,7 +67,7 @@ def persona_assets(name: str):
 # -------------------- Sidebar: Persona + Settings --------------------
 with st.sidebar:
     if APP_LOGO:
-        # UPDATED: use width="stretch" instead of use_container_width
+        # ✅ deprecation fixed
         st.image(APP_LOGO, width="stretch")
 
     st.markdown("### 🤖 Persona")
@@ -92,7 +94,7 @@ with st.sidebar:
     # Persona bio card (short)
     pa = persona_assets(persona)
     if pa["logo"]:
-        # UPDATED: use width="stretch" instead of use_container_width
+        # ✅ deprecation fixed
         st.image(pa["logo"], width="stretch")
     if "Eeva" in persona:
         st.info("**Eeva** · nerdy, charming, concise\n\n"
@@ -243,43 +245,97 @@ with c2:
 
 st.markdown("---")
 
+# -------------------- Async + animation helpers --------------------
+def _post_async(url: str, payload: dict, timeout: int, out_dict: dict):
+    """Run requests.post in a background thread and store results in out_dict."""
+    try:
+        resp = requests.post(url, json=payload, timeout=timeout)
+        try:
+            out_dict["json"] = resp.json()
+        except Exception:
+            out_dict["json"] = None
+        out_dict["text"] = resp.text
+        out_dict["ok"] = resp.ok
+        out_dict["status_code"] = resp.status_code
+    except Exception as e:
+        out_dict["error"] = str(e)
+        out_dict["ok"] = False
+
+def _animate_typing_once(placeholder, frame_index):
+    frames = ["_typing_", "_typing._", "_typing.._", "_typing..._"]
+    placeholder.markdown(frames[frame_index % len(frames)])
+    return frame_index + 1
+
+def _render_typing_bubble(msg_placeholder, avatar, frame_index):
+    """Render/advance typing animation inside a replaceable container."""
+    with msg_placeholder.container():
+        with st.chat_message("assistant", avatar=avatar):
+            inner = st.empty()
+            frame_index = _animate_typing_once(inner, frame_index)
+    return frame_index
+
+def _render_final_bubble(msg_placeholder, avatar, text, latency_ms=None):
+    """Replace typing bubble with final content inside the same container."""
+    with msg_placeholder.container():
+        with st.chat_message("assistant", avatar=avatar):
+            st.markdown(text if text else "(No answer)")
+            if isinstance(latency_ms, int):
+                st.caption(f"⏱️ {latency_ms} ms")
+
 # -------------------- Greeting (one-time per persona) --------------------
 # Only start greeting if not greeted and not already in-flight
 if not greeted and not inflight:
     st.session_state.greeting_inflight[persona] = True
     st.session_state.greeting_error[persona] = False
-    try:
-        t0 = time.perf_counter()
-        r = requests.post(f"{COORD}/persona/greet", json={"persona": persona}, timeout=120)
-        elapsed_ms = int((time.perf_counter() - t0) * 1000)
-        st.session_state.last_latency_ms = elapsed_ms  # reflect in header
-        if r.ok:
-            greet_text = (r.json() or {}).get("answer", "").strip()
-            if greet_text:
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": greet_text,
-                    "latency_ms": elapsed_ms
-                })
-                st.session_state.greeted_for_persona[persona] = True
-                st.toast("Model is ready ✅", icon="✅")
-            else:
-                # no text — treat as error-ish so status doesn't show ready
-                st.session_state.greeting_error[persona] = True
+
+    assistant_avatar = assets["avatar"]
+    msg_placeholder = st.empty()  # holds the assistant bubble and will be replaced in place
+
+    # Kick off background POST
+    result: dict = {}
+    t0 = time.perf_counter()
+    thread = threading.Thread(
+        target=_post_async,
+        args=(f"{COORD}/persona/greet", {"persona": persona}, 120, result),
+        daemon=True,
+    )
+    thread.start()
+
+    # Animate while thread is alive, repainting the same container
+    frame_i = 0
+    while thread.is_alive():
+        frame_i = _render_typing_bubble(msg_placeholder, assistant_avatar, frame_i)
+        time.sleep(0.25)
+
+    # Response handling (replace typing bubble in-place)
+    st.session_state.greeting_inflight[persona] = False
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    st.session_state.last_latency_ms = elapsed_ms  # reflect in header
+
+    if result.get("ok"):
+        data = result.get("json") or {}
+        greet_text = (data.get("answer") or "").strip()
+        if greet_text:
+            _render_final_bubble(msg_placeholder, assistant_avatar, greet_text, elapsed_ms)
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": greet_text,
+                "latency_ms": elapsed_ms
+            })
+            st.session_state.greeted_for_persona[persona] = True
+            st.toast("Model is ready ✅", icon="✅")
         else:
+            _render_final_bubble(msg_placeholder, assistant_avatar, "(Greeting error: empty response)")
             st.session_state.greeting_error[persona] = True
-            msg = f"(Greeting error: {r.status_code} {r.text})"
-            st.session_state.chat_history.append({"role": "assistant", "content": msg})
-            st.toast("Greeting failed", icon="⚠️")
-    except Exception as e:
+    else:
+        err = result.get("error") or f"HTTP {result.get('status_code')} {result.get('text')}"
+        _render_final_bubble(msg_placeholder, assistant_avatar, f"(Greeting error: {err})")
         st.session_state.greeting_error[persona] = True
-        st.session_state.chat_history.append({"role": "assistant", "content": f"(Greeting error: {e})"})
-        st.toast("Could not contact Coordinator", icon="⚠️")
-    finally:
-        st.session_state.greeting_inflight[persona] = False
-        # Trigger an immediate rerun so the header chip flips to Ready/Error now
-        st.session_state.needs_header_rerun = True
-        st.rerun()
+        st.toast("Greeting failed", icon="⚠️")
+
+    # Trigger an immediate rerun so the header chip flips to Ready/Error now
+    st.session_state.needs_header_rerun = True
+    st.rerun()
 
 # -------------------- Render history (WhatsApp-like: avatars + neat bubbles) --------------------
 assistant_avatar = assets["avatar"]
@@ -295,9 +351,10 @@ for m in st.session_state.chat_history:
             if "latency_ms" in m and isinstance(m["latency_ms"], int):
                 st.caption(f"⏱️ {m['latency_ms']} ms")
 
-# -------------------- Chat input & send --------------------
+# -------------------- Chat input & send (with animated typing) --------------------
 user_in = st.chat_input("Type a message…")
 if user_in:
+    # Show user bubble immediately
     st.session_state.chat_history.append({"role": "user", "content": user_in})
     with st.chat_message("user", avatar=user_avatar):
         st.markdown(user_in)
@@ -308,32 +365,40 @@ if user_in:
         "message": user_in
     }
 
-    t0 = time.perf_counter()
-    try:
-        r = requests.post(f"{COORD}/persona/chat", json=payload, timeout=180)
-        elapsed_ms = int((time.perf_counter() - t0) * 1000)
-        st.session_state.last_latency_ms = elapsed_ms  # keep a headline metric fresh
+    # Placeholder to hold the assistant bubble (typing → final)
+    msg_placeholder = st.empty()
 
-        data = r.json()
-        if r.ok:
-            ans = data.get("answer", "").strip()
-            st.session_state.chat_history.append({
-                "role": "assistant",
-                "content": ans,
-                "latency_ms": elapsed_ms
-            })
-            with st.chat_message("assistant", avatar=assistant_avatar):
-                st.markdown(ans)
-                st.caption(f"⏱️ {elapsed_ms} ms")
-        else:
-            err = f"Error: {data}"
-            st.session_state.chat_history.append({"role": "assistant", "content": err})
-            with st.chat_message("assistant", avatar=assistant_avatar):
-                st.markdown(err)
-            st.toast("Answer failed", icon="⚠️")
-    except Exception as e:
-        err = f"Coordinator error: {e}"
-        st.session_state.chat_history.append({"role": "assistant", "content": err})
-        with st.chat_message("assistant", avatar=assistant_avatar):
-            st.markdown(err)
-        st.toast("Coordinator error", icon="⚠️")
+    # Background POST
+    result: dict = {}
+    t0 = time.perf_counter()
+    thread = threading.Thread(
+        target=_post_async,
+        args=(f"{COORD}/persona/chat", payload, 180, result),
+        daemon=True,
+    )
+    thread.start()
+
+    # Animate typing in the same container until thread completes
+    frame_i = 0
+    while thread.is_alive():
+        frame_i = _render_typing_bubble(msg_placeholder, assistant_avatar, frame_i)
+        time.sleep(0.25)
+
+    # Replace with final answer in-place
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    st.session_state.last_latency_ms = elapsed_ms
+
+    if result.get("ok"):
+        data = result.get("json") or {}
+        ans = (data.get("answer") or "").strip()
+        _render_final_bubble(msg_placeholder, assistant_avatar, ans if ans else "(No answer)", elapsed_ms)
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": ans if ans else "(No answer)",
+            "latency_ms": elapsed_ms
+        })
+    else:
+        err = result.get("error") or f"HTTP {result.get('status_code')} {result.get('text')}"
+        _render_final_bubble(msg_placeholder, assistant_avatar, f"Error: {err}")
+        st.session_state.chat_history.append({"role": "assistant", "content": f"Error: {err}"})
+        st.toast("Answer failed", icon="⚠️")
