@@ -36,19 +36,62 @@ def inject_global_css_js():
     .eeva-subtle { color:#6b6b6b; margin-bottom:10px; }
     @media (prefers-color-scheme: dark) { .eeva-subtle { color:#a3a3a3; } }
 
-    .card-outer { width:192px; height:288px; border-radius:16px; position:relative; overflow:hidden;
-      box-shadow:0 10px 18px rgba(0,0,0,0.25);
-      background:linear-gradient(135deg, rgba(255,255,255,0.75), rgba(200,220,255,0.55), rgba(255,215,240,0.55));
-      border:1px solid rgba(255,255,255,0.6); transition:transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-      backdrop-filter:blur(6px); margin-bottom:8px;
+    /* =========================
+       Persona Card — Responsive (2:3)
+       ========================= */
+    .card-outer {
+      /* Responsive width with a sane floor & ceiling; 2:3 aspect keeps it proportional */
+      width: clamp(140px, 18vw, 240px);
+      aspect-ratio: 2 / 3;
+      height: auto;
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.25);
+      background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(200,220,255,0.55), rgba(255,215,240,0.55));
+      border: 1px solid rgba(255,255,255,0.6);
+      transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+      backdrop-filter: blur(6px);
+      margin-bottom: 8px;
     }
-    .card-outer:hover { transform:translateY(-3px) rotateZ(-0.35deg); box-shadow:0 14px 24px rgba(0,0,0,0.3); filter:saturate(1.05); }
-    .card-outer.revealed { box-shadow:0 0 20px 3px rgba(80,200,255,0.85), inset 0 0 16px rgba(255,255,255,0.5); border-color:rgba(80,200,255,0.85); }
+    /* For ~16" laptops and up, let them breathe a bit but don't go huge */
+    @media (min-width: 1280px) {
+      .card-outer { width: clamp(160px, 16vw, 260px); }
+    }
+    .card-outer:hover { transform: translateY(-3px) rotateZ(-0.35deg); box-shadow: 0 14px 24px rgba(0,0,0,0.3); filter: saturate(1.05); }
+    .card-outer.revealed { box-shadow: 0 0 20px 3px rgba(80,200,255,0.85), inset 0 0 16px rgba(255,255,255,0.5); border-color: rgba(80,200,255,0.85); }
     .card-rarity { position:absolute; inset:0; background:conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,0.12), rgba(0,0,0,0.12), rgba(255,255,255,0.12)); mix-blend-mode:soft-light; pointer-events:none; }
-    .card-body { position:relative; height:100%; display:flex; flex-direction:column; align-items:center; padding:10px; }
-    .card-img { width:100%; height:60%; object-fit:cover; border-radius:12px; border:1px solid rgba(0,0,0,0.05); }
-    .card-name { margin-top:8px; font-weight:700; font-size:0.98rem; text-align:center; }
-    .card-tagline { font-size:0.82rem; opacity:0.95; text-align:center; min-height: 2.1em; }
+
+    /* Let the content fill the card and scale; image stays ~60% of card height */
+    .card-body {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .card-img {
+      width: 100%;
+      flex: 0 0 60%;              /* 60% of card height reserved for image */
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    .card-name {
+      margin-top: 8px;
+      font-weight: 700;
+      /* scale between 0.9rem and 1.05rem depending on viewport */
+      font-size: clamp(0.9rem, 0.9rem + 0.2vw, 1.05rem);
+      text-align: center;
+    }
+    .card-tagline {
+      font-size: clamp(0.78rem, 0.78rem + 0.15vw, 0.95rem);
+      opacity: 0.95;
+      text-align: center;
+      min-height: 2.1em;
+    }
 
     /* Hover overlay 'Choose ✨' */
     .card-choose {
@@ -57,12 +100,12 @@ def inject_global_css_js():
     }
     .card-outer:hover .card-choose { opacity:1; transform:scale(1.02); pointer-events:auto; }
     .choose-pill {
-      padding:10px 16px; border-radius:999px; background:rgba(17,24,39,0.85);
+      padding:12px 18px; border-radius:999px; background:rgba(17,24,39,0.85);
       color:#fff; border:1px solid rgba(255,255,255,0.5);
       font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35);
-      cursor:pointer; user-select:none;
-      text-decoration:none !important; /* ensure no underline even if rendered as <a> */
-      outline:none; border-width:1px; /* keep pill look for <button> */
+      cursor:pointer; user-select:none; text-decoration:none !important; outline:none; border-width:1px;
+      /* Bigger tap target on mobile */
+      font-size: clamp(0.9rem, 1.5vw, 1rem);
     }
     .choose-pill:hover { filter:brightness(1.08); }
 
@@ -102,7 +145,6 @@ def inject_global_css_js():
     @media (min-width: 600px) and (max-width: 900px) {
       body.sidebar-open [data-testid="stChatInput"] { width: 88vw; }
     }
-
     @media (prefers-color-scheme: dark) {
       [data-testid="stChatInput"] {
         background: rgba(17,24,39,0.88);
@@ -143,8 +185,40 @@ def inject_global_css_js():
         height=0
     )
 
-    # Centered chat input: we only need to adjust the bottom padding of the content
-    # so that messages never hide behind the input. Width is handled by CSS above.
+    # Responsive columns: compute ?cols= based on viewport width
+    components.html(
+        """
+        <script>
+        (function(){
+          function pickCols(w){
+            if (w < 560) return 2;        // phones
+            if (w < 900) return 3;        // small tablets
+            if (w < 1280) return 4;       // laptops
+            return 5;                     // large desktops
+          }
+          function syncCols(){
+            try{
+              const w = parent.window.innerWidth || document.documentElement.clientWidth || 1200;
+              const cols = pickCols(w);
+              const url = new URL(parent.window.location);
+              if (url.searchParams.get('cols') !== String(cols)) {
+                url.searchParams.set('cols', String(cols));
+                parent.window.history.replaceState({}, '', url);
+              }
+            }catch(e){}
+          }
+          parent.window.addEventListener('resize', syncCols);
+          setInterval(syncCols, 600);
+          setTimeout(syncCols, 40);
+          setTimeout(syncCols, 200);
+          setTimeout(syncCols, 800);
+        })();
+        </script>
+        """,
+        height=0
+    )
+
+    # Chat input: adjust bottom padding of content so messages never hide behind the bar.
     components.html(
         """
         <script>
@@ -158,9 +232,8 @@ def inject_global_css_js():
             if(!input || !main) return;
 
             const h = input.getBoundingClientRect().height || 96;
-            const safe = parseInt(getComputedStyle(doc.documentElement).getPropertyValue('padding-bottom')) || 0;
             // small cushion so the last message clears the bar nicely
-            main.style.paddingBottom = px(h + 24 + safe);
+            main.style.paddingBottom = px(h + 24);
           }
 
           const doc = parent.document;
