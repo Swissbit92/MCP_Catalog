@@ -55,7 +55,7 @@ def render_characters_tab():
 
         cards = [c for c in cards if match(c)]
 
-    # Responsive columns count from ?cols= (2/3/4/5)
+    # Responsive columns count from ?cols= (2/3/4/5/..)
     MAX_COLS = _cols_from_query(default=5)
 
     # Render in rows with hover overlay
@@ -93,14 +93,15 @@ def render_characters_tab():
                     "})();"
                 )
 
+                # Add title attributes so full text shows on hover; CSS handles clamping/ellipsis.
                 st.markdown(
                     f"""
                     <div class="card-outer{revealed}">
                       <div class="card-rarity"></div>
                       <div class="card-body">
                         {html_img}
-                        <div class="card-name">{disp}</div>
-                        <div class="card-tagline">{tagline}</div>
+                        <div class="card-name" title="{disp}">{disp}</div>
+                        <div class="card-tagline" title="{tagline}">{tagline}</div>
                         <div class="card-choose">
                           <a class="choose-pill" href="{choose_href}" target="_self" onclick="{onclick_js}">Choose ✨</a>
                         </div>
