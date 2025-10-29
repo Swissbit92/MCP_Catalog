@@ -16,7 +16,7 @@ def inject_global_css_js():
     }
     @media (prefers-color-scheme: dark) {
       button[role="tab"], button[role="tab"] * { color: #e5e7eb !important; }
-      button[role="tab"][aria-selected="true"], button[role="tab"][aria-selected="true"] * { color: #ffffff !important; }
+      button[role="tab"][aria-selected="true"], button[role="tab"][aria-selected="true"] * { color:#ffffff !important; }
     }
 
     .eeva-header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 4px 0; }
@@ -71,13 +71,38 @@ def inject_global_css_js():
       .choose-pill { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.45); }
     }
 
-    /* Chat input stays full width relative to content */
+    /* =========================
+       Chat Input — Responsive, Centered
+       ========================= */
     [data-testid="stChatInput"] {
-      position: fixed !important; bottom: 0 !important; z-index: 999 !important;
+      position: fixed !important;
+      bottom: max(0px, env(safe-area-inset-bottom)) !important; /* iOS safe area friendly */
+      z-index: 999 !important;
       padding-top: 0.35rem; padding-bottom: 0.35rem;
-      background: rgba(255,255,255,0.88); backdrop-filter: blur(6px);
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(6px);
       border-top: 1px solid rgba(0,0,0,0.08);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 95vw;                /* default: phones */
+      max-width: 1100px;          /* cap on ultrawide screens */
+      min-width: 360px;           /* reasonable floor for narrow windows */
+      border-radius: 14px 14px 0 0;
+      margin: 0;
     }
+    /* Tablets */
+    @media (min-width: 600px) {
+      [data-testid="stChatInput"] { width: 85vw; min-width: 380px; }
+    }
+    /* Desktops */
+    @media (min-width: 900px) {
+      [data-testid="stChatInput"] { width: 75vw; }
+    }
+    /* If a very narrow sidebar is open, allow a touch more width on small tablets */
+    @media (min-width: 600px) and (max-width: 900px) {
+      body.sidebar-open [data-testid="stChatInput"] { width: 88vw; }
+    }
+
     @media (prefers-color-scheme: dark) {
       [data-testid="stChatInput"] {
         background: rgba(17,24,39,0.88);
@@ -118,28 +143,54 @@ def inject_global_css_js():
         height=0
     )
 
-    # Make chat input width follow the main container
+    # Centered chat input: we only need to adjust the bottom padding of the content
+    # so that messages never hide behind the input. Width is handled by CSS above.
     components.html(
         """
         <script>
-        const fitChatInput = () => {
-          const input = parent.document.querySelector('[data-testid="stChatInput"]');
-          const main  = parent.document.querySelector('.block-container');
-          if (!input || !main) return;
-          const rect = main.getBoundingClientRect();
-          input.style.left = rect.left + 'px';
-          input.style.width = rect.width + 'px';
-        };
-        new ResizeObserver(fitChatInput).observe(parent.document.body);
-        parent.window.addEventListener('resize', fitChatInput);
-        setTimeout(fitChatInput, 60);
-        setTimeout(fitChatInput, 300);
+        (function(){
+          const px = (n)=>Math.max(0,Math.floor(n))+'px';
+
+          function adjustPadding(){
+            const doc = parent.document;
+            const input = doc.querySelector('[data-testid="stChatInput"]');
+            const main  = doc.querySelector('.block-container');
+            if(!input || !main) return;
+
+            const h = input.getBoundingClientRect().height || 96;
+            const safe = parseInt(getComputedStyle(doc.documentElement).getPropertyValue('padding-bottom')) || 0;
+            // small cushion so the last message clears the bar nicely
+            main.style.paddingBottom = px(h + 24 + safe);
+          }
+
+          const doc = parent.document;
+          const bodyRO = new ResizeObserver(adjustPadding);
+          bodyRO.observe(doc.body);
+
+          parent.window.addEventListener('resize', adjustPadding);
+          parent.window.addEventListener('scroll', adjustPadding);
+
+          // Run a few times during initial layout to catch font loads / Streamlit reruns
+          setTimeout(adjustPadding, 40);
+          setTimeout(adjustPadding, 160);
+          setTimeout(adjustPadding, 360);
+          setTimeout(adjustPadding, 800);
+
+          // Also react to the input itself changing height (multi-line growth, toasts, etc.)
+          const waitForInput = () => {
+            const input = doc.querySelector('[data-testid="stChatInput"]');
+            if (!input) { setTimeout(waitForInput, 120); return; }
+            new ResizeObserver(adjustPadding).observe(input);
+            adjustPadding();
+          };
+          waitForInput();
+        })();
         </script>
         """,
         height=0
     )
 
-    # Define chooser on the PARENT window so main DOM can call it
+    # Define chooser on the PARENT window so main DOM can call it (unchanged)
     components.html(
         """
         <script>
