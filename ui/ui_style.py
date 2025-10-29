@@ -40,7 +40,7 @@ def inject_global_css_js():
        Persona Card — Responsive (2:3)
        ========================= */
     .card-outer {
-      /* Responsive width with a sane floor & ceiling; 2:3 aspect keeps it proportional */
+      /* Responsive width; 2:3 aspect keeps it proportional */
       width: clamp(140px, 18vw, 240px);
       aspect-ratio: 2 / 3;
       height: auto;
@@ -53,6 +53,9 @@ def inject_global_css_js():
       transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
       backdrop-filter: blur(6px);
       margin-bottom: 8px;
+
+      /* Scale text with card: acts as base font size for inner elements */
+      font-size: clamp(12px, 0.9vw, 16px);
     }
     /* For ~16" laptops and up, let them breathe a bit but don't go huge */
     @media (min-width: 1280px) {
@@ -62,7 +65,7 @@ def inject_global_css_js():
     .card-outer.revealed { box-shadow: 0 0 20px 3px rgba(80,200,255,0.85), inset 0 0 16px rgba(255,255,255,0.5); border-color: rgba(80,200,255,0.85); }
     .card-rarity { position:absolute; inset:0; background:conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,0.12), rgba(0,0,0,0.12), rgba(255,255,255,0.12)); mix-blend-mode:soft-light; pointer-events:none; }
 
-    /* Let the content fill the card and scale; image stays ~60% of card height */
+    /* Content layout: image (~58%), name (~12%), tagline (~5%) */
     .card-body {
       position: relative;
       height: 100%;
@@ -71,25 +74,52 @@ def inject_global_css_js():
       align-items: center;
       padding: 10px;
       box-sizing: border-box;
+      gap: 4px;
     }
     .card-img {
-      width: 100%;
-      flex: 0 0 60%;              /* 60% of card height reserved for image */
+      width: 75%;
+      flex: 0 0 58%;              /* ~58% of card height for image */
       object-fit: cover;
       border-radius: 12px;
       border: 1px solid rgba(0,0,0,0.05);
     }
+
+    /* Name block — ~12% height, centered, up to 2 lines, ellipsis */
     .card-name {
-      margin-top: 8px;
+      flex: 0 0 12%;
+      width: 100%;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      margin-top: 4px;
       font-weight: 700;
-      /* scale between 0.9rem and 1.05rem depending on viewport */
-      font-size: clamp(0.9rem, 0.9rem + 0.2vw, 1.05rem);
       text-align: center;
+
+      /* scale with card: base (1em) comes from .card-outer font-size */
+      font-size: 1.05em;
+      line-height: 1.15;
     }
+
+    /* Tagline block — ~12% height, up to 2 lines, ellipsis */
     .card-tagline {
-      font-size: clamp(0.78rem, 0.78rem + 0.15vw, 0.95rem);
-      opacity: 0.95;
+      flex: 0 0 5%;
+      width: 100%;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
       text-align: center;
+      opacity: 0.95;
+
+      /* a touch smaller than name; still scales via .card-outer */
+      font-size: 0.95em;
+      line-height: 1.2;
+      /* keep minimum presence even if text is short */
       min-height: 2.1em;
     }
 
@@ -104,7 +134,7 @@ def inject_global_css_js():
       color:#fff; border:1px solid rgba(255,255,255,0.5);
       font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35);
       cursor:pointer; user-select:none; text-decoration:none !important; outline:none; border-width:1px;
-      /* Bigger tap target on mobile */
+      /* Bigger tap target on mobile; relative to root so it’s consistent */
       font-size: clamp(0.9rem, 1.5vw, 1rem);
     }
     .choose-pill:hover { filter:brightness(1.08); }
