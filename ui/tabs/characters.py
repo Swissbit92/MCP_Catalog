@@ -1,5 +1,5 @@
 # ui/tabs/characters.py
-# Characters tab: search + 5-per-row cards + hover "Choose ✨" overlay (same window)
+# Characters tab: search + responsive columns + hover "Choose ✨" overlay
 
 import streamlit as st
 
@@ -8,6 +8,18 @@ try:
     from ui.personas import load_persona_cards, resolve_card_image
 except ImportError:
     from personas import load_persona_cards, resolve_card_image  # type: ignore
+
+def _cols_from_query(default: int = 5) -> int:
+    """Read ?cols=<int> set by ui_style.js; clamp to [1..6]."""
+    try:
+        qp = st.query_params
+        raw = qp.get("cols", default)
+        if isinstance(raw, list):
+            raw = raw[0] if raw else default
+        cols = int(raw)
+        return max(1, min(6, cols))
+    except Exception:
+        return default
 
 def render_characters_tab():
     st.subheader("Characters")
@@ -23,7 +35,7 @@ def render_characters_tab():
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.caption("Pick your assistant. Cards are 2:3 — hover & click **Choose ✨** to select and unlock Chat & Bio.")
+    st.caption("Pick your assistant. Cards keep a **2:3** ratio and scale with the screen. Hover & click **Choose ✨** to select and unlock Chat & Bio.")
 
     cards = load_persona_cards(st.session_state.P_DIR)
 
@@ -43,9 +55,11 @@ def render_characters_tab():
 
         cards = [c for c in cards if match(c)]
 
-    # Render in rows of up to 5 with hover overlay
+    # Responsive columns count from ?cols= (2/3/4/5)
+    MAX_COLS = _cols_from_query(default=5)
+
+    # Render in rows with hover overlay
     idx = 0
-    MAX_COLS = 5
     while idx < len(cards):
         row_cards = cards[idx : idx + MAX_COLS]
         cols = st.columns(len(row_cards), gap="small")
@@ -62,8 +76,6 @@ def render_characters_tab():
                     else "<div class='card-img' style='display:flex;align-items:center;justify-content:center;font-size:2rem;'>🎴</div>"
                 )
 
-                # Same-window navigation: explicit target="_self" + JS fallback to enforce in-place rerun.
-                # JS: update ?tab=chat&select=<Key>, replaceState (clean history), then location.href to re-run Streamlit.
                 choose_href = f"?tab=chat&select={key}"
                 onclick_js = (
                     "event.preventDefault();"
