@@ -30,22 +30,24 @@ def render_characters_tab():
     # Filter by query
     if q:
         ql = q.strip().lower()
+
         def match(card):
             fields = [
-                str(card.get("key","")),
-                str(card.get("display_name","")),
-                str(card.get("style","")),
+                str(card.get("key", "")),
+                str(card.get("display_name", "")),
+                str(card.get("style", "")),
             ]
             fields += [d for d in (card.get("do") or []) if isinstance(d, str)]
             fields += [d for d in (card.get("dont") or []) if isinstance(d, str)]
             return any(ql in f.lower() for f in fields)
+
         cards = [c for c in cards if match(c)]
 
-    # Render in rows of up to 5 with hover overlay (no st.button)
+    # Render in rows of up to 5 with hover overlay
     idx = 0
     MAX_COLS = 5
     while idx < len(cards):
-        row_cards = cards[idx:idx+MAX_COLS]
+        row_cards = cards[idx : idx + MAX_COLS]
         cols = st.columns(len(row_cards), gap="small")
         for col, card in zip(cols, row_cards):
             with col:
@@ -54,12 +56,30 @@ def render_characters_tab():
                 tagline = card.get("style", "curious & kind")
                 img_src = resolve_card_image(card, key)
                 revealed = " revealed" if st.session_state.reveal_key == key else ""
-                html_img = f"<img class='card-img' src='{img_src}' />" if img_src else (
-                    "<div class='card-img' style='display:flex;align-items:center;justify-content:center;font-size:2rem;'>🎴</div>"
+                html_img = (
+                    f"<img class='card-img' src='{img_src}' />"
+                    if img_src
+                    else "<div class='card-img' style='display:flex;align-items:center;justify-content:center;font-size:2rem;'>🎴</div>"
                 )
 
-                # Same-window navigation: write query params (?tab=chat&select=<Key>)
+                # Same-window navigation: explicit target="_self" + JS fallback to enforce in-place rerun.
+                # JS: update ?tab=chat&select=<Key>, replaceState (clean history), then location.href to re-run Streamlit.
                 choose_href = f"?tab=chat&select={key}"
+                onclick_js = (
+                    "event.preventDefault();"
+                    "(function(){"
+                    "  try {"
+                    "    const url = new URL(window.location);"
+                    "    url.searchParams.set('tab','chat');"
+                    "    url.searchParams.set('select','" + key + "');"
+                    "    window.history.replaceState({},'',url);"
+                    "    window.location.href = url.toString();"
+                    "  } catch(e) {"
+                    "    console.error('choose click error', e);"
+                    "    window.location.assign('" + choose_href + "');"
+                    "  }"
+                    "})();"
+                )
 
                 st.markdown(
                     f"""
@@ -70,11 +90,11 @@ def render_characters_tab():
                         <div class="card-name">{disp}</div>
                         <div class="card-tagline">{tagline}</div>
                         <div class="card-choose">
-                          <a class="choose-pill" href="{choose_href}">Choose ✨</a>
+                          <a class="choose-pill" href="{choose_href}" target="_self" onclick="{onclick_js}">Choose ✨</a>
                         </div>
                       </div>
                     </div>
                     """,
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
         idx += MAX_COLS
