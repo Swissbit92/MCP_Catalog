@@ -36,11 +36,8 @@ def inject_global_css_js():
     .eeva-subtle { color:#6b6b6b; margin-bottom:10px; }
     @media (prefers-color-scheme: dark) { .eeva-subtle { color:#a3a3a3; } }
 
-    /* =========================
-       Persona Card — Responsive (2:3)
-       ========================= */
+    /* Persona Card — responsive (unchanged from your latest) */
     .card-outer {
-      /* Responsive width; 2:3 aspect keeps it proportional */
       width: clamp(140px, 18vw, 240px);
       aspect-ratio: 2 / 3;
       height: auto;
@@ -53,140 +50,49 @@ def inject_global_css_js():
       transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
       backdrop-filter: blur(6px);
       margin-bottom: 8px;
-
-      /* Scale text with card: acts as base font size for inner elements */
       font-size: clamp(12px, 0.9vw, 16px);
     }
-    /* For ~16" laptops and up, let them breathe a bit but don't go huge */
     @media (min-width: 1280px) {
       .card-outer { width: clamp(160px, 16vw, 260px); }
     }
     .card-outer:hover { transform: translateY(-3px) rotateZ(-0.35deg); box-shadow: 0 14px 24px rgba(0,0,0,0.3); filter: saturate(1.05); }
     .card-outer.revealed { box-shadow: 0 0 20px 3px rgba(80,200,255,0.85), inset 0 0 16px rgba(255,255,255,0.5); border-color: rgba(80,200,255,0.85); }
     .card-rarity { position:absolute; inset:0; background:conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,0.12), rgba(0,0,0,0.12), rgba(255,255,255,0.12)); mix-blend-mode:soft-light; pointer-events:none; }
+    .card-body { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; box-sizing: border-box; gap: 4px; }
+    .card-img { width: 100%; flex: 0 0 58%; object-fit: cover; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); }
+    .card-name { flex: 0 0 14%; width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; font-weight: 700; text-align: center; font-size: 1.05em; line-height: 1.15; }
+    .card-tagline { flex: 0 0 12%; width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; text-align: center; opacity: 0.95; font-size: 0.95em; line-height: 1.2; min-height: 2.1em; }
 
-    /* Content layout: image (~58%), name (~12%), tagline (~5%) */
-    .card-body {
-      position: relative;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 10px;
-      box-sizing: border-box;
-      gap: 4px;
-    }
-    .card-img {
-      width: 75%;
-      flex: 0 0 58%;              /* ~58% of card height for image */
-      object-fit: cover;
-      border-radius: 12px;
-      border: 1px solid rgba(0,0,0,0.05);
-    }
-
-    /* Name block — ~12% height, centered, up to 2 lines, ellipsis */
-    .card-name {
-      flex: 0 0 12%;
-      width: 100%;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-
-      margin-top: 4px;
-      font-weight: 700;
-      text-align: center;
-
-      /* scale with card: base (1em) comes from .card-outer font-size */
-      font-size: 1.05em;
-      line-height: 1.15;
-    }
-
-    /* Tagline block — ~12% height, up to 2 lines, ellipsis */
-    .card-tagline {
-      flex: 0 0 5%;
-      width: 100%;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-
-      text-align: center;
-      opacity: 0.95;
-
-      /* a touch smaller than name; still scales via .card-outer */
-      font-size: 0.95em;
-      line-height: 1.2;
-      /* keep minimum presence even if text is short */
-      min-height: 2.1em;
-    }
-
-    /* Hover overlay 'Choose ✨' */
-    .card-choose {
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      opacity:0; transition:opacity 140ms ease, transform 140ms ease; pointer-events:none;
-    }
+    .card-choose { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 140ms ease, transform 140ms ease; pointer-events:none; }
     .card-outer:hover .card-choose { opacity:1; transform:scale(1.02); pointer-events:auto; }
-    .choose-pill {
-      padding:12px 18px; border-radius:999px; background:rgba(17,24,39,0.85);
-      color:#fff; border:1px solid rgba(255,255,255,0.5);
-      font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35);
-      cursor:pointer; user-select:none; text-decoration:none !important; outline:none; border-width:1px;
-      /* Bigger tap target on mobile; relative to root so it’s consistent */
-      font-size: clamp(0.9rem, 1.5vw, 1rem);
-    }
+    .choose-pill { padding:12px 18px; border-radius:999px; background:rgba(17,24,39,0.85); color:#fff; border:1px solid rgba(255,255,255,0.5); font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35); cursor:pointer; user-select:none; text-decoration:none !important; outline:none; border-width:1px; font-size: clamp(0.9rem, 1.5vw, 1rem); }
     .choose-pill:hover { filter:brightness(1.08); }
-
     @media (prefers-color-scheme: dark) {
       .card-outer { border-color:#2f3542; background:linear-gradient(135deg, rgba(23,30,45,0.85), rgba(32,40,60,0.7)); }
       .choose-pill { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.45); }
     }
 
-    /* =========================
-       Chat Input — Responsive, Centered
-       ========================= */
+    /* Chat Input — layout driven ONLY by left/right set from JS */
     [data-testid="stChatInput"] {
       position: fixed !important;
-      bottom: max(0px, env(safe-area-inset-bottom)) !important; /* iOS safe area friendly */
-      z-index: 999 !important;
+      bottom: max(0px, env(safe-area-inset-bottom)) !important;
+      z-index: 1005 !important; /* higher than sidebar overlay */
       padding-top: 0.35rem; padding-bottom: 0.35rem;
       background: rgba(255,255,255,0.88);
       backdrop-filter: blur(6px);
       border-top: 1px solid rgba(0,0,0,0.08);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 95vw;                /* default: phones */
-      max-width: 1100px;          /* cap on ultrawide screens */
-      min-width: 360px;           /* reasonable floor for narrow windows */
+      left: var(--eeva-left, 0px) !important;
+      right: var(--eeva-right, 0px) !important;
+      width: auto !important; max-width: none !important; transform: none !important;
       border-radius: 14px 14px 0 0;
       margin: 0;
     }
-    /* Tablets */
-    @media (min-width: 600px) {
-      [data-testid="stChatInput"] { width: 85vw; min-width: 380px; }
-    }
-    /* Desktops */
-    @media (min-width: 900px) {
-      [data-testid="stChatInput"] { width: 75vw; }
-    }
-    /* If a very narrow sidebar is open, allow a touch more width on small tablets */
-    @media (min-width: 600px) and (max-width: 900px) {
-      body.sidebar-open [data-testid="stChatInput"] { width: 88vw; }
-    }
     @media (prefers-color-scheme: dark) {
-      [data-testid="stChatInput"] {
-        background: rgba(17,24,39,0.88);
-        border-top: 1px solid rgba(255,255,255,0.12);
-      }
+      [data-testid="stChatInput"] { background: rgba(17,24,39,0.88); border-top: 1px solid rgba(255,255,255,0.12); }
     }
 
-    /* Persona search bar sizing (consistent width) */
     .persona-search-wrap { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-    .persona-search-wrap .stTextInput > div > div input {
-      width: 520px !important; max-width: 90vw !important; min-width: 320px !important;
-    }
+    .persona-search-wrap .stTextInput > div > div input { width: 520px !important; max-width: 90vw !important; min-width: 320px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -215,7 +121,7 @@ def inject_global_css_js():
         height=0
     )
 
-    # Responsive columns: compute ?cols= based on viewport width
+    # Responsive columns param (?cols=...)
     components.html(
         """
         <script>
@@ -248,52 +154,91 @@ def inject_global_css_js():
         height=0
     )
 
-    # Chat input: adjust bottom padding of content so messages never hide behind the bar.
+    # Chat input layout: sidebar-aware (overlay or pinned) + bottom padding sync
     components.html(
         """
         <script>
         (function(){
-          const px = (n)=>Math.max(0,Math.floor(n))+'px';
+          const px = (n)=>Math.max(0,Math.round(n))+'px';
 
-          function adjustPadding(){
+          function layoutChat(){
             const doc = parent.document;
             const input = doc.querySelector('[data-testid="stChatInput"]');
             const main  = doc.querySelector('.block-container');
-            if(!input || !main) return;
+            if (!input || !main) return;
 
+            const vw = parent.window.innerWidth || doc.documentElement.clientWidth || 1200;
+            // Desired width when not constrained by sidebar/pins:
+            let desired = 0.95 * vw;                  // phones
+            if (vw >= 600) desired = 0.85 * vw;       // tablets
+            if (vw >= 900) desired = 0.75 * vw;       // desktops
+            desired = Math.max(360, Math.min(1100, Math.round(desired)));
+
+            // Base content gutters from block container
+            const rect = main.getBoundingClientRect();
+            let leftEdge   = rect.left;                                    // content left
+            const rightG   = (doc.documentElement.clientWidth - rect.right); // content right gutter
+
+            // Sidebar rect (works for both pinned and overlay)
+            const sb = doc.querySelector('aside[data-testid="stSidebar"]');
+            if (sb) {
+              const sbRect = sb.getBoundingClientRect();
+              const sbVisible = (sbRect.width > 0) && (sbRect.left < (vw - 8));
+              if (sbVisible) {
+                // If overlay is open, its right edge can occlude content — push left edge to its right edge.
+                leftEdge = Math.max(leftEdge, Math.round(sbRect.right));
+              }
+            }
+
+            // Available width between leftEdge and right gutter
+            const docW = doc.documentElement.clientWidth;
+            const available = Math.max(0, docW - leftEdge - rightG);
+
+            // Final width: centered INSIDE the available region
+            const finalW = Math.min(desired, available);
+            const sidePad = Math.max(0, (available - finalW) / 2);
+            const finalLeft  = leftEdge + sidePad;
+            const finalRight = docW - finalLeft - finalW;
+
+            // Apply via CSS variables so we win specificity
+            input.style.setProperty('--eeva-left',  px(finalLeft));
+            input.style.setProperty('--eeva-right', px(finalRight));
+
+            // Keep content clear of the bar
             const h = input.getBoundingClientRect().height || 96;
-            // small cushion so the last message clears the bar nicely
             main.style.paddingBottom = px(h + 24);
           }
 
           const doc = parent.document;
-          const bodyRO = new ResizeObserver(adjustPadding);
-          bodyRO.observe(doc.body);
+          const observe = (el) => { if (!el) return; new ResizeObserver(layoutChat).observe(el); };
 
-          parent.window.addEventListener('resize', adjustPadding);
-          parent.window.addEventListener('scroll', adjustPadding);
+          observe(doc.body);
+          observe(doc.querySelector('.block-container'));
+          observe(doc.querySelector('aside[data-testid="stSidebar"]'));
 
-          // Run a few times during initial layout to catch font loads / Streamlit reruns
-          setTimeout(adjustPadding, 40);
-          setTimeout(adjustPadding, 160);
-          setTimeout(adjustPadding, 360);
-          setTimeout(adjustPadding, 800);
+          parent.window.addEventListener('resize', layoutChat);
+          parent.window.addEventListener('scroll', layoutChat);
 
-          // Also react to the input itself changing height (multi-line growth, toasts, etc.)
-          const waitForInput = () => {
+          // staged runs to catch fonts/Streamlit reflows
+          setTimeout(layoutChat, 40);
+          setTimeout(layoutChat, 160);
+          setTimeout(layoutChat, 360);
+          setTimeout(layoutChat, 800);
+
+          // React to the input itself changing height
+          (function waitForInput(){
             const input = doc.querySelector('[data-testid="stChatInput"]');
             if (!input) { setTimeout(waitForInput, 120); return; }
-            new ResizeObserver(adjustPadding).observe(input);
-            adjustPadding();
-          };
-          waitForInput();
+            new ResizeObserver(layoutChat).observe(input);
+            layoutChat();
+          })();
         })();
         </script>
         """,
         height=0
     )
 
-    # Define chooser on the PARENT window so main DOM can call it (unchanged)
+    # Define chooser (unchanged)
     components.html(
         """
         <script>
@@ -306,7 +251,6 @@ def inject_global_css_js():
                 url.searchParams.set('tab', 'chat');
                 url.searchParams.set('select', key);
                 parent.window.history.replaceState({}, '', url);
-                // Hard navigate to ensure Streamlit re-runs and consumes ?select
                 parent.window.location.href = url.toString();
               } catch (e) {
                 console.error('eevaChoose error', e);
