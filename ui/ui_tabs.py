@@ -125,7 +125,7 @@ def render_characters_tab():
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.caption("Pick your assistant. Cards are 2:3 — click **Choose** to select and unlock Chat & Bio.")
+    st.caption("Pick your assistant. Cards are 2:3 — hover & click **Choose ✨** to select and unlock Chat & Bio.")
     cards = load_persona_cards(st.session_state.P_DIR)
 
     # Filter by query
@@ -142,7 +142,7 @@ def render_characters_tab():
             return any(ql in f.lower() for f in fields)
         cards = [c for c in cards if match(c)]
 
-    # Render in rows of up to 5
+    # Render in rows of up to 5 with hover overlay (no st.button)
     idx = 0
     MAX_COLS = 5
     while idx < len(cards):
@@ -158,35 +158,27 @@ def render_characters_tab():
                 html_img = f"<img class='card-img' src='{img_src}' />" if img_src else (
                     "<div class='card-img' style='display:flex;align-items:center;justify-content:center;font-size:2rem;'>🎴</div>"
                 )
+
+                # Build a same-window link that updates query params (?select=<Key>&tab=chat)
+                # Streamlit will rerun; app.py consumes ?select= and switches persona.
+                choose_href = f"?tab=chat&select={key}"
+
                 st.markdown(
                     f"""
                     <div class="card-outer{revealed}">
                       <div class="card-rarity"></div>
-                      <div class="card-body">{html_img}
+                      <div class="card-body">
+                        {html_img}
                         <div class="card-name">{disp}</div>
                         <div class="card-tagline">{tagline}</div>
+                        <div class="card-choose">
+                          <a class="choose-pill" href="{choose_href}">Choose ✨</a>
+                        </div>
                       </div>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
-                choose = st.button("✨ Choose", key=f"choose-{key}", help=f"Select {disp}", type="secondary")
-                if choose:
-                    new_persona = build_coordinator_label(card, key)
-                    if st.session_state.selected_persona != new_persona and st.session_state.clear_on_switch:
-                        st.session_state.chat_history = []
-                        st.toast("Chat cleared due to persona switch.", icon="🧹")
-
-                    st.session_state.selected_persona = new_persona
-                    st.session_state.selected_key = key
-                    st.session_state.reveal_key = key
-                    st.session_state.greeting_error[new_persona] = False
-                    st.session_state.greeted_for_persona[new_persona] = st.session_state.greeted_for_persona.get(new_persona, False)
-                    st.session_state.greet_done[new_persona] = st.session_state.greet_done.get(new_persona, False)
-
-                    st.session_state.jump_to_chat = True
-                    st.balloons()
-                    st.rerun()
         idx += MAX_COLS
 
 # ---------- Greeting (strictly once per persona) ----------

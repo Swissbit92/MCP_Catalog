@@ -50,8 +50,22 @@ def inject_global_css_js():
     .card-name { margin-top:8px; font-weight:700; font-size:0.98rem; text-align:center; }
     .card-tagline { font-size:0.82rem; opacity:0.95; text-align:center; min-height: 2.1em; }
 
+    /* Hover overlay 'Choose ✨' */
+    .card-choose {
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      opacity:0; transition:opacity 140ms ease, transform 140ms ease; pointer-events:none;
+    }
+    .card-outer:hover .card-choose { opacity:1; transform:scale(1.02); pointer-events:auto; }
+    .choose-pill {
+      padding:10px 16px; border-radius:999px; background:rgba(17,24,39,0.85);
+      color:#fff; border:1px solid rgba(255,255,255,0.5);
+      text-decoration:none; font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35);
+    }
+    .choose-pill:hover { filter:brightness(1.08); }
+
     @media (prefers-color-scheme: dark) {
       .card-outer { border-color:#2f3542; background:linear-gradient(135deg, rgba(23,30,45,0.85), rgba(32,40,60,0.7)); }
+      .choose-pill { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.45); }
     }
 
     /* Chat input stays full width relative to content */

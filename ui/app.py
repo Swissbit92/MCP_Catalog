@@ -12,14 +12,14 @@ except Exception:
 
 # --- dual-mode imports: absolute first, then local fallback ---
 try:
-    from ui.personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards
+    from ui.personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards, build_coordinator_label
     from ui.ui_style import inject_global_css_js
     from ui.ui_tabs import (
         render_characters_tab, render_chat_tab, render_bio_tab,
         maybe_jump_to_chat, _resolve_persona_logo_for_sidebar
     )
 except ImportError:
-    from personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards  # type: ignore
+    from personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards, build_coordinator_label  # type: ignore
     from ui_style import inject_global_css_js  # type: ignore
     from ui_tabs import (  # type: ignore
         render_characters_tab, render_chat_tab, render_bio_tab,
@@ -56,14 +56,59 @@ st.session_state.setdefault("mode_radio", "Local (Chat-only)")
 # ---------- assets & CSS/JS ----------
 inject_global_css_js()
 
-# Reflect ?tab=... into session state (set by JS in inject_global_css_js)
+# ---------- Query params sync ----------
 try:
-    qp = st.query_params  # new API (replaces deprecated experimental_get_query_params)
+    qp = st.query_params  # new API
+    # Active tab from ?tab=
     tab_q = qp.get("tab", "characters")
     if isinstance(tab_q, list):
         tab_q = tab_q[0] if tab_q else "characters"
     if tab_q in ("characters", "chat", "bio"):
         st.session_state.active_tab = tab_q
+
+    # Handle selection from ?select=<Key>
+    sel_q = qp.get("select", None)
+    if isinstance(sel_q, list):
+        sel_q = sel_q[0] if sel_q else None
+    if sel_q:
+        # Find card by key (case-insensitive startswith)
+        key = str(sel_q).strip()
+        cards = load_persona_cards(P_DIR)
+        card = next((c for c in cards if str(c.get("key", "")).lower().startswith(key.lower())), None)
+        if card:
+            new_persona = build_coordinator_label(card, key)
+            if st.session_state.selected_persona != new_persona and st.session_state.clear_on_switch:
+                st.session_state.chat_history = []
+                st.toast("Chat cleared due to persona switch.", icon="🧹")
+
+            st.session_state.selected_persona = new_persona
+            st.session_state.selected_key = key
+            st.session_state.reveal_key = key
+            st.session_state.greeting_error[new_persona] = False
+            st.session_state.greeted_for_persona[new_persona] = st.session_state.greeted_for_persona.get(new_persona, False)
+            st.session_state.greet_done[new_persona] = st.session_state.greet_done.get(new_persona, False)
+
+            # Jump to chat
+            st.session_state.active_tab = "chat"
+            st.session_state.jump_to_chat = True
+
+        # Clean URL (remove select param after consumption)
+        try:
+            # Use mapping semantics to rewrite the URL without reloading a new window
+            current = dict(st.query_params)
+            if "select" in current:
+                del current["select"]
+            st.query_params.clear()
+            for k, v in current.items():
+                # st.query_params accepts str or list[str]
+                if isinstance(v, list):
+                    for item in v:
+                        st.query_params.append(k, item)
+                else:
+                    st.query_params[k] = v
+        except Exception:
+            pass
+
 except Exception:
     pass
 
