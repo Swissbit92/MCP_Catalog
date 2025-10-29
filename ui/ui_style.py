@@ -59,7 +59,10 @@ def inject_global_css_js():
     .choose-pill {
       padding:10px 16px; border-radius:999px; background:rgba(17,24,39,0.85);
       color:#fff; border:1px solid rgba(255,255,255,0.5);
-      text-decoration:none; font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35);
+      font-weight:700; box-shadow:0 8px 16px rgba(0,0,0,0.35);
+      cursor:pointer; user-select:none;
+      text-decoration:none !important; /* ensure no underline even if rendered as <a> */
+      outline:none; border-width:1px; /* keep pill look for <button> */
     }
     .choose-pill:hover { filter:brightness(1.08); }
 
@@ -102,10 +105,10 @@ def inject_global_css_js():
           let tab = 'characters';
           if (txt.startsWith('💬')) tab = 'chat';
           else if (txt.startsWith('📜')) tab = 'bio';
-          const url = new URL(window.location);
+          const url = new URL(parent.window.location);
           if (url.searchParams.get('tab') !== tab) {
             url.searchParams.set('tab', tab);
-            window.history.replaceState({}, '', url);
+            parent.window.history.replaceState({}, '', url);
           }
         };
         setInterval(setTabParam, 400);
@@ -128,9 +131,38 @@ def inject_global_css_js():
           input.style.width = rect.width + 'px';
         };
         new ResizeObserver(fitChatInput).observe(parent.document.body);
-        window.addEventListener('resize', fitChatInput);
+        parent.window.addEventListener('resize', fitChatInput);
         setTimeout(fitChatInput, 60);
         setTimeout(fitChatInput, 300);
+        </script>
+        """,
+        height=0
+    )
+
+    # Define chooser on the PARENT window so main DOM can call it
+    components.html(
+        """
+        <script>
+        (function(){
+          try {
+            if (!parent || !parent.window) return;
+            parent.window.eevaChoose = function(key) {
+              try {
+                const url = new URL(parent.window.location);
+                url.searchParams.set('tab', 'chat');
+                url.searchParams.set('select', key);
+                parent.window.history.replaceState({}, '', url);
+                // Hard navigate to ensure Streamlit re-runs and consumes ?select
+                parent.window.location.href = url.toString();
+              } catch (e) {
+                console.error('eevaChoose error', e);
+                parent.window.location.reload();
+              }
+            };
+          } catch (e) {
+            console.error('init eevaChoose failed', e);
+          }
+        })();
         </script>
         """,
         height=0
