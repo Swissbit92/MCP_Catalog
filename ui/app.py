@@ -12,19 +12,26 @@ except Exception:
 
 # --- dual-mode imports: absolute first, then local fallback ---
 try:
-    from ui.personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards, build_coordinator_label
+    from ui.personas import (
+        coord_url, persona_model, persona_dir, APP_LOGO,
+        load_persona_cards, build_coordinator_label
+    )
     from ui.ui_style import inject_global_css_js
-    from ui.ui_tabs import (
-        render_characters_tab, render_chat_tab, render_bio_tab,
-        maybe_jump_to_chat, _resolve_persona_logo_for_sidebar
-    )
+    # Split tabs (modular)
+    from ui.tabs.characters import render_characters_tab
+    from ui.tabs.chat import render_chat_tab
+    from ui.tabs.bio import render_bio_tab
+    from ui.tabs.common import maybe_jump_to_chat, _resolve_persona_logo_for_sidebar
 except ImportError:
-    from personas import coord_url, persona_model, persona_dir, APP_LOGO, load_persona_cards, build_coordinator_label  # type: ignore
-    from ui_style import inject_global_css_js  # type: ignore
-    from ui_tabs import (  # type: ignore
-        render_characters_tab, render_chat_tab, render_bio_tab,
-        maybe_jump_to_chat, _resolve_persona_logo_for_sidebar
+    from personas import (  # type: ignore
+        coord_url, persona_model, persona_dir, APP_LOGO,
+        load_persona_cards, build_coordinator_label
     )
+    from ui_style import inject_global_css_js  # type: ignore
+    from tabs.characters import render_characters_tab  # type: ignore
+    from tabs.chat import render_chat_tab  # type: ignore
+    from tabs.bio import render_bio_tab  # type: ignore
+    from tabs.common import maybe_jump_to_chat, _resolve_persona_logo_for_sidebar  # type: ignore
 
 # ---------- page config ----------
 st.set_page_config(page_title="EEVA — GraphRAG Personas", page_icon="🃏", layout="wide")
@@ -59,6 +66,7 @@ inject_global_css_js()
 # ---------- Query params sync ----------
 try:
     qp = st.query_params  # new API
+
     # Active tab from ?tab=
     tab_q = qp.get("tab", "characters")
     if isinstance(tab_q, list):
@@ -71,7 +79,6 @@ try:
     if isinstance(sel_q, list):
         sel_q = sel_q[0] if sel_q else None
     if sel_q:
-        # Find card by key (case-insensitive startswith)
         key = str(sel_q).strip()
         cards = load_persona_cards(P_DIR)
         card = next((c for c in cards if str(c.get("key", "")).lower().startswith(key.lower())), None)
@@ -92,15 +99,13 @@ try:
             st.session_state.active_tab = "chat"
             st.session_state.jump_to_chat = True
 
-        # Clean URL (remove select param after consumption)
+        # Clean URL (remove select param after consumption) without opening new window
         try:
-            # Use mapping semantics to rewrite the URL without reloading a new window
             current = dict(st.query_params)
             if "select" in current:
                 del current["select"]
             st.query_params.clear()
             for k, v in current.items():
-                # st.query_params accepts str or list[str]
                 if isinstance(v, list):
                     for item in v:
                         st.query_params.append(k, item)
