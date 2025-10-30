@@ -1,25 +1,101 @@
-# GraphRAG Coordinator UI (Chat-only)
+# 🧠 GraphRAG Coordinator UI
 
-Local Streamlit QA chatbot with personas (Eeva, Cindy). Built on LangChain + Ollama.
-MCP-ready: later add tool routing to call your dockerized rag/kg MCPs.
+> **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**  
+> _Private • Local-First • Streamlit-Based Coordinator_
 
-## Quick start
+---
 
-```bash
-# 1) Create and activate venv (Windows PowerShell)
-python -m venv .venv
-. .venv/Scripts/Activate.ps1
+## 📖 Overview
 
-# 2) Install deps
+The **GraphRAG Coordinator UI** provides a local chat interface for interacting with multiple MCP (Modular Computation Process) servers — such as `rag`, `kg`, and others — through a **persona-driven** experience.
+
+It runs entirely **locally**, connects to a **FastAPI Coordinator** (the backend), and communicates with **Ollama** for local LLM inference.  
+Personas such as **Eeva**, **Cindy**, and others can be selected via an interactive card-based interface.  
+The chat interface is responsive, centered, and styled like a modern messaging app.
+
+---
+
+## ⚙️ System Requirements
+
+| Component | Requirement |
+|------------|-------------|
+| **OS** | Windows 10 / 11 or macOS 13+ |
+| **Python** | 3.11 or higher |
+| **GPU (optional)** | NVIDIA RTX 30/40 series for CUDA acceleration (or Apple Silicon GPU on macOS) |
+| **RAM** | ≥ 16 GB recommended |
+| **Ollama** | Installed and running locally |
+| **Streamlit** | v1.35+ |
+| **FastAPI + Uvicorn** | For Coordinator backend |
+| **LangChain Ollama** | For persona LLM clients |
+
+---
+
+## 🧩 Installation
+
+### 1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/yourusername/graph_rag_coordinator_ui.git
+   cd graph_rag_coordinator_ui
+Create a virtual environment
+   ```
+
+   ```bash
+Copy code
+python -m venv venv
+source venv/bin/activate     # (macOS / Linux)
+venv\Scripts\activate        # (Windows)
+Install dependencies
+   ```
+
+   ```bash
+Copy code
 pip install -r requirements.txt
+Create a .env file
+   ```
 
-# 3) Configure environment
-copy .env.example .env
-# ensure OLLAMA_BASE and PERSONA_MODEL exist locally:
-#   ollama pull llama3.1:8b
+Example:
 
-# 4) Run Coordinator (FastAPI)
-uvicorn src.coordinator.server:app --reload --port 8000
+   ```bash
+Copy code
+COORD_PORT=8000
+COORD_URL=http://127.0.0.1:8000
+OLLAMA_BASE=http://127.0.0.1:11434
+PERSONA_MODEL=llama3.1:latest
+PERSONA_DIR=personas
+🚀 Usage
+Start the Coordinator + UI
+   ```
 
-# 5) In another terminal, run the UI
-streamlit run ui/app.py
+   ```bash
+Copy code
+python run.py
+   ```
+   
+The script will:
+
+Launch the FastAPI Coordinator (backend)
+
+Open the Streamlit UI (http://localhost:8501)
+
+Verify the local Ollama model is available
+
+In the UI
+
+Go to the Characters tab → choose a persona
+
+Switch to the Chat tab → start chatting
+
+Use the toolbar:
+
+🧹 Clear Chat
+
+📥 Export conversation (JSON)
+
+⚠️ Disclaimer
+This project is a local experimental prototype.
+It is provided “as is”, without any warranty or guarantee.
+All LLM interactions run locally via Ollama — no data leaves your device.
+Use responsibly and at your own discretion.
+
+© 2025 GraphRAG Coordinator UI – All rights reserved.
