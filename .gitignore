@@ -1,15 +1,22 @@
+# Python
 __pycache__/
+*.py[cod]
+*.pyo
+*.log
+
+# Virtual environments
 bin/
-etc/
-share/
 include/
 lib/
 lib64/
 Scripts/
 pyvenv.cfg
+
+# Jupyter / system folders
+**/share/
+**/etc/
+
+# Images and misc
 images/
-lib
-*.log
 gwen_alt.json
 *.gitignore
-*.env
