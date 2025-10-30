@@ -4,6 +4,7 @@
 import time
 import threading
 from datetime import datetime
+import json  # added for export serialization
 
 import streamlit as st
 
@@ -16,6 +17,7 @@ except ImportError:
     from personas import USER_AVATAR  # type: ignore
     from tabs.common import render_header, _assets_for_selected  # type: ignore
     from ui_net import post_async  # type: ignore
+
 
 def _maybe_greet_once(coord_url: str):
     persona = st.session_state.selected_persona
@@ -78,6 +80,7 @@ def _maybe_greet_once(coord_url: str):
 
     st.rerun()
 
+
 def render_chat_tab(coord_url: str, model_name: str):
     render_header(model_name)
     if not st.session_state.selected_persona:
@@ -89,12 +92,18 @@ def render_chat_tab(coord_url: str, model_name: str):
     assistant_avatar = _assets_for_selected()["avatar"]
     user_avatar = USER_AVATAR
 
-    c1, c2, _ = st.columns([1,1,6])
-    with c1:
-        if st.button("🧹 Clear Chat"):
+    # ---------- Icon-only toolbar (stable single row) ----------
+    # Left: 🧹 clear (native st.button so it clears in-place)
+    # Right: 📥 export (native st.download_button for a JSON file)
+    col_clear, col_export, _spacer = st.columns([0.07, 0.07, 0.86], gap="small")
+
+    with col_clear:
+        if st.button("🧹", help="Clear chat", use_container_width=True, key="btn_clear_chat"):
             st.session_state.chat_history = []
             st.toast("Chat cleared.", icon="🧹")
-    with c2:
+            st.rerun()
+
+    with col_export:
         export_obj = {
             "persona": st.session_state.selected_persona,
             "model": model_name,
@@ -102,14 +111,18 @@ def render_chat_tab(coord_url: str, model_name: str):
             "history": st.session_state.chat_history,
         }
         st.download_button(
-            "📥 Export (.json)",
-            data=(__import__("json").dumps(export_obj, indent=2).encode("utf-8")),
+            "📥",
+            data=(json.dumps(export_obj, indent=2).encode("utf-8")),
             file_name="transcript.json",
-            mime="application/json"
+            mime="application/json",
+            help="Export transcript (.json)",
+            use_container_width=True,
+            key="btn_export_json",
         )
 
     st.markdown("---")
 
+    # ---------- History ----------
     for m in st.session_state.chat_history:
         if m["role"] == "user":
             with st.chat_message("user", avatar=user_avatar):
@@ -120,6 +133,7 @@ def render_chat_tab(coord_url: str, model_name: str):
                 if "latency_ms" in m and isinstance(m["latency_ms"], int):
                     st.caption(f"⏱️ {m['latency_ms']} ms")
 
+    # ---------- Input ----------
     user_in = st.chat_input("Type a message…")
     if user_in:
         st.session_state.chat_history.append({"role":"user","content":user_in})
