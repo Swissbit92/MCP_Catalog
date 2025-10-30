@@ -54,39 +54,40 @@ pip install -r requirements.txt
 Create a .env file
    ```
 
-Example:
+### Example env
 
    ```bash
-Copy code
 COORD_PORT=8000
 COORD_URL=http://127.0.0.1:8000
 OLLAMA_BASE=http://127.0.0.1:11434
 PERSONA_MODEL=llama3.1:latest
 PERSONA_DIR=personas
-🚀 Usage
-Start the Coordinator + UI
    ```
+
+---
+
+## 🚀 Usage
+
+Start the Coordinator + UI
 
    ```bash
-Copy code
 python run.py
    ```
-   
+
+---
+
 The script will:
 
-Launch the FastAPI Coordinator (backend)
+- Launch the FastAPI Coordinator (backend)
+- Open the Streamlit UI (http://localhost:8501)
+- Verify the local Ollama model is available
 
-Open the Streamlit UI (http://localhost:8501)
+### 1. In the UI
 
-Verify the local Ollama model is available
+- Go to the Characters tab → choose a persona
+- Switch to the Chat tab → start chatting
 
-In the UI
-
-Go to the Characters tab → choose a persona
-
-Switch to the Chat tab → start chatting
-
-Use the toolbar:
+### 2. Use the toolbar
 
 🧹 Clear Chat
 
@@ -99,3 +100,5 @@ All LLM interactions run locally via Ollama — no data leaves your device.
 Use responsibly and at your own discretion.
 
 © 2025 GraphRAG Coordinator UI – All rights reserved.
+
+---
