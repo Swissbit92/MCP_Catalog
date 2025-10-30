@@ -42,6 +42,15 @@ except Exception as e:
     print(f"   Error: {e}")
     sys.exit(1)
 
+# 4) Summary preflight (serialized)
+try:
+    from coordinator.persona_memory import ensure_all_summaries_serialized
+except Exception as e:
+    print("❌ Could not import coordinator.persona_memory for summary preflight.")
+    print(f"   Error: {e}")
+    sys.exit(1)
+
+
 def _required_env(name: str, default: str | None = None) -> str:
     val = os.getenv(name, default if default is not None else "").strip()
     if not val:
@@ -113,6 +122,16 @@ def main():
 
     # Friendly greeting
     welcome_banner(coord_port, model, base)
+
+    # ---- SERIALIZED SUMMARY PREFLIGHT (BLOCKING) ----
+    # Ensures summaries exist/are fresh before Coordinator/UI start
+    print("⏳ Pre-warming persona CV summaries (serialized)…")
+    try:
+        built, skipped = ensure_all_summaries_serialized(timeout_sec=900, poll_sec=0.25)
+        print(f"✅ Summary preflight complete — built: {built}, up-to-date: {skipped}")
+    except Exception as e:
+        print(f"⚠️ Summary preflight encountered an issue: {e}")
+        # Non-fatal — the app can still run, but first greet might rebuild a missing one
 
     # Commands
     coord_cmd = [
