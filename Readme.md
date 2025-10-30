@@ -17,6 +17,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 
 ## 🧩 High level Architecture
 
+   ```bash
                      ┌────────────────────────────┐
                      │        Streamlit UI        │
                      │ (GraphRAG Coordinator Chat) │
@@ -40,6 +41,8 @@ The chat interface is responsive, centered, and styled like a modern messaging a
                      │        Ollama LLM          │
                      │ (Local inference engine)   │
                      └────────────────────────────┘
+
+   ```
 
 ---
 
