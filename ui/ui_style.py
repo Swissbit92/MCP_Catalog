@@ -134,6 +134,55 @@ def inject_global_css_js():
         background: rgba(255,255,255,0.12);
       }
     }
+
+    /* ---------- CV Banner (Bio tab) ---------- */
+    .cv-banner{
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 18px;
+      align-items: start;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(240,248,255,0.55));
+      box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+      max-width: 1200px; /* nice cap for large screens */
+      margin: 4px auto 14px auto; /* centered */
+    }
+    .cv-left {}
+    .cv-right {}
+    .cv-avatar{
+      width: 100%;
+      aspect-ratio: 1/1;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.06);
+      display:block;
+    }
+    .cv-avatar-fallback{
+      display:flex; align-items:center; justify-content:center;
+      font-size: 48px; background: rgba(0,0,0,0.04);
+      width:100%; aspect-ratio:1/1; border-radius:14px;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .cv-summary, .cv-summary-md{
+      font-size: clamp(14px, 1.1vw, 17px);
+      line-height: 1.6;
+      color: #1f2937;
+      white-space: pre-wrap;
+    }
+    @media (prefers-color-scheme: dark){
+      .cv-banner{ border-color: rgba(255,255,255,0.14); background: linear-gradient(135deg, rgba(30,41,59,0.85), rgba(17,24,39,0.8)); box-shadow: 0 8px 16px rgba(0,0,0,0.35); }
+      .cv-summary, .cv-summary-md{ color: #e5e7eb; }
+      .cv-avatar{ border-color: rgba(255,255,255,0.12); }
+    }
+    @media (max-width: 900px){
+      .cv-banner{ grid-template-columns: 120px 1fr; }
+    }
+    @media (max-width: 640px){
+      .cv-banner{ grid-template-columns: 1fr; }
+      .cv-left{ margin-bottom: 8px; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
