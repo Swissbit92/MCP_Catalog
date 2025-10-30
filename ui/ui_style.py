@@ -36,7 +36,7 @@ def inject_global_css_js():
     .eeva-subtle { color:#6b6b6b; margin-bottom:10px; }
     @media (prefers-color-scheme: dark) { .eeva-subtle { color:#a3a3a3; } }
 
-    /* Persona Card — responsive (unchanged from your latest) */
+    /* Persona Card — responsive (from your latest baseline) */
     .card-outer {
       width: clamp(140px, 18vw, 240px);
       aspect-ratio: 2 / 3;
@@ -72,11 +72,11 @@ def inject_global_css_js():
       .choose-pill { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.45); }
     }
 
-    /* Chat Input — layout driven ONLY by left/right set from JS */
+    /* Chat Input — left/right set via JS */
     [data-testid="stChatInput"] {
       position: fixed !important;
       bottom: max(0px, env(safe-area-inset-bottom)) !important;
-      z-index: 1005 !important; /* higher than sidebar overlay */
+      z-index: 1005 !important;
       padding-top: 0.35rem; padding-bottom: 0.35rem;
       background: rgba(255,255,255,0.88);
       backdrop-filter: blur(6px);
@@ -91,8 +91,49 @@ def inject_global_css_js():
       [data-testid="stChatInput"] { background: rgba(17,24,39,0.88); border-top: 1px solid rgba(255,255,255,0.12); }
     }
 
-    .persona-search-wrap { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-    .persona-search-wrap .stTextInput > div > div input { width: 520px !important; max-width: 90vw !important; min-width: 320px !important; }
+    /* ---------- Chat Toolbar (icon-only) ---------- */
+    .chat-toolbar{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap: nowrap;      /* never wrap */
+      justify-content: flex-start; /* or flex-end if you prefer right alignment */
+      margin-bottom: 8px;
+      user-select: none;
+    }
+    .chat-toolbar .icon-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width: clamp(36px, 4.5vw, 42px);
+      height: clamp(36px, 4.5vw, 42px);
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.15);
+      background: rgba(255,255,255,0.6);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      text-decoration: none !important;
+      font-size: clamp(18px, 2.2vw, 22px); /* icon size */
+      line-height: 1;
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+      padding: 0;
+      color: #111827;
+    }
+    .chat-toolbar .icon-btn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.85);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      .chat-toolbar .icon-btn{
+        border-color: rgba(255,255,255,0.18);
+        background: rgba(255,255,255,0.07);
+        color: #e5e7eb;
+      }
+      .chat-toolbar .icon-btn:hover{
+        background: rgba(255,255,255,0.12);
+      }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -121,7 +162,7 @@ def inject_global_css_js():
         height=0
     )
 
-    # Responsive columns param (?cols=...)
+    # Responsive columns: compute ?cols= based on viewport width (characters tab)
     components.html(
         """
         <script>
