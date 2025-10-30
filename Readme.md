@@ -41,20 +41,20 @@ Create a virtual environment
    ```
 
    ```bash
-Copy code
 python -m venv venv
 source venv/bin/activate     # (macOS / Linux)
 venv\Scripts\activate        # (Windows)
-Install dependencies
    ```
+
+### 2. **Install dependencies**
 
    ```bash
-Copy code
 pip install -r requirements.txt
-Create a .env file
    ```
 
-### Example env
+### 3. **Create a .env file**
+
+### 4. **Example .env file**
 
    ```bash
 COORD_PORT=8000
@@ -66,9 +66,9 @@ PERSONA_DIR=personas
 
 ---
 
-## 🚀 Usage
+## 🚀 **Usage**
 
-Start the Coordinator + UI
+### **Start the Coordinator + UI**
 
    ```bash
 python run.py
@@ -76,7 +76,7 @@ python run.py
 
 ---
 
-The script will:
+**The script will:**
 
 - Launch the FastAPI Coordinator (backend)
 - Open the Streamlit UI (http://localhost:8501)
@@ -89,9 +89,10 @@ The script will:
 
 ### 2. Use the toolbar
 
-🧹 Clear Chat
-
-📥 Export conversation (JSON)
+| Button | Function |
+|------------|-------------|
+| 🧹 | **Clear Chat** |
+| 📥 | **Export conversation** (JSON) |
 
 ⚠️ Disclaimer
 This project is a local experimental prototype.
