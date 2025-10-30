@@ -3,6 +3,7 @@
 
 import threading
 import time
+from html import escape
 
 import streamlit as st
 
@@ -22,18 +23,19 @@ def _fetch_summary(coord_url: str, persona_label: str, out: dict):
     post_async(f"{coord_url}/persona/summary", payload, 120, out)
 
 
-def _cv_banner_html(img_uri: str | None, summary: str) -> str:
+def _cv_banner_html(img_uri: str | None, summary: str | None) -> str:
+    """Return the complete CV banner HTML with image on the left and summary on the right."""
     img = (
         f"<img class='cv-avatar' src='{img_uri}' alt='persona' />"
         if img_uri
         else "<div class='cv-avatar cv-avatar-fallback'>🎴</div>"
     )
-    # Summary paragraph is rendered below in markdown to ensure proper wrapping
+    safe_summary = escape(summary or "").replace("\n", "<br/>")
     return f"""
     <div class="cv-banner">
       <div class="cv-left">{img}</div>
       <div class="cv-right">
-        <div class="cv-summary">{summary}</div>
+        <div class="cv-summary">{safe_summary}</div>
       </div>
     </div>
     """
@@ -88,11 +90,8 @@ def render_bio_tab():
 
     # --- CV banner (narrative) or fallback structured details ---
     if summary_text:
-        # Render banner shell (image + right column)
-        st.markdown(_cv_banner_html(logo_uri, ""), unsafe_allow_html=True)
-        # Put the paragraph as markdown so it wraps properly
-        with st.container():
-            st.markdown(f"<div class='cv-summary-md'>{summary_text}</div>", unsafe_allow_html=True)
+        # Render the full banner with summary embedded INSIDE the right column
+        st.markdown(_cv_banner_html(logo_uri, summary_text), unsafe_allow_html=True)
     else:
         # Fallback to structured details if summary missing
         left, right = st.columns([1, 2], vertical_alignment="top")
