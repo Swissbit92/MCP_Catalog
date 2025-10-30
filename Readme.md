@@ -1,4 +1,4 @@
-# 🧠 GraphRAG Coordinator UI
+# 🧠 MCP Coordinator - Persona Chat Interface (Chat only for now)
 
 > **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**  
 > _Private • Local-First • Streamlit-Based Coordinator_
