@@ -1,5 +1,5 @@
 # ui/tabs/bio.py
-# Bio tab: responsive CV banner + cached LLM summary; keeps old details below.
+# Bio tab: responsive CV banner + cached LLM summary (no structured-details expander).
 
 import threading
 import time
@@ -16,17 +16,19 @@ except ImportError:
     from tabs.common import render_header, _assets_for_selected  # type: ignore
     from ui_net import post_async  # type: ignore
 
+
 def _fetch_summary(coord_url: str, persona_label: str, out: dict):
     payload = {"persona": persona_label}
     post_async(f"{coord_url}/persona/summary", payload, 120, out)
 
+
 def _cv_banner_html(img_uri: str | None, summary: str) -> str:
     img = (
         f"<img class='cv-avatar' src='{img_uri}' alt='persona' />"
-        if img_uri else
-        "<div class='cv-avatar cv-avatar-fallback'>🎴</div>"
+        if img_uri
+        else "<div class='cv-avatar cv-avatar-fallback'>🎴</div>"
     )
-    # Keep summary safe-ish; markdown will render below as text
+    # Summary paragraph is rendered below in markdown to ensure proper wrapping
     return f"""
     <div class="cv-banner">
       <div class="cv-left">{img}</div>
@@ -36,6 +38,7 @@ def _cv_banner_html(img_uri: str | None, summary: str) -> str:
     </div>
     """
 
+
 def render_bio_tab():
     render_header(st.session_state.MODEL)
     if not st.session_state.selected_persona:
@@ -44,7 +47,7 @@ def render_bio_tab():
 
     chosen = st.session_state.selected_key or "Eeva"
     cards = load_persona_cards(st.session_state.P_DIR)
-    card = next((c for c in cards if c.get("key","").lower().startswith(chosen.lower())), None)
+    card = next((c for c in cards if c.get("key", "").lower().startswith(chosen.lower())), None)
     if not card:
         st.warning("Persona card not found.")
         return
@@ -83,46 +86,25 @@ def render_bio_tab():
         data = res.get("json") or {}
         summary_text = (data.get("summary") or "").strip() or None
 
-    # --- CV banner (narrative) ---
+    # --- CV banner (narrative) or fallback structured details ---
     if summary_text:
+        # Render banner shell (image + right column)
         st.markdown(_cv_banner_html(logo_uri, ""), unsafe_allow_html=True)
         # Put the paragraph as markdown so it wraps properly
         with st.container():
             st.markdown(f"<div class='cv-summary-md'>{summary_text}</div>", unsafe_allow_html=True)
     else:
-        # fallback to old details if summary missing
-        left, right = st.columns([1,2], vertical_alignment="top")
+        # Fallback to structured details if summary missing
+        left, right = st.columns([1, 2], vertical_alignment="top")
         with left:
             if logo_uri:
                 st.image(logo_uri, width=240)
             st.markdown(f"**Persona:** {card.get('display_name','—')}")
             st.markdown(f"**Style:** {card.get('style','—')}")
             st.markdown("**Personality tics:**")
-            for t_ in (card.get("voice",{}) or {}).get("tics", []):
+            for t_ in (card.get("voice", {}) or {}).get("tics", []):
                 st.markdown(f"- {t_}")
         with right:
-            st.markdown("**Lore:**")
-            for line in card.get("lore", []):
-                st.markdown(f"- {line}")
-            st.markdown("**Do:**")
-            for d in card.get("do", []):
-                st.markdown(f"- {d}")
-            st.markdown("**Don’t:**")
-            for d in card.get("dont", []):
-                st.markdown(f"- {d}")
-
-    # Optional expandable: keep the original structured sections under the banner
-    with st.expander("Show full structured details"):
-        left2, right2 = st.columns([1,2], vertical_alignment="top")
-        with left2:
-            if logo_uri:
-                st.image(logo_uri, width=180)
-            st.markdown(f"**Persona:** {card.get('display_name','—')}")
-            st.markdown(f"**Style:** {card.get('style','—')}")
-            st.markdown("**Personality tics:**")
-            for t_ in (card.get("voice",{}) or {}).get("tics", []):
-                st.markdown(f"- {t_}")
-        with right2:
             st.markdown("**Lore:**")
             for line in card.get("lore", []):
                 st.markdown(f"- {line}")
