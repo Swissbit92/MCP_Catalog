@@ -20,7 +20,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
    ```bash
                      ┌────────────────────────────┐
                      │        Streamlit UI        │
-                     │ (GraphRAG Coordinator Chat) │
+                     │ (GraphRAG Coordinator Chat)│
                      └──────────────┬─────────────┘
                                     │  (HTTP API)
                                     ▼
