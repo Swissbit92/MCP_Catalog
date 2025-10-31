@@ -9,3 +9,6 @@ langchain-ollama
 ollama
 pyyaml
 pydantic
+
+
+# instead of fixed Streamlit columns (which “snap” all cards at once), we’ll switch to a pure CSS Grid that uses repeat(auto-fit, minmax(...))
