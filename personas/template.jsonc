@@ -8,6 +8,9 @@
   // REQUIRED (unique among personas)
   "key": "Name",
 
+ // OPTIONAL (for rarity-based UX; default: "common") 
+ "rarity": "common | rare | epic | legendary",
+
   // REQUIRED (used in UI cards & Bio; recommended format: "Name — Tagline")
   "display_name": "Name — Tagline",
 

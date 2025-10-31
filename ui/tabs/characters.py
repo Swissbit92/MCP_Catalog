@@ -1,6 +1,7 @@
 # ui/tabs/characters.py
 # Characters tab: search + responsive columns + hover "Choose ✨" overlay
 # Now with shiny rarity frames, foil glints, and a mint number plate.
+# Adds rarity-themed glow for the selected/active card.
 
 import streamlit as st
 
@@ -107,13 +108,19 @@ def render_characters_tab():
                 rarity = _rarity_for(card, key)  # legendary|epic|rare|common
                 mint_no = _mint_number(key)
                 img_src = resolve_card_image(card, key)
-                revealed = " revealed" if st.session_state.reveal_key == key else ""
+
+                # Mark selection/active visually
+                is_selected = (st.session_state.get("selected_key") or "") == key
+                selected_cls = " selected" if is_selected else ""
+
+                # Also keep reveal effect (set in app.py on selection once)
+                is_revealed = (st.session_state.get("reveal_key") or "") == key
+                revealed_cls = " revealed" if is_revealed else ""
+
                 html_img = (
                     f"<img class='card-img' src='{img_src}' />"
                     if img_src
-                    else (
-                        "<div class='card-img card-img-fallback'>🎴</div>"
-                    )
+                    else "<div class='card-img card-img-fallback'>🎴</div>"
                 )
 
                 choose_href = f"?tab=chat&select={key}"
@@ -143,7 +150,7 @@ def render_characters_tab():
 
                 st.markdown(
                     f"""
-                    <div class="card-outer rarity-{rarity}{revealed}">
+                    <div class="card-outer rarity-{rarity}{selected_cls}{revealed_cls}">
                       <!-- Gold/Holo frame layers -->
                       <div class="card-frame"></div>
                       <div class="card-foil"></div>

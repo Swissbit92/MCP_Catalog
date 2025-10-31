@@ -59,6 +59,50 @@ def inject_global_css_js():
       box-shadow: 0 18px 32px rgba(0,0,0,0.45);
       filter: saturate(1.05);
     }
+
+    /* Rarity glow variables for selected state */
+    .rarity-legendary { --glow: rgba(255,208,80,0.90);  --glow2: rgba(255,240,166,0.70); }
+    .rarity-epic      { --glow: rgba(186,120,255,0.85); --glow2: rgba(246,212,255,0.65); }
+    .rarity-rare      { --glow: rgba( 66,245,255,0.85); --glow2: rgba(212,246,255,0.65); }
+    .rarity-common    { --glow: rgba(230,230,230,0.85); --glow2: rgba(250,250,250,0.60); }
+
+    /* Selected/active card state — pulsing halo + boosted frame glow */
+    .card-outer.selected {
+      transform: translateY(-4px) scale(1.01);
+      filter: saturate(1.12) brightness(1.03);
+      box-shadow:
+        0 20px 40px rgba(0,0,0,0.50),
+        0 0 0 1px rgba(255,255,255,0.22),
+        0 0 24px var(--glow);
+    }
+    .card-outer.selected::before{
+      content:"";
+      position:absolute; inset:-8px;
+      border-radius: 26px;
+      background:
+        radial-gradient(60% 50% at 50% 6%, var(--glow2), transparent 60%),
+        radial-gradient(70% 60% at 50% 100%, var(--glow), transparent 70%);
+      filter: blur(14px);
+      opacity: 0.85;
+      z-index: 0; pointer-events:none;
+      animation: haloPulse 2.2s ease-in-out infinite;
+    }
+    .card-outer.selected .card-frame{
+      box-shadow:
+        0 0 28px var(--glow),
+        inset 0 0 14px var(--glow2),
+        0 0 0 1px rgba(255,255,255,0.25);
+    }
+    .card-outer.selected .card-choose{
+      opacity: 1; pointer-events:auto; /* keep the CTA visible when selected */
+    }
+
+    @keyframes haloPulse {
+      0%   { opacity: 0.70; transform: scale(0.995); }
+      50%  { opacity: 1.00; transform: scale(1.010); }
+      100% { opacity: 0.70; transform: scale(0.995); }
+    }
+
     .card-frame{
       position: absolute; inset: 0;
       border-radius: inherit;
