@@ -1,5 +1,6 @@
 # ui/tabs/characters.py
 # Characters tab: search + responsive columns + hover "Choose ✨" overlay
+# Now with shiny rarity frames, foil glints, and a mint number plate.
 
 import streamlit as st
 
@@ -8,6 +9,7 @@ try:
     from ui.personas import load_persona_cards, resolve_card_image
 except ImportError:
     from personas import load_persona_cards, resolve_card_image  # type: ignore
+
 
 def _cols_from_query(default: int = 5) -> int:
     """Read ?cols=<int> set by ui_style.js; clamp to [1..6]."""
@@ -21,6 +23,37 @@ def _cols_from_query(default: int = 5) -> int:
     except Exception:
         return default
 
+
+def _mint_number(key: str) -> int:
+    """Stable-ish mint number based on the persona key (no Python hash salt)."""
+    return (sum((i + 1) * ord(c) for i, c in enumerate(key)) % 999) + 1
+
+
+def _rarity_for(card: dict, key: str) -> str:
+    """
+    Resolve rarity with sane defaults. If the card provides "rarity",
+    we accept (legendary|epic|rare|common|mythic). Otherwise:
+    - Eeva, Astra, Gwen => Legendary
+    - Else => Epic
+    """
+    raw = str(card.get("rarity", "")).strip().lower()
+    aliases = {
+        "mythic": "legendary",
+        "leg": "legendary",
+        "ep": "epic",
+        "r": "rare",
+        "c": "common",
+    }
+    if raw in aliases:
+        raw = aliases[raw]
+    if raw in {"legendary", "epic", "rare", "common"}:
+        return raw
+    key_l = key.lower()
+    if key_l in {"eeva", "astra", "gwen"}:
+        return "legendary"
+    return "epic"
+
+
 def render_characters_tab():
     st.subheader("Characters")
 
@@ -29,13 +62,16 @@ def render_characters_tab():
         st.markdown('<div class="persona-search-wrap">', unsafe_allow_html=True)
         q = st.text_input(
             label="Search personas",
-            value=st.session_state.get("persona_search",""),
+            value=st.session_state.get("persona_search", ""),
             placeholder="Search by name, style, traits…",
-            key="persona_search"
+            key="persona_search",
         )
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.caption("Pick your assistant. Cards keep a **2:3** ratio and scale with the screen. Hover & click **Choose ✨** to select and unlock Chat & Bio.")
+    st.caption(
+        "Pick your assistant. Cards keep a **2:3** ratio and scale with the screen. "
+        "Hover & click **Choose ✨** to select and unlock Chat & Bio."
+    )
 
     cards = load_persona_cards(st.session_state.P_DIR)
 
@@ -68,12 +104,16 @@ def render_characters_tab():
                 key = (card.get("key") or "Eeva").split()[0].capitalize()
                 disp = card.get("display_name", f"{key} — Nerdy Charming")
                 tagline = card.get("style", "curious & kind")
+                rarity = _rarity_for(card, key)  # legendary|epic|rare|common
+                mint_no = _mint_number(key)
                 img_src = resolve_card_image(card, key)
                 revealed = " revealed" if st.session_state.reveal_key == key else ""
                 html_img = (
                     f"<img class='card-img' src='{img_src}' />"
                     if img_src
-                    else "<div class='card-img' style='display:flex;align-items:center;justify-content:center;font-size:2rem;'>🎴</div>"
+                    else (
+                        "<div class='card-img card-img-fallback'>🎴</div>"
+                    )
                 )
 
                 choose_href = f"?tab=chat&select={key}"
@@ -93,11 +133,27 @@ def render_characters_tab():
                     "})();"
                 )
 
-                # Add title attributes so full text shows on hover; CSS handles clamping/ellipsis.
+                # Rarity label text
+                rarity_label = {
+                    "legendary": "Legendary ✨",
+                    "epic": "Epic ✨",
+                    "rare": "Rare ★",
+                    "common": "Common",
+                }.get(rarity, "Epic ✨")
+
                 st.markdown(
                     f"""
-                    <div class="card-outer{revealed}">
-                      <div class="card-rarity"></div>
+                    <div class="card-outer rarity-{rarity}{revealed}">
+                      <!-- Gold/Holo frame layers -->
+                      <div class="card-frame"></div>
+                      <div class="card-foil"></div>
+                      <div class="card-glint"></div>
+
+                      <!-- Rarity badge & mint plate -->
+                      <div class="rarity-badge" title="{rarity_label}">{rarity_label}</div>
+                      <div class="mint-plate" title="Mint number">No. {mint_no:03d}</div>
+
+                      <!-- Body -->
                       <div class="card-body">
                         {html_img}
                         <div class="card-name" title="{disp}">{disp}</div>

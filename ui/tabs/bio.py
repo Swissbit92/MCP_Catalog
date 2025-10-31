@@ -1,5 +1,5 @@
 # ui/tabs/bio.py
-# Bio tab: responsive CV banner + cached LLM summary (styled paragraphs, no expander).
+# Bio tab: cyberpunk gacha banner + cached LLM summary (text stays right of the image).
 
 import threading
 import time
@@ -23,39 +23,81 @@ def _fetch_summary(coord_url: str, persona_label: str, out: dict):
     post_async(f"{coord_url}/persona/summary", payload, 120, out)
 
 
-def _render_summary_paragraphs(summary: str | None) -> str:
-    """Escape and format the narrative into paragraphs with a leading dropcap."""
-    if not summary:
-        return ""
-    # Normalize line breaks and split into paragraphs by blank lines
-    text = summary.replace("\r\n", "\n").strip()
-    paras = [p.strip() for p in text.split("\n\n") if p.strip()]
+def _mint_number(key: str) -> int:
+    """Stable-ish mint number based on the persona key (no Python hash salt)."""
+    return (sum((i + 1) * ord(c) for i, c in enumerate(key)) % 999) + 1
+
+
+def _rarity_for(card: dict, key: str) -> str:
+    """
+    Resolve rarity with sane defaults. Matches Characters tab logic.
+    Accepts (legendary|epic|rare|common|mythic). 'mythic' maps to 'legendary'.
+    """
+    raw = str(card.get("rarity", "")).strip().lower()
+    aliases = {"mythic": "legendary", "leg": "legendary", "ep": "epic", "r": "rare", "c": "common"}
+    if raw in aliases:
+        raw = aliases[raw]
+    if raw in {"legendary", "epic", "rare", "common"}:
+        return raw
+    key_l = (key or "").lower()
+    if key_l in {"eeva", "astra", "gwen"}:
+        return "legendary"
+    return "epic"
+
+
+def _format_summary_to_html(summary_text: str) -> str:
+    """
+    Turn plaintext summary into styled HTML paragraphs inside the banner.
+    First paragraph gets a 'cv-lead' class for a neon dropcap badge effect.
+    """
+    # Basic safe-escape (we'll convert newlines to paragraphs)
+    safe = escape(summary_text or "")
+    # Split on blank lines into paragraphs
+    paras = [p.strip() for p in safe.split("\n\n") if p.strip()]
     if not paras:
-        paras = [text]
-
-    html_parts = []
+        return "<div class='cv-summary'></div>"
+    out = []
     for i, p in enumerate(paras):
-        safe = escape(p)
         cls = "cv-p cv-lead" if i == 0 else "cv-p"
-        # Convert single newlines inside paragraph to <br/> (rare; most are double-newline)
-        safe = safe.replace("\n", "<br/>")
-        html_parts.append(f"<p class='{cls}'>{safe}</p>")
-    return "\n".join(html_parts)
+        # inside a paragraph, preserve single line-breaks softly
+        p = p.replace("\n", "<br/>")
+        out.append(f"<p class='{cls}'>{p}</p>")
+    return f"<div class='cv-summary'>{''.join(out)}</div>"
 
 
-def _cv_banner_html(img_uri: str | None, summary_html: str) -> str:
-    """Return the complete CV banner HTML with image on the left and summary on the right."""
+def _cv_banner_html(img_uri: str | None, rarity: str, mint_no: int, summary_html: str) -> str:
+    """
+    Gacha-style banner with animated foil/glint frame layers.
+    Structured so TEXT stays in the right column of a 2-col grid.
+    """
     img = (
         f"<img class='cv-avatar' src='{img_uri}' alt='persona' />"
         if img_uri
         else "<div class='cv-avatar cv-avatar-fallback'>🎴</div>"
     )
+    rarity_label = {
+        "legendary": "Legendary ✨",
+        "epic": "Epic ✨",
+        "rare": "Rare ★",
+        "common": "Common",
+    }.get(rarity, "Epic ✨")
+
     return f"""
-    <div class="cv-banner">
+    <div class="cv-banner rarity-{rarity}">
+      <!-- Decorative frame layers -->
+      <div class="cv-frame"></div>
+      <div class="cv-foil"></div>
+      <div class="cv-glint"></div>
       <div class="cv-sheen"></div>
+
+      <!-- Badges -->
+      <div class="cv-rarity-badge" title="{rarity_label}">{rarity_label}</div>
+      <div class="cv-mint-plate" title="Mint number">No. {mint_no:03d}</div>
+
+      <!-- Content grid -->
       <div class="cv-left">{img}</div>
       <div class="cv-right">
-        <div class="cv-summary">{summary_html}</div>
+        {summary_html}
       </div>
     </div>
     """
@@ -84,6 +126,10 @@ def render_bio_tab():
     if not logo_uri:
         logo_uri = resolve_card_image(card, chosen)
 
+    # Determine rarity & mint number (matches Characters tab vibe)
+    rarity = _rarity_for(card, chosen)
+    mint_no = _mint_number(chosen)
+
     # --- Fetch or build CV-style summary from Coordinator ---
     coord_url = st.session_state.get("COORD_URL") or st.session_state.get("coord_url") or "http://127.0.0.1:8000"
     persona_label = st.session_state.selected_persona
@@ -110,10 +156,10 @@ def render_bio_tab():
 
     # --- CV banner (narrative) or fallback structured details ---
     if summary_text:
-        summary_html = _render_summary_paragraphs(summary_text)
-        st.markdown(_cv_banner_html(logo_uri, summary_html), unsafe_allow_html=True)
+        summary_html = _format_summary_to_html(summary_text)
+        st.markdown(_cv_banner_html(logo_uri, rarity, mint_no, summary_html), unsafe_allow_html=True)
     else:
-        # Fallback to structured details if summary missing
+        # Fallback (kept as-is): structured details in two columns
         left, right = st.columns([1, 2], vertical_alignment="top")
         with left:
             if logo_uri:
