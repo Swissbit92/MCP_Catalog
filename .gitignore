@@ -17,6 +17,5 @@ pyvenv.cfg
 **/etc/
 
 # Images and misc
-images/
 gwen_alt.json
 *.gitignore

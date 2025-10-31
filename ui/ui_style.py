@@ -54,7 +54,7 @@ def inject_global_css_js():
     /* Cards now fill their grid cell up to a max width (keeps 2:3 ratio) */
     .card-outer{
       width:100%;
-      max-width:240px; min-width:140px;
+      max-width:360px; min-width:140px;
       aspect-ratio:2/3;
       border-radius:20px; position:relative; overflow:hidden; margin:0;
       font-size:clamp(12px,.9vw,16px);
