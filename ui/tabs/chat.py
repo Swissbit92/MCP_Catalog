@@ -1,5 +1,5 @@
 # ui/tabs/chat.py
-# Chat tab: greeting-once (model), message loop, export; uses common header + assets.
+# Chat tab: greeting-once (model, per-chat), message loop, export; uses common header + assets.
 
 import time
 import threading
@@ -19,23 +19,25 @@ except ImportError:
     from ui_net import post_async  # type: ignore
 
 
-# --- Internal helpers for greet state (model-specific, independent of any fallback) ---
+# ---------------------------
+# Model greet state (per-chat)
+# ---------------------------
 
-def _ensure_model_greet_dicts(persona_label: str):
+def _ensure_model_greet_dicts_for_chat(chat_id: str):
     """
-    Ensure dedicated flags for the *model-generated* greeting exist.
-    These are separate from any other greet flags (e.g., fallback greeter).
+    Ensure dedicated flags for the *model-generated* greeting exist for this chat.
+    This is per-chat so new chats always get a fresh model greet.
     """
-    st.session_state.setdefault("model_greet_done", {})
-    st.session_state.setdefault("model_greet_inflight", {})
-    st.session_state.setdefault("model_greet_error", {})
+    st.session_state.setdefault("model_greet_done_by_chat", {})
+    st.session_state.setdefault("model_greet_inflight_by_chat", {})
+    st.session_state.setdefault("model_greet_error_by_chat", {})
 
-    if persona_label not in st.session_state.model_greet_done:
-        st.session_state.model_greet_done[persona_label] = False
-    if persona_label not in st.session_state.model_greet_inflight:
-        st.session_state.model_greet_inflight[persona_label] = False
-    if persona_label not in st.session_state.model_greet_error:
-        st.session_state.model_greet_error[persona_label] = False
+    if chat_id not in st.session_state.model_greet_done_by_chat:
+        st.session_state.model_greet_done_by_chat[chat_id] = False
+    if chat_id not in st.session_state.model_greet_inflight_by_chat:
+        st.session_state.model_greet_inflight_by_chat[chat_id] = False
+    if chat_id not in st.session_state.model_greet_error_by_chat:
+        st.session_state.model_greet_error_by_chat[chat_id] = False
 
 
 def _replace_fallback_if_present(greet_text: str, elapsed_ms: int):
@@ -65,23 +67,26 @@ def _replace_fallback_if_present(greet_text: str, elapsed_ms: int):
 
 def _maybe_greet_once(coord_url: str):
     """
-    Kick off a *model-generated* greet once per persona label.
-    This ignores any fallback flags; it uses its own model_* flags so it always runs once.
+    Kick off a *model-generated* greet exactly once per *chat*.
+    - Uses active chat id for gating, so every new chat gets a model greet.
+    - Still uses the selected_persona label when calling the coordinator.
     """
-    persona = st.session_state.selected_persona
-    if not persona:
+    persona_label = st.session_state.selected_persona
+    chat_id = st.session_state.active_chat_id
+
+    if not persona_label or not chat_id:
         return
 
-    _ensure_model_greet_dicts(persona)
+    _ensure_model_greet_dicts_for_chat(chat_id)
 
-    if st.session_state.model_greet_done.get(persona, False):
+    if st.session_state.model_greet_done_by_chat.get(chat_id, False):
         return
-    if st.session_state.model_greet_inflight.get(persona, False):
+    if st.session_state.model_greet_inflight_by_chat.get(chat_id, False):
         return
 
     # Mark inflight
-    st.session_state.model_greet_inflight[persona] = True
-    st.session_state.model_greet_error[persona] = False
+    st.session_state.model_greet_inflight_by_chat[chat_id] = True
+    st.session_state.model_greet_error_by_chat[chat_id] = False
 
     assistant_avatar = _assets_for_selected()["avatar"]
     msg_placeholder = st.empty()
@@ -90,7 +95,7 @@ def _maybe_greet_once(coord_url: str):
     t0 = time.perf_counter()
     thread = threading.Thread(
         target=post_async,
-        args=(f"{coord_url}/persona/greet", {"persona": persona}, 120, result),
+        args=(f"{coord_url}/persona/greet", {"persona": persona_label}, 120, result),
         daemon=True,
     )
     thread.start()
@@ -107,7 +112,7 @@ def _maybe_greet_once(coord_url: str):
         time.sleep(0.25)
 
     # Done waiting
-    st.session_state.model_greet_inflight[persona] = False
+    st.session_state.model_greet_inflight_by_chat[chat_id] = False
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     st.session_state.last_latency_ms = elapsed_ms
 
@@ -116,24 +121,24 @@ def _maybe_greet_once(coord_url: str):
         greet_text = (data.get("answer") or "").strip()
         if greet_text:
             _replace_fallback_if_present(greet_text, elapsed_ms)
-            st.session_state.model_greet_done[persona] = True
+            st.session_state.model_greet_done_by_chat[chat_id] = True
             st.toast("Model is ready ✅", icon="✅")
         else:
             st.session_state.chat_history.append(
                 {"role": "assistant", "content": "(Greeting error: empty response)"}
             )
-            st.session_state.model_greet_error[persona] = True
-            st.session_state.model_greet_done[persona] = True
+            st.session_state.model_greet_error_by_chat[chat_id] = True
+            st.session_state.model_greet_done_by_chat[chat_id] = True
     else:
         err = result.get("error") or f"HTTP {result.get('status_code')} {result.get('text')}"
         st.session_state.chat_history.append(
             {"role": "assistant", "content": f"(Greeting error) {err}"}
         )
-        st.session_state.model_greet_error[persona] = True
-        st.session_state.model_greet_done[persona] = True
+        st.session_state.model_greet_error_by_chat[chat_id] = True
+        st.session_state.model_greet_done_by_chat[chat_id] = True
         st.toast("Greeting failed", icon="⚠️")
 
-    # Persist change into the active chat (app.py will mirror back, but we want immediate render)
+    # Persist change into the active chat immediately
     st.rerun()
 
 
@@ -143,7 +148,7 @@ def render_chat_tab(coord_url: str, model_name: str):
         st.info("Pick a character on the **Characters** tab to unlock chat.")
         return
 
-    # Always attempt model greet exactly-once per persona label
+    # Always attempt model greet exactly-once per *chat id*
     _maybe_greet_once(coord_url)
 
     assistant_avatar = _assets_for_selected()["avatar"]
