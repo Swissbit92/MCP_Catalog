@@ -74,7 +74,7 @@ def inject_global_css_js():
     .card-outer.selected{transform:translateY(-4px) scale(1.01);filter:saturate(1.12) brightness(1.03);box-shadow:0 20px 40px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.22),0 0 24px var(--glow)}
     .card-outer.selected::before{content:"";position:absolute;inset:-8px;border-radius:26px;background:radial-gradient(60% 50% at 50% 6%,var(--glow2),transparent 60%),radial-gradient(70% 60% at 50% 100%,var(--glow),transparent 70%);filter:blur(14px);opacity:.85;z-index:0;pointer-events:none;animation:haloPulse 2.2s ease-in-out infinite}
     .card-outer.selected .card-frame{box-shadow:0 0 28px var(--glow),inset 0 0 14px var(--glow2),0 0 0 1px rgba(255,255,255,.25)}
-    .card-outer.selected .card-choose{opacity:1;pointer-events:auto}
+    /* Removed: keeping choose overlay hidden on selected cards */
     @keyframes haloPulse{0%{opacity:.7;transform:scale(.995)}50%{opacity:1;transform:scale(1.01)}100%{opacity:.7;transform:scale(.995)}}
 
     .card-frame{position:absolute;inset:0;border-radius:inherit;padding:2px;background:conic-gradient(from 180deg,#fff7cc 0deg,#ffd86b 70deg,#ffb13b 120deg,#ffd86b 220deg,#fff7cc 260deg,#ffe89a 320deg,#fff7cc 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.95;box-shadow:0 0 22px rgba(255,216,107,.35),inset 0 0 10px rgba(255,216,107,.25);z-index:1}
@@ -88,11 +88,9 @@ def inject_global_css_js():
     .rarity-common .card-frame{background:conic-gradient(from 180deg,#f2f2f2,#ddd,#ccc,#eee,#f2f2f2);box-shadow:0 0 18px rgba(220,220,220,.25),inset 0 0 8px rgba(230,230,230,.2)}
     .card-body{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;padding:10px;box-sizing:border-box;gap:4px;z-index:3}
 
-    /* Card image area is 100% width × 80% height of the card.
-       Since the card is 2:3, this area is inherently 5:6 (W : 1.2W).
-       object-fit:cover ensures any source (2:3, 1:1, etc.) fills and crops to that 5:6 box. */
+    /* Card image area is 100% width × 80% height of the card. */
     .card-img{
-      width:100%;
+      width:82%;
       height:80%;
       flex:0 0 80%;
       object-fit:cover;
