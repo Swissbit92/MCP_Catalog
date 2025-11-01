@@ -87,13 +87,37 @@ def inject_global_css_js():
     .rarity-rare .card-frame{background:conic-gradient(from 180deg,#d4f6ff,#9fe3ff,#6fd6ff,#42f5ff,#d4f6ff);box-shadow:0 0 22px rgba(66,245,255,.35),inset 0 0 10px rgba(66,245,255,.25)}
     .rarity-common .card-frame{background:conic-gradient(from 180deg,#f2f2f2,#ddd,#ccc,#eee,#f2f2f2);box-shadow:0 0 18px rgba(220,220,220,.25),inset 0 0 8px rgba(230,230,230,.2)}
     .card-body{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;padding:10px;box-sizing:border-box;gap:4px;z-index:3}
-    .card-img{width:100%;flex:0 0 58%;object-fit:cover;border-radius:14px;border:1px solid rgba(0,0,0,.25);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
-    .card-img-fallback{display:flex;align-items:center;justify-content:center;font-size:2rem;color:#fef3c7;text-shadow:0 0 10px rgba(255,220,120,.6)}
-    .card-name{flex:0 0 14%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;margin-top:4px;font-weight:800;text-align:center;font-size:1.06em;line-height:1.15;letter-spacing:.02em;color:#fff8e7;text-shadow:0 0 6px rgba(255,220,120,.4),0 1px 0 rgba(0,0,0,.6)}
+
+    /* Card image area is 100% width × 80% height of the card.
+       Since the card is 2:3, this area is inherently 5:6 (W : 1.2W).
+       object-fit:cover ensures any source (2:3, 1:1, etc.) fills and crops to that 5:6 box. */
+    .card-img{
+      width:100%;
+      height:80%;
+      flex:0 0 80%;
+      object-fit:cover;
+      object-position:50% 22%; /* bias upward for faces */
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,.25);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03)
+    }
+    .card-img-fallback{
+      display:flex;align-items:center;justify-content:center;
+      width:100%;height:80%;flex:0 0 80%;
+      font-size:2rem;color:#fef3c7;text-shadow:0 0 10px rgba(255,220,120,.6);
+      border-radius:14px;border:1px solid rgba(0,0,0,.25);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03)
+    }
+
+    /* Remaining 20%: split 10% + 10% for title and tagline */
+    .card-name{flex:0 0 10%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;margin-top:4px;font-weight:800;text-align:center;font-size:1.06em;line-height:1.15;letter-spacing:.02em;color:#fff8e7;text-shadow:0 0 6px rgba(255,220,120,.4),0 1px 0 rgba(0,0,0,.6)}
     .rarity-epic .card-name{text-shadow:0 0 6px rgba(186,120,255,.45),0 1px 0 rgba(0,0,0,.6)}
     .rarity-rare .card-name{text-shadow:0 0 6px rgba(66,245,255,.45),0 1px 0 rgba(0,0,0,.6)}
     .rarity-common .card-name{text-shadow:0 0 6px rgba(220,220,220,.4),0 1px 0 rgba(0,0,0,.6)}
-    .card-tagline{flex:0 0 12%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;text-align:center;opacity:.96;font-size:.95em;line-height:1.2;min-height:2.1em;color:#fefce8}
+    .card-tagline{flex:0 0 10%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;text-align:center;opacity:.96;font-size:.95em;line-height:1.2;min-height:2.1em;color:#fefce8}
+
     .card-choose{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .14s,transform .14s;pointer-events:none}
     .card-outer:hover .card-choose{opacity:1;transform:scale(1.02);pointer-events:auto}
     .choose-pill{padding:12px 18px;border-radius:999px;background:rgba(17,24,39,.85);color:#fff;border:1px solid rgba(255,255,255,.5);font-weight:700;box-shadow:0 8px 16px rgba(0,0,0,.35);cursor:pointer;user-select:none;text-decoration:none!important;outline:none;border-width:1px;font-size:clamp(.9rem,1.5vw,1rem)}
