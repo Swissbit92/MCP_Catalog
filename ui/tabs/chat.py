@@ -1,10 +1,10 @@
 # ui/tabs/chat.py
-# Chat tab: greeting-once, message loop, export; uses common header + assets.
+# Chat tab: greeting-once (model), message loop, export; uses common header + assets.
 
 import time
 import threading
 from datetime import datetime
-import json  # added for export serialization
+import json  # export serialization
 
 import streamlit as st
 
@@ -19,19 +19,69 @@ except ImportError:
     from ui_net import post_async  # type: ignore
 
 
+# --- Internal helpers for greet state (model-specific, independent of any fallback) ---
+
+def _ensure_model_greet_dicts(persona_label: str):
+    """
+    Ensure dedicated flags for the *model-generated* greeting exist.
+    These are separate from any other greet flags (e.g., fallback greeter).
+    """
+    st.session_state.setdefault("model_greet_done", {})
+    st.session_state.setdefault("model_greet_inflight", {})
+    st.session_state.setdefault("model_greet_error", {})
+
+    if persona_label not in st.session_state.model_greet_done:
+        st.session_state.model_greet_done[persona_label] = False
+    if persona_label not in st.session_state.model_greet_inflight:
+        st.session_state.model_greet_inflight[persona_label] = False
+    if persona_label not in st.session_state.model_greet_error:
+        st.session_state.model_greet_error[persona_label] = False
+
+
+def _replace_fallback_if_present(greet_text: str, elapsed_ms: int):
+    """
+    If the chat currently contains exactly one assistant message *without* latency_ms,
+    treat it as a placeholder/fallback and replace it with the model greet.
+    Otherwise, append the greet as a new assistant message.
+    """
+    hist = st.session_state.chat_history or []
+    if (
+        len(hist) == 1
+        and isinstance(hist[0], dict)
+        and hist[0].get("role") == "assistant"
+        and "latency_ms" not in hist[0]
+    ):
+        # Replace fallback content in-place
+        hist[0]["content"] = greet_text
+        hist[0]["latency_ms"] = elapsed_ms
+        st.session_state.chat_history = hist
+        return
+
+    # Otherwise append
+    st.session_state.chat_history.append(
+        {"role": "assistant", "content": greet_text, "latency_ms": elapsed_ms}
+    )
+
+
 def _maybe_greet_once(coord_url: str):
+    """
+    Kick off a *model-generated* greet once per persona label.
+    This ignores any fallback flags; it uses its own model_* flags so it always runs once.
+    """
     persona = st.session_state.selected_persona
     if not persona:
         return
-    if st.session_state.greet_done.get(persona, False):
+
+    _ensure_model_greet_dicts(persona)
+
+    if st.session_state.model_greet_done.get(persona, False):
         return
-    greeted = st.session_state.greeted_for_persona.get(persona, False)
-    inflight = st.session_state.greeting_inflight.get(persona, False)
-    if greeted or inflight:
+    if st.session_state.model_greet_inflight.get(persona, False):
         return
 
-    st.session_state.greeting_inflight[persona] = True
-    st.session_state.greeting_error[persona] = False
+    # Mark inflight
+    st.session_state.model_greet_inflight[persona] = True
+    st.session_state.model_greet_error[persona] = False
 
     assistant_avatar = _assets_for_selected()["avatar"]
     msg_placeholder = st.empty()
@@ -45,6 +95,7 @@ def _maybe_greet_once(coord_url: str):
     )
     thread.start()
 
+    # Typing animation
     frame_i = 0
     while thread.is_alive():
         with msg_placeholder.container():
@@ -55,7 +106,8 @@ def _maybe_greet_once(coord_url: str):
                 frame_i += 1
         time.sleep(0.25)
 
-    st.session_state.greeting_inflight[persona] = False
+    # Done waiting
+    st.session_state.model_greet_inflight[persona] = False
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     st.session_state.last_latency_ms = elapsed_ms
 
@@ -63,21 +115,25 @@ def _maybe_greet_once(coord_url: str):
         data = result.get("json") or {}
         greet_text = (data.get("answer") or "").strip()
         if greet_text:
-            st.session_state.chat_history.append({"role":"assistant","content":greet_text,"latency_ms":elapsed_ms})
-            st.session_state.greeted_for_persona[persona] = True
-            st.session_state.greet_done[persona] = True
+            _replace_fallback_if_present(greet_text, elapsed_ms)
+            st.session_state.model_greet_done[persona] = True
             st.toast("Model is ready ✅", icon="✅")
         else:
-            st.session_state.chat_history.append({"role":"assistant","content":"(Greeting error: empty response)"})
-            st.session_state.greeting_error[persona] = True
-            st.session_state.greet_done[persona] = True
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": "(Greeting error: empty response)"}
+            )
+            st.session_state.model_greet_error[persona] = True
+            st.session_state.model_greet_done[persona] = True
     else:
         err = result.get("error") or f"HTTP {result.get('status_code')} {result.get('text')}"
-        st.session_state.chat_history.append({"role":"assistant","content":f"(Greeting error) {err}"})
-        st.session_state.greeting_error[persona] = True
-        st.session_state.greet_done[persona] = True
-        st.toast("Greeting failed", "⚠️")
+        st.session_state.chat_history.append(
+            {"role": "assistant", "content": f"(Greeting error) {err}"}
+        )
+        st.session_state.model_greet_error[persona] = True
+        st.session_state.model_greet_done[persona] = True
+        st.toast("Greeting failed", icon="⚠️")
 
+    # Persist change into the active chat (app.py will mirror back, but we want immediate render)
     st.rerun()
 
 
@@ -87,14 +143,13 @@ def render_chat_tab(coord_url: str, model_name: str):
         st.info("Pick a character on the **Characters** tab to unlock chat.")
         return
 
+    # Always attempt model greet exactly-once per persona label
     _maybe_greet_once(coord_url)
 
     assistant_avatar = _assets_for_selected()["avatar"]
     user_avatar = USER_AVATAR
 
     # ---------- Icon-only toolbar (stable single row) ----------
-    # Left: 🧹 clear (native st.button so it clears in-place)
-    # Right: 📥 export (native st.download_button for a JSON file)
     col_clear, col_export, _spacer = st.columns([0.07, 0.07, 0.86], gap="small")
 
     with col_clear:
@@ -124,26 +179,26 @@ def render_chat_tab(coord_url: str, model_name: str):
 
     # ---------- History ----------
     for m in st.session_state.chat_history:
-        if m["role"] == "user":
+        if m.get("role") == "user":
             with st.chat_message("user", avatar=user_avatar):
-                st.markdown(m["content"])
+                st.markdown(m.get("content", ""))
         else:
             with st.chat_message("assistant", avatar=assistant_avatar):
-                st.markdown(m["content"])
-                if "latency_ms" in m and isinstance(m["latency_ms"], int):
+                st.markdown(m.get("content", ""))
+                if isinstance(m.get("latency_ms"), int):
                     st.caption(f"⏱️ {m['latency_ms']} ms")
 
     # ---------- Input ----------
     user_in = st.chat_input("Type a message…")
     if user_in:
-        st.session_state.chat_history.append({"role":"user","content":user_in})
+        st.session_state.chat_history.append({"role": "user", "content": user_in})
         with st.chat_message("user", avatar=user_avatar):
             st.markdown(user_in)
 
         payload = {
             "persona": st.session_state.selected_persona,
             "history": [h for h in st.session_state.chat_history[:-1]],
-            "message": user_in
+            "message": user_in,
         }
 
         msg_placeholder = st.empty()
@@ -176,11 +231,13 @@ def render_chat_tab(coord_url: str, model_name: str):
                 with st.chat_message("assistant", avatar=assistant_avatar):
                     st.markdown(ans if ans else "(No answer)")
                     st.caption(f"⏱️ {elapsed_ms} ms")
-            st.session_state.chat_history.append({"role":"assistant","content":ans if ans else "(No answer)","latency_ms":elapsed_ms})
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": ans if ans else "(No answer)", "latency_ms": elapsed_ms}
+            )
         else:
             err = result.get("error") or f"HTTP {result.get('status_code')} {result.get('text')}"
             with msg_placeholder.container():
                 with st.chat_message("assistant", avatar=assistant_avatar):
                     st.markdown(f"Error: {err}")
-            st.session_state.chat_history.append({"role":"assistant","content":f"Error: {err}"})
+            st.session_state.chat_history.append({"role": "assistant", "content": f"Error: {err}"})
             st.toast("Answer failed", icon="⚠️")

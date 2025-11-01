@@ -38,6 +38,38 @@ def inject_global_css_js():
     }
     .eeva-subtle{color:#6b6b6b;margin-bottom:10px}
     @media (prefers-color-scheme:dark){.eeva-subtle{color:#a3a3a3}}
+
+    /* --- Sidebar chat list (session-only MVP) --- */
+    .chatlist{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px}
+    .chat-pill{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:12px;
+      border:1px solid rgba(0,0,0,.12);
+      background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.6));
+      box-shadow:0 1px 2px rgba(0,0,0,.06);
+      cursor:pointer;user-select:none;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      transition:transform .12s,box-shadow .12s,filter .12s
+    }
+    .chat-pill:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+    .chat-pill.active{outline:2px solid rgba(17,24,39,.18)}
+    .chat-pill .emoji{flex:0 0 auto}
+    .chat-pill .title{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    /* rarity accents */
+    .chat-pill.legendary{box-shadow:0 0 10px rgba(255,208,80,.25) inset}
+    .chat-pill.epic{box-shadow:0 0 10px rgba(186,120,255,.22) inset}
+    .chat-pill.rare{box-shadow:0 0 10px rgba(66,245,255,.22) inset}
+    .chat-pill.common{box-shadow:0 0 10px rgba(220,220,220,.18) inset}
+
+    @media (prefers-color-scheme:dark){
+      .chat-pill{
+        border-color:rgba(255,255,255,.14);
+        background:linear-gradient(180deg,rgba(17,24,39,.72),rgba(17,24,39,.6));
+        color:#e5e7eb
+      }
+      .chat-pill.active{outline:2px solid rgba(255,255,255,.18)}
+    }
     """
 
     # Persona cards + rarity glow + GRID container
@@ -252,6 +284,27 @@ def inject_global_css_js():
               }catch(e){console.error('eevaChoose',e); parent.window.location.reload();}
             };
           }catch(e){console.error('init eevaChoose',e);}
+        })();
+        </script>
+        """,
+        height=0
+    )
+
+    # NEW: Chat opener — switch to chat & target chat id (?chat=<id>)
+    components.html(
+        """
+        <script>
+        (function(){
+          try{
+            if(!parent||!parent.window) return;
+            parent.window.eevaOpenChat=function(chatId){
+              try{
+                const u=new URL(parent.window.location);
+                u.searchParams.set('tab','chat'); u.searchParams.set('chat',chatId);
+                parent.window.history.replaceState({},'',u); parent.window.location.href=String(u);
+              }catch(e){console.error('eevaOpenChat',e); parent.window.location.reload();}
+            };
+          }catch(e){console.error('init eevaOpenChat',e);}
         })();
         </script>
         """,
