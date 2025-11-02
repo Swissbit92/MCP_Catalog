@@ -54,7 +54,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 | **Python** | 3.11 or higher |
 | **GPU (optional)** | NVIDIA RTX 30/40 series for CUDA acceleration (or Apple Silicon GPU on macOS) |
 | **VRAM** | ≥ 16 GB VRAM (or unified memory on macOS or) recommended |
-| **Ollama** | Installed and running locally |
+| **Ollama** | Installed and **running** locally |
 | **Streamlit** | v1.35+ |
 | **FastAPI + Uvicorn** | For Coordinator backend |
 | **LangChain Ollama** | For persona LLM clients |
