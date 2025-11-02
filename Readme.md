@@ -66,7 +66,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 ### 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/graph_rag_coordinator_ui.git
+   git clone https://github.com/Swissbit92/MCP_Catalog.git
    cd MCP_Catalog
    ```
 
