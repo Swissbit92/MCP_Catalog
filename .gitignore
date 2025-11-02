@@ -16,6 +16,5 @@ pyvenv.cfg
 **/share/
 **/etc/
 
-# Images and misc
-gwen_alt.json
-*.gitignore
+# Databases
+*.db
