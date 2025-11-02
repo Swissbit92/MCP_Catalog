@@ -71,13 +71,22 @@ git clone https://github.com/Swissbit92/MCP_Catalog.git
 
 #### Create a virtual environment
 
+**macOS / Linux:**
+
    ```bash
 python3.11 -m venv MCP_Catalog
-cd MCP_Catalog
 # Activate the virtual environment
-source venv/bin/activate     # (macOS / Linux)
-.//scripts/activate      # (Windows)
+cd MCP_Catalog
+source venv/bin/activate
    ```
+
+**Windows Powershell:**
+
+   ```bash
+py -3.11 -m venv MCP_Catalog
+# Activate the virtual environment
+cd MCP_Catalog
+.//scripts/activate 
 
 ### 2. **Install dependencies**
 
