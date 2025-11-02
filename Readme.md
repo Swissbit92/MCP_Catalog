@@ -118,6 +118,10 @@ PERSONA_DIR=personas
 python run.py
    ```
 
+### **Stop the Coordinator + UI**
+
+CTRL + C in the terminal to stop.
+
 ---
 
 **The script will:**
