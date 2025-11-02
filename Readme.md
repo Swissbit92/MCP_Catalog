@@ -124,7 +124,22 @@ CTRL + C in the terminal to stop.
 
 ---
 
-**The script will:**
+## **How to Add & Remove Persona**
+
+### 🪄 **To ADD a new persona:**
+
+- Place a new [NAME].json file in /personas directory (e.g. personas/gojo.json) and restart the app — it auto-detects and loads the persona card.
+- with keys: key, emoji, rarity, style, welcome, do[], dont[], and optional lore or few_shot examples.
+- Use the template in /personas/template.jsonc as a starting point.
+  
+### 🗑️ **To REMOVE a persona:**
+
+- Delete its corresponding JSON file (e.g. personas/gojo.json)
+- and restart the app — it will be automatically removed from the Characters tab.
+
+---
+
+## **The script will:**
 
 - Launch the FastAPI Coordinator (backend)
 - Open the Streamlit UI ([http://localhost:8501](http://localhost:8501))
