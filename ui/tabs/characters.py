@@ -58,6 +58,42 @@ def _rarity_for(card: dict, key: str) -> str:
 def render_characters_tab():
     st.subheader("Characters")
 
+    # --- style: make native st.button look like the translucent overlay pill inside .card-choose
+    st.markdown(
+        """
+        <style>
+        /* Only affect buttons inside our overlay container */
+        .card-choose div[data-testid="stButton"] { display:inline-block; }
+        .card-choose div[data-testid="stButton"] > button {
+            all: unset;                /* strip default Streamlit styles */
+            display: inline-block;
+            font-weight: 600;
+            padding: 0.3em 0.8em;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            line-height: 1.1;
+        }
+        .card-choose div[data-testid="stButton"] > button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .card-choose {                /* keep your existing overlay behavior */
+            position: absolute;
+            bottom: 8%;
+            width: 100%;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+        .card-outer:hover .card-choose { opacity: 1; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Persona search (stable size; CSS sized in ui_style)
     with st.container():
         st.markdown('<div class="persona-search-wrap">', unsafe_allow_html=True)
@@ -123,23 +159,6 @@ def render_characters_tab():
                     else "<div class='card-img card-img-fallback'>🎴</div>"
                 )
 
-                choose_href = f"?tab=chat&select={key}"
-                onclick_js = (
-                    "event.preventDefault();"
-                    "(function(){"
-                    "  try {"
-                    "    const url = new URL(window.location);"
-                    "    url.searchParams.set('tab','chat');"
-                    "    url.searchParams.set('select','" + key + "');"
-                    "    window.history.replaceState({},'',url);"
-                    "    window.location.href = url.toString();"
-                    "  } catch(e) {"
-                    "    console.error('choose click error', e);"
-                    "    window.location.assign('" + choose_href + "');"
-                    "  }"
-                    "})();"
-                )
-
                 # Rarity label text
                 rarity_label = {
                     "legendary": "Legendary ✨",
@@ -148,6 +167,7 @@ def render_characters_tab():
                     "common": "Common",
                 }.get(rarity, "Epic ✨")
 
+                # --- Card markup (unchanged body; overlay now contains native st.button)
                 st.markdown(
                     f"""
                     <div class="card-outer rarity-{rarity}{selected_cls}{revealed_cls}">
@@ -166,11 +186,31 @@ def render_characters_tab():
                         <div class="card-name" title="{disp}">{disp}</div>
                         <div class="card-tagline" title="{tagline}">{tagline}</div>
                         <div class="card-choose">
-                          <a class="choose-pill" href="{choose_href}" target="_self" onclick="{onclick_js}">Choose ✨</a>
+                          <!-- Streamlit button gets injected below inside this container -->
                         </div>
                       </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
+
+                # Place the native Streamlit button directly after the container so it renders inside it.
+                # We use a unique key per persona card.
+                # On click: update query params to ?tab=chat&select=<Key> (app.py handles selection + chat focusing/creation)
+                btn_key = f"choose_{key}"
+                clicked = st.button("Choose ✨", key=btn_key, help="Select this persona")
+                if clicked:
+                    try:
+                        qp = st.query_params
+                        qp["tab"] = "chat"
+                        qp["select"] = key
+                    except Exception:
+                        # best-effort fallback: set both and continue
+                        try:
+                            st.query_params.clear()
+                            st.query_params["tab"] = "chat"
+                            st.query_params["select"] = key
+                        except Exception:
+                            pass
+                    st.rerun()
         idx += MAX_COLS
