@@ -57,7 +57,6 @@ st.session_state.setdefault("greeting_inflight", {})     # keyed by pretty label
 st.session_state.setdefault("greeting_error", {})        # keyed by pretty label
 st.session_state.setdefault("last_latency_ms", None)
 st.session_state.setdefault("greet_done", {})            # keyed by pretty label
-st.session_state.setdefault("clear_on_switch", True)
 st.session_state.setdefault("active_tab", "characters")  # characters | chat | bio
 st.session_state.setdefault("mode_radio", "Local (Chat-only)")
 
@@ -178,24 +177,30 @@ try:
         card = _find_card_for_key(key)
         if card:
             new_persona = build_coordinator_label(card, key)  # pretty label
-            if st.session_state.selected_persona != new_persona and st.session_state.clear_on_switch:
-                st.session_state.chat_history = []
-                st.toast("Chat cleared due to persona switch.", icon="🧹")
 
+            # Set selected persona + keys (never clear chats here)
             st.session_state.selected_persona = new_persona
             st.session_state.selected_key = key
             st.session_state.reveal_key = key
             _ensure_greet_keys_for_label(new_persona)
 
-            # Ensure a chat exists for this persona and jump to chat
-            active = st.session_state.chats.get(st.session_state.active_chat_id) if st.session_state.active_chat_id else None
-            if (not active) or active.get("persona_key") != key:
+            # Focus logic:
+            # 1) If persona has existing chats -> just select persona, stay on Characters.
+            #    (We preselect the most recent chat id, but don't navigate.)
+            # 2) If persona has no chats -> create one and jump to Chat.
+            chats = st.session_state.chats or {}
+            persona_chats = [(cid, c) for cid, c in chats.items() if c.get("persona_key") == key]
+
+            if persona_chats:
+                # Keep user on Characters tab; just mark the most recent chat as the active one for later.
+                cid, _c = max(persona_chats, key=lambda kv: kv[1].get("created_at", 0))
+                st.session_state.active_chat_id = cid
+                _inject_first_message_if_empty(cid)
+                # Do NOT change active_tab or jump_to_chat here.
+            else:
                 cid = create_chat_for_persona(key)
                 _inject_first_message_if_empty(cid)
-            else:
-                _inject_first_message_if_empty(st.session_state.active_chat_id)
-                st.session_state.active_tab = "chat"
-                st.session_state.jump_to_chat = True
+                # create_chat_for_persona already sets active_tab='chat' and jump_to_chat=True
 
         # Clean URL (remove select param after consumption)
         try:
@@ -350,12 +355,6 @@ with st.sidebar:
             do_list = [d for d in (card.get("do") or []) if isinstance(d, str)]
             for d in do_list[:3]:
                 st.write(f"• {d}")
-
-    st.toggle(
-        "Clear Chat on Persona Switch",
-        key="clear_on_switch",
-        help="If on, picking a different card clears the chat."
-    )
 
 # ---------- Tabs ----------
 tab_chars, tab_chat, tab_bio = st.tabs(["🃏 Characters", "💬 Chat", "📜 Bio"])
