@@ -74,7 +74,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 
    ```bash
 python -m venv venv
-**Activate the virtual environment**
+# Activate the virtual environment
 source venv/bin/activate     # (macOS / Linux)
 venv\Scripts\activate        # (Windows)
    ```
