@@ -69,7 +69,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 git clone https://github.com/Swissbit92/MCP_Catalog.git
    ```
 
-#### Create a virtual environment
+### 2. **Create a virtual environment**
 
 **macOS / Linux:**
 
