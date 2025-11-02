@@ -66,17 +66,17 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 ### 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/Swissbit92/MCP_Catalog.git
-   cd MCP_Catalog
+git clone https://github.com/Swissbit92/MCP_Catalog.git
    ```
 
 #### Create a virtual environment
 
    ```bash
-python -m venv venv
+python3.11 -m venv MCP_Catalog
+cd MCP_Catalog
 # Activate the virtual environment
 source venv/bin/activate     # (macOS / Linux)
-venv\Scripts\activate        # (Windows)
+.//scripts/activate      # (Windows)
    ```
 
 ### 2. **Install dependencies**
