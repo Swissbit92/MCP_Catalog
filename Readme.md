@@ -70,7 +70,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
    cd MCP_Catalog
    ```
 
-**Create a virtual environment**
+#### Create a virtual environment
 
    ```bash
 python -m venv venv
@@ -87,7 +87,7 @@ pip install -r requirements.txt
 
 ### 3. **Create a .env file**
 
-**Example .env file**
+#### Example .env file
 
    ```bash
 COORD_PORT=8000
