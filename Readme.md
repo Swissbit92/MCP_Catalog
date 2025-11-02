@@ -86,15 +86,16 @@ source venv/bin/activate
 py -3.11 -m venv MCP_Catalog
 # Activate the virtual environment
 cd MCP_Catalog
-.//scripts/activate 
+.//scripts/activate
+   ```
 
-### 2. **Install dependencies**
+### 3. **Install dependencies**
 
    ```bash
 pip install -r requirements.txt
    ```
 
-### 3. **Create a .env file**
+### 4. **Create a .env file**
 
 #### Example .env file
 
