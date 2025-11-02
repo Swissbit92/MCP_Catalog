@@ -67,12 +67,14 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 
    ```bash
    git clone https://github.com/yourusername/graph_rag_coordinator_ui.git
-   cd graph_rag_coordinator_ui
-Create a virtual environment
+   cd MCP_Catalog
    ```
+
+**Create a virtual environment**
 
    ```bash
 python -m venv venv
+**Activate the virtual environment**
 source venv/bin/activate     # (macOS / Linux)
 venv\Scripts\activate        # (Windows)
    ```
@@ -85,7 +87,7 @@ pip install -r requirements.txt
 
 ### 3. **Create a .env file**
 
-### 4. **Example .env file**
+**Example .env file**
 
    ```bash
 COORD_PORT=8000
