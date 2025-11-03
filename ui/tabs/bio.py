@@ -18,6 +18,50 @@ except ImportError:
     from ui_net import post_async  # type: ignore
 
 
+def _inject_tabbar_css_once():
+    """
+    Minimal, safe CSS polish for the top radio "tab bar".
+    Targets Streamlit's radio group generically; idempotent.
+    """
+    if st.session_state.get("_eeva_tabbar_css_done"):
+        return
+    st.session_state["_eeva_tabbar_css_done"] = True
+    st.markdown(
+        """
+        <style>
+          /* Tab bar container spacing */
+          div[role="radiogroup"] {
+            gap: 8px !important;
+          }
+          /* Each label as a pill */
+          div[role="radiogroup"] > label {
+            border-radius: 999px;
+            padding: 4px 8px;
+            border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.06);
+            transition: background 120ms ease, transform 120ms ease, border-color 120ms ease;
+          }
+          div[role="radiogroup"] > label:hover {
+            background: rgba(255,255,255,0.12);
+            transform: translateY(-1px);
+          }
+          /* Selected state: Streamlit renders an <input> preceding content inside label */
+          div[role="radiogroup"] > label:has(input:checked) {
+            border-color: rgba(255,255,255,0.45);
+            background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset, 0 6px 18px rgba(0,0,0,0.25);
+          }
+          /* Focus ring for keyboard nav */
+          div[role="radiogroup"] > label:has(input:focus-visible) {
+            outline: 2px solid rgba(0, 200, 255, 0.55);
+            outline-offset: 2px;
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _fetch_summary(coord_url: str, persona_label: str, out: dict):
     payload = {"persona": persona_label}
     post_async(f"{coord_url}/persona/summary", payload, 120, out)
@@ -50,17 +94,14 @@ def _format_summary_to_html(summary_text: str) -> str:
     Turn plaintext summary into styled HTML paragraphs inside the banner.
     First paragraph gets a 'cv-lead' class for a neon dropcap badge effect.
     """
-    # Basic safe-escape (we'll convert newlines to paragraphs)
     safe = escape(summary_text or "")
-    # Split on blank lines into paragraphs
     paras = [p.strip() for p in safe.split("\n\n") if p.strip()]
     if not paras:
         return "<div class='cv-summary'></div>"
     out = []
     for i, p in enumerate(paras):
         cls = "cv-p cv-lead" if i == 0 else "cv-p"
-        # inside a paragraph, preserve single line-breaks softly
-        p = p.replace("\n", "<br/>")
+        p = p.replace("\n", "<br/>")  # preserve single line-breaks softly
         out.append(f"<p class='{cls}'>{p}</p>")
     return f"<div class='cv-summary'>{''.join(out)}</div>"
 
@@ -104,7 +145,9 @@ def _cv_banner_html(img_uri: str | None, rarity: str, mint_no: int, summary_html
 
 
 def render_bio_tab():
+    _inject_tabbar_css_once()
     render_header(st.session_state.MODEL)
+
     if not st.session_state.selected_persona:
         st.info("Pick a character on the **Characters** tab to view their bio.")
         return
@@ -147,12 +190,12 @@ def render_bio_tab():
         time.sleep(0.2)
 
     ph.empty()
-    if not res.get("ok"):
-        st.warning("Could not load summary. Showing structured details instead.")
-        summary_text = None
-    else:
+    summary_text = None
+    if res.get("ok"):
         data = res.get("json") or {}
         summary_text = (data.get("summary") or "").strip() or None
+    else:
+        st.warning("Could not load summary. Showing structured details instead.")
 
     # --- CV banner (narrative) or fallback structured details ---
     if summary_text:
