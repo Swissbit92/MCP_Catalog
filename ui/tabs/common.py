@@ -1,8 +1,8 @@
 # ui/tabs/common.py
-# Shared helpers: header, jump-to-chat, sidebar logo resolver, selected assets.
+# Shared helpers: header, sidebar logo resolver, selected assets.
+# (maybe_jump_to_chat removed — server-side router handles navigation deterministically)
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --- dual-mode imports: absolute first, then local fallback ---
 try:
@@ -96,21 +96,3 @@ def render_header(model_name: str):
         """,
         unsafe_allow_html=True
     )
-
-def maybe_jump_to_chat():
-    if not st.session_state.jump_to_chat:
-        return
-    components.html(
-        """
-        <script>
-        const goChat = () => {
-          const tabs = Array.from(parent.document.querySelectorAll('button[role="tab"]'));
-          const chat = tabs.find(btn => btn.innerText.trim().startsWith("💬"));
-          if (chat) chat.click();
-        };
-        setTimeout(goChat, 60);
-        </script>
-        """,
-        height=0
-    )
-    st.session_state.jump_to_chat = False

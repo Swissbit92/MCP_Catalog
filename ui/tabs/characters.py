@@ -167,7 +167,7 @@ def render_characters_tab():
                     "common": "Common",
                 }.get(rarity, "Epic ✨")
 
-                # --- Card markup (unchanged body; overlay now contains native st.button)
+                # --- Card markup (overlay keeps a native Streamlit button)
                 st.markdown(
                     f"""
                     <div class="card-outer rarity-{rarity}{selected_cls}{revealed_cls}">
@@ -194,21 +194,18 @@ def render_characters_tab():
                     unsafe_allow_html=True,
                 )
 
-                # Place the native Streamlit button directly after the container so it renders inside it.
-                # We use a unique key per persona card.
-                # On click: update query params to ?tab=chat&select=<Key> (app.py handles selection + chat focusing/creation)
+                # Choose behavior:
+                # - We ONLY set ?select=<Key>. app.py decides whether to stay (existing chats)
+                #   or create a new chat and route to Chat (no existing chats).
                 btn_key = f"choose_{key}"
-                clicked = st.button("Choose ✨", key=btn_key, help="Select this persona")
-                if clicked:
+                if st.button("Choose ✨", key=btn_key, help="Select this persona"):
                     try:
                         qp = st.query_params
-                        qp["tab"] = "chat"
                         qp["select"] = key
+                        # Do NOT set tab here; router will decide based on persona chat existence.
                     except Exception:
-                        # best-effort fallback: set both and continue
                         try:
                             st.query_params.clear()
-                            st.query_params["tab"] = "chat"
                             st.query_params["select"] = key
                         except Exception:
                             pass
