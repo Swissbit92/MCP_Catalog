@@ -1,0 +1,53 @@
+# React Migration Roadmap
+
+This document outlines the plan for migrating the existing Streamlit UI to a new React application.
+
+## Phase 1: Project Setup and Initial Assessment
+
+### Assessment
+
+**What to keep:**
+
+*   **`ui/personas`:** The persona data will be reused in the React application.
+*   **`ui/images`:** The images for personas and UI elements will be used in the React app.
+*   **`ui/ui_style.py`:** The CSS styles defined in this file will be translated to a suitable format for the React app (e.g., CSS-in-JS, CSS Modules, or plain CSS).
+*   **FastAPI Backend:** The existing FastAPI backend will be used as the data source for the React application.
+
+**What to create newly:**
+
+*   **React Project Structure:** A new React project will be created using `create-react-app` or a similar tool.
+*   **React Components:** All UI components will be rebuilt as React components.
+*   **Routing:** A routing solution like React Router will be used to handle navigation between the character selection and chat pages.
+*   **State Management:** A state management library like Redux or Zustand will be used to manage the application state.
+*   **API Client:** A new API client will be created to interact with the FastAPI backend.
+*   **Styling:** The styling from `ui_style.py` will be reimplemented using a modern styling solution for React.
+*   **Unit and Integration Tests:** A comprehensive test suite will be created using a testing framework like Jest and React Testing Library.
+
+### Progress
+
+- [x] **Project Setup:** Set up a new React project using Create React App.
+- [x] **Initial Assessment:** Analyze the existing Streamlit UI to identify components and styles to be migrated.
+- [x] **Project Structure:** Define the basic project structure and component hierarchy.
+- [x] **Placeholder Pages:** Create simple placeholders for the character selection and chat pages.
+- [ ] **Initial Unit Tests:** Write initial unit tests for the main App component.
+
+## Phase 2: Character Selection Page
+
+- [ ] **Character Card Components:** Replicate the character card layout from the Streamlit app using React components.
+- [ ] **Character Selection Logic:** Implement the character selection functionality.
+- [ ] **Styling:** Style the character selection page to match the existing `ui_style`.
+- [ ] **Unit Tests:** Write unit tests for the character selection components.
+
+## Phase 3: Chat Page
+
+- [ ] **Chat Interface Components:** Create a WhatsApp-style chat interface with a message list and input form.
+- [ ] **Chat Logic:** Implement the chat functionality, including sending and receiving messages.
+- [ ] **Styling:** Style the chat page to match the desired look and feel.
+- [ ] **Unit Tests:** Write unit tests for the chat components.
+
+## Phase 4: API Integration
+
+- [ ] **API Client:** Connect the React app to the existing FastAPI backend.
+- [ ] **Data Fetching:** Fetch character data and chat history from the API.
+- [ ] **Real-time Chat:** Implement real-time chat using WebSockets or a similar technology.
+- [ ] **Integration Tests:** Write integration tests for the API communication.
