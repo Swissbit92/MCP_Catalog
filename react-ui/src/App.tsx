@@ -1,17 +1,19 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import CharacterSelection from './pages/CharacterSelection';
 import Chat from './pages/Chat';
+import Header from './components/Header';
 
-const App: React.FC = () => {
+function App() {
   return (
-    <Router>
+    <div className="App">
+      <Header />
       <Routes>
         <Route path="/" element={<CharacterSelection />} />
         <Route path="/chat" element={<Chat />} />
       </Routes>
-    </Router>
+    </div>
   );
-};
+}
 
 export default App;

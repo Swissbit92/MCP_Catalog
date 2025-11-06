@@ -3,7 +3,16 @@
 > **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**  
 > _Private • Local-First • Streamlit-Based Coordinator_
 
----
+  ---
+
+## Contributing & Guidelines
+See Repository Guidelines in `AGENTS.md` for:
+- Project structure overview and entrypoints
+- Setup and run commands (Python, Streamlit, Uvicorn, React)
+- Coding style and test conventions
+- Commit/PR expectations and environment variables
+
+Contributions are welcome. Please read `AGENTS.md` before opening a PR.
 
 ## 📖 Overview
 
