@@ -12,6 +12,7 @@ Transform the current character selection page into an engaging Gacha-style expe
 - ✅ Single card reveal with smooth transition
 - ✅ Static character selection with search functionality
 - ✅ Dual-mode selection (gacha pull vs static browse)
+- ✅ Reorganized user flow: Home page for pulling, separate page for browsing
 - ❌ Particle effects or special rarity celebrations (removed)
 - ❌ Sequential multi-pull reveals
 - ❌ Screen flash/shake effects (removed)
@@ -36,10 +37,10 @@ Transform the current character selection page into an engaging Gacha-style expe
 **Effort**: Low • **Impact**: High
 - [x] Attempted implementation of particle effects and screen effects
 - [x] Removed due to technical issues - effects not working properly
-- [ ] Legendary: Enhanced glow + screen flash effect (removed)
-- [ ] Epic: Screen shake + glowing particles (removed)
-- [ ] Rare: Subtle glow + sparkle effects (removed)
-- [ ] Common: Basic reveal with gentle animation (removed)
+- [x] Legendary: Enhanced glow + screen flash effect (removed)
+- [x] Epic: Screen shake + glowing particles (removed)
+- [x] Rare: Subtle glow + sparkle effects (removed)
+- [x] Common: Basic reveal with gentle animation (removed)
 
 #### 1.3 Sequential Multi-Pull Reveal 💍🟡
 **Effort**: Medium • **Impact**: Medium
@@ -159,6 +160,11 @@ CharacterSelection/
 - [x] Page load time remains under 2 seconds (build is optimized)
 - [x] Static selection provides familiar grid browsing experience
 - [x] Search functionality allows easy character discovery
+- [x] Navigation flow works smoothly between Home → Character Selection → Chat
+- [x] "Pull Again" provides continuous pulling experience
+- [x] App builds successfully for production deployment
+- [x] Clean separation: Home for gacha pulls, /select for browsing
+- [x] Home page handles all pull mechanics with card reveal animations
 
 ---
 
