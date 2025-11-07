@@ -2,9 +2,9 @@
 
 ## Build/Test Commands
 - **Setup**: `./setup.sh` (Linux/macOS) or `setup.bat` (Windows) • Manual: `pip install -r requirements.txt && cd react-ui && npm install`
-- **Python**: API: `uvicorn src.coordinator.server:app --reload --port 8000`
-- **React**: Dev: `cd react-ui && npm start` • Build: `cd react-ui && npm run build` (includes ESLint)
-- **Single test**: React: `cd react-ui && npm test -- --testNamePattern="test name"` • Python: No tests implemented
+- **Python API**: `uvicorn src.coordinator.server:app --reload --port 8000`
+- **React Dev**: `cd react-ui && npm start` • **Build**: `npm run build` (includes ESLint)
+- **Single test**: `cd react-ui && npm test -- --testNamePattern="test name"` • Python: No tests
 - **Full app**: Set env vars, then `python run.py` + `cd react-ui && npm start` (requires Ollama)
 
 ## Code Style Guidelines
@@ -17,8 +17,7 @@
 
 ## Testing Guidelines
 - **React**: Jest + RTL, `*.test.tsx` colocated. Mock APIs, test interactions.
-- **Python**: No tests currently implemented.
-- **Coverage**: Critical paths. Mock Ollama/APIs.
+- **Python**: No tests implemented. **Coverage**: Critical paths. Mock Ollama/APIs.
 
 ## Security & Best Practices
 - Validate inputs with Pydantic. Never commit secrets; use `.env`.

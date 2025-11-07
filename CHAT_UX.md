@@ -49,15 +49,15 @@ The Streamlit app demonstrates what a proper chat UX should include:
 
 ---
 
-## Phase 1: Core Chat Experience (Week 1)
+## Phase 1: Foundation (Week 1) - High Impact, Low Effort
 
 ### 1.1 Visual Design Overhaul 💎🟢
 **Effort**: Low • **Impact**: High
-- [ ] Replace basic styling with modern chat bubbles
+- [ ] Replace basic styling with modern chat bubbles (ChatGPT/Claude style)
 - [ ] Add user/assistant avatars (use persona images)
 - [ ] Implement proper message layout (user right, assistant left)
 - [ ] Add message spacing and visual hierarchy
-- [ ] Style input field and send button
+- [ ] Style input field and send button with modern design
 
 ### 1.2 Typing Indicators & Async Handling 💎🟢
 **Effort**: Low • **Impact**: High
@@ -66,8 +66,8 @@ The Streamlit app demonstrates what a proper chat UX should include:
 - [ ] Add loading states for better UX
 - [ ] Show typing animation during API calls
 
-### 1.3 Model-Generated Greetings 💍🟡
-**Effort**: Medium • **Impact**: Medium
+### 1.3 Model-Generated Greetings 💍🟢
+**Effort**: Low • **Impact**: Medium
 - [ ] Replace static greetings with API-generated ones
 - [ ] Call `/persona/greet` endpoint on chat start
 - [ ] Handle greeting errors gracefully
@@ -75,7 +75,7 @@ The Streamlit app demonstrates what a proper chat UX should include:
 
 ---
 
-## Phase 2: Persistence & Chat Management (Week 2)
+## Phase 2: Core Features (Week 2) - Essential Functionality
 
 ### 2.1 Chat Persistence 💎🟡
 **Effort**: Medium • **Impact**: High
@@ -100,23 +100,31 @@ The Streamlit app demonstrates what a proper chat UX should include:
 
 ---
 
-## Phase 3: Polish & Advanced Features (Week 3)
+## Phase 3: Advanced Features (Week 3+) - Future-Proofing
 
-### 3.1 Performance & Feedback 💍🟡
+### 3.1 Rich Media Support 💍🟡
+**Effort**: Medium • **Impact**: Medium
+- [ ] Add message timestamps
+- [ ] Support for JSON responses (syntax highlighting, collapsible)
+- [ ] Image/video message support
+- [ ] Code block syntax highlighting
+- [ ] File attachment handling
+
+### 3.2 Performance & Feedback 💍🟡
 **Effort**: Medium • **Impact**: Medium
 - [ ] Add latency tracking and display
 - [ ] Implement proper error recovery
 - [ ] Add retry functionality for failed messages
 - [ ] Optimize message rendering performance
 
-### 3.2 Rich Messaging 💠🟡
+### 3.3 Persona Customization 💠🟡
 **Effort**: Medium • **Impact**: Low
-- [ ] Add message timestamps
-- [ ] Support for markdown formatting
-- [ ] Message status indicators (sending, sent, failed)
-- [ ] Message editing/deletion (optional)
+- [ ] Persona-tailored chat backgrounds (gradients, images)
+- [ ] 3D avatar support (WebGL integration)
+- [ ] Custom color schemes per persona
+- [ ] Animated backgrounds and effects
 
-### 3.3 Mobile Optimization 💠🟢
+### 3.4 Mobile Optimization 💠🟢
 **Effort**: Low • **Impact**: Low
 - [ ] Responsive chat layout for mobile
 - [ ] Touch-friendly input and buttons
@@ -127,47 +135,57 @@ The Streamlit app demonstrates what a proper chat UX should include:
 
 ## Implementation Priority Order
 
-### ✅ **COMPLETED**
-1. **Basic message flow** - Working but needs enhancement
+### ⚡ **PHASE 1: FOUNDATION** (Start Here - High Impact, Low Effort)
+1. **Visual Design Overhaul** 💎🟢 - Modern chat UI foundation
+2. **Typing Indicators & Async Handling** 💎🟢 - Better UX immediately
+3. **Model-Generated Greetings** 💍🟢 - More engaging starts
 
-### ⚡ **HIGH PRIORITY** (Foundation)
-4. **Visual Design Overhaul** 💎🟢 - Modern chat UI is essential
-5. **Typing Indicators & Async Handling** 💎🟢 - Better UX immediately
-6. **Chat Persistence** 💎🟡 - Critical for usability
+### 💎 **PHASE 2: CORE FEATURES** (Essential Functionality)
+4. **Chat Persistence** 💎🟡 - Critical for usability
+5. **Multiple Chat Support** 💎🟡 - Enable conversation management
+6. **Chat Actions** 💍🟢 - Quality of life features
 
-### 💎 **MEDIUM PRIORITY** (Core Features)
-7. **Multiple Chat Support** 💎🟡 - Enable conversation management
-8. **Model-Generated Greetings** 💍🟡 - More engaging starts
-9. **Performance & Feedback** 💍🟡 - Professional polish
-
-### ✨ **LOW PRIORITY** (Polish)
-10. **Chat Actions** 💍🟢 - Quality of life features
-11. **Rich Messaging** 💠🟡 - Enhanced communication
-12. **Mobile Optimization** 💠🟢 - Broader accessibility
+### ✨ **PHASE 3: ADVANCED FEATURES** (Future-Proofing)
+7. **Rich Media Support** 💍🟡 - Enhanced communication
+8. **Performance & Feedback** 💍🟡 - Professional polish
+9. **Persona Customization** 💠🟡 - Immersive experience
+10. **Mobile Optimization** 💠🟢 - Broader accessibility
 
 ## Technical Implementation
 
-### Recommended Libraries
+### Recommended Libraries (Phase 1)
 ```json
 {
-  "react-markdown": "^9.0.0",     // Rich text support
-  "lucide-react": "^0.292.0",     // Modern icons
-  "framer-motion": "^10.16.0",    // Smooth animations
-  "react-hot-toast": "^2.4.1",    // Toast notifications
-  "date-fns": "^3.0.0"            // Date formatting
+  "framer-motion": "^12.23.24",    // Smooth animations (already installed)
+  "lucide-react": "^0.292.0",      // Modern icons
+  "tailwindcss": "^3.0.2",         // Utility-first CSS (already installed)
+  "date-fns": "^3.0.0"             // Date formatting
+}
+```
+
+### Recommended Libraries (Phase 2-3)
+```json
+{
+  "react-markdown": "^9.0.0",      // Rich text support
+  "react-syntax-highlighter": "^15.5.0", // Code highlighting
+  "react-image-lightbox": "^5.1.4",     // Image previews
+  "three": "^0.155.0",             // 3D avatars
+  "react-hot-toast": "^2.4.1"      // Toast notifications
 }
 ```
 
 ### Component Architecture
 ```
 Chat/
-├── ChatContainer.tsx          // Main chat wrapper
+├── ChatContainer.tsx          // Main chat wrapper with background support
 ├── MessageList.tsx            // Scrollable message history
-├── MessageBubble.tsx          // Individual message component
+├── MessageBubble.tsx          // Individual message component (extensible for rich media)
 ├── TypingIndicator.tsx        // Animated typing component
 ├── ChatInput.tsx              // Input field with send button
 ├── ChatSidebar.tsx            // Chat list and management
 ├── ChatActions.tsx            // Clear, export, delete actions
+├── Avatar2D.tsx               // 2D avatar component
+├── Avatar3D.tsx               // 3D avatar component (future)
 └── useChatPersistence.ts      // Custom hook for chat state
 ```
 
@@ -190,14 +208,22 @@ interface ChatState {
   isTyping: boolean;
   isLoading: boolean;
   error: string | null;
+  personaBackground?: BackgroundConfig;
 }
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
-  content: string;
+  content: string | RichContent;
   timestamp: Date;
   latency?: number;
+  type?: 'text' | 'json' | 'image' | 'video' | 'code';
+}
+
+interface RichContent {
+  type: string;
+  data: any;
+  metadata?: Record<string, any>;
 }
 ```
 
@@ -211,6 +237,8 @@ interface Message {
 - [ ] Latency tracking and error recovery
 - [ ] Mobile-responsive design
 - [ ] Professional polish matching modern chat apps
+- [ ] Extensible architecture for rich media and 3D avatars
+- [ ] Persona-tailored backgrounds and customization
 
 ## Migration Strategy
 1. **Phase 1**: Enhance existing chat without breaking current functionality
