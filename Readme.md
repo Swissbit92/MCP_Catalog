@@ -18,26 +18,26 @@ Contributions are welcome. Please read `AGENTS.md` before opening a PR.
 
 The **GraphRAG Coordinator UI** provides a local chat interface for interacting with multiple MCP (Modular Computation Process) servers — such as `rag`, `kg`, and others — through a **persona-driven** experience.
 
-It runs entirely **locally**, connects to a **FastAPI Coordinator** (the backend), and communicates with **Ollama** for local LLM inference.  
-Personas such as **Eeva**, **Cindy**, and others can be selected via an interactive card-based interface.  
+It runs entirely **locally**, connects to a **FastAPI Coordinator** (the backend), and communicates with **Ollama** for local LLM inference.
+Personas such as **Eeva**, **Frieren**, **Gojo**, and others can be selected via an interactive gacha-style card pull interface.
 The chat interface is responsive, centered, and styled like a modern messaging app.
 
 ---
 
 ## 🧩 High level Architecture
 
-   ```bash
-                         🧠  GraphRAG Coordinator UI
-                 ╔═══════════════════════════════════════╗
-                 ║          Streamlit Frontend           ║
-                 ║     (Persona-driven Chat Interface)   ║
-                 ╚═══════════════════════════════════════╝
-                                 │  🔗  HTTP / WebSocket
-                                 ▼
-                 ╔═══════════════════════════════════════╗
-                 ║         🧩 FastAPI Coordinator        ║
-                 ║    (Persona router & MCP bridge)      ║
-                 ╚═══════════════════════════════════════╝
+    ```bash
+                          🧠  GraphRAG Coordinator UI
+                  ╔═══════════════════════════════════════╗
+                  ║          React Frontend               ║
+                  ║     (Gacha-style Persona Selection)   ║
+                  ╚═══════════════════════════════════════╝
+                                  │  🔗  HTTP / WebSocket
+                                  ▼
+                  ╔═══════════════════════════════════════╗
+                  ║         🧩 FastAPI Coordinator        ║
+                  ║    (Persona router & MCP bridge)      ║
+                  ╚═══════════════════════════════════════╝
                                  │
          ┌───────────────────────┼────────────────────────────┐
          ▼                       ▼                            ▼
@@ -64,7 +64,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 | **GPU (optional)** | NVIDIA RTX 30/40 series for CUDA acceleration (or Apple Silicon GPU on macOS) |
 | **VRAM** | ≥ 12 GB VRAM (or unified memory on macOS) recommended |
 | **Ollama** | Installed and **running** locally |
-| **Streamlit** | v1.35+ |
+| **React** | v18+ (with TypeScript) |
 | **FastAPI + Uvicorn** | For Coordinator backend |
 | **LangChain Ollama** | For persona LLM clients |
 
@@ -123,13 +123,17 @@ PERSONA_DIR=personas
 
 ### **Start the Coordinator + UI**
 
-   ```bash
+    ```bash
+# Start the backend coordinator
 python run.py
-   ```
+
+# In a separate terminal, start the React UI
+cd react-ui && npm start
+    ```
 
 ### **Stop the Coordinator + UI**
 
-CTRL + C in the terminal to stop.
+CTRL + C in both terminals to stop.
 
 ---
 
@@ -150,21 +154,27 @@ CTRL + C in the terminal to stop.
 
 ## **The script will:**
 
-- Launch the FastAPI Coordinator (backend)
-- Open the Streamlit UI ([http://localhost:8501](http://localhost:8501))
+- Launch the FastAPI Coordinator (backend) on port 8000
 - Verify the local Ollama model is available
 
-### 1. In the UI
+### 1. Start the React UI
 
-- Go to the Characters tab → choose a persona
-- Switch to the Chat tab → start chatting
+In a separate terminal:
+```bash
+cd react-ui && npm start
+```
+This opens the React UI at [http://localhost:3000](http://localhost:3000)
 
-### 2. Use the toolbar
+### 2. In the UI
 
-| Button | Function |
-|------------|-------------|
-| 🧹 | **Clear Chat** |
-| 📥 | **Export conversation** (JSON) |
+- Pull a character using the gacha-style interface
+- Start chatting with your selected persona
+
+### 2. Use the interface
+
+- Click "Start Chat" after pulling a character
+- Chat with your selected persona
+- Use "Pull Again" to get a new character immediately
 
 ⚠️ Disclaimer
 This project is a local experimental prototype.

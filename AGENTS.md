@@ -4,11 +4,11 @@
 - **Python**: `pip install -r requirements.txt` • API: `uvicorn src.coordinator.server:app --reload --port 8000`
 - **React**: `cd react-ui && npm install` • Dev: `npm start` • Build: `npm run build` • Test: `npm test`
 - **Single test**: React: `npm test -- --testNamePattern="test name"` • Python: `python -m pytest tests/test_file.py::test_function`
-- **Full app**: Set env vars, then `python run.py` (requires Ollama)
+- **Full app**: Set env vars, then `python run.py` for backend + `cd react-ui && npm start` for frontend (requires Ollama)
 
 ## Code Style Guidelines
 - **Python**: PEP 8, 4-space indent, type hints. `snake_case` functions/modules, `PascalCase` classes. Relative imports.
-- **React/TS**: `PascalCase` components, explicit TS types. Hooks: `useThing`. Module-local utilities.
+- **React/TS**: `PascalCase` components, explicit TS types. Hooks: `useThing`. Module-local utilities. Gacha-style character selection with card flip animations.
 - **Imports**: Group stdlib → third-party → local. No wildcards.
 - **Error handling**: FastAPI: `HTTPException`. React: try/catch with user messages.
 - **Formatting**: 4-space Python, consistent TS/JS. No semicolons in TS. Prefer async/await.

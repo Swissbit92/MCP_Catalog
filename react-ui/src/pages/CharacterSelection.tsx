@@ -81,8 +81,15 @@ const CharacterSelection: React.FC = () => {
   };
 
   const handlePullAgain = () => {
-    setCurrentPersona(null);
-    setPullState('ready');
+    // Immediately start pulling another character without going back to ready state
+    setPullState('pulling');
+
+    // Simulate pull delay for excitement
+    setTimeout(() => {
+      const pulledPersona = getRandomPersona();
+      setCurrentPersona(pulledPersona);
+      setPullState('revealing');
+    }, 500);
   };
 
   if (personas.length === 0) {
