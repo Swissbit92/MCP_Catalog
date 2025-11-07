@@ -1,45 +1,27 @@
-# Repository Guidelines
+# Agent Coding Guidelines
 
-## Project Structure & Module Organization
-- `run.py` — starts the FastAPI coordinator (Uvicorn) and Streamlit UI.
-- `src/coordinator` — API, model and orchestration code (`server.py`, config, LLM/Ollama utils).
-- `src/shared` — shared Python modules and assets.
-- `ui` — Streamlit app (`ui/app.py`) and UI helpers.
-- `react-ui` — optional React/TypeScript UI (Create React App).
-- `personas` — persona JSONs and `_summaries` cache; update via the app.
-- `catalog` — YAML configs (e.g., `catalog/graph_rag_mcp.yaml`).
-- `requirements.txt` — Python dependencies.
+## Build/Test Commands
+- **Python**: `pip install -r requirements.txt` • Run API: `uvicorn src.coordinator.server:app --reload --port 8000`
+- **React**: `cd react-ui && npm install` • Dev: `npm start` • Build: `npm run build` • Test: `npm test`
+- **Single test**: React: `npm test -- --testNamePattern="test name"` • Python: `python -m pytest tests/test_file.py::test_function`
+- **Full app**: Set env vars, then `python run.py` (requires Ollama)
+- **Note**: React app uses react-scripts for simplified development workflow
 
-## Build, Test, and Development Commands
-- Python env
-  - Create venv: `python -m venv .venv`
-  - Activate: `source .venv/bin/activate` (bash) or `.\.venv\Scripts\Activate.ps1` (PowerShell)
-  - Install deps: `pip install -r requirements.txt`
-- Run full app (requires Ollama running):
-  - Set env: `$env:OLLAMA_BASE="http://localhost:11434"; $env:PERSONA_MODEL="llama3"`
-  - Start: `python run.py`
-- Run parts separately
-  - API only: `uvicorn src.coordinator.server:app --reload --port 8000`
-  - Streamlit UI only: `streamlit run ui/app.py`
-- React UI
-  - `cd react-ui && npm install`
-  - Dev server: `npm start`  • Tests: `npm test`  • Build: `npm run build`
-
-## Coding Style & Naming Conventions
-- Python: PEP 8, 4-space indent, type hints where practical. Modules/functions `snake_case`; classes `PascalCase`. Keep files small and cohesive.
-- React/TS: Components and files `PascalCase` (`ChatMessage.tsx`), hooks `useThing.ts`. Prefer explicit types and module-local utilities.
-- Config/paths: Do not change directory names or public entrypoints without discussion (`run.py`, `src.coordinator.server:app`).
+## Code Style Guidelines
+- **Python**: PEP 8, 4-space indent, type hints. `snake_case` functions/modules, `PascalCase` classes. Relative imports.
+- **React/TS**: `PascalCase` components, explicit TypeScript types. Hooks: `useThing`. Module-local utilities.
+- **Imports**: Group stdlib, then third-party, then local. No wildcard imports.
+- **Error handling**: FastAPI uses `HTTPException`, React uses try/catch with user-friendly messages.
+- **Formatting**: 4-space Python, consistent TS/JS. No semicolons in TS. Async/await preferred.
+- **Naming**: Descriptive, consistent. Boolean props: `isSelected`, `hasError`. Events: `onClick`, `handleSubmit`.
 
 ## Testing Guidelines
-- React: colocated tests `*.test.tsx`/`*.test.ts` (see `react-ui/src`). Run with `npm test`.
-- Python: If adding tests, prefer `pytest` with files under `tests/` named `test_*.py`. Keep unit tests fast; mock network/LLM calls.
+- **React**: Jest + RTL, colocated `*.test.tsx` files. Mock API calls, test user interactions.
+- **Python**: pytest under `tests/` dir, `test_*.py` files. Mock LLM/network calls. Fast unit tests only.
+- **Coverage**: Aim for critical paths. Mock external dependencies (Ollama, APIs).
 
-## Commit & Pull Request Guidelines
-- Commits: present tense, concise scope prefix when helpful (e.g., `ui: fix persona card overflow`). Reference issues (`#123`).
-- PRs: include summary, rationale, screenshots (UI), and steps to reproduce/verify. Link issues, note config/env changes, and include test coverage for changed behavior.
-
-## Security & Configuration Tips
-- Required env: `OLLAMA_BASE`, `PERSONA_MODEL` (use a `.env`; never commit secrets).
-- Ensure Ollama is running and the model is pulled: `ollama pull <model>`.
-- Persona data may be user-provided; validate inputs and avoid committing sensitive content.
+## Security & Best Practices
+- Validate all inputs, especially persona data. Use Pydantic models for API validation.
+- Never commit secrets or API keys. Use `.env` files.
+- Handle errors gracefully, log appropriately but don't expose sensitive info.
 
