@@ -1,7 +1,7 @@
 # 🧠 MCP Coordinator - Persona Chat Interface (Chat only for now)
 
-> **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**  
-> _Private • Local-First • Streamlit-Based Coordinator_
+> **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**
+> _Private • Local-First • React + FastAPI Coordinator_
 
   ---
 
@@ -27,8 +27,9 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 ### Current Status
 - ✅ **Home Page**: Gacha-style character pulls with card reveal animations
 - ✅ **Character Selection**: Grid browsing with search functionality
-- ✅ **Chat Interface**: Persona-driven conversations
+- ✅ **Chat Interface**: Persona-driven conversations with LLM responses
 - ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
+- ✅ **Unified Startup**: Single command launches both backend and React UI
 - ✅ **Production Ready**: Optimized React build (116KB gzipped)
 
 ---
@@ -36,31 +37,31 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 ## 🧩 High level Architecture
 
     ```bash
-                          🧠  GraphRAG Coordinator UI
-                  ╔═══════════════════════════════════════╗
-                  ║          React Frontend               ║
-                  ║     (Gacha-style Persona Selection)   ║
-                  ╚═══════════════════════════════════════╝
-                                  │  🔗  HTTP / WebSocket
+                           🧠  GraphRAG Coordinator UI
+                   ╔═══════════════════════════════════════╗
+                   ║          React Frontend               ║
+                   ║     (Gacha-style Persona Selection)   ║
+                   ╚═══════════════════════════════════════╝
+                                   │  🔗  HTTP / CORS
+                                   ▼
+                   ╔═══════════════════════════════════════╗
+                   ║         🧩 FastAPI Coordinator        ║
+                   ║    (Persona router & MCP bridge)      ║
+                   ╚═══════════════════════════════════════╝
+                                  │
+          ┌───────────────────────┼────────────────────────────┐
+          ▼                       ▼                            ▼
+  ╔═══════════════╗       ╔═══════════════╗            ╔═══════════════╗
+  ║ 📚 RAG MCP   ║       ║ 🕸️ KG MCP     ║            ║ ⚙️ Other MCPs ║
+  ║ (Chroma + LLM)║       ║ (GraphDB)     ║            ║ (Brave, Mongo)║
+  ╚═══════════════╝       ╚═══════════════╝            ╚═══════════════╝
+                                  │
                                   ▼
                   ╔═══════════════════════════════════════╗
-                  ║         🧩 FastAPI Coordinator        ║
-                  ║    (Persona router & MCP bridge)      ║
+                  ║ 🤖 Ollama LLM Engine (Local Models)   ║
                   ╚═══════════════════════════════════════╝
-                                 │
-         ┌───────────────────────┼────────────────────────────┐
-         ▼                       ▼                            ▼
- ╔═══════════════╗       ╔═══════════════╗            ╔═══════════════╗
- ║ 📚 RAG MCP   ║       ║ 🕸️ KG MCP     ║            ║ ⚙️ Other MCPs ║                   
- ║ (Chroma + LLM)║       ║ (GraphDB)     ║            ║ (Brave, Mongo)║
- ╚═══════════════╝       ╚═══════════════╝            ╚═══════════════╝
-                                 │
-                                 ▼
-                 ╔═══════════════════════════════════════╗
-                 ║ 🤖 Ollama LLM Engine (Local Models)   ║
-                 ╚═══════════════════════════════════════╝
 
-   ```
+    ```
 
 ---
 
@@ -73,6 +74,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 | **GPU (optional)** | NVIDIA RTX 30/40 series for CUDA acceleration (or Apple Silicon GPU on macOS) |
 | **VRAM** | ≥ 12 GB VRAM (or unified memory on macOS) recommended |
 | **Ollama** | Installed and **running** locally |
+| **Node.js** | v16+ (with npm) for React UI |
 | **React** | v18+ (with TypeScript) |
 | **FastAPI + Uvicorn** | For Coordinator backend |
 | **LangChain Ollama** | For persona LLM clients |
@@ -109,25 +111,27 @@ cd MCP_Catalog
 
 ### 3. **Install dependencies**
 
-    **Option A: Manual installation**
-    ```bash
-    # Python dependencies
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
+     **Option A: Manual installation**
+     ```bash
+     # Python dependencies
+     python -m pip install --upgrade pip
+     pip install -r requirements.txt
 
-    # React dependencies
-    cd react-ui && npm install && cd ..
-    ```
+     # React dependencies (requires Node.js)
+     cd react-ui && npm install && cd ..
+     ```
 
-    **Option B: Automated setup**
-    ```bash
-    # Linux/macOS
-    chmod +x setup.sh
-    ./setup.sh
+     **Option B: Automated setup**
+     ```bash
+     # Linux/macOS
+     chmod +x setup.sh
+     ./setup.sh
 
-    # Windows
-    setup.bat
-    ```
+     # Windows
+     setup.bat
+     ```
+
+     **Note**: The project requires both Python and Node.js. Install Node.js from [nodejs.org](https://nodejs.org/) if not already installed.
 
 ### 4. **Create a .env file**
 
@@ -147,17 +151,24 @@ PERSONA_DIR=personas
 
 ### **Start the Coordinator + UI**
 
-    ```bash
-# Start the backend coordinator
-python run.py
+     **Option A: Unified startup (Recommended)**
+     ```bash
+     # Start both FastAPI backend and React UI together
+     python run_react.py
+     ```
 
-# In a separate terminal, start the React UI
-cd react-ui && npm start
-    ```
+     **Option B: Manual startup**
+     ```bash
+     # Terminal 1: Start the backend coordinator
+     python run.py
+
+     # Terminal 2: Start the React UI
+     cd react-ui && npm start
+     ```
 
 ### **Stop the Coordinator + UI**
 
-CTRL + C in both terminals to stop.
+Press `CTRL + C` to stop both services gracefully.
 
 ---
 
@@ -176,18 +187,15 @@ CTRL + C in both terminals to stop.
 
 ---
 
-## **The script will:**
+## **The run_react.py script will:**
 
+- Check that Node.js and npm are installed
 - Launch the FastAPI Coordinator (backend) on port 8000
+- Launch the React UI (frontend) on port 3000
 - Verify the local Ollama model is available
+- Handle graceful shutdown of both services
 
-### 1. Start the React UI
-
-In a separate terminal:
-```bash
-cd react-ui && npm start
-```
-This opens the React UI at [http://localhost:3000](http://localhost:3000)
+This opens the complete application with both backend and frontend running.
 
 ### 2. In the UI
 
