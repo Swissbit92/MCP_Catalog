@@ -28,6 +28,8 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 - ✅ **Home Page**: Gacha-style character pulls with card reveal animations
 - ✅ **Character Selection**: Grid browsing with search functionality
 - ✅ **Chat Interface**: Persona-driven conversations with LLM responses
+- ✅ **Session Management**: Automatic loading of recent chats or creation of new conversations
+- ✅ **Persona Switching**: Seamless switching between different persona chats
 - ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
 - ✅ **Unified Startup**: Single command launches both backend and React UI
 - ✅ **Production Ready**: Optimized React build (116KB gzipped)
@@ -208,7 +210,11 @@ This opens the complete application with both backend and frontend running.
 - **Pull Character**: Click "🎯 Pull Character" on the home page for exciting random reveals with card animations
 - **Pull Again**: After a successful pull, use "🔄 Pull Again" to immediately pull another character
 - **Browse Collection**: Click "📚 Browse Collection" to view all characters in a searchable grid
-- **Start Chat**: Click "💬 Start Chat" after selecting any character to begin chatting
+- **Start Chat**: Click any character card to automatically navigate to chat:
+  - **Existing Chats**: If you've chatted with this persona before, loads your most recent conversation
+  - **New Chats**: If this is your first time chatting with this persona, creates a new conversation with a personalized greeting
+- **Switch Personas**: While in chat, use the session list sidebar to switch between different persona conversations
+- **Continue Chatting**: Your chat history is preserved and you can continue conversations anytime
 
 ⚠️ Disclaimer
 This project is a local experimental prototype.

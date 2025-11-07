@@ -21,7 +21,7 @@ const CharacterSelection: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const { setSelectedPersona } = usePersona();
+  const { setSelectedPersona, sessions, loadSessionMessages } = usePersona();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,10 +62,11 @@ const CharacterSelection: React.FC = () => {
     }
   }, [searchQuery, personas]);
 
-  const handleCharacterSelect = (personaKey: string) => {
+  const handleCharacterSelect = async (personaKey: string) => {
     const personaToSelect = personas.find(p => p.key === personaKey);
     if (personaToSelect) {
       setSelectedPersona(personaToSelect);
+      // Always navigate to chat - let the Chat component handle session logic
       navigate('/chat');
     }
   };
