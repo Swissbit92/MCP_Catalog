@@ -1,0 +1,62 @@
+# Changelog
+
+All notable changes to the MCP Catalog project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- Initial project structure with MCP Coordinator backend and React UI frontend
+- Persona-based chat interface with multiple character options
+- Gacha-style character selection with card reveal animations
+- Static character browsing with search functionality
+- FastAPI backend with Ollama LLM integration
+- Comprehensive testing setup with Jest and pytest
+
+### Changed
+- **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only
+  - Home page (`/`) now handles all gacha pulls with card reveal animations
+  - Character selection page (`/select`) now shows clean grid browsing with search
+  - Removed "Ready to Pull?" interface from character selection page
+  - Improved separation of concerns between pulling and browsing experiences
+
+### Technical Improvements
+- Optimized React build (116KB gzipped)
+- Fixed Jest configuration issues
+- Updated TypeScript setup for better development experience
+- Improved component architecture with better state management
+
+### Documentation
+- Updated README with new UI flow description
+- Enhanced GACHA_UX_ROADMAP.md with current implementation status
+- Added comprehensive coding guidelines in AGENTS.md
+- Created this changelog for tracking project evolution
+
+## [0.1.0] - 2025-01-XX
+
+### Added
+- Basic MCP Coordinator architecture
+- React UI with routing (Home, Character Selection, Chat)
+- Character card components with rarity styling
+- API integration between frontend and backend
+- Basic testing infrastructure
+
+### Technical
+- React 19 with TypeScript
+- FastAPI backend
+- Ollama LLM integration
+- Framer Motion animations
+- Jest testing framework
+
+---
+
+## Types of changes
+- `Added` for new features
+- `Changed` for changes in existing functionality
+- `Deprecated` for soon-to-be removed features
+- `Removed` for now removed features
+- `Fixed` for any bug fixes
+- `Security` in case of vulnerabilities</content>
+<parameter name="filePath">CHANGELOG.md

@@ -8,9 +8,11 @@
 ## Contributing & Guidelines
 See Repository Guidelines in `AGENTS.md` for:
 - Project structure overview and entrypoints
-- Setup and run commands (Python, Streamlit, Uvicorn, React)
+- Setup and run commands (Python, FastAPI, React)
 - Coding style and test conventions
 - Commit/PR expectations and environment variables
+
+See `CHANGELOG.md` for recent updates and project evolution.
 
 Contributions are welcome. Please read `AGENTS.md` before opening a PR.
 
@@ -19,8 +21,15 @@ Contributions are welcome. Please read `AGENTS.md` before opening a PR.
 The **GraphRAG Coordinator UI** provides a local chat interface for interacting with multiple MCP (Modular Computation Process) servers — such as `rag`, `kg`, and others — through a **persona-driven** experience.
 
 It runs entirely **locally**, connects to a **FastAPI Coordinator** (the backend), and communicates with **Ollama** for local LLM inference.
-Personas such as **Eeva**, **Frieren**, **Gojo**, and others can be selected via an interactive gacha-style card pull interface.
+Personas such as **Eeva**, **Frieren**, **Gojo**, and others can be selected via an interactive dual-mode interface: exciting gacha-style random pulls on the home page or convenient static browsing with search on the character selection page.
 The chat interface is responsive, centered, and styled like a modern messaging app.
+
+### Current Status
+- ✅ **Home Page**: Gacha-style character pulls with card reveal animations
+- ✅ **Character Selection**: Grid browsing with search functionality
+- ✅ **Chat Interface**: Persona-driven conversations
+- ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
+- ✅ **Production Ready**: Optimized React build (116KB gzipped)
 
 ---
 
@@ -167,14 +176,16 @@ This opens the React UI at [http://localhost:3000](http://localhost:3000)
 
 ### 2. In the UI
 
-- Pull a character using the gacha-style interface
-- Start chatting with your selected persona
+- **Home Page (/)**: "Ready to Pull?" interface with options to pull a random character or browse the collection
+- **Character Selection (/select)**: Grid view of all available characters with search functionality
+- **Chat (/chat)**: Chat interface with your selected persona
 
 ### 2. Use the interface
 
-- Click "Start Chat" after pulling a character
-- Chat with your selected persona
-- Use "Pull Again" to get a new character immediately
+- **Pull Character**: Click "🎯 Pull Character" on the home page for exciting random reveals with card animations
+- **Pull Again**: After a successful pull, use "🔄 Pull Again" to immediately pull another character
+- **Browse Collection**: Click "📚 Browse Collection" to view all characters in a searchable grid
+- **Start Chat**: Click "💬 Start Chat" after selecting any character to begin chatting
 
 ⚠️ Disclaimer
 This project is a local experimental prototype.
