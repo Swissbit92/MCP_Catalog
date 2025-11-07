@@ -1,14 +1,15 @@
 # Agent Coding Guidelines
 
 ## Build/Test Commands
-- **Python**: `pip install -r requirements.txt` • API: `uvicorn src.coordinator.server:app --reload --port 8000`
-- **React**: `cd react-ui && npm install` • Dev: `npm start` • Build: `npm run build` • Test: `npm test` (note: some tests may be disabled due to Jest config issues)
-- **Single test**: React: `npm test -- --testNamePattern="test name"` • Python: `python -m pytest tests/test_file.py::test_function`
-- **Full app**: Set env vars, then `python run.py` for backend + `cd react-ui && npm start` for frontend (requires Ollama)
+- **Setup**: `./setup.sh` (Linux/macOS) or `setup.bat` (Windows) • Manual: `pip install -r requirements.txt && cd react-ui && npm install`
+- **Python**: API: `uvicorn src.coordinator.server:app --reload --port 8000`
+- **React**: Dev: `cd react-ui && npm start` • Build: `cd react-ui && npm run build` (includes ESLint)
+- **Single test**: React: `cd react-ui && npm test -- --testNamePattern="test name"` • Python: No tests implemented
+- **Full app**: Set env vars, then `python run.py` + `cd react-ui && npm start` (requires Ollama)
 
 ## Code Style Guidelines
 - **Python**: PEP 8, 4-space indent, type hints. `snake_case` functions/modules, `PascalCase` classes. Relative imports.
-- **React/TS**: `PascalCase` components, explicit TS types. Hooks: `useThing`. Module-local utilities. Home page gacha pulls with card animations, separate browsing page.
+- **React/TS**: `PascalCase` components, explicit TS types. Hooks: `useThing`. Module-local utilities.
 - **Imports**: Group stdlib → third-party → local. No wildcards.
 - **Error handling**: FastAPI: `HTTPException`. React: try/catch with user messages.
 - **Formatting**: 4-space Python, consistent TS/JS. No semicolons in TS. Prefer async/await.
@@ -16,7 +17,7 @@
 
 ## Testing Guidelines
 - **React**: Jest + RTL, `*.test.tsx` colocated. Mock APIs, test interactions.
-- **Python**: pytest in `tests/`, `test_*.py`. Mock LLM/network. Fast unit tests.
+- **Python**: No tests currently implemented.
 - **Coverage**: Critical paths. Mock Ollama/APIs.
 
 ## Security & Best Practices
