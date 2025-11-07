@@ -24,14 +24,15 @@ const CharacterSelection: React.FC = () => {
   useEffect(() => {
     const getPersonas = async () => {
       const fetchedPersonas = await fetchPersonas();
-      setPersonas(fetchedPersonas.map(p => ({
+      const mappedPersonas = fetchedPersonas.map(p => ({
         key: p.key,
         display_name: p.display_name || p.key,
         style: p.style,
         image: p.image.replace('ui/images/', ''), // Remove 'ui/images/' prefix
         rarity: p.rarity,
         voice: p.voice,
-      })));
+      }));
+      setPersonas(mappedPersonas);
     };
 
     getPersonas();
@@ -48,6 +49,7 @@ const CharacterSelection: React.FC = () => {
   return (
     <div>
       <h1>Character Selection</h1>
+      {personas.length === 0 && <p>Loading personas...</p>}
       <div className={styles['cards-grid']}> {/* Use the CSS module class for the grid */}
         {personas.map((persona) => (
           <CharacterCard
