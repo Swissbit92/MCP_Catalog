@@ -80,7 +80,7 @@ describe('CharacterSelection', () => {
     expect(screen.getByText('Loading Characters...')).toBeInTheDocument();
   });
 
-  it('renders pull button after fetching personas', async () => {
+  it('renders pull button and browse option after fetching personas', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -92,6 +92,7 @@ describe('CharacterSelection', () => {
     await waitFor(() => {
       expect(screen.getByText('Ready to Pull?')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /pull character/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /browse collection/i })).toBeInTheDocument();
     });
   });
 
@@ -146,16 +147,171 @@ describe('CharacterSelection', () => {
       expect(pullAgainButton).toBeInTheDocument();
     }, { timeout: 2000 });
 
-    // Click pull again
+    // Click pull again - should immediately start pulling without going back to ready state
     const pullAgainButton = screen.getByRole('button', { name: /pull again/i });
     await act(async () => {
       pullAgainButton.click();
     });
 
-    // Should be back to ready state
+    // Should not show "Ready to Pull?" anymore - should be in pulling state
+    await waitFor(() => {
+      expect(screen.queryByText('Ready to Pull?')).not.toBeInTheDocument();
+    });
+  });
+
+  it('switches to static selection mode', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /browse collection/i })).toBeInTheDocument();
+    });
+
+    // Click browse collection button
+    const browseButton = screen.getByRole('button', { name: /browse collection/i });
+    await act(async () => {
+      browseButton.click();
+    });
+
+    // Should show character collection
+    await waitFor(() => {
+      expect(screen.getByText('Character Collection')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /try your luck/i })).toBeInTheDocument();
+    });
+  });
+
+  it('displays character grid in static mode', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /browse collection/i })).toBeInTheDocument();
+    });
+
+    // Switch to static mode
+    const browseButton = screen.getByRole('button', { name: /browse collection/i });
+    await act(async () => {
+      browseButton.click();
+    });
+
+    // Should show character cards and search input
+    await waitFor(() => {
+      expect(screen.getByText('Eeva')).toBeInTheDocument();
+      expect(screen.getByText('Frieren')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search by name/i)).toBeInTheDocument();
+    });
+  });
+
+  it('filters characters based on search query', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /browse collection/i })).toBeInTheDocument();
+    });
+
+    // Switch to static mode
+    const browseButton = screen.getByRole('button', { name: /browse collection/i });
+    await act(async () => {
+      browseButton.click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva')).toBeInTheDocument();
+      expect(screen.getByText('Frieren')).toBeInTheDocument();
+    });
+
+    // Search for Eeva
+    const searchInput = screen.getByPlaceholderText(/search by name/i) as HTMLInputElement;
+    await act(async () => {
+      searchInput.focus();
+      searchInput.value = 'Eeva';
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    // Should only show Eeva
+    await waitFor(() => {
+      expect(screen.getByText('Eeva')).toBeInTheDocument();
+      expect(screen.queryByText('Frieren')).not.toBeInTheDocument();
+    });
+  });
+
+  it('switches back to gacha mode from static mode', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /browse collection/i })).toBeInTheDocument();
+    });
+
+    // Switch to static mode
+    const browseButton = screen.getByRole('button', { name: /browse collection/i });
+    await act(async () => {
+      browseButton.click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Character Collection')).toBeInTheDocument();
+    });
+
+    // Switch back to gacha mode
+    const tryLuckButton = screen.getByRole('button', { name: /try your luck/i });
+    await act(async () => {
+      tryLuckButton.click();
+    });
+
+    // Should be back to gacha mode
     await waitFor(() => {
       expect(screen.getByText('Ready to Pull?')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /pull character/i })).toBeInTheDocument();
     });
+  });
+
+  it('shows browse all button after character reveal', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /pull character/i })).toBeInTheDocument();
+    });
+
+    // Click the pull button
+    const pullButton = screen.getByRole('button', { name: /pull character/i });
+    await act(async () => {
+      pullButton.click();
+    });
+
+    // Wait for pull again button to appear
+    await waitFor(() => {
+      const pullAgainButton = screen.getByRole('button', { name: /pull again/i });
+      expect(pullAgainButton).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /browse all/i })).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 
   it('does not load empty - always shows loading or content', async () => {
@@ -180,7 +336,8 @@ describe('CharacterSelection', () => {
     // Should have either pull button or revealed content
     const hasPullButton = screen.queryByRole('button', { name: /pull character/i });
     const hasStartChatButton = screen.queryByRole('button', { name: /start chat/i });
+    const hasBrowseButton = screen.queryByRole('button', { name: /browse collection/i });
 
-    expect(hasPullButton || hasStartChatButton).toBeTruthy();
+    expect(hasPullButton || hasStartChatButton || hasBrowseButton).toBeTruthy();
   });
 });
