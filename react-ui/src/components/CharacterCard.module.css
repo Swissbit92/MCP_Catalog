@@ -79,3 +79,174 @@
 .rarity-rare .rarity-badge{background:linear-gradient(135deg,#d4f6ff,#9fe3ff,#42f5ff);color:#06222a}
 .rarity-common .rarity-badge{background:linear-gradient(135deg,#f4f4f4,#dfdfdf,#cfcfcf);color:#1f2937}
 .mint-plate{position:absolute;top:8px;right:10px;z-index:4;padding:4px 10px;font-weight:700;font-size:.78rem;border-radius:8px;letter-spacing:.02em;color:#fff6d4;background:linear-gradient(135deg,rgba(17,24,39,.9),rgba(45,55,72,.85));border:1px solid rgba(255,255,255,.18);box-shadow:0 2px 8px rgba(0,0,0,.25),inset 0 0 6px rgba(255,255,255,.08);text-shadow:0 1px 0 rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+
+/* Card Reveal Styles */
+.card-reveal-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  perspective: 1000px;
+}
+
+.card-reveal-card {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 480px;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+}
+
+.card-reveal-card:hover {
+  filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.2));
+}
+
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 2px solid #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+}
+
+.card-back-pattern {
+  width: 80%;
+  height: 80%;
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+    linear-gradient(45deg, transparent 40%, rgba(255, 215, 0, 0.05) 50%, transparent 60%);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-back-shine {
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 215, 0, 0.3) 50%, transparent 70%);
+  animation: cardShine 3s ease-in-out infinite;
+}
+
+@keyframes cardShine {
+  0%, 100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.card-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
+
+/* Rarity Effects Styles */
+.rarity-screen-flash {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.rarity-screen-shake {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+.rarity-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+}
+
+.rarity-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.rarity-glow-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9996;
+}
+
+/* Pull Button Styles */
+.pull-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  min-height: 400px;
+  justify-content: center;
+}
+
+.pull-button {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pull-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+}
+
+.pull-button:active {
+  transform: translateY(0);
+}
+
+.pull-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pull-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pull-button:hover::before {
+  opacity: 1;
+}
+
+.pull-instructions {
+  text-align: center;
+  color: #666;
+  font-size: 1.1rem;
+  max-width: 400px;
+}
+
+.pull-instructions h2 {
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}

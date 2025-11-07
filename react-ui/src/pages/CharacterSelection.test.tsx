@@ -12,6 +12,15 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+// Mock framer-motion
+jest.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, whileHover, whileTap, ...props }: any) => <div {...props}>{children}</div>,
+    button: ({ children, whileHover, whileTap, ...props }: any) => <button {...props}>{children}</button>,
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 // Mock the CSS module
 jest.mock('../components/CharacterCard.module.css', () => ({
   __esModule: true,
@@ -31,6 +40,9 @@ jest.mock('../components/CharacterCard.module.css', () => ({
     'rarity-badge': 'rarity-badge',
     'card-choose': 'card-choose',
     'choose-pill': 'choose-pill',
+    'pull-button-container': 'pull-button-container',
+    'pull-button': 'pull-button',
+    'pull-instructions': 'pull-instructions',
   },
 }));
 
@@ -56,7 +68,7 @@ describe('CharacterSelection', () => {
     jest.restoreAllMocks();
   });
 
-  it('renders character cards after fetching personas', async () => {
+  it('shows loading state initially', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -65,14 +77,110 @@ describe('CharacterSelection', () => {
       );
     });
 
-    // Use waitFor to explicitly wait for the asynchronous state update caused by fetchPersonas
-    await waitFor(() => {
-      expect(screen.getByText('Eeva')).toBeInTheDocument();
-      expect(screen.getByText('Frieren')).toBeInTheDocument();
-      expect(screen.getByAltText('Eeva')).toHaveAttribute('src', '/images/eeva_card.png');
-      expect(screen.getByText('Legendary')).toBeInTheDocument();
-      expect(screen.getByText('Epic')).toBeInTheDocument();
-      expect(screen.getAllByRole('button', { name: /choose/i }).length).toBe(2); // Expect two choose buttons
+    expect(screen.getByText('Loading Characters...')).toBeInTheDocument();
+  });
+
+  it('renders pull button after fetching personas', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('Ready to Pull?')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /pull character/i })).toBeInTheDocument();
+    });
+  });
+
+  it('shows character reveal after pulling', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /pull character/i })).toBeInTheDocument();
+    });
+
+    // Click the pull button
+    const pullButton = screen.getByRole('button', { name: /pull character/i });
+    await act(async () => {
+      pullButton.click();
+    });
+
+    // Wait for the reveal to complete (this might need adjustment based on timing)
+    await waitFor(() => {
+      // After pulling, we should eventually see either the revealed character or pull again options
+      expect(screen.queryByText('Ready to Pull?')).not.toBeInTheDocument();
+    }, { timeout: 2000 });
+  });
+
+  it('allows pulling again after character reveal', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /pull character/i })).toBeInTheDocument();
+    });
+
+    // Click the pull button
+    const pullButton = screen.getByRole('button', { name: /pull character/i });
+    await act(async () => {
+      pullButton.click();
+    });
+
+    // Wait for pull again button to appear (this simulates the reveal completing)
+    await waitFor(() => {
+      const pullAgainButton = screen.getByRole('button', { name: /pull again/i });
+      expect(pullAgainButton).toBeInTheDocument();
+    }, { timeout: 2000 });
+
+    // Click pull again
+    const pullAgainButton = screen.getByRole('button', { name: /pull again/i });
+    await act(async () => {
+      pullAgainButton.click();
+    });
+
+    // Should be back to ready state
+    await waitFor(() => {
+      expect(screen.getByText('Ready to Pull?')).toBeInTheDocument();
+    });
+  });
+
+  it('does not load empty - always shows loading or content', async () => {
+    // Test that the component never renders completely empty
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <CharacterSelection />
+        </MemoryRouter>
+      );
+    });
+
+    // Should always show either loading or content
+    const heading = screen.getByRole('heading', { name: /character selection/i });
+    expect(heading).toBeInTheDocument();
+
+    // After loading, should show pull interface
+    await waitFor(() => {
+      expect(screen.queryByText('Loading Characters...')).not.toBeInTheDocument();
+    });
+
+    // Should have either pull button or revealed content
+    const hasPullButton = screen.queryByRole('button', { name: /pull character/i });
+    const hasStartChatButton = screen.queryByRole('button', { name: /start chat/i });
+
+    expect(hasPullButton || hasStartChatButton).toBeTruthy();
   });
 });
