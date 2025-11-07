@@ -10,5 +10,8 @@ ollama
 pyyaml
 pydantic
 
+# Note: This project also requires Node.js and npm for the React UI
+# Install Node.js from: https://nodejs.org/
+# After installing Node.js, run: cd react-ui && npm install
 
-# instead of fixed Streamlit columns (which “snap” all cards at once), we’ll switch to a pure CSS Grid that uses repeat(auto-fit, minmax(...))
+# instead of fixed Streamlit columns (which "snap" all cards at once), we'll switch to a pure CSS Grid that uses repeat(auto-fit, minmax(...))

@@ -10,7 +10,9 @@ import os
 import threading
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 
 from .config import get_ollama_base, get_persona_model, get_persona_temperature
 from .ollama_utils import assert_model_available
@@ -21,6 +23,15 @@ from .persona_memory import (
 )
 
 app = FastAPI(title="Local Coordinator (Chat-only)", version="0.5.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ----------------- SQLite persistence (tiny DAO) -----------------
 _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
@@ -73,16 +84,7 @@ def _fetchone_dict(cur) -> Optional[Dict[str, Any]]:
 def _fetchall_list(cur) -> List[Dict[str, Any]]:
     return [dict(r) for r in cur.fetchall()]
 
-# ----------------- Startup -----------------
-@app.on_event("startup")
-def _startup():
-    assert_model_available(get_ollama_base(), get_persona_model())
-    _init_db()
-    # Best-effort no-op refresh (non-blocking). If another process holds the lock, we just skip.
-    try:
-        ensure_all_summaries_serialized(timeout_sec=0.01, poll_sec=0.01)
-    except Exception:
-        pass
+
 
 # ----------------- Schemas -----------------
 class ChatTurn(BaseModel):
@@ -362,3 +364,29 @@ def health():
         return {"status": "ok", "model": model, "db": "ok"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+# ----------------- Initialize on startup -----------------
+print("Initializing FastAPI server...")
+try:
+    assert_model_available(get_ollama_base(), get_persona_model())
+    print("Model check passed.")
+except Exception as e:
+    print(f"Model check failed: {e}")
+    raise
+
+try:
+    _init_db()
+    print("Database initialized.")
+except Exception as e:
+    print(f"Database init failed: {e}")
+    raise
+
+# Best-effort no-op refresh (non-blocking). If another process holds the lock, we just skip.
+try:
+    result = ensure_all_summaries_serialized(timeout_sec=0.01, poll_sec=0.01)
+    print(f"Summaries check completed: {result}")
+except Exception as e:
+    print(f"Summary check failed: {e}")
+    # Don't raise here as it's non-critical
+
+print("FastAPI server initialization complete.")
