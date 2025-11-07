@@ -46,29 +46,50 @@ def _init_db():
     with _DB_LOCK:
         c = _conn()
         cur = c.cursor()
+
+        # Create chat_sessions table (replaces old chats table)
         cur.execute("""
-        CREATE TABLE IF NOT EXISTS chats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            persona TEXT NOT NULL,
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id TEXT PRIMARY KEY,
+            persona_key TEXT NOT NULL,
             title TEXT NOT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )""")
+
+        # Create messages table linked to sessions
         cur.execute("""
         CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chat_id INTEGER NOT NULL,
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
             role TEXT NOT NULL,
             content TEXT NOT NULL,
-            ts TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
             latency_ms INTEGER,
-            FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE
+            FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
         )""")
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS persona_last_chat (
-            persona TEXT PRIMARY KEY,
-            chat_id INTEGER
-        )""")
+
+        # Migration: If old tables exist, migrate data
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
+        if cur.fetchone():
+            print("Migrating old chat data to new schema...")
+            # Migrate existing chats to sessions
+            cur.execute("""
+            INSERT OR IGNORE INTO chat_sessions (id, persona_key, title, created_at, updated_at)
+            SELECT printf('session_%06d', id), persona, title, created_at, updated_at FROM chats
+            """)
+            # Migrate messages
+            cur.execute("""
+            INSERT OR IGNORE INTO messages (id, session_id, role, content, timestamp, latency_ms)
+            SELECT printf('msg_%06d', id), printf('session_%06d', chat_id), role, content, ts, latency_ms FROM messages
+            """)
+            print("Migration completed.")
+
+        # Create indexes for better performance
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON chat_sessions(created_at)")
+
         c.commit()
         c.close()
 
@@ -118,6 +139,46 @@ class AppendMessageBody(BaseModel):
 class SelectChatBody(BaseModel):
     persona: str
 
+# New session-based models
+class CreateSessionBody(BaseModel):
+    persona_key: str
+    title: str = "New Chat"
+
+class UpdateSessionBody(BaseModel):
+    title: str
+
+class MessageModel(BaseModel):
+    id: str
+    role: str
+    content: str
+    timestamp: str
+    latency_ms: Optional[int] = None
+
+class SessionModel(BaseModel):
+    id: str
+    persona_key: str
+    title: str
+    created_at: str
+    updated_at: str
+    message_count: int = 0
+
+class SessionWithMessages(BaseModel):
+    session: SessionModel
+    messages: List[MessageModel]
+
+# Export/Import models
+class ExportData(BaseModel):
+    version: str = "1.0"
+    exported_at: str
+    app_version: str = "1.0.0"
+    persona: Dict[str, Any]
+    session: Dict[str, Any]
+    messages: List[Dict[str, Any]]
+
+class ImportBody(BaseModel):
+    data: ExportData
+    create_new_session: bool = True
+
 class ImportChatBody(BaseModel):
     persona: str
     chat: Dict[str, Any] = Field(..., description="JSON with {title, messages: [{role,content,ts?}]}")
@@ -146,6 +207,43 @@ def chat(body: ChatBody):
     answer = client.complete(system=system, user_prompt=user_compiled)
     return {"answer": answer}
 
+@app.post("/sessions/{session_id}/chat")
+def chat_with_session(session_id: str, body: ChatBody):
+    """Chat with a persona and automatically save to session."""
+    # Get session info
+    with _DB_LOCK:
+        c = _conn()
+        cur = c.cursor()
+        cur.execute("SELECT persona_key FROM chat_sessions WHERE id = ?", (session_id,))
+        row = cur.fetchone()
+        c.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found.")
+
+    persona_key = row["persona_key"]
+
+    # Perform chat
+    chat_body = ChatBody(persona=persona_key, history=body.history, message=body.message)
+    response = chat(chat_body)
+
+    # Save user message to session
+    user_msg_body = AppendMessageBody(
+        role="user",
+        content=body.message,
+        ts=_now()
+    )
+    add_message(session_id, user_msg_body)
+
+    # Save assistant response to session
+    assistant_msg_body = AppendMessageBody(
+        role="assistant",
+        content=response["answer"],
+        ts=_now()
+    )
+    add_message(session_id, assistant_msg_body)
+
+    return response
+
 @app.post("/persona/greet")
 def greet(body: GreetBody):
     card = get_persona_card(body.persona)
@@ -162,6 +260,35 @@ def greet(body: GreetBody):
     answer = client.complete(system=system, user_prompt=user_prompt)
     return {"answer": answer}
 
+@app.post("/sessions/{session_id}/greet")
+def greet_with_session(session_id: str, body: GreetBody):
+    """Generate a greeting and save it to the session."""
+    # Get session info
+    with _DB_LOCK:
+        c = _conn()
+        cur = c.cursor()
+        cur.execute("SELECT persona_key FROM chat_sessions WHERE id = ?", (session_id,))
+        row = cur.fetchone()
+        c.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found.")
+
+    persona_key = row["persona_key"]
+
+    # Generate greeting
+    greet_body = GreetBody(persona=persona_key)
+    response = greet(greet_body)
+
+    # Save greeting to session
+    greeting_msg_body = AppendMessageBody(
+        role="assistant",
+        content=response["answer"],
+        ts=_now()
+    )
+    add_message(session_id, greeting_msg_body)
+
+    return response
+
 @app.post("/persona/summary")
 def summary(body: SummaryBody):
     """
@@ -174,180 +301,264 @@ def summary(body: SummaryBody):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Summary error: {e}")
 
-# ----------------- Persistence API -----------------
+# ----------------- Session-based Persistence API -----------------
 
-@app.get("/chats")
-def list_chats(persona: str):
+import uuid
+
+def _generate_session_id() -> str:
+    return f"session_{uuid.uuid4().hex[:16]}"
+
+def _generate_message_id() -> str:
+    return f"msg_{uuid.uuid4().hex[:16]}"
+
+@app.get("/sessions")
+def list_sessions():
+    """List all chat sessions."""
+    print("DEBUG: list_sessions called")
     with _DB_LOCK:
         c = _conn()
         cur = c.cursor()
-        cur.execute("SELECT id, persona, title, created_at, updated_at FROM chats WHERE persona=? ORDER BY updated_at DESC, id DESC", (persona,))
-        items = _fetchall_list(cur)
+        cur.execute("""
+            SELECT s.id, s.persona_key, s.title, s.created_at, s.updated_at,
+                   COUNT(m.id) as message_count
+            FROM chat_sessions s
+            LEFT JOIN messages m ON s.id = m.session_id
+            GROUP BY s.id
+            ORDER BY s.updated_at DESC, s.created_at DESC
+        """)
+        sessions = []
+        for row in cur.fetchall():
+            sessions.append({
+                "id": row["id"],
+                "persona_key": row["persona_key"],
+                "title": row["title"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "message_count": row["message_count"]
+            })
         c.close()
-    return {"items": items}
+    return sessions
 
-@app.post("/chats")
-def create_chat(body: CreateChatBody):
+@app.post("/sessions")
+def create_session(body: CreateSessionBody):
+    """Create a new chat session."""
+    session_id = _generate_session_id()
     now = _now()
     with _DB_LOCK:
         c = _conn()
         cur = c.cursor()
-        cur.execute("INSERT INTO chats (persona, title, created_at, updated_at) VALUES (?,?,?,?)",
-                    (body.persona, body.title.strip() or "New Chat", now, now))
-        chat_id = cur.lastrowid
-        # mark as last chat for persona
-        cur.execute("INSERT INTO persona_last_chat (persona, chat_id) VALUES (?, ?) ON CONFLICT(persona) DO UPDATE SET chat_id=excluded.chat_id",
-                    (body.persona, chat_id))
+        cur.execute("""
+            INSERT INTO chat_sessions (id, persona_key, title, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (session_id, body.persona_key, body.title.strip() or "New Chat", now, now))
         c.commit()
         c.close()
-    return {"id": chat_id, "persona": body.persona, "title": body.title, "created_at": now, "updated_at": now}
+    return {
+        "id": session_id,
+        "persona_key": body.persona_key,
+        "title": body.title,
+        "created_at": now,
+        "updated_at": now,
+        "message_count": 0
+    }
 
-@app.get("/chats/{chat_id}/messages")
-def get_messages(chat_id: int):
+@app.get("/sessions/{session_id}")
+def get_session(session_id: str):
+    """Get a chat session with all its messages."""
     with _DB_LOCK:
         c = _conn()
         cur = c.cursor()
-        # verify chat exists
-        cur.execute("SELECT id, persona, title, created_at, updated_at FROM chats WHERE id=?", (chat_id,))
-        chat = _fetchone_dict(cur)
-        if not chat:
-            c.close()
-            raise HTTPException(status_code=404, detail="Chat not found.")
-        cur.execute("SELECT id, chat_id, role, content, ts, latency_ms FROM messages WHERE chat_id=? ORDER BY id ASC", (chat_id,))
-        messages = _fetchall_list(cur)
-        c.close()
-    return {"chat": chat, "messages": messages}
 
-@app.post("/chats/{chat_id}/messages")
-def append_message(chat_id: int, body: AppendMessageBody):
-    ts = body.ts or _now()
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        # verify chat exists
-        cur.execute("SELECT persona FROM chats WHERE id=?", (chat_id,))
-        row = cur.fetchone()
-        if not row:
+        # Get session info
+        cur.execute("""
+            SELECT s.id, s.persona_key, s.title, s.created_at, s.updated_at,
+                   COUNT(m.id) as message_count
+            FROM chat_sessions s
+            LEFT JOIN messages m ON s.id = m.session_id
+            WHERE s.id = ?
+            GROUP BY s.id
+        """, (session_id,))
+        session_row = cur.fetchone()
+        if not session_row:
             c.close()
-            raise HTTPException(status_code=404, detail="Chat not found.")
-        cur.execute("INSERT INTO messages (chat_id, role, content, ts, latency_ms) VALUES (?,?,?,?,?)",
-                    (chat_id, body.role, body.content, ts, body.latency_ms))
-        cur.execute("UPDATE chats SET updated_at=? WHERE id=?", (_now(), chat_id))
-        c.commit()
-        c.close()
-    return {"ok": True}
+            raise HTTPException(status_code=404, detail="Session not found.")
 
-@app.patch("/chats/{chat_id}")
-def rename_chat(chat_id: int, body: RenameChatBody):
+        # Get messages
+        cur.execute("""
+            SELECT id, role, content, timestamp, latency_ms
+            FROM messages
+            WHERE session_id = ?
+            ORDER BY timestamp ASC
+        """, (session_id,))
+        messages = []
+        for msg_row in cur.fetchall():
+            messages.append({
+                "id": msg_row["id"],
+                "role": msg_row["role"],
+                "content": msg_row["content"],
+                "timestamp": msg_row["timestamp"],
+                "latency_ms": msg_row["latency_ms"]
+            })
+
+        c.close()
+
+    return {
+        "session": {
+            "id": session_row["id"],
+            "persona_key": session_row["persona_key"],
+            "title": session_row["title"],
+            "created_at": session_row["created_at"],
+            "updated_at": session_row["updated_at"],
+            "message_count": session_row["message_count"]
+        },
+        "messages": messages
+    }
+
+@app.put("/sessions/{session_id}")
+def update_session(session_id: str, body: UpdateSessionBody):
+    """Update a chat session (e.g., rename)."""
     title = (body.title or "").strip() or "Untitled"
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("UPDATE chats SET title=?, updated_at=? WHERE id=?", (title, _now(), chat_id))
-        c.commit()
-        c.close()
-    return {"ok": True, "id": chat_id, "title": title}
-
-@app.delete("/chats/{chat_id}")
-def delete_chat(chat_id: int):
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        # discover persona so we can clean last selection if needed
-        cur.execute("SELECT persona FROM chats WHERE id=?", (chat_id,))
-        row = cur.fetchone()
-        persona = row["persona"] if row else None
-        cur.execute("DELETE FROM messages WHERE chat_id=?", (chat_id,))
-        cur.execute("DELETE FROM chats WHERE id=?", (chat_id,))
-        if persona:
-            # if last chat was this, unset
-            cur.execute("SELECT chat_id FROM persona_last_chat WHERE persona=?", (persona,))
-            r2 = cur.fetchone()
-            if r2 and r2["chat_id"] == chat_id:
-                cur.execute("DELETE FROM persona_last_chat WHERE persona=?", (persona,))
-        c.commit()
-        c.close()
-    return {"ok": True}
-
-@app.post("/chats/{chat_id}/select")
-def mark_selected(chat_id: int, body: SelectChatBody):
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        # verify chat
-        cur.execute("SELECT id FROM chats WHERE id=? AND persona=?", (chat_id, body.persona))
-        row = cur.fetchone()
-        if not row:
-            c.close()
-            raise HTTPException(status_code=404, detail="Chat not found for persona.")
-        cur.execute("INSERT INTO persona_last_chat (persona, chat_id) VALUES (?, ?) ON CONFLICT(persona) DO UPDATE SET chat_id=excluded.chat_id",
-                    (body.persona, chat_id))
-        c.commit()
-        c.close()
-    return {"ok": True}
-
-@app.get("/chats/restore_last")
-def restore_last(persona: str):
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("SELECT chat_id FROM persona_last_chat WHERE persona=?", (persona,))
-        row = cur.fetchone()
-        if row and row["chat_id"]:
-            chat_id = int(row["chat_id"])
-            c.close()
-            return {"chat_id": chat_id, "restored": True}
-        # else choose most recent if exists
-        cur = _conn().cursor()
-        cur.execute("SELECT id FROM chats WHERE persona=? ORDER BY updated_at DESC, id DESC LIMIT 1", (persona,))
-        row2 = cur.fetchone()
-        c.close()
-        if row2:
-            return {"chat_id": int(row2["id"]), "restored": True}
-    return {"chat_id": None, "restored": False}
-
-@app.get("/chats/{chat_id}/export")
-def export_chat(chat_id: int):
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("SELECT id, persona, title, created_at, updated_at FROM chats WHERE id=?", (chat_id,))
-        chat = _fetchone_dict(cur)
-        if not chat:
-            c.close()
-            raise HTTPException(status_code=404, detail="Chat not found.")
-        cur.execute("SELECT role, content, ts, latency_ms FROM messages WHERE chat_id=? ORDER BY id ASC", (chat_id,))
-        messages = _fetchall_list(cur)
-        c.close()
-    return {"chat": chat, "messages": messages}
-
-@app.post("/chats/import")
-def import_chat(body: ImportChatBody):
-    persona = body.persona
-    chat_obj = body.chat or {}
-    title = (chat_obj.get("title") or "Imported Chat").strip() or "Imported Chat"
-    msgs = chat_obj.get("messages") or []
-
     now = _now()
     with _DB_LOCK:
         c = _conn()
         cur = c.cursor()
-        cur.execute("INSERT INTO chats (persona, title, created_at, updated_at) VALUES (?,?,?,?)",
-                    (persona, title, now, now))
-        chat_id = cur.lastrowid
-        for m in msgs:
-            role = (m.get("role") or "user").strip()
-            content = m.get("content") or ""
-            ts = (m.get("ts") or now)
-            latency_ms = m.get("latency_ms")
-            cur.execute("INSERT INTO messages (chat_id, role, content, ts, latency_ms) VALUES (?,?,?,?,?)",
-                        (chat_id, role, content, ts, latency_ms))
-        # mark as last
-        cur.execute("INSERT INTO persona_last_chat (persona, chat_id) VALUES (?, ?) ON CONFLICT(persona) DO UPDATE SET chat_id=excluded.chat_id",
-                    (persona, chat_id))
+        cur.execute("""
+            UPDATE chat_sessions
+            SET title = ?, updated_at = ?
+            WHERE id = ?
+        """, (title, now, session_id))
+        if cur.rowcount == 0:
+            c.close()
+            raise HTTPException(status_code=404, detail="Session not found.")
         c.commit()
         c.close()
-    return {"id": chat_id, "persona": persona, "title": title}
+    return {"ok": True, "id": session_id, "title": title, "updated_at": now}
+
+@app.delete("/sessions/{session_id}")
+def delete_session(session_id: str):
+    """Delete a chat session and all its messages."""
+    with _DB_LOCK:
+        c = _conn()
+        cur = c.cursor()
+        # Check if session exists
+        cur.execute("SELECT id FROM chat_sessions WHERE id = ?", (session_id,))
+        if not cur.fetchone():
+            c.close()
+            raise HTTPException(status_code=404, detail="Session not found.")
+        # Delete messages first (cascade should handle this, but being explicit)
+        cur.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+        # Delete session
+        cur.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
+        c.commit()
+        c.close()
+    return {"ok": True}
+
+@app.post("/sessions/{session_id}/messages")
+def add_message(session_id: str, body: AppendMessageBody):
+    """Add a message to a chat session."""
+    message_id = _generate_message_id()
+    timestamp = body.ts or _now()
+    with _DB_LOCK:
+        c = _conn()
+        cur = c.cursor()
+        # Verify session exists
+        cur.execute("SELECT id FROM chat_sessions WHERE id = ?", (session_id,))
+        if not cur.fetchone():
+            c.close()
+            raise HTTPException(status_code=404, detail="Session not found.")
+        # Insert message
+        cur.execute("""
+            INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (message_id, session_id, body.role, body.content, timestamp, body.latency_ms))
+        # Update session timestamp
+        cur.execute("""
+            UPDATE chat_sessions SET updated_at = ? WHERE id = ?
+        """, (_now(), session_id))
+        c.commit()
+        c.close()
+    return {"ok": True, "message_id": message_id}
+
+@app.get("/sessions/{session_id}/export")
+def export_session(session_id: str):
+    """Export a chat session as JSON."""
+    session_data = get_session(session_id)
+
+    # Get persona info
+    persona_card = get_persona_card(session_data["session"]["persona_key"])
+    if not persona_card:
+        raise HTTPException(status_code=400, detail="Persona not found.")
+
+    export_data = {
+        "version": "1.0",
+        "exported_at": _now(),
+        "app_version": "1.0.0",
+        "persona": {
+            "key": persona_card.get("key"),
+            "display_name": persona_card.get("display_name"),
+            "style": persona_card.get("style")
+        },
+        "session": session_data["session"],
+        "messages": session_data["messages"]
+    }
+
+    return export_data
+
+@app.post("/sessions/import")
+def import_session(body: ImportBody):
+    """Import a chat session from exported JSON."""
+    data = body.data
+
+    # Validate data structure
+    if not data.version or not data.persona or not data.session or not data.messages:
+        raise HTTPException(status_code=400, detail="Invalid import data structure.")
+
+    # Verify persona exists (data.persona is a dict from JSON)
+    persona_key = data.persona.get("key") if isinstance(data.persona, dict) else getattr(data.persona, 'key', None)
+    if not persona_key or not get_persona_card(persona_key):
+        raise HTTPException(status_code=400, detail=f"Persona '{persona_key}' not found.")
+
+    session_id = _generate_session_id() if body.create_new_session else data.session.get("id") if isinstance(data.session, dict) else getattr(data.session, 'id', None)
+    now = _now()
+
+    with _DB_LOCK:
+        c = _conn()
+        cur = c.cursor()
+
+        # Create session
+        session_title = data.session.get("title") if isinstance(data.session, dict) else getattr(data.session, 'title', 'Imported Chat')
+        session_created_at = data.session.get("created_at") if isinstance(data.session, dict) else getattr(data.session, 'created_at', now)
+
+        cur.execute("""
+            INSERT INTO chat_sessions (id, persona_key, title, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            session_id,
+            persona_key,
+            session_title or 'Imported Chat',
+            session_created_at or now,
+            now
+        ))
+
+        # Insert messages
+        for msg in data.messages:
+            message_id = _generate_message_id()
+            cur.execute("""
+                INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                message_id,
+                session_id,
+                msg.get("role") if isinstance(msg, dict) else getattr(msg, 'role', 'user'),
+                msg.get("content") if isinstance(msg, dict) else getattr(msg, 'content', ''),
+                msg.get("timestamp") if isinstance(msg, dict) else getattr(msg, 'timestamp', now),
+                msg.get("latency_ms") if isinstance(msg, dict) else getattr(msg, 'latency_ms', None)
+            ))
+
+        c.commit()
+        c.close()
+
+    return {"ok": True, "session_id": session_id}
 
 # ----------------- Optional tiny health check (roadmap "Now") -----------------
 @app.get("/health")

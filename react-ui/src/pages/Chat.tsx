@@ -1,84 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { MessageBubble, Message } from '../components/MessageBubble';
+import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
-import { sendMessage, getPersonaGreeting } from '../services/api';
+import SessionList from '../components/SessionList';
+import { getPersonaGreeting, fetchPersonas } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 
 const Chat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const { selectedPersona } = usePersona();
+  const [personas, setPersonas] = useState<any[]>([]);
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage: sendMessageToSession, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona } = usePersona();
+
+  useEffect(() => {
+    const loadPersonas = async () => {
+      try {
+        const fetchedPersonas = await fetchPersonas();
+        setPersonas(fetchedPersonas);
+      } catch (error) {
+        console.error('Failed to load personas:', error);
+      }
+    };
+    loadPersonas();
+  }, []);
 
 
 
   useEffect(() => {
-    const loadGreeting = async () => {
-      if (selectedPersona) {
-        try {
-          const personaLabel = selectedPersona.coordinator_label || selectedPersona.display_name;
-          const greeting = await getPersonaGreeting(personaLabel);
-          setMessages([{
-            id: 'greeting',
-            role: 'assistant',
-            content: greeting,
-            timestamp: new Date()
-          }]);
-        } catch (error) {
-          console.error('Error loading greeting:', error);
-          // Fallback to static greeting
-          setMessages([{
-            id: 'greeting',
-            role: 'assistant',
-            content: selectedPersona.voice?.greeting || `Hello! I'm ${selectedPersona.display_name}. How can I help you today? (Using fallback greeting - backend may not be running)`,
-            timestamp: new Date()
-          }]);
+    if (selectedPersona) {
+      const existingSessions = sessions.filter(s => s.persona_key === selectedPersona.key);
+      if (existingSessions.length > 0) {
+        // Load the most recent session for this persona
+        const mostRecentSession = existingSessions.reduce((latest, current) =>
+          new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
+        );
+        if (!currentSession || currentSession.id !== mostRecentSession.id) {
+          loadSessionMessages(mostRecentSession.id);
         }
       } else {
-        setMessages([{
-          id: 'greeting',
-          role: 'assistant',
-          content: 'Hi there! How can I help you today?',
-          timestamp: new Date()
-        }]);
-      }
-    };
+        // No existing sessions, create a new one
+        if (!currentSession || currentSession.persona_key !== selectedPersona.key) {
+          const initializeNew = async () => {
+            try {
+              const session = await createNewSession(selectedPersona.key, `Chat with ${selectedPersona.display_name}`);
 
-    loadGreeting();
-  }, [selectedPersona]);
+              // Load greeting for the persona
+              const personaLabel = selectedPersona.coordinator_label || selectedPersona.display_name;
+              const greeting = await getPersonaGreeting(personaLabel);
+
+              // Send the greeting as the first message in the session
+              await sendMessageToSession(greeting);
+            } catch (error) {
+              console.error('Error initializing chat:', error);
+            }
+          };
+          initializeNew();
+        }
+      }
+    }
+  }, [selectedPersona, currentSession, sessions, createNewSession, sendMessageToSession, loadSessionMessages]);
 
   const handleSendMessage = async () => {
-    if (input.trim() && selectedPersona) {
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: input,
-        timestamp: new Date()
-      };
-      setMessages((prevMessages) => [...prevMessages, userMessage]);
+    if (input.trim() && currentSession) {
       setInput('');
       setLoading(true);
 
       try {
-        const history = messages.map(msg => ({ role: msg.role, content: msg.content }));
-        const personaLabel = selectedPersona.coordinator_label || selectedPersona.display_name;
-        const aiResponse = await sendMessage(personaLabel, input, history);
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: aiResponse,
-          timestamp: new Date()
-        };
-        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+        await sendMessageToSession(input);
       } catch (error) {
         console.error('Error sending message:', error);
-        const errorMessage: Message = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content: `Error: ${error instanceof Error ? error.message : 'Could not send message. Backend may not be running.'}`,
-          timestamp: new Date()
-        };
-        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        // Error handling is done in the context
       } finally {
         setLoading(false);
       }
@@ -103,53 +93,140 @@ const Chat: React.FC = () => {
     );
   }
 
+  const handleExport = async () => {
+    try {
+      const exportData = await exportCurrentSession();
+      const blob = new Blob([exportData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentSession?.title || 'chat'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export chat:', error);
+      alert('Failed to export chat. Please try again.');
+    }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const exportData = JSON.parse(text);
+
+      // Validate the export data structure
+      if (!exportData.version || !exportData.session || !exportData.messages) {
+        throw new Error('Invalid export file format');
+      }
+
+      const newSession = await importSessionData(exportData);
+      await loadSessionMessages(newSession.id);
+
+      alert('Chat imported successfully!');
+    } catch (error) {
+      console.error('Failed to import chat:', error);
+      alert(`Failed to import chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      // Reset the input
+      event.target.value = '';
+    }
+  };
+
+  const handleSessionSelect = async (session: any) => {
+    // When switching sessions, update the selected persona to match the session
+    const sessionPersona = personas.find(p => p.key === session.persona_key);
+    if (sessionPersona) {
+      setSelectedPersona(sessionPersona);
+    }
+    await loadSessionMessages(session.id);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
-        <h1 className="text-2xl font-semibold text-center text-gray-900">
-          Chat with {selectedPersona.display_name}
-        </h1>
-      </div>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <SessionList onSessionSelect={handleSessionSelect} />
 
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-        {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            personaAvatar={`/images/${selectedPersona.image}`}
-            userAvatar="/images/user_avatar.png"
-            showTimestamp={false}
-          />
-        ))}
-        {loading && <TypingIndicator />}
-      </div>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {currentSession?.title || `Chat with ${selectedPersona.display_name}`}
+          </h1>
+          {currentSession && (
+            <div className="flex gap-2">
+              <label className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer" title="Import Chat">
+                Import
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+              </label>
+              <button
+                onClick={handleExport}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                title="Export Chat"
+              >
+                Export
+              </button>
+            </div>
+          )}
+        </div>
+        </div>
 
-      {/* Input Area */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4">
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder="Type a message..."
-            disabled={loading || !selectedPersona}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={loading || !selectedPersona || !input.trim()}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200"
-          >
-            Send
-          </button>
+        {/* Messages Container */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {messages.length === 0 && currentSession ? (
+            <div className="text-center text-gray-500 mt-8">
+              Start a conversation with {selectedPersona.display_name}!
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                personaAvatar={`/images/${selectedPersona.image}`}
+                userAvatar="/images/user_avatar.png"
+                showTimestamp={false}
+              />
+            ))
+          )}
+          {loading && <TypingIndicator />}
+        </div>
+
+        {/* Input Area */}
+        <div className="bg-white border-t border-gray-200 px-6 py-4">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="Type a message..."
+              disabled={loading || !currentSession}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={loading || !currentSession || !input.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200"
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>
