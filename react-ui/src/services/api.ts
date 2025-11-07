@@ -63,11 +63,38 @@ export const sendMessage = async (persona: string, message: string, history: Cha
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ persona, message, history }),
+    body: JSON.stringify({
+      persona,
+      message,
+      history
+    }),
   });
+
   if (!response.ok) {
-    throw new Error('Failed to send message');
+    const errorText = await response.text();
+    throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
   }
+
+  const data = await response.json();
+  return data.answer;
+};
+
+export const getPersonaGreeting = async (persona: string) => {
+  const response = await fetch(`${API_BASE_URL}/persona/greet`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      persona
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Greeting API Error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
   const data = await response.json();
   return data.answer;
 };

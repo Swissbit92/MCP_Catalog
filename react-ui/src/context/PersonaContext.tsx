@@ -6,6 +6,7 @@ interface Persona {
   style: string;
   image: string;
   rarity: string;
+  coordinator_label?: string;
   voice?: { // Optional, as not all personas might have it
     greeting: string;
   };

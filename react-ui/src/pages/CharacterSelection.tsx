@@ -34,6 +34,7 @@ const CharacterSelection: React.FC = () => {
           style: p.style,
           image: p.image.replace('ui/images/', ''),
           rarity: p.rarity,
+          coordinator_label: p.coordinator_label,
           voice: p.voice,
         }));
         setPersonas(mappedPersonas);
