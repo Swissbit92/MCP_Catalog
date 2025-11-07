@@ -13,7 +13,10 @@ const Header: React.FC = () => {
     }}>
       <nav>
         <Link to="/" style={{ marginRight: '1rem', textDecoration: 'none', color: '#007bff' }}>
-          Character Selection
+          Home
+        </Link>
+        <Link to="/select" style={{ marginRight: '1rem', textDecoration: 'none', color: '#007bff' }}>
+          Characters
         </Link>
         <Link to="/chat" style={{ textDecoration: 'none', color: '#007bff' }}>
           Chat
