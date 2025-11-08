@@ -13,6 +13,7 @@ jest.mock('../context/PersonaContext', () => ({
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  MemoryRouter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 import React from 'react';

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
 import SessionList from '../components/SessionList';
@@ -11,6 +12,7 @@ const Chat: React.FC = () => {
   const [initializingSession, setInitializingSession] = useState<boolean>(false);
   const [personas, setPersonas] = useState<any[]>([]);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona } = usePersona();
 
   useEffect(() => {
@@ -37,6 +39,13 @@ const Chat: React.FC = () => {
   }, []);
 
 
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (selectedPersona && !initializingRef.current) {
@@ -225,12 +234,18 @@ const Chat: React.FC = () => {
             ))
           )}
           {loading && !initializingSession && <TypingIndicator />}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4">
+        <motion.div
+          className="bg-white border-t border-gray-200 px-6 py-4"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+        >
           <div className="flex gap-3">
-            <input
+            <motion.input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -240,19 +255,24 @@ const Chat: React.FC = () => {
                   handleSendMessage();
                 }
               }}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               placeholder={initializingSession ? "Loading character..." : "Type a message..."}
               disabled={loading || !currentSession || initializingSession}
+              whileFocus={{ scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             />
-            <button
+            <motion.button
               onClick={handleSendMessage}
               disabled={loading || !currentSession || !input.trim() || initializingSession}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             >
               Send
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

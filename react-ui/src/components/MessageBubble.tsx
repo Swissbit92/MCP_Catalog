@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Avatar2D } from './Avatar2D';
 
 export interface Message {
@@ -26,7 +27,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
 
   return (
-    <div className={`flex gap-3 mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <motion.div
+      className={`flex gap-3 mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        type: 'spring',
+        stiffness: 300,
+        damping: 25,
+        duration: 0.4
+      }}
+    >
       {/* Avatar - only show for assistant messages */}
       {!isUser && (
         <div className="flex-shrink-0">
@@ -41,17 +52,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       {/* Message bubble */}
       <div className={`max-w-[70%] ${isUser ? 'order-first' : ''}`}>
-        <div
+        <motion.div
           className={`px-4 py-3 rounded-2xl shadow-sm ${
             isUser
               ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md'
               : 'bg-gray-100 text-gray-900 rounded-bl-md border border-gray-200'
           }`}
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         >
           <div className="text-sm leading-relaxed whitespace-pre-wrap">
             {message.content}
           </div>
-        </div>
+        </motion.div>
 
         {/* Timestamp */}
         {showTimestamp && message.timestamp && (
@@ -75,6 +88,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
