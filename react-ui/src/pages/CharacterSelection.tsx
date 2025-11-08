@@ -33,6 +33,7 @@ const CharacterSelection: React.FC = () => {
           display_name: p.display_name || p.key,
           style: p.style,
           image: p.image.replace('ui/images/', ''),
+          avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
           rarity: p.rarity,
           coordinator_label: p.coordinator_label,
           voice: p.voice,
