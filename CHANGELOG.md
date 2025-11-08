@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive testing setup with Jest and pytest
 - **Unified startup script** (`run_react.py`) that launches both backend and frontend together
 - **CORS support** in FastAPI for cross-origin requests from React UI
+- **Header Component Enhancement (Phase 1)**: Modern dark theme header with rarity-based active page highlighting, responsive layout, and branding
 
 ### Changed
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed "Ready to Pull?" interface from character selection page
   - Improved separation of concerns between pulling and browsing experiences
 - **React Migration Completed**: Full migration from Streamlit to React UI with working chat functionality
+- **Header Component Planning**: Documented phased approach for modern header redesign with vibrant colors and highlighting
 
 ### Technical Improvements
 - Optimized React build (116KB gzipped)
