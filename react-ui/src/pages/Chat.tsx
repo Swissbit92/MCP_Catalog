@@ -17,7 +17,18 @@ const Chat: React.FC = () => {
     const loadPersonas = async () => {
       try {
         const fetchedPersonas = await fetchPersonas();
-        setPersonas(fetchedPersonas);
+        // Process personas the same way as CharacterSelection to include avatar field
+        const processedPersonas = fetchedPersonas.map(p => ({
+          key: p.key,
+          display_name: p.display_name || p.key,
+          style: p.style,
+          image: p.image.replace('ui/images/', ''),
+          avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
+          rarity: p.rarity,
+          coordinator_label: p.coordinator_label,
+          voice: p.voice,
+        }));
+        setPersonas(processedPersonas);
       } catch (error) {
         console.error('Failed to load personas:', error);
       }
@@ -207,7 +218,7 @@ const Chat: React.FC = () => {
               <MessageBubble
                 key={msg.id}
                 message={msg}
-                personaAvatar={`/images/${selectedPersona.image}`}
+                personaAvatar={selectedPersona.avatar ? `/images/${selectedPersona.avatar}` : `/images/${selectedPersona.image}`}
                 userAvatar="/images/user_avatar.png"
                 showTimestamp={false}
               />

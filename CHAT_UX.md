@@ -18,6 +18,7 @@ Transform the current basic chat interface into a modern, feature-rich messaging
 - **Session management**: Automatic loading of recent chats or creation of new ones
 - **Input blocking**: Chat input disabled until initial greeting is loaded
 - **Proper greeting handling**: Greetings appear as assistant messages, not user input
+- **Avatar images**: Dedicated avatar images display correctly and persist when switching between chats
 
 ### ❌ **Remaining Issues**
 - **Visual design**: Basic styling, could use message bubbles and avatars
@@ -241,6 +242,7 @@ interface RichContent {
 - [x] Model-generated greetings instead of static text
 - [x] Proper greeting handling (assistant messages, not user input)
 - [x] Input blocking during greeting generation
+- [x] Avatar images display correctly and persist when switching chats
 - [ ] Latency tracking and error recovery
 - [ ] Mobile-responsive design
 - [ ] Professional polish matching modern chat apps
