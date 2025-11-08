@@ -7,7 +7,7 @@ Transform the current basic chat interface into a modern, feature-rich messaging
 
 ### ✅ **What's Working**
 - Basic message send/receive flow
-- Persona greeting system (model-generated via API)
+- **Persona greeting system**: Model-generated greetings via API (not static text)
 - Loading states during API calls
 - Error handling for failed requests
 - Responsive layout with input field
@@ -16,12 +16,14 @@ Transform the current basic chat interface into a modern, feature-rich messaging
 - **Chat export functionality**: Save conversations as JSON
 - **Persona switching**: Seamless navigation between different persona chats
 - **Session management**: Automatic loading of recent chats or creation of new ones
+- **Input blocking**: Chat input disabled until initial greeting is loaded
+- **Proper greeting handling**: Greetings appear as assistant messages, not user input
 
 ### ❌ **Remaining Issues**
 - **Visual design**: Basic styling, could use message bubbles and avatars
 - **Typing indicators**: Static "Typing..." text (could be animated)
 - **Latency feedback**: No performance metrics display
-- **Blocking UI**: Synchronous requests could be improved
+- **Async handling**: Current implementation blocks UI during requests
 - **Message timestamps**: No temporal context
 - **Rich formatting**: Plain text only
 
@@ -193,14 +195,14 @@ Chat/
 
 ### API Integration Plan ✅ **PHASE 2 COMPLETED**
 - **Current**: Full chat persistence and persona APIs integrated
-- **Phase 1**: ✅ `/persona/greet` for dynamic greetings
+- **Phase 1**: ✅ `/persona/greet` for dynamic greetings (now properly implemented)
 - **Phase 2**: ✅ Full chat persistence APIs integrated:
   - `GET /sessions` - List chats
   - `POST /sessions` - Create chat
   - `GET /sessions/{id}/messages` - Load messages
   - `POST /sessions/{id}/messages` - Save messages
   - `DELETE /sessions/{id}` - Delete chat
-  - `GET /persona/greet` - Dynamic greetings
+  - `POST /sessions/{id}/greet` - Direct greeting addition to sessions
 
 ### State Management Strategy
 ```typescript
@@ -237,6 +239,8 @@ interface RichContent {
 - [x] Multiple conversation support with sidebar
 - [x] Export functionality for chat transcripts
 - [x] Model-generated greetings instead of static text
+- [x] Proper greeting handling (assistant messages, not user input)
+- [x] Input blocking during greeting generation
 - [ ] Latency tracking and error recovery
 - [ ] Mobile-responsive design
 - [ ] Professional polish matching modern chat apps

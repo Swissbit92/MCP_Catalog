@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CORS middleware to FastAPI backend
 - Enhanced error handling and user feedback in chat interface
 
+### Fixed
+- **Chat Session Creation**: Fixed double session creation when selecting new personas
+- **Greeting Message Handling**: Fixed greeting messages appearing as user input instead of assistant messages
+- **Persona Mixing**: Fixed greeting messages being sent to wrong sessions when switching chats during loading
+- **Input Blocking**: Added proper blocking of chat input until initial greeting messages are generated
+- **Loading States**: Added visual feedback during session creation and greeting generation
+
 ### Documentation
 - Updated README with new unified startup process and React UI focus
 - Enhanced GACHA_UX_ROADMAP.md with current implementation status
