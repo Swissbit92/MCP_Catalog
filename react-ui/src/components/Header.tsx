@@ -1,21 +1,104 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+
+// Particle component for floating background effects
+const FloatingParticles: React.FC = () => {
+  const particles = Array.from({ length: 8 }, (_, i) => i);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle}
+          className="absolute w-1 h-1 bg-white/20 rounded-full"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+          }}
+          animate={{
+            y: [0, -20, 0],
+            x: [0, Math.random() * 10 - 5, 0],
+            opacity: [0.2, 0.5, 0.2],
+          }}
+          transition={{
+            duration: 3 + Math.random() * 2,
+            repeat: Infinity,
+            delay: Math.random() * 2,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const Header: React.FC = () => {
   const location = useLocation();
+  const [currentTheme, setCurrentTheme] = useState<'legendary' | 'epic' | 'rare'>('legendary');
+  const backgroundControls = useAnimation();
+
+  // Update theme based on current page
+  useEffect(() => {
+    switch (location.pathname) {
+      case '/':
+        setCurrentTheme('legendary');
+        break;
+      case '/select':
+        setCurrentTheme('epic');
+        break;
+      case '/chat':
+        setCurrentTheme('rare');
+        break;
+      default:
+        setCurrentTheme('legendary');
+    }
+  }, [location.pathname]);
+
+  // Dynamic background animation based on theme
+  useEffect(() => {
+    const themeColors = {
+      legendary: {
+        primary: 'rgba(255, 215, 0, 0.1)',
+        secondary: 'rgba(255, 240, 166, 0.05)',
+        accent: 'rgba(255, 208, 80, 0.08)'
+      },
+      epic: {
+        primary: 'rgba(186, 120, 255, 0.1)',
+        secondary: 'rgba(246, 212, 255, 0.05)',
+        accent: 'rgba(186, 120, 255, 0.08)'
+      },
+      rare: {
+        primary: 'rgba(66, 245, 255, 0.1)',
+        secondary: 'rgba(212, 246, 255, 0.05)',
+        accent: 'rgba(66, 245, 255, 0.08)'
+      }
+    };
+
+    const colors = themeColors[currentTheme];
+
+    backgroundControls.start({
+      background: [
+        `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
+        `radial-gradient(circle at 80% 20%, ${colors.secondary}, transparent 50%)`,
+        `radial-gradient(circle at 40% 80%, ${colors.accent}, transparent 50%)`,
+        `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
+      ],
+      transition: { duration: 8, repeat: Infinity, ease: "linear" }
+    });
+  }, [currentTheme, backgroundControls]);
 
   // Rarity-based colors for active page highlighting
   const getActiveColor = (path: string) => {
     if (location.pathname === path) {
       switch (path) {
-        case '/': return 'text-yellow-300 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]'; // Legendary gold
-        case '/select': return 'text-purple-300 drop-shadow-[0_0_8px_rgba(186,120,255,0.8)]'; // Epic purple
-        case '/chat': return 'text-cyan-300 drop-shadow-[0_0_8px_rgba(66,245,255,0.8)]'; // Rare cyan
+        case '/': return 'text-yellow-300 drop-shadow-[0_0_12px_rgba(255,215,0,0.9)]'; // Legendary gold
+        case '/select': return 'text-purple-300 drop-shadow-[0_0_12px_rgba(186,120,255,0.9)]'; // Epic purple
+        case '/chat': return 'text-cyan-300 drop-shadow-[0_0_12px_rgba(66,245,255,0.9)]'; // Rare cyan
         default: return 'text-gray-300';
       }
     }
-    return 'text-gray-300 hover:text-white transition-colors duration-200';
+    return 'text-gray-300 hover:text-white transition-all duration-300';
   };
 
   // Animation variants
@@ -48,23 +131,38 @@ const Header: React.FC = () => {
 
   return (
     <motion.header
-      className="relative bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/50 backdrop-blur-sm"
+      className="relative overflow-hidden"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      {/* Animated background pattern */}
+      {/* Enhanced glassmorphism background with multiple layers */}
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80 backdrop-blur-lg"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 via-slate-800/60 to-slate-900/60 backdrop-blur-md"></div>
+
+      {/* Dynamic theme-based background animation */}
       <motion.div
-        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.02),transparent_50%)] opacity-30"
+        className="absolute inset-0 opacity-40"
+        animate={backgroundControls}
+      ></motion.div>
+
+      {/* Floating particles */}
+      <FloatingParticles />
+
+      {/* Subtle animated border */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-600/50 to-transparent"
         animate={{
           background: [
-            "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02), transparent 50%)",
-            "radial-gradient(circle at 30% 70%, rgba(255,215,0,0.01), transparent 50%)",
-            "radial-gradient(circle at 70% 30%, rgba(186,120,255,0.01), transparent 50%)",
-            "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02), transparent 50%)"
+            "linear-gradient(to right, transparent, rgba(148, 163, 184, 0.3), transparent)",
+            "linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent)",
+            "linear-gradient(to right, transparent, rgba(186, 120, 255, 0.2), transparent)",
+            "linear-gradient(to right, transparent, rgba(66, 245, 255, 0.2), transparent)",
+            "linear-gradient(to right, transparent, rgba(148, 163, 184, 0.3), transparent)",
           ]
         }}
-        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
       ></motion.div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,7 +170,7 @@ const Header: React.FC = () => {
           className="flex justify-between items-center h-16"
           variants={containerVariants}
         >
-          {/* Logo/Branding Section */}
+          {/* Enhanced Logo/Branding Section */}
           <motion.div
             className="flex items-center space-x-3"
             variants={itemVariants}
@@ -82,15 +180,29 @@ const Header: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
+              {/* Enhanced logo with animated glow */}
               <motion.div
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg"
+                className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 flex items-center justify-center shadow-lg"
                 whileHover={{
                   rotate: [0, -10, 10, 0],
+                  scale: 1.1,
                   transition: { duration: 0.5 }
+                }}
+                animate={{
+                  boxShadow: [
+                    "0 0 20px rgba(255, 215, 0, 0.3)",
+                    "0 0 30px rgba(255, 215, 0, 0.5)",
+                    "0 0 20px rgba(255, 215, 0, 0.3)"
+                  ]
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut"
                 }}
               >
                 <motion.span
-                  className="text-slate-900 font-bold text-sm"
+                  className="text-slate-900 font-bold text-sm relative z-10"
                   animate={{
                     rotate: [0, 10, -10, 0],
                   }}
@@ -103,17 +215,58 @@ const Header: React.FC = () => {
                 >
                   🎭
                 </motion.span>
+
+                {/* Animated background glow */}
+                <motion.div
+                  className="absolute inset-0 rounded-lg bg-gradient-to-br from-yellow-300 to-orange-400 opacity-50"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.6, 0.3]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.5
+                  }}
+                />
               </motion.div>
+
               <div className="hidden sm:block">
+                {/* Animated typography with gradient effects */}
                 <motion.h1
-                  className="text-lg font-bold bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent"
+                  className="text-lg font-bold bg-gradient-to-r from-yellow-300 via-orange-300 to-pink-300 bg-clip-text text-transparent relative"
                   variants={itemVariants}
+                  animate={{
+                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                  style={{
+                    backgroundSize: "200% 200%",
+                    filter: "drop-shadow(0 0 8px rgba(255, 215, 0, 0.3))"
+                  }}
                 >
                   Persona Chat
                 </motion.h1>
                 <motion.p
                   className="text-xs text-slate-400 leading-tight"
                   variants={itemVariants}
+                  animate={{
+                    textShadow: [
+                      "0 0 4px rgba(148, 163, 184, 0.3)",
+                      "0 0 8px rgba(255, 215, 0, 0.2)",
+                      "0 0 4px rgba(148, 163, 184, 0.3)"
+                    ]
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
                 >
                   Gacha Style
                 </motion.p>
@@ -121,39 +274,99 @@ const Header: React.FC = () => {
             </motion.div>
           </motion.div>
 
-          {/* Navigation */}
+          {/* Enhanced Navigation */}
           <motion.nav
             className="flex items-center space-x-1"
             variants={itemVariants}
           >
             {[
-              { to: '/', label: 'Home' },
-              { to: '/select', label: 'Characters' },
-              { to: '/chat', label: 'Chat' }
+              { to: '/', label: 'Home', color: 'yellow' },
+              { to: '/select', label: 'Characters', color: 'purple' },
+              { to: '/chat', label: 'Chat', color: 'cyan' }
             ].map((item, index) => (
               <motion.div
                 key={item.to}
-                variants={navItemVariants}
+                className="relative"
                 initial="idle"
                 whileHover="hover"
                 whileTap="tap"
+                variants={navItemVariants}
                 custom={index}
               >
                 <Link
                   to={item.to}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${getActiveColor(item.to)}`}
+                  className={`relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 ${getActiveColor(item.to)} overflow-hidden`}
                 >
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={location.pathname === item.to ? 'active' : 'inactive'}
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {item.label}
-                    </motion.span>
-                  </AnimatePresence>
+                  {/* Background glow effect */}
+                  <motion.div
+                    className={`absolute inset-0 rounded-lg opacity-0 ${
+                      item.color === 'yellow' ? 'bg-yellow-500/20' :
+                      item.color === 'purple' ? 'bg-purple-500/20' :
+                      'bg-cyan-500/20'
+                    }`}
+                    whileHover={{ opacity: 0.3 }}
+                    transition={{ duration: 0.2 }}
+                  />
+
+                  {/* Animated text with glow */}
+                  <motion.span
+                    className="relative z-10"
+                    animate={location.pathname === item.to ? {
+                      textShadow: [
+                        `0 0 8px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : '66,245,255'}, 0.6)`,
+                        `0 0 12px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : '66,245,255'}, 0.8)`,
+                        `0 0 8px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : '66,245,255'}, 0.6)`
+                      ]
+                    } : {}}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={location.pathname === item.to ? 'active' : 'inactive'}
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {item.label}
+                      </motion.span>
+                    </AnimatePresence>
+                  </motion.span>
+
+                  {/* Hover particle effect */}
+                  <motion.div
+                    className="absolute inset-0 opacity-0"
+                    whileHover={{ opacity: 1 }}
+                  >
+                    {[...Array(3)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className={`absolute w-1 h-1 rounded-full ${
+                          item.color === 'yellow' ? 'bg-yellow-400' :
+                          item.color === 'purple' ? 'bg-purple-400' :
+                          'bg-cyan-400'
+                        }`}
+                        initial={{
+                          x: '50%',
+                          y: '50%',
+                          scale: 0,
+                          opacity: 0
+                        }}
+                        animate={{
+                          x: [`50%`, `${40 + Math.random() * 20}%`],
+                          y: [`50%`, `${30 + Math.random() * 40}%`],
+                          scale: [0, 1, 0],
+                          opacity: [0, 0.8, 0]
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          delay: i * 0.2,
+                          repeat: Infinity,
+                          ease: "easeOut"
+                        }}
+                      />
+                    ))}
+                  </motion.div>
                 </Link>
               </motion.div>
             ))}
