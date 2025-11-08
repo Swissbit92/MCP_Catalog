@@ -1,30 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Particle component for floating background effects
 const FloatingParticles: React.FC = () => {
-  const particles = Array.from({ length: 8 }, (_, i) => i);
+  const particles = Array.from({ length: 12 }, (_, i) => i);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {particles.map((particle) => (
         <motion.div
           key={particle}
-          className="absolute w-1 h-1 bg-white/20 rounded-full"
+          className="absolute w-2 h-2 bg-white/40 rounded-full shadow-lg"
           style={{
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,
           }}
           animate={{
-            y: [0, -20, 0],
-            x: [0, Math.random() * 10 - 5, 0],
-            opacity: [0.2, 0.5, 0.2],
+            y: [0, -30, 0],
+            x: [0, Math.random() * 15 - 7.5, 0],
+            opacity: [0.3, 0.8, 0.3],
+            scale: [0.8, 1.2, 0.8],
           }}
           transition={{
-            duration: 3 + Math.random() * 2,
+            duration: 4 + Math.random() * 3,
             repeat: Infinity,
-            delay: Math.random() * 2,
+            delay: Math.random() * 3,
             ease: "easeInOut",
           }}
         />
@@ -36,57 +37,59 @@ const FloatingParticles: React.FC = () => {
 const Header: React.FC = () => {
   const location = useLocation();
   const [currentTheme, setCurrentTheme] = useState<'legendary' | 'epic' | 'rare'>('legendary');
-  const backgroundControls = useAnimation();
 
   // Update theme based on current page
   useEffect(() => {
+    let newTheme: 'legendary' | 'epic' | 'rare' = 'legendary';
     switch (location.pathname) {
       case '/':
-        setCurrentTheme('legendary');
+        newTheme = 'legendary';
         break;
       case '/select':
-        setCurrentTheme('epic');
+        newTheme = 'epic';
         break;
       case '/chat':
-        setCurrentTheme('rare');
+        newTheme = 'rare';
         break;
       default:
-        setCurrentTheme('legendary');
+        newTheme = 'legendary';
     }
+    console.log('Header theme changed to:', newTheme, 'for path:', location.pathname);
+    setCurrentTheme(newTheme);
   }, [location.pathname]);
 
-  // Dynamic background animation based on theme
-  useEffect(() => {
+  // Get theme-based background animation
+  const getBackgroundAnimation = () => {
     const themeColors = {
       legendary: {
-        primary: 'rgba(255, 215, 0, 0.1)',
-        secondary: 'rgba(255, 240, 166, 0.05)',
-        accent: 'rgba(255, 208, 80, 0.08)'
+        primary: 'rgba(255, 215, 0, 0.15)',
+        secondary: 'rgba(255, 240, 166, 0.08)',
+        accent: 'rgba(255, 208, 80, 0.12)'
       },
       epic: {
-        primary: 'rgba(186, 120, 255, 0.1)',
-        secondary: 'rgba(246, 212, 255, 0.05)',
-        accent: 'rgba(186, 120, 255, 0.08)'
+        primary: 'rgba(186, 120, 255, 0.15)',
+        secondary: 'rgba(246, 212, 255, 0.08)',
+        accent: 'rgba(186, 120, 255, 0.12)'
       },
       rare: {
-        primary: 'rgba(66, 245, 255, 0.1)',
-        secondary: 'rgba(212, 246, 255, 0.05)',
-        accent: 'rgba(66, 245, 255, 0.08)'
+        primary: 'rgba(66, 245, 255, 0.15)',
+        secondary: 'rgba(212, 246, 255, 0.08)',
+        accent: 'rgba(66, 245, 255, 0.12)'
       }
     };
 
     const colors = themeColors[currentTheme];
 
-    backgroundControls.start({
+    return {
       background: [
         `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
         `radial-gradient(circle at 80% 20%, ${colors.secondary}, transparent 50%)`,
         `radial-gradient(circle at 40% 80%, ${colors.accent}, transparent 50%)`,
+        `radial-gradient(circle at 60% 30%, ${colors.primary}, transparent 50%)`,
         `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
-      ],
-      transition: { duration: 8, repeat: Infinity, ease: "linear" }
-    });
-  }, [currentTheme, backgroundControls]);
+      ]
+    };
+  };
 
   // Rarity-based colors for active page highlighting
   const getActiveColor = (path: string) => {
@@ -141,28 +144,35 @@ const Header: React.FC = () => {
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80 backdrop-blur-lg"></div>
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 via-slate-800/60 to-slate-900/60 backdrop-blur-md"></div>
 
-      {/* Dynamic theme-based background animation */}
+      {/* Dynamic theme-based background animation - HIGHLY VISIBLE */}
       <motion.div
-        className="absolute inset-0 opacity-40"
-        animate={backgroundControls}
+        className="absolute inset-0 opacity-60"
+        animate={getBackgroundAnimation()}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        key={currentTheme} // Force re-animation when theme changes
       ></motion.div>
 
       {/* Floating particles */}
       <FloatingParticles />
 
-      {/* Subtle animated border */}
+      {/* HIGHLY VISIBLE animated border */}
       <motion.div
-        className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-600/50 to-transparent"
+        className="absolute bottom-0 left-0 right-0 h-1"
         animate={{
           background: [
-            "linear-gradient(to right, transparent, rgba(148, 163, 184, 0.3), transparent)",
-            "linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent)",
-            "linear-gradient(to right, transparent, rgba(186, 120, 255, 0.2), transparent)",
-            "linear-gradient(to right, transparent, rgba(66, 245, 255, 0.2), transparent)",
-            "linear-gradient(to right, transparent, rgba(148, 163, 184, 0.3), transparent)",
+            "linear-gradient(to right, transparent, rgba(255, 215, 0, 0.8), transparent)",
+            "linear-gradient(to right, transparent, rgba(186, 120, 255, 0.8), transparent)",
+            "linear-gradient(to right, transparent, rgba(66, 245, 255, 0.8), transparent)",
+            "linear-gradient(to right, transparent, rgba(255, 215, 0, 0.8), transparent)",
+          ],
+          boxShadow: [
+            "0 0 10px rgba(255, 215, 0, 0.5)",
+            "0 0 10px rgba(186, 120, 255, 0.5)",
+            "0 0 10px rgba(66, 245, 255, 0.5)",
+            "0 0 10px rgba(255, 215, 0, 0.5)",
           ]
         }}
-        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       ></motion.div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
