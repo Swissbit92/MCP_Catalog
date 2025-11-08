@@ -25,7 +25,7 @@ interface PersonaContextType {
   loadSessionMessages: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
   deleteSessionById: (sessionId: string) => Promise<void>;
-  sendMessage: (message: string) => Promise<Message>;
+  sendMessage: (message: string, sessionId?: string) => Promise<Message>;
   exportCurrentSession: () => Promise<string>;
   importSessionData: (exportData: any) => Promise<ChatSession>;
 }
@@ -90,32 +90,44 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const sendMessage = async (message: string): Promise<Message> => {
-    if (!currentSession) {
-      throw new Error('No current session selected');
+  const sendMessage = async (message: string, sessionId?: string): Promise<Message> => {
+    const targetSessionId = sessionId || currentSession?.id;
+    if (!targetSessionId) {
+      throw new Error('No session selected');
     }
-    console.log('Sending message to session:', currentSession.id, 'Message:', message);
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
+
+    // Only update UI messages if this is for the current session
+    const shouldUpdateUI = !sessionId || targetSessionId === currentSession?.id;
+
+    console.log('Sending message to session:', targetSessionId, 'Message:', message);
+
+    if (shouldUpdateUI) {
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, userMessage]);
+    }
 
     try {
-      const assistantMessage = await sendMessageToSession(currentSession.id, message);
+      const assistantMessage = await sendMessageToSession(targetSessionId, message);
       console.log('Received assistant message:', assistantMessage);
-      setMessages(prev => [...prev, assistantMessage]);
 
-      // Refresh session list to update message count
-      loadSessions();
+      if (shouldUpdateUI) {
+        setMessages(prev => [...prev, assistantMessage]);
+        // Refresh session list to update message count
+        loadSessions();
+      }
 
       return assistantMessage;
     } catch (error) {
       console.error('Error sending message:', error);
-      // Remove the user message if sending failed
-      setMessages(prev => prev.slice(0, -1));
+      if (shouldUpdateUI) {
+        // Remove the user message if sending failed
+        setMessages(prev => prev.slice(0, -1));
+      }
       throw error;
     }
   };

@@ -18,6 +18,7 @@ pyvenv.cfg
 
 # Databases
 *.db
+chat.db
 
 # Node.js
 node_modules/

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
 import SessionList from '../components/SessionList';
@@ -8,8 +8,10 @@ import { usePersona } from '../context/PersonaContext';
 const Chat: React.FC = () => {
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [initializingSession, setInitializingSession] = useState<boolean>(false);
   const [personas, setPersonas] = useState<any[]>([]);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage: sendMessageToSession, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona } = usePersona();
+  const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
@@ -26,46 +28,53 @@ const Chat: React.FC = () => {
 
 
   useEffect(() => {
-    if (selectedPersona) {
-      const existingSessions = sessions.filter(s => s.persona_key === selectedPersona.key);
-      if (existingSessions.length > 0) {
-        // Load the most recent session for this persona
-        const mostRecentSession = existingSessions.reduce((latest, current) =>
-          new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-        );
-        if (!currentSession || currentSession.id !== mostRecentSession.id) {
-          loadSessionMessages(mostRecentSession.id);
-        }
-      } else {
-        // No existing sessions, create a new one
-        if (!currentSession || currentSession.persona_key !== selectedPersona.key) {
-          const initializeNew = async () => {
-            try {
-              const session = await createNewSession(selectedPersona.key, `Chat with ${selectedPersona.display_name}`);
+    if (selectedPersona && !initializingRef.current) {
+      // Prevent multiple initializations for the same persona
+      initializingRef.current = selectedPersona.key;
+      setInitializingSession(true);
 
-              // Load greeting for the persona
-              const personaLabel = selectedPersona.coordinator_label || selectedPersona.display_name;
-              const greeting = await getPersonaGreeting(personaLabel);
-
-              // Send the greeting as the first message in the session
-              await sendMessageToSession(greeting);
-            } catch (error) {
-              console.error('Error initializing chat:', error);
+      const initializeChat = async () => {
+        try {
+          const existingSessions = sessions.filter(s => s.persona_key === selectedPersona.key);
+          if (existingSessions.length > 0) {
+            // Load the most recent session for this persona
+            const mostRecentSession = existingSessions.reduce((latest, current) =>
+              new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
+            );
+            if (!currentSession || currentSession.id !== mostRecentSession.id) {
+              await loadSessionMessages(mostRecentSession.id);
             }
-          };
-          initializeNew();
+          } else {
+            // No existing sessions, create a new one with greeting
+            const newSession = await createNewSession(selectedPersona.key, `Chat with ${selectedPersona.display_name}`);
+
+            // Load greeting for the persona - use the persona we captured at the start
+            const personaLabel = selectedPersona.coordinator_label || selectedPersona.display_name;
+            const greeting = await getPersonaGreeting(personaLabel);
+
+            // Send the greeting to the specific session we just created, not the current one
+            await sendMessage(greeting, newSession.id);
+          }
+        } catch (error) {
+          console.error('Error initializing chat:', error);
+        } finally {
+          initializingRef.current = null;
+          setInitializingSession(false);
         }
-      }
+      };
+
+      initializeChat();
     }
-  }, [selectedPersona, currentSession, sessions, createNewSession, sendMessageToSession, loadSessionMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPersona?.key]); // Only depend on the persona key to prevent double execution
 
   const handleSendMessage = async () => {
-    if (input.trim() && currentSession) {
+    if (input.trim() && currentSession && !initializingSession) {
       setInput('');
       setLoading(true);
 
       try {
-        await sendMessageToSession(input);
+        await sendMessage(input);
       } catch (error) {
         console.error('Error sending message:', error);
         // Error handling is done in the context
@@ -184,9 +193,14 @@ const Chat: React.FC = () => {
 
         {/* Messages Container */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {messages.length === 0 && currentSession ? (
+          {messages.length === 0 && currentSession && !initializingSession ? (
             <div className="text-center text-gray-500 mt-8">
               Start a conversation with {selectedPersona.display_name}!
+            </div>
+          ) : messages.length === 0 && initializingSession ? (
+            <div className="text-center text-gray-500 mt-8">
+              <TypingIndicator />
+              <p className="mt-2">Loading {selectedPersona.display_name}...</p>
             </div>
           ) : (
             messages.map((msg) => (
@@ -199,7 +213,7 @@ const Chat: React.FC = () => {
               />
             ))
           )}
-          {loading && <TypingIndicator />}
+          {loading && !initializingSession && <TypingIndicator />}
         </div>
 
         {/* Input Area */}
@@ -216,12 +230,12 @@ const Chat: React.FC = () => {
                 }
               }}
               className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder="Type a message..."
-              disabled={loading || !currentSession}
+              placeholder={initializingSession ? "Loading character..." : "Type a message..."}
+              disabled={loading || !currentSession || initializingSession}
             />
             <button
               onClick={handleSendMessage}
-              disabled={loading || !currentSession || !input.trim()}
+              disabled={loading || !currentSession || !input.trim() || initializingSession}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200"
             >
               Send
