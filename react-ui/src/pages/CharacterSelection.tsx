@@ -119,7 +119,7 @@ const CharacterSelection: React.FC = () => {
           </div>
         </div>
         <div className={styles['cards-grid']}>
-          {filteredPersonas.map((persona) => (
+          {filteredPersonas.map((persona, index) => (
             <CharacterCard
               key={persona.key}
               personaKey={persona.key}
@@ -129,6 +129,7 @@ const CharacterSelection: React.FC = () => {
               rarity={persona.rarity}
               onSelect={handleCharacterSelect}
               isSelected={false}
+              index={index}
             />
           ))}
         </div>

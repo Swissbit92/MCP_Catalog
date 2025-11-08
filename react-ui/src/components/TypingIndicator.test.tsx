@@ -12,7 +12,7 @@ describe('TypingIndicator', () => {
   it('renders three animated dots', () => {
     const { container } = render(<TypingIndicator />);
 
-    const dots = container.querySelectorAll('[class*="w-2 h-2 bg-gray-400 rounded-full"]');
+    const dots = container.querySelectorAll('[class*="w-2.5 h-2.5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full"]');
     expect(dots).toHaveLength(3);
   });
 
