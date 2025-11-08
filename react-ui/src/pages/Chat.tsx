@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
 import SessionList from '../components/SessionList';
-import { getPersonaGreeting, fetchPersonas } from '../services/api';
+import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 
 const Chat: React.FC = () => {
@@ -48,12 +48,12 @@ const Chat: React.FC = () => {
             // No existing sessions, create a new one with greeting
             const newSession = await createNewSession(selectedPersona.key, `Chat with ${selectedPersona.display_name}`);
 
-            // Load greeting for the persona - use the persona we captured at the start
+            // Generate greeting for the persona and add it directly as an assistant message
             const personaLabel = selectedPersona.coordinator_label || selectedPersona.display_name;
-            const greeting = await getPersonaGreeting(personaLabel);
+            await greetWithSession(newSession.id, personaLabel);
 
-            // Send the greeting to the specific session we just created, not the current one
-            await sendMessage(greeting, newSession.id);
+            // Load the session messages to display the greeting
+            await loadSessionMessages(newSession.id);
           }
         } catch (error) {
           console.error('Error initializing chat:', error);

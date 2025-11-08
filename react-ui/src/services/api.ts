@@ -241,3 +241,27 @@ export const importSession = async (exportData: ExportData): Promise<ChatSession
   }
   return response.json();
 };
+
+export const greetWithSession = async (sessionId: string, persona: string): Promise<Message> => {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/greet`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      persona,
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Greeting API Error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+  const data = await response.json();
+  // Convert API response to Message object
+  return {
+    id: `assistant-greeting-${Date.now()}`,
+    role: 'assistant',
+    content: data.answer,
+    timestamp: new Date(),
+  };
+};
