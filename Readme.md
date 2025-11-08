@@ -110,7 +110,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 
 ## 🧩 High level Architecture
 
-    ```bash
+```bash
                            🧠  GraphRAG Coordinator UI
                    ╔═══════════════════════════════════════╗
                    ║          React Frontend               ║
@@ -134,8 +134,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
                   ╔═══════════════════════════════════════╗
                   ║ 🤖 Ollama LLM Engine (Local Models)   ║
                   ╚═══════════════════════════════════════╝
-
-    ```
+```
 
 ---
 
