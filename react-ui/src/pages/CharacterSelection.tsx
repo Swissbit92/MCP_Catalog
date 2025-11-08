@@ -21,7 +21,7 @@ const CharacterSelection: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const { setSelectedPersona, sessions, loadSessionMessages } = usePersona();
+  const { setSelectedPersona } = usePersona();
   const navigate = useNavigate();
 
   useEffect(() => {
