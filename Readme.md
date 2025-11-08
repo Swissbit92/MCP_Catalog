@@ -1,11 +1,83 @@
-# 🧠 MCP Coordinator - Persona Chat Interface (Chat only for now)
+# 🧠 MCP Coordinator - Persona Chat Interface
 
 > **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**
 > _Private • Local-First • React + FastAPI Coordinator_
 
-  ---
+<div align="center">
 
-## Contributing & Guidelines
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![React](https://img.shields.io/badge/React-18+-61dafb.svg)](https://reactjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com)
+[![Ollama](https://img.shields.io/badge/Ollama-Latest-orange.svg)](https://ollama.ai)
+
+**🚀 One-Command Setup • 🎭 Multiple Personas • 💬 Persistent Chat**
+
+[Quick Start](#-quick-start) • [Installation](#-installation) • [Usage](#-usage)
+
+</div>
+
+---
+
+## 📋 Table of Contents
+- [✨ Features](#-features)
+- [🔧 System Requirements](#-system-requirements)
+- [⚡ Quick Start](#-quick-start)
+- [🧩 Installation](#-installation)
+- [🚀 Usage](#-usage)
+- [🎭 Managing Personas](#-managing-personas)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🎭 **Multiple Personas** | Chat with Eeva, Frieren, Gojo, Hitler, Itachi, and more |
+| 🎯 **Gacha System** | Exciting random character pulls with card animations |
+| 💬 **Persistent Chat** | Conversations saved across sessions |
+| 🔄 **Session Switching** | Seamlessly switch between different persona chats |
+| 🎨 **Modern UI** | Beautiful React interface with smooth animations |
+| 🔒 **Local-First** | All data stays on your device |
+| 🤖 **AI-Powered** | Powered by Ollama LLM models |
+
+## 🔧 System Requirements
+
+| Component | Requirement | Installation |
+|-----------|-------------|--------------|
+| **OS** | Windows 10/11 or macOS 13+ | - |
+| **Python** | 3.11 or higher | [python.org](https://python.org) |
+| **Node.js** | v16+ with npm | [nodejs.org](https://nodejs.org) |
+| **Ollama** | Latest version | [ollama.ai](https://ollama.ai) |
+| **GPU** | NVIDIA RTX 30/40 series (optional) | For CUDA acceleration |
+| **VRAM** | ≥ 12 GB (recommended) | For optimal performance |
+
+## ⚡ Quick Start
+
+> **Prerequisites**: Python 3.11+, Node.js 16+, and Ollama installed
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/Swissbit92/MCP_Catalog.git
+cd MCP_Catalog
+./setup.sh  # Linux/macOS
+# or
+setup.bat   # Windows
+
+# 2. Configure environment
+cp .env.example .env  # Edit with your settings
+
+# 3. Start Ollama and pull model
+ollama serve &  # In background
+ollama pull llama3.1:latest
+
+# 4. Launch the app
+python run_react.py
+```
+
+**🎉 That's it!** Your app will be running at `http://localhost:3000`
+
+## 🤝 Contributing
+
 See Repository Guidelines in `AGENTS.md` for:
 - Project structure overview and entrypoints
 - Setup and run commands (Python, FastAPI, React)
@@ -85,107 +157,145 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 
 ## 🧩 Installation
 
-### 1. **Clone the repository**
-
-   ```bash
+### 📥 Step 1: Clone the Repository
+```bash
 git clone https://github.com/Swissbit92/MCP_Catalog.git
-   ```
-
-### 2. **Create a virtual environment**
-
-**macOS / Linux:**
-
-   ```bash
-python3.11 -m venv MCP_Catalog
-# Activate the virtual environment
 cd MCP_Catalog
-source venv/bin/activate
-   ```
+```
 
-**Windows Powershell:**
+### 🔧 Step 2: Install Dependencies
 
-   ```bash
-py -3.11 -m venv MCP_Catalog
-# Activate the virtual environment
-cd MCP_Catalog
-.//scripts/activate
-   ```
+#### **Option A: Automated Setup (Recommended)**
+```bash
+# Linux/macOS
+chmod +x setup.sh
+./setup.sh
 
-### 3. **Install dependencies**
+# Windows
+setup.bat
+```
 
-     **Option A: Manual installation**
-     ```bash
-     # Python dependencies
-     python -m pip install --upgrade pip
-     pip install -r requirements.txt
+#### **Option B: Manual Setup**
+```bash
+# Python dependencies
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 
-     # React dependencies (requires Node.js)
-     cd react-ui && npm install && cd ..
-     ```
+# React dependencies
+cd react-ui && npm install && cd ..
+```
 
-     **Option B: Automated setup**
-     ```bash
-     # Linux/macOS
-     chmod +x setup.sh
-     ./setup.sh
+### 🤖 Step 3: Setup Ollama
 
-     # Windows
-     setup.bat
-     ```
+#### **Install Ollama**
+Visit [ollama.ai](https://ollama.ai) and download the installer for your OS.
 
-     **Note**: The project requires both Python and Node.js. Install Node.js from [nodejs.org](https://nodejs.org/) if not already installed.
+#### **Start Ollama Service**
+```bash
+# Start Ollama in the background
+ollama serve
+```
 
-### 4. **Create a .env file**
+#### **Pull Required Model**
+```bash
+# Pull the Llama 3.1 model (required for chat)
+ollama pull llama3.1:latest
+```
 
-#### Example .env file
+### ⚙️ Step 4: Configure Environment
 
-   ```bash
+Create a `.env` file in the root directory:
+
+```bash
+# Copy and edit this configuration
 COORD_PORT=8000
 COORD_URL=http://127.0.0.1:8000
 OLLAMA_BASE=http://127.0.0.1:11434
 PERSONA_MODEL=llama3.1:latest
 PERSONA_DIR=personas
+```
+
+**Environment Variables:**
+- `COORD_PORT`: Port for the FastAPI backend (default: 8000)
+- `OLLAMA_BASE`: Ollama API endpoint (default: http://127.0.0.1:11434)
+- `PERSONA_MODEL`: LLM model to use (default: llama3.1:latest)
+
+---
+
+## 🚀 Usage
+
+### ▶️ Starting the Application
+
+#### **Option A: Unified Startup (Recommended)**
+```bash
+python run_react.py
+```
+**🎯 This starts both backend and frontend automatically!**
+
+#### **Option B: Manual Startup**
+```bash
+# Terminal 1: Backend
+python run.py
+
+# Terminal 2: Frontend
+cd react-ui && npm start
+```
+
+### 🛑 Stopping the Application
+Press `Ctrl+C` in the terminal running `python run_react.py` to stop both services gracefully.
+
+---
+
+## 🎭 Managing Personas
+
+### ➕ Adding a New Persona
+
+1. **Create persona file**: Copy `personas/template.jsonc` to `personas/[name].json`
+2. **Configure persona**: Edit the JSON with character details:
+   ```json
+   {
+     "key": "your_persona",
+     "display_name": "Your Persona Name",
+     "style": "personality description",
+     "rarity": "legendary",
+     "image": "ui/images/your_card.png",
+     "avatar": "ui/images/your_avatar.png",
+     "logo": "ui/images/your_logo.png"
+   }
    ```
+3. **Restart app**: The new persona will auto-load
+
+### 🗑️ Removing a Persona
+
+Simply delete the corresponding JSON file from `/personas/` directory and restart the app.
+
+### 📋 Available Personas
+
+| Persona | Style | Rarity |
+|---------|-------|--------|
+| **Eeva** | Nerdy, charming, concise | ⭐⭐⭐⭐⭐ |
+| **Frieren** | Wise, analytical, methodical | ⭐⭐⭐⭐⭐ |
+| **Gojo** | Confident, powerful, playful | ⭐⭐⭐⭐⭐ |
+| **Hitler** | Authoritative, ideological | ⭐⭐⭐⭐⭐ |
+| **Itachi** | Calm, strategic, philosophical | ⭐⭐⭐⭐⭐ |
 
 ---
 
-## 🚀 **Usage**
+## 🎯 How to Use the App
 
-### **Start the Coordinator + UI**
+### **Home Page (`/`)**
+- 🎲 **Pull Character**: Click for exciting random reveals with animations
+- 📚 **Browse Collection**: View all characters in a searchable grid
 
-     **Option A: Unified startup (Recommended)**
-     ```bash
-     # Start both FastAPI backend and React UI together
-     python run_react.py
-     ```
+### **Character Selection (`/select`)**
+- 🔍 **Search & Filter**: Find characters by name, style, or rarity
+- 🎯 **Select Character**: Click any card to start chatting
 
-     **Option B: Manual startup**
-     ```bash
-     # Terminal 1: Start the backend coordinator
-     python run.py
-
-     # Terminal 2: Start the React UI
-     cd react-ui && npm start
-     ```
-
-### **Stop the Coordinator + UI**
-
-Press `CTRL + C` to stop both services gracefully.
-
----
-
-## **How to Add & Remove Persona**
-
-### 🪄 **To ADD a new persona:**
-
-- Place a new [NAME].json file in /personas directory (e.g. personas/gojo.json) and restart the app — it auto-detects and loads the persona card.
-- with keys: key, emoji, rarity, style, welcome, do[], dont[], and optional lore or few_shot examples.
-- Use the template in /personas/template.jsonc as a starting point.
-  
-### 🗑️ **To REMOVE a persona:**
-
-- Delete its corresponding JSON file (e.g. personas/gojo.json)
-- and restart the app — it will be automatically removed from the Characters tab.
+### **Chat Interface (`/chat`)**
+- 💬 **Start Conversations**: Chat with your selected persona
+- 🔄 **Switch Sessions**: Use sidebar to switch between chats
+- 💾 **Export Chats**: Save conversations as JSON files
+- 🎨 **Persistent Avatars**: Each persona has unique avatar images
 
 ---
 
@@ -197,31 +307,21 @@ Press `CTRL + C` to stop both services gracefully.
 - Verify the local Ollama model is available
 - Handle graceful shutdown of both services
 
-This opens the complete application with both backend and frontend running.
+---
 
-### 2. In the UI
+## ⚠️ Important Notes
 
-- **Home Page (/)**: "Ready to Pull?" interface with options to pull a random character or browse the collection
-- **Character Selection (/select)**: Grid view of all available characters with search functionality
-- **Chat (/chat)**: Chat interface with your selected persona
+- **Local AI Only**: All conversations run locally via Ollama - no data leaves your device
+- **GPU Recommended**: For best performance, use a GPU with ≥12GB VRAM
+- **First Launch**: Initial model loading may take a few minutes
+- **Experimental**: This is a prototype - use responsibly
 
-### 2. Use the interface
+---
 
-- **Pull Character**: Click "🎯 Pull Character" on the home page for exciting random reveals with card animations
-- **Pull Again**: After a successful pull, use "🔄 Pull Again" to immediately pull another character
-- **Browse Collection**: Click "📚 Browse Collection" to view all characters in a searchable grid
-- **Start Chat**: Click any character card to automatically navigate to chat:
-  - **Existing Chats**: If you've chatted with this persona before, loads your most recent conversation
-  - **New Chats**: If this is your first time chatting with this persona, creates a new conversation with a personalized greeting
-- **Switch Personas**: While in chat, use the session list sidebar to switch between different persona conversations
-- **Continue Chatting**: Your chat history is preserved and you can continue conversations anytime
-
-⚠️ Disclaimer
-This project is a local experimental prototype.
-It is provided “as is”, without any warranty or guarantee.
-All LLM interactions run locally via Ollama — no data leaves your device.
-Use responsibly and at your own discretion.
+## 📄 License
 
 © 2025 GraphRAG Coordinator UI – All rights reserved.
+
+This project is provided "as is", without any warranty or guarantee. Use responsibly and at your own discretion.
 
 ---
