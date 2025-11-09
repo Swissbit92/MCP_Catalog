@@ -15,21 +15,21 @@ const getPersonaColorScheme = (rarity?: string) => {
         primary: 'from-yellow-500 to-amber-600',
         secondary: 'from-yellow-400 to-amber-500',
         accent: 'text-yellow-600',
-        bgGradient: 'from-yellow-50 to-amber-50',
+        bgGradient: 'from-yellow-100/20 to-amber-100/20',
       };
     case 'epic':
       return {
         primary: 'from-purple-500 to-violet-600',
         secondary: 'from-purple-400 to-violet-500',
         accent: 'text-purple-600',
-        bgGradient: 'from-purple-50 to-violet-50',
+        bgGradient: 'from-purple-100/20 to-violet-100/20',
       };
     case 'rare':
       return {
         primary: 'from-blue-500 to-cyan-600',
         secondary: 'from-blue-400 to-cyan-500',
         accent: 'text-blue-600',
-        bgGradient: 'from-blue-50 to-cyan-50',
+        bgGradient: 'from-blue-100/20 to-cyan-100/20',
       };
     case 'common':
     default:
@@ -37,7 +37,7 @@ const getPersonaColorScheme = (rarity?: string) => {
         primary: 'from-gray-500 to-slate-600',
         secondary: 'from-gray-400 to-slate-500',
         accent: 'text-gray-600',
-        bgGradient: 'from-gray-50 to-slate-50',
+        bgGradient: 'from-gray-100/20 to-slate-100/20',
       };
   }
 };
@@ -65,6 +65,7 @@ const Chat: React.FC = () => {
           style: p.style,
           image: p.image.replace('ui/images/', ''),
           avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
+          bg: p.bg ? p.bg.replace('ui/images/', '') : undefined,
           rarity: p.rarity,
           coordinator_label: p.coordinator_label,
           voice: p.voice,
@@ -270,16 +271,23 @@ const Chat: React.FC = () => {
 
   return (
     <div
-      className={`flex h-full overflow-hidden relative transition-all duration-500 ${personaBackground ? '' : `bg-gradient-to-br ${colorScheme.bgGradient}`}`}
-      style={personaBackground ? {
-        backgroundImage: `url(${personaBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      } : {}}
+      className={`flex h-full overflow-hidden relative transition-all duration-500 bg-gradient-to-br ${colorScheme.bgGradient}`}
     >
-      {/* Background overlay for text readability */}
-      <div className="absolute inset-0 bg-white bg-opacity-95"></div>
+  {/* Subtle character background for gacha style */}
+  {personaBackground && (
+    <div
+      className="absolute inset-0 opacity-50 pointer-events-none"
+      style={{
+        backgroundImage: `url(${personaBackground})`,
+        backgroundSize: 'contain',
+        backgroundPosition: 'center bottom',
+        backgroundRepeat: 'no-repeat',
+      }}
+    />
+  )}
+
+  {/* Background overlay for text readability */}
+  <div className="absolute inset-0 bg-white bg-opacity-75"></div>
 
       {/* Content container */}
       <div className="relative z-10 flex h-full w-full">

@@ -36,10 +36,11 @@
 | 🎯 **Gacha System** | Exciting random character pulls with card animations |
 | 💬 **Persistent Chat** | Conversations saved across sessions |
 | 🔄 **Session Switching** | Seamlessly switch between different persona chats |
-| 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
-| 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
-| 🔒 **Local-First** | All data stays on your device |
-| 🤖 **AI-Powered** | Powered by Ollama LLM models |
+ | 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
+ | 🎭 **Persona Customization** | Rarity-based theming with custom backgrounds, colors, and avatar effects |
+ | 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
+ | 🔒 **Local-First** | All data stays on your device |
+ | 🤖 **AI-Powered** | Powered by Ollama LLM models |
 
 ## 🔧 System Requirements
 
@@ -97,26 +98,28 @@ It runs entirely **locally**, connects to a **FastAPI Coordinator** (the backend
 Personas such as **Eeva**, **Frieren**, **Gojo**, and others can be selected via an interactive dual-mode interface: exciting gacha-style random pulls on the home page or convenient static browsing with search on the character selection page.
 The chat interface is responsive, centered, and styled like a modern messaging app with premium visual effects.
 
-### 🎨 React UI Enhancements (Completed)
-The React application features comprehensive visual polish and mobile optimization:
+ ### 🎨 React UI Enhancements (Completed)
+ The React application features comprehensive visual polish and mobile optimization:
 
-- **Header Component**: Modern dark theme with particle effects, dynamic theming, glassmorphism, animated typography, and functional mobile hamburger menu
-- **Character Cards**: Framer Motion animations with staggered entrance effects, interactive hover states, and rarity-based styling
-- **Chat Interface**: Smooth auto-scrolling, animated message bubbles, enhanced typing indicators, rich media support (JSON highlighting with copy buttons and visual feedback, code blocks with copy buttons and visual feedback), latency tracking, error recovery with retry functionality, and polished input interactions
-- **Mobile Optimization**: ChatGPT-style responsive layout (sidebar pushes content on desktop, overlays on mobile), touch gestures, swipe navigation, and mobile-optimized input
-- **Performance**: Optimized animations with 60fps performance, React.memo optimizations, and efficient React patterns
-- **Testing**: Comprehensive unit test coverage (29 tests) with type-safe implementation
+ - **Header Component**: Modern dark theme with particle effects, dynamic theming, glassmorphism, animated typography, and functional mobile hamburger menu
+ - **Character Cards**: Framer Motion animations with staggered entrance effects, interactive hover states, and rarity-based styling
+ - **Chat Interface**: Smooth auto-scrolling, animated message bubbles, enhanced typing indicators, rich media support (JSON highlighting with copy buttons and visual feedback, code blocks with copy buttons and visual feedback), latency tracking, error recovery with retry functionality, and polished input interactions
+ - **Persona Customization**: Gacha-style theming with rarity-based colors (legendary=gold, epic=purple, rare=blue, common=grey), custom character backgrounds, personalized avatar effects with rarity rings and shadows, and cohesive send button theming
+ - **Mobile Optimization**: ChatGPT-style responsive layout (sidebar pushes content on desktop, overlays on mobile), touch gestures, swipe navigation, and mobile-optimized input
+ - **Performance**: Optimized animations with 60fps performance, React.memo optimizations, and efficient React patterns
+ - **Testing**: Comprehensive unit test coverage (40 tests) with type-safe implementation
 
-### Current Status
-- ✅ **Home Page**: Gacha-style character pulls with card reveal animations
-- ✅ **Character Selection**: Grid browsing with search functionality
-- ✅ **Chat Interface**: Persona-driven conversations with LLM responses
-- ✅ **Session Management**: Automatic loading of recent chats or creation of new conversations
-- ✅ **Persona Switching**: Seamless switching between different persona chats
-- ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
-- ✅ **Unified Startup**: Single command launches both backend and React UI
-- ✅ **Production Ready**: Optimized React build (131KB gzipped)
-- ✅ **React Migration Complete**: All phases completed with premium visual effects, mobile optimization, and comprehensive testing
+ ### Current Status
+ - ✅ **Home Page**: Gacha-style character pulls with card reveal animations
+ - ✅ **Character Selection**: Grid browsing with search functionality
+ - ✅ **Chat Interface**: Persona-driven conversations with LLM responses
+ - ✅ **Persona Customization**: Rarity-based theming with custom backgrounds, colors, and avatar effects
+ - ✅ **Session Management**: Automatic loading of recent chats or creation of new conversations
+ - ✅ **Persona Switching**: Seamless switching between different persona chats
+ - ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
+ - ✅ **Unified Startup**: Single command launches both backend and React UI
+ - ✅ **Production Ready**: Optimized React build (131KB gzipped)
+ - ✅ **React Migration Complete**: All phases completed with premium visual effects, mobile optimization, and comprehensive testing
 
 ---
 

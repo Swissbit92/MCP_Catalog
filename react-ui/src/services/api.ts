@@ -9,6 +9,7 @@ interface PersonaJson {
   image: string;
   avatar: string;
   logo: string;
+  bg?: string;
   emoji: string;
   allowed_mcp: string[];
   lore: string[];
