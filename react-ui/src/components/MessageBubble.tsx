@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Avatar2D } from './Avatar2D';
+import { RichContent } from './RichContent';
 
 export interface Message {
   id: string;
@@ -61,9 +62,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           whileHover={{ scale: 1.02 }}
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         >
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">
-            {message.content}
-          </div>
+          <RichContent content={message.content} />
         </motion.div>
 
         {/* Timestamp */}

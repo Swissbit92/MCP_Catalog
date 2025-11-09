@@ -250,7 +250,7 @@ const Chat: React.FC = () => {
                 message={msg}
                 personaAvatar={selectedPersona.avatar ? `/images/${selectedPersona.avatar}` : `/images/${selectedPersona.image}`}
                 userAvatar="/images/user_avatar.png"
-                showTimestamp={false}
+                showTimestamp={true}
               />
             ))
           )}
