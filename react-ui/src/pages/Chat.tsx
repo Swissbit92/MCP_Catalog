@@ -273,18 +273,18 @@ const Chat: React.FC = () => {
     <div
       className={`flex h-full overflow-hidden relative transition-all duration-500 bg-gradient-to-br ${colorScheme.bgGradient}`}
     >
-  {/* Subtle character background for gacha style */}
-  {personaBackground && (
-    <div
-      className="absolute inset-0 opacity-50 pointer-events-none"
-      style={{
-        backgroundImage: `url(${personaBackground})`,
-        backgroundSize: 'contain',
-        backgroundPosition: 'center bottom',
-        backgroundRepeat: 'no-repeat',
-      }}
-    />
-  )}
+   {/* Subtle character background for gacha style */}
+   {personaBackground && (
+     <div
+       className="absolute inset-0 opacity-60 pointer-events-none"
+       style={{
+         backgroundImage: `url(${personaBackground})`,
+         backgroundSize: 'cover',
+         backgroundPosition: 'center',
+         backgroundRepeat: 'no-repeat',
+       }}
+     />
+   )}
 
   {/* Background overlay for text readability */}
   <div className="absolute inset-0 bg-white bg-opacity-75"></div>
