@@ -15,6 +15,7 @@
 - **Error handling**: FastAPI: `HTTPException`. React: try/catch with user messages.
 - **Formatting**: 4-space Python, consistent TS/JS. No semicolons in TS. Prefer async/await.
 - **Naming**: Descriptive. Booleans: `isSelected`, `hasError`. Events: `onClick`, `handleSubmit`.
+- **Layout**: App uses `h-screen flex flex-col` with Header and `flex-1 overflow-hidden` content area. Chat pages use `h-full` to fit remaining space without scrolling.
 
 ## Testing Guidelines
 - **React**: Jest + RTL, `*.test.tsx` colocated. Mock APIs, test interactions.
