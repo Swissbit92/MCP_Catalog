@@ -13,7 +13,7 @@ const Chat: React.FC = () => {
   const [personas, setPersonas] = useState<any[]>([]);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona } = usePersona();
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
@@ -166,6 +166,20 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleClearChat = async () => {
+    if (!currentSession) return;
+
+    if (window.confirm('Are you sure you want to clear all messages in this chat? This action cannot be undone.')) {
+      try {
+        await clearSessionMessages(currentSession.id);
+        // The context will automatically clear the messages in the UI
+      } catch (error) {
+        console.error('Failed to clear chat:', error);
+        alert('Failed to clear chat. Please try again.');
+      }
+    }
+  };
+
   const handleSessionSelect = async (session: any) => {
     // When switching sessions, update the selected persona to match the session
     const sessionPersona = personas.find(p => p.key === session.persona_key);
@@ -205,6 +219,13 @@ const Chat: React.FC = () => {
                 title="Export Chat"
               >
                 Export
+              </button>
+              <button
+                onClick={handleClearChat}
+                className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                title="Clear Chat"
+              >
+                Clear
               </button>
             </div>
           )}

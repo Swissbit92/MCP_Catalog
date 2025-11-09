@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import Chat from './Chat';
 
 // Mock all dependencies
@@ -63,6 +63,8 @@ describe('Chat', () => {
     jest.clearAllMocks();
     (require('../services/api').fetchPersonas as jest.Mock).mockResolvedValue(mockPersonas);
     (require('../services/api').getPersonaGreeting as jest.Mock).mockResolvedValue('Hello from Eeva!');
+    // Mock window.confirm
+    window.confirm = jest.fn();
   });
 
   it('updates selected persona when switching sessions', async () => {
@@ -154,5 +156,81 @@ describe('Chat', () => {
 
     expect(screen.getByText('No Persona Selected')).toBeInTheDocument();
     expect(screen.getByText('Please select a character first to start chatting.')).toBeInTheDocument();
+  });
+
+  it('clears chat when clear button is clicked and confirmed', async () => {
+    const mockClearSessionMessages = jest.fn().mockResolvedValue(undefined);
+    (window.confirm as jest.Mock).mockReturnValue(true);
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [
+        { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },
+        { id: '2', role: 'assistant', content: 'Hi there!', timestamp: new Date() },
+      ],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: mockClearSessionMessages,
+    });
+
+    render(<Chat />);
+
+    // Wait for component to render
+    await waitFor(() => {
+      expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
+    });
+
+    // Click the Clear button
+    const clearButton = screen.getByTitle('Clear Chat');
+    fireEvent.click(clearButton);
+
+    // Verify confirmation dialog was shown
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to clear all messages in this chat? This action cannot be undone.');
+
+    // Verify clearSessionMessages was called
+    await waitFor(() => {
+      expect(mockClearSessionMessages).toHaveBeenCalledWith('session1');
+    });
+  });
+
+  it('does not clear chat when clear is cancelled', async () => {
+    const mockClearSessionMessages = jest.fn();
+    (window.confirm as jest.Mock).mockReturnValue(false);
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [
+        { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },
+      ],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: mockClearSessionMessages,
+    });
+
+    render(<Chat />);
+
+    // Wait for component to render
+    await waitFor(() => {
+      expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
+    });
+
+    // Click the Clear button
+    const clearButton = screen.getByTitle('Clear Chat');
+    fireEvent.click(clearButton);
+
+    // Verify clearSessionMessages was not called
+    expect(mockClearSessionMessages).not.toHaveBeenCalled();
   });
 });

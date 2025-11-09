@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { ChatSession, Message, SessionWithMessages, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession } from '../services/api';
+import { ChatSession, Message, SessionWithMessages, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, clearSessionMessages as clearSessionMessagesApi } from '../services/api';
 
 interface Persona {
   key: string;
@@ -26,6 +26,7 @@ interface PersonaContextType {
   loadSessionMessages: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
   deleteSessionById: (sessionId: string) => Promise<void>;
+  clearSessionMessages: (sessionId: string) => Promise<void>;
   sendMessage: (message: string, sessionId?: string) => Promise<Message>;
   exportCurrentSession: () => Promise<string>;
   importSessionData: (exportData: any) => Promise<ChatSession>;
@@ -88,6 +89,25 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     } catch (error) {
       console.error('Failed to delete session:', error);
+    }
+  };
+
+  const clearSessionMessages = async (sessionId: string) => {
+    try {
+      await clearSessionMessagesApi(sessionId);
+      // Clear messages in UI if this is the current session
+      if (currentSession?.id === sessionId) {
+        setMessages([]);
+      }
+      // Update the session's updated_at timestamp in the sessions list
+      setSessions(prev => prev.map(s =>
+        s.id === sessionId
+          ? { ...s, updated_at: new Date().toISOString() }
+          : s
+      ));
+    } catch (error) {
+      console.error('Failed to clear session messages:', error);
+      throw error; // Re-throw so UI can handle the error
     }
   };
 
@@ -165,6 +185,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       loadSessionMessages,
       updateSessionTitle,
       deleteSessionById,
+      clearSessionMessages,
       sendMessage,
       exportCurrentSession,
       importSessionData,

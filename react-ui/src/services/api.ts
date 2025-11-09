@@ -265,3 +265,13 @@ export const greetWithSession = async (sessionId: string, persona: string): Prom
     timestamp: new Date(),
   };
 };
+
+export const clearSessionMessages = async (sessionId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/messages`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Clear Messages API Error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+};

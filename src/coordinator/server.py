@@ -479,6 +479,25 @@ def add_message(session_id: str, body: AppendMessageBody):
         c.close()
     return {"ok": True, "message_id": message_id}
 
+@app.delete("/sessions/{session_id}/messages")
+def clear_session_messages(session_id: str):
+    """Clear all messages from a chat session (keep the session)."""
+    with _DB_LOCK:
+        c = _conn()
+        cur = c.cursor()
+        # Check if session exists
+        cur.execute("SELECT id FROM chat_sessions WHERE id = ?", (session_id,))
+        if not cur.fetchone():
+            c.close()
+            raise HTTPException(status_code=404, detail="Session not found.")
+        # Delete all messages for this session
+        cur.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+        # Update session updated_at timestamp
+        cur.execute("UPDATE chat_sessions SET updated_at = ? WHERE id = ?", (_now(), session_id))
+        c.commit()
+        c.close()
+    return {"ok": True}
+
 @app.get("/sessions/{session_id}/export")
 def export_session(session_id: str):
     """Export a chat session as JSON."""
