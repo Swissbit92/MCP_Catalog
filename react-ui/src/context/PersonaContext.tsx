@@ -10,6 +10,7 @@ interface Persona {
   avatar?: string;
   rarity: string;
   coordinator_label?: string;
+  bg?: string;
   voice?: { // Optional, as not all personas might have it
     greeting: string;
   };

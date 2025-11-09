@@ -7,6 +7,41 @@ import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 import { Menu, X } from 'lucide-react';
 
+// Persona color schemes based on rarity (matching character cards)
+const getPersonaColorScheme = (rarity?: string) => {
+  switch (rarity) {
+    case 'legendary':
+      return {
+        primary: 'from-yellow-500 to-amber-600',
+        secondary: 'from-yellow-400 to-amber-500',
+        accent: 'text-yellow-600',
+        bgGradient: 'from-yellow-50 to-amber-50',
+      };
+    case 'epic':
+      return {
+        primary: 'from-purple-500 to-violet-600',
+        secondary: 'from-purple-400 to-violet-500',
+        accent: 'text-purple-600',
+        bgGradient: 'from-purple-50 to-violet-50',
+      };
+    case 'rare':
+      return {
+        primary: 'from-blue-500 to-cyan-600',
+        secondary: 'from-blue-400 to-cyan-500',
+        accent: 'text-blue-600',
+        bgGradient: 'from-blue-50 to-cyan-50',
+      };
+    case 'common':
+    default:
+      return {
+        primary: 'from-gray-500 to-slate-600',
+        secondary: 'from-gray-400 to-slate-500',
+        accent: 'text-gray-600',
+        bgGradient: 'from-gray-50 to-slate-50',
+      };
+  }
+};
+
 const Chat: React.FC = () => {
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -229,8 +264,25 @@ const Chat: React.FC = () => {
     setTouchEndX(0);
   };
 
+  // Get persona background and color scheme
+  const personaBackground = selectedPersona?.bg ? `/images/${selectedPersona.bg.replace('ui/images/', '')}` : null;
+  const colorScheme = getPersonaColorScheme(selectedPersona?.rarity);
+
   return (
-    <div className="flex h-full bg-gray-50 overflow-hidden">
+    <div
+      className={`flex h-full overflow-hidden relative transition-all duration-500 ${personaBackground ? '' : `bg-gradient-to-br ${colorScheme.bgGradient}`}`}
+      style={personaBackground ? {
+        backgroundImage: `url(${personaBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      } : {}}
+    >
+      {/* Background overlay for text readability */}
+      <div className="absolute inset-0 bg-white bg-opacity-95"></div>
+
+      {/* Content container */}
+      <div className="relative z-10 flex h-full w-full">
       {/* Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -335,6 +387,7 @@ const Chat: React.FC = () => {
                 userAvatar="/images/user_avatar.png"
                 showTimestamp={true}
                 onRetry={handleRetryMessage}
+                personaRarity={selectedPersona.rarity}
               />
             ))
           )}
@@ -374,7 +427,7 @@ const Chat: React.FC = () => {
             <motion.button
               onClick={handleSendMessage}
               disabled={loading || !currentSession || !input.trim() || initializingSession}
-              className="px-4 md:px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200 min-w-[60px] md:min-w-[80px] touch-manipulation"
+               className={`px-4 md:px-6 py-3 bg-gradient-to-r ${colorScheme.primary} text-white font-medium rounded-2xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 min-w-[60px] md:min-w-[80px] touch-manipulation`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -384,6 +437,7 @@ const Chat: React.FC = () => {
             </motion.button>
           </div>
         </motion.div>
+      </div>
       </div>
     </div>
   );

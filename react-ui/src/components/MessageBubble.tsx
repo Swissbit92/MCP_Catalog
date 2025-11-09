@@ -16,6 +16,7 @@ interface MessageBubbleProps {
   userAvatar?: string;
   showTimestamp?: boolean;
   onRetry?: (messageId: string) => void;
+  personaRarity?: string;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
@@ -24,6 +25,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   userAvatar,
   showTimestamp = false,
   onRetry,
+  personaRarity,
 }) => {
   const isUser = message.role === 'user';
 
@@ -49,6 +51,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             alt="Assistant"
             size="sm"
             className="mt-1"
+            rarity={personaRarity}
           />
         </div>
       )}
