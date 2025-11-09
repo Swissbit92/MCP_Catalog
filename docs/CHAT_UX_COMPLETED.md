@@ -259,6 +259,7 @@ interface RichContent {
 - [x] Mobile-responsive design (ChatGPT-style layout: sidebar pushes on desktop, overlays on mobile, touch gestures, optimized input)
 - [x] Professional polish matching modern chat apps
 - [x] Extensible architecture for rich media
+- [x] Persona background images with proper formatting (60% opacity, cover sizing, centered positioning)
 
 ## Migration Strategy
 1. **Phase 1**: ✅ Enhance existing chat without breaking current functionality - **COMPLETED**
