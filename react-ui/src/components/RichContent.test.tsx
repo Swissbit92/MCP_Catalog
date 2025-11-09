@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { RichContent } from './RichContent';
 
 describe('RichContent', () => {
@@ -97,5 +97,85 @@ describe('RichContent', () => {
 
     // The custom class should be applied to the root element
     expect(container.firstChild).toHaveClass(customClass);
+  });
+
+  it('shows copy button for JSON content', () => {
+    const jsonContent = '{"name": "John", "age": 30}';
+    render(<RichContent content={jsonContent} />);
+
+    expect(screen.getByText('Copy')).toBeInTheDocument();
+    expect(screen.getByTitle('Copy JSON')).toBeInTheDocument();
+  });
+
+  it('shows copy button for code blocks', () => {
+    const codeBlock = '```javascript\nconsole.log("Hello");\n```';
+    render(<RichContent content={codeBlock} />);
+
+    expect(screen.getByText('Copy')).toBeInTheDocument();
+    expect(screen.getByTitle('Copy code')).toBeInTheDocument();
+  });
+
+  it('copies JSON content to clipboard', async () => {
+    // Mock clipboard API
+    const mockClipboard = {
+      writeText: jest.fn().mockResolvedValue(undefined),
+    };
+    Object.assign(navigator, { clipboard: mockClipboard });
+
+    const jsonContent = '{"name": "John", "age": 30}';
+    render(<RichContent content={jsonContent} />);
+
+    const copyButton = screen.getByTitle('Copy JSON');
+    fireEvent.click(copyButton);
+
+    // Should call clipboard.writeText with formatted JSON
+    expect(mockClipboard.writeText).toHaveBeenCalledWith(JSON.stringify(JSON.parse(jsonContent), null, 2));
+  });
+
+  it('copies code content to clipboard', async () => {
+    // Mock clipboard API
+    const mockClipboard = {
+      writeText: jest.fn().mockResolvedValue(undefined),
+    };
+    Object.assign(navigator, { clipboard: mockClipboard });
+
+    const codeBlock = '```javascript\nconsole.log("Hello");\n```';
+    render(<RichContent content={codeBlock} />);
+
+    const copyButton = screen.getByTitle('Copy code');
+    fireEvent.click(copyButton);
+
+    // Should call clipboard.writeText with the code content
+    expect(mockClipboard.writeText).toHaveBeenCalledWith('console.log("Hello");');
+  });
+
+  it('shows "Copied!" feedback after copying', async () => {
+    // Mock clipboard API
+    const mockClipboard = {
+      writeText: jest.fn().mockResolvedValue(undefined),
+    };
+    Object.assign(navigator, { clipboard: mockClipboard });
+
+    const jsonContent = '{"name": "John"}';
+    render(<RichContent content={jsonContent} />);
+
+    const copyButton = screen.getByTitle('Copy JSON');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Should show "Copied!" text
+    await waitFor(() => {
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
+    });
+
+    // After 2 seconds, should revert to "Copy"
+    await waitFor(
+      () => {
+        expect(screen.getByText('Copy')).toBeInTheDocument();
+      },
+      { timeout: 2500 }
+    );
   });
 });
