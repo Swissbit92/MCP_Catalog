@@ -13,7 +13,7 @@ const Chat: React.FC = () => {
   const [personas, setPersonas] = useState<any[]>([]);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages } = usePersona();
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
@@ -180,6 +180,15 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleRetryMessage = async (messageId: string) => {
+    try {
+      await retryMessage(messageId);
+    } catch (error) {
+      console.error('Failed to retry message:', error);
+      alert('Failed to retry message. Please try again.');
+    }
+  };
+
   const handleSessionSelect = async (session: any) => {
     // When switching sessions, update the selected persona to match the session
     const sessionPersona = personas.find(p => p.key === session.persona_key);
@@ -251,6 +260,7 @@ const Chat: React.FC = () => {
                 personaAvatar={selectedPersona.avatar ? `/images/${selectedPersona.avatar}` : `/images/${selectedPersona.image}`}
                 userAvatar="/images/user_avatar.png"
                 showTimestamp={true}
+                onRetry={handleRetryMessage}
               />
             ))
           )}

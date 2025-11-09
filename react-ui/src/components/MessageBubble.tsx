@@ -2,12 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Avatar2D } from './Avatar2D';
 import { RichContent } from './RichContent';
+import { Message as ApiMessage } from '../services/api';
 
-export interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: Date;
+export interface Message extends ApiMessage {
+  latency?: number; // Response time in milliseconds
+  status?: 'sending' | 'sent' | 'delivered' | 'failed';
+  retryCount?: number;
 }
 
 interface MessageBubbleProps {
@@ -15,13 +15,15 @@ interface MessageBubbleProps {
   personaAvatar?: string;
   userAvatar?: string;
   showTimestamp?: boolean;
+  onRetry?: (messageId: string) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   message,
   personaAvatar,
   userAvatar,
   showTimestamp = false,
+  onRetry,
 }) => {
   const isUser = message.role === 'user';
 
@@ -65,15 +67,61 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <RichContent content={message.content} />
         </motion.div>
 
-        {/* Timestamp */}
-        {showTimestamp && message.timestamp && (
-          <div className={`text-xs text-gray-500 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
-            {message.timestamp.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </div>
-        )}
+        {/* Timestamp, Latency, and Status */}
+        <div className={`mt-1 flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+          {/* Timestamp and Latency */}
+          {(showTimestamp && message.timestamp) || message.latency ? (
+            <div className="text-xs text-gray-500 flex items-center gap-2">
+              {showTimestamp && message.timestamp && (
+                <span>
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              )}
+              {message.latency && (
+                <span className="text-blue-400 font-mono">
+                  {message.latency < 1000
+                    ? `${message.latency}ms`
+                    : `${(message.latency / 1000).toFixed(1)}s`
+                  }
+                </span>
+              )}
+            </div>
+          ) : null}
+
+          {/* Status Indicators and Retry */}
+          {message.status && (
+            <div className="flex items-center gap-1">
+              {message.status === 'sending' && (
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Sending...</span>
+                </div>
+              )}
+              {message.status === 'failed' && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-red-400">Failed</span>
+                  {onRetry && (
+                    <button
+                      onClick={() => onRetry(message.id)}
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                      title="Retry sending message"
+                    >
+                      Retry
+                    </button>
+                  )}
+                  {message.retryCount && message.retryCount > 0 && (
+                    <span className="text-xs text-gray-400">
+                      ({message.retryCount} attempt{message.retryCount > 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Avatar - only show for user messages */}
@@ -89,4 +137,4 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
     </motion.div>
   );
-};
+});
