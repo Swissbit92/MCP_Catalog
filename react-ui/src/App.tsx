@@ -7,13 +7,15 @@ import Header from './components/Header';
 
 function App() {
   return (
-    <div className="App">
+    <div className="App h-screen flex flex-col">
       <Header />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/select" element={<CharacterSelection />} />
-        <Route path="/chat" element={<Chat />} />
-      </Routes>
+      <div className="flex-1 overflow-hidden">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/select" element={<CharacterSelection />} />
+          <Route path="/chat" element={<Chat />} />
+        </Routes>
+      </div>
     </div>
   );
 }

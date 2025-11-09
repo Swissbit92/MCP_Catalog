@@ -176,14 +176,14 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-full bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <SessionList onSessionSelect={handleSessionSelect} />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+        <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex-shrink-0">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-semibold text-gray-900">
             {currentSession?.title || `Chat with ${selectedPersona.display_name}`}
@@ -212,7 +212,7 @@ const Chat: React.FC = () => {
         </div>
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0">
           {messages.length === 0 && currentSession && !initializingSession ? (
             <div className="text-center text-gray-500 mt-8">
               Start a conversation with {selectedPersona.display_name}!
@@ -239,7 +239,7 @@ const Chat: React.FC = () => {
 
         {/* Input Area */}
         <motion.div
-          className="bg-white border-t border-gray-200 px-6 py-4"
+          className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.3 }}
