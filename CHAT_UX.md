@@ -136,7 +136,8 @@ The Streamlit app demonstrates what a proper chat UX should include:
 
 ### 3.4 Mobile Optimization 💠🟢 ✅ **COMPLETED**
 **Effort**: Low • **Impact**: Low
-- [x] Responsive chat layout for mobile (collapsible sidebar with AnimatePresence)
+- [x] ChatGPT-style responsive layout (sidebar pushes content on desktop, overlays on mobile)
+- [x] Dynamic content expansion (chat uses full screen when sidebar closed)
 - [x] Touch-friendly input and buttons (larger touch targets, touch-manipulation class)
 - [x] Proper keyboard handling (mobile-optimized input attributes: autoComplete, autoCorrect, autoCapitalize, spellCheck)
 - [x] Swipe gestures for navigation (left swipe to close sidebar)
@@ -260,7 +261,7 @@ interface RichContent {
 - [x] Rich media support (JSON syntax highlighting with copy buttons, code blocks with copy buttons, timestamps)
 - [x] Comprehensive unit testing (29 tests covering all new features)
 - [x] Type-safe implementation with proper build verification
-- [x] Mobile-responsive design (touch gestures, collapsible sidebar, optimized input)
+- [x] Mobile-responsive design (ChatGPT-style layout: sidebar pushes on desktop, overlays on mobile, touch gestures, optimized input)
 - [x] Professional polish matching modern chat apps
 - [x] Extensible architecture for rich media and 3D avatars
 - [ ] Persona-tailored backgrounds and customization
