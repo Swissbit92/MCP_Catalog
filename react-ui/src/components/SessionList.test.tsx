@@ -3,6 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChatSession } from '../services/api';
 import SessionList from './SessionList';
 
+// Mock the APIs
+const mockFetchPersonas = jest.fn();
+jest.mock('../services/api', () => ({
+  fetchPersonas: () => mockFetchPersonas(),
+}));
+
 // Mock the usePersona hook
 const mockUsePersona = jest.fn();
 jest.mock('../context/PersonaContext', () => ({
@@ -10,6 +16,23 @@ jest.mock('../context/PersonaContext', () => ({
 }));
 
 describe('SessionList', () => {
+  const mockPersonas = [
+    {
+      key: 'eeva',
+      display_name: 'Eeva — Bitcoin Expect',
+      image: 'eeva_card.png',
+      avatar: 'eeva_avatar.png',
+      rarity: 'legendary',
+    },
+    {
+      key: 'frieren',
+      display_name: 'Frieren',
+      image: 'frieren_card.png',
+      avatar: 'frieren_avatar.png',
+      rarity: 'epic',
+    },
+  ];
+
   const mockSessions: ChatSession[] = [
     {
       id: '1',
@@ -35,6 +58,7 @@ describe('SessionList', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFetchPersonas.mockResolvedValue(mockPersonas);
     mockUsePersona.mockReturnValue({
       sessions: mockSessions,
       currentSession: mockSessions[0],
@@ -46,17 +70,20 @@ describe('SessionList', () => {
     window.confirm = jest.fn();
   });
 
-  it('renders session list correctly', () => {
+  it('renders session list correctly', async () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    expect(screen.getByText('Chat History')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Chat History')).toBeInTheDocument();
+    });
+
     expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
     expect(screen.getByText('Chat with Frieren')).toBeInTheDocument();
-    expect(screen.getByText(/5 messages/)).toBeInTheDocument();
-    expect(screen.getByText(/10 messages/)).toBeInTheDocument();
+    expect(screen.getByText('5 messages')).toBeInTheDocument();
+    expect(screen.getByText('10 messages')).toBeInTheDocument();
   });
 
-  it('shows empty state when no sessions', () => {
+  it('shows empty state when no sessions', async () => {
     mockUsePersona.mockReturnValue({
       sessions: [],
       currentSession: null,
@@ -66,14 +93,22 @@ describe('SessionList', () => {
 
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    expect(screen.getByText('No chat sessions yet. Start a conversation!')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('No conversations yet')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Start chatting with a character!')).toBeInTheDocument();
   });
 
-  it('highlights current session', () => {
+  it('highlights current session with rarity theming', async () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const currentSessionElement = screen.getByText('Chat with Eeva').closest('[class*="bg-blue-50"]');
-    expect(currentSessionElement).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
+    });
+
+    // Current session should have legendary (yellow) theming since personas load in test
+    const sessionContainer = screen.getByText('Chat with Eeva').closest('[class*="border-2"]');
+    expect(sessionContainer).toHaveClass('bg-yellow-500/10', 'border-yellow-400/50');
   });
 
   it('calls onSessionSelect when session is clicked', () => {
@@ -85,20 +120,28 @@ describe('SessionList', () => {
     expect(mockOnSessionSelect).toHaveBeenCalledWith(mockSessions[1]);
   });
 
-  it('enters edit mode when rename button is clicked', () => {
+  it('enters edit mode when rename button is clicked', async () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const renameButton = screen.getAllByTitle('Rename')[0];
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Rename conversation')[0]).toBeInTheDocument();
+    });
+
+    const renameButton = screen.getAllByTitle('Rename conversation')[0];
     fireEvent.click(renameButton);
 
     const input = screen.getByDisplayValue('Chat with Eeva');
     expect(input).toBeInTheDocument();
   });
 
-  it('saves title when Save button is clicked', () => {
+  it('saves title when Save button is clicked', async () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const renameButton = screen.getAllByTitle('Rename')[0];
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Rename conversation')[0]).toBeInTheDocument();
+    });
+
+    const renameButton = screen.getAllByTitle('Rename conversation')[0];
     fireEvent.click(renameButton);
 
     const input = screen.getByDisplayValue('Chat with Eeva');
@@ -110,10 +153,14 @@ describe('SessionList', () => {
     expect(mockUpdateSessionTitle).toHaveBeenCalledWith('1', 'New Title');
   });
 
-  it('cancels edit when Cancel button is clicked', () => {
+  it('cancels edit when Cancel button is clicked', async () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const renameButton = screen.getAllByTitle('Rename')[0];
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Rename conversation')[0]).toBeInTheDocument();
+    });
+
+    const renameButton = screen.getAllByTitle('Rename conversation')[0];
     fireEvent.click(renameButton);
 
     const input = screen.getByDisplayValue('Chat with Eeva');
@@ -126,35 +173,101 @@ describe('SessionList', () => {
     expect(screen.queryByDisplayValue('New Title')).not.toBeInTheDocument();
   });
 
-  it('deletes session when delete button is clicked and confirmed', () => {
+  it('deletes session when delete button is clicked and confirmed', async () => {
     (window.confirm as jest.Mock).mockReturnValue(true);
 
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const deleteButton = screen.getAllByTitle('Delete')[0];
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Delete conversation')[0]).toBeInTheDocument();
+    });
+
+    const deleteButton = screen.getAllByTitle('Delete conversation')[0];
     fireEvent.click(deleteButton);
 
     expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this chat session?');
     expect(mockDeleteSessionById).toHaveBeenCalledWith('1');
   });
 
-  it('does not delete session when delete is cancelled', () => {
+  it('does not delete session when delete is cancelled', async () => {
     (window.confirm as jest.Mock).mockReturnValue(false);
 
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const deleteButton = screen.getAllByTitle('Delete')[0];
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Delete conversation')[0]).toBeInTheDocument();
+    });
+
+    const deleteButton = screen.getAllByTitle('Delete conversation')[0];
     fireEvent.click(deleteButton);
 
     expect(mockDeleteSessionById).not.toHaveBeenCalled();
   });
 
-  it('prevents session selection when clicking edit controls', () => {
+  it('prevents session selection when clicking edit controls', async () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const renameButton = screen.getAllByTitle('Rename')[0];
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Rename conversation')[0]).toBeInTheDocument();
+    });
+
+    const renameButton = screen.getAllByTitle('Rename conversation')[0];
     fireEvent.click(renameButton);
 
     expect(mockOnSessionSelect).not.toHaveBeenCalled();
+  });
+
+  it('displays fallback avatars when personas are not loaded', async () => {
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      const fallbackIcons = screen.getAllByText('🎭');
+      expect(fallbackIcons).toHaveLength(2);
+    });
+  });
+
+  it('applies correct rarity theming to sessions', async () => {
+    // Mock personas to load properly for this test
+    mockFetchPersonas.mockResolvedValue(mockPersonas);
+
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('legendary')).toBeInTheDocument();
+      expect(screen.getByText('epic')).toBeInTheDocument();
+    });
+
+    // Check that rarity badges have correct styling
+    const legendaryBadge = screen.getByText('legendary');
+    expect(legendaryBadge).toHaveClass('bg-yellow-500/10', 'text-yellow-600');
+
+    const epicBadge = screen.getByText('epic');
+    expect(epicBadge).toHaveClass('bg-purple-500/10', 'text-purple-600');
+  });
+
+  it('displays improved action buttons with SVG icons', async () => {
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Rename conversation')).toHaveLength(2);
+      expect(screen.getAllByTitle('Delete conversation')).toHaveLength(2);
+    });
+
+    // Check that SVG icons are present
+    const editIcons = screen.getAllByTitle('Rename conversation');
+    const deleteIcons = screen.getAllByTitle('Delete conversation');
+
+    expect(editIcons).toHaveLength(2);
+    expect(deleteIcons).toHaveLength(2);
+  });
+
+  it('shows enhanced header with subtitle', async () => {
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat History')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Your conversations')).toBeInTheDocument();
   });
 });
