@@ -509,7 +509,7 @@ describe('Chat', () => {
   it('applies persona background theming', () => {
     const personaWithBg = {
       ...mockPersonas[0],
-      bg: 'ui/images/eeva_bg.jpg',
+      bg: 'ui/images/eeva_bg.png',
       rarity: 'legendary',
     };
 
@@ -558,5 +558,97 @@ describe('Chat', () => {
 
     // Since MessageBubble is mocked, we just verify the component renders
     expect(screen.getByTestId('message')).toBeInTheDocument();
+  });
+
+  it('renders persona background image when persona has bg field', () => {
+    const personaWithBg = {
+      ...mockPersonas[0],
+      bg: 'eeva_bg.png',
+      rarity: 'legendary',
+    };
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: personaWithBg,
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    const { container } = render(<Chat />);
+
+    // Check that the background image div is rendered
+    const backgroundImageDiv = container.querySelector('[style*="background-image"]');
+    expect(backgroundImageDiv).toBeInTheDocument();
+
+    // Check that it has the correct background image URL
+    expect(backgroundImageDiv).toHaveStyle({
+      backgroundImage: 'url(/images/eeva_bg.png)'
+    });
+
+    // Check that it has the correct opacity
+    expect(backgroundImageDiv).toHaveClass('opacity-10');
+  });
+
+  it('renders rarity-based gradient background', () => {
+    const personaWithRarity = {
+      ...mockPersonas[0],
+      rarity: 'legendary',
+    };
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: personaWithRarity,
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    const { container } = render(<Chat />);
+
+    // Check that the main container has the gradient background class
+    const mainContainer = container.firstChild as HTMLElement;
+    expect(mainContainer).toHaveClass('bg-gradient-to-br');
+    // The exact gradient class depends on the color scheme, but it should contain 'from-yellow-100/20'
+    expect(mainContainer?.className).toMatch(/from-yellow-100\/20/);
+  });
+
+  it('does not render background image when persona has no bg field', () => {
+    const personaWithoutBg = {
+      ...mockPersonas[0],
+      rarity: 'legendary',
+    };
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: personaWithoutBg,
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    const { container } = render(<Chat />);
+
+    // Check that no background image div is rendered
+    const backgroundImageDiv = container.querySelector('[style*="background-image"]');
+    expect(backgroundImageDiv).not.toBeInTheDocument();
   });
 });

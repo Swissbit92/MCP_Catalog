@@ -75,7 +75,7 @@ def _discover_persona_labels() -> str:
 def welcome_banner(coord_port: str, model: str, base: str):
     personas_line = _discover_persona_labels()
     print("\n" + "=" * 78)
-    print("  🎉 Welcome to GraphRAG — Local Coordinator + UI (Chat-Only)")
+    print("  Welcome to GraphRAG — Local Coordinator + UI (Chat-Only)")
     print("=" * 78)
     print(f"  • Ollama base   : {base}")
     print(f"  • Model         : {model}")
@@ -125,12 +125,12 @@ def main():
 
     # ---- SERIALIZED SUMMARY PREFLIGHT (BLOCKING) ----
     # Ensures summaries exist/are fresh before Coordinator/UI start
-    print("⏳ Pre-warming persona CV summaries (serialized)…")
+    print("Pre-warming persona CV summaries (serialized)…")
     try:
         built, skipped = ensure_all_summaries_serialized(timeout_sec=900, poll_sec=0.25)
-        print(f"✅ Summary preflight complete — built: {built}, up-to-date: {skipped}")
+        print(f"Summary preflight complete — built: {built}, up-to-date: {skipped}")
     except Exception as e:
-        print(f"⚠️ Summary preflight encountered an issue: {e}")
+        print(f"Summary preflight encountered an issue: {e}")
         # Non-fatal — the app can still run, but first greet might rebuild a missing one
 
     # Commands

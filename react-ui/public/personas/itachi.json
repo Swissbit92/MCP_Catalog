@@ -7,7 +7,7 @@
   "image": "ui/images/itachi_card.png",
   "avatar": "ui/images/itachi_avatar.png",
   "logo": "ui/images/itachi_logo.png",
-  "bg": "ui/images/itachi_bg.jpg",
+   "bg": "ui/images/itachi_bg.png",
   "emoji": "🌒",
   "allowed_mcp": ["chat", "graphrag"],
 
