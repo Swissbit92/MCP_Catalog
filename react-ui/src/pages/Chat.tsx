@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
 import SessionList from '../components/SessionList';
 import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
+import { Menu, X } from 'lucide-react';
 
 const Chat: React.FC = () => {
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [initializingSession, setInitializingSession] = useState<boolean>(false);
   const [personas, setPersonas] = useState<any[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [touchStartX, setTouchStartX] = useState<number>(0);
+  const [touchEndX, setTouchEndX] = useState<number>(0);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage } = usePersona();
@@ -196,25 +200,93 @@ const Chat: React.FC = () => {
       setSelectedPersona(sessionPersona);
     }
     await loadSessionMessages(session.id);
+    // Close sidebar after selection
+    setIsSidebarOpen(false);
+  };
+
+  // Touch handlers for swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > 50; // Minimum swipe distance
+
+    // Close sidebar on left swipe
+    if (isLeftSwipe && isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+
+    // Reset touch coordinates
+    setTouchStartX(0);
+    setTouchEndX(0);
   };
 
   return (
     <div className="flex h-full bg-gray-50 overflow-hidden">
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <SessionList onSessionSelect={handleSessionSelect} />
+      <motion.div
+        initial={{ x: -320 }}
+        animate={{
+          x: isSidebarOpen ? 0 : -320,
+          width: 320
+        }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="fixed z-50 h-full bg-white border-r border-gray-200"
+      >
+        <SessionList onSessionSelect={handleSessionSelect} />
+      </motion.div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+          isSidebarOpen ? 'md:ml-[320px]' : ''
+        }`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex-shrink-0">
+        <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 shadow-sm flex-shrink-0">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {currentSession?.title || `Chat with ${selectedPersona.display_name}`}
-          </h1>
+          <div className="flex items-center gap-3">
+            {/* Sidebar Toggle Button */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Toggle sidebar"
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-900 truncate">
+              {currentSession?.title || `Chat with ${selectedPersona.display_name}`}
+            </h1>
+          </div>
           {currentSession && (
-            <div className="flex gap-2">
-              <label className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer" title="Import Chat">
-                Import
+            <div className="flex gap-1 md:gap-2">
+              <label className="px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm md:text-base" title="Import Chat">
+                <span className="hidden sm:inline">Import</span>
+                <span className="sm:hidden">📥</span>
                 <input
                   type="file"
                   accept=".json"
@@ -224,17 +296,19 @@ const Chat: React.FC = () => {
               </label>
               <button
                 onClick={handleExport}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-3 md:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm md:text-base"
                 title="Export Chat"
               >
-                Export
+                <span className="hidden sm:inline">Export</span>
+                <span className="sm:hidden">📤</span>
               </button>
               <button
                 onClick={handleClearChat}
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                className="px-3 md:px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm md:text-base"
                 title="Clear Chat"
               >
-                Clear
+                <span className="hidden sm:inline">Clear</span>
+                <span className="sm:hidden">🗑️</span>
               </button>
             </div>
           )}
@@ -242,7 +316,7 @@ const Chat: React.FC = () => {
         </div>
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-3 md:space-y-4 min-h-0">
           {messages.length === 0 && currentSession && !initializingSession ? (
             <div className="text-center text-gray-500 mt-8">
               Start a conversation with {selectedPersona.display_name}!
@@ -270,12 +344,12 @@ const Chat: React.FC = () => {
 
         {/* Input Area */}
         <motion.div
-          className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0"
+          className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex-shrink-0"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.3 }}
         >
-          <div className="flex gap-3">
+          <div className="flex gap-2 md:gap-3">
             <motion.input
               type="text"
               value={input}
@@ -286,21 +360,27 @@ const Chat: React.FC = () => {
                   handleSendMessage();
                 }
               }}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="flex-1 px-4 py-3 md:py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base md:text-base"
               placeholder={initializingSession ? "Loading character..." : "Type a message..."}
               disabled={loading || !currentSession || initializingSession}
               whileFocus={{ scale: 1.01 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              // Mobile keyboard optimizations
+              autoComplete="off"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck="true"
             />
             <motion.button
               onClick={handleSendMessage}
               disabled={loading || !currentSession || !input.trim() || initializingSession}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200"
+              className="px-4 md:px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-2xl hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-purple-600 transition-all duration-200 min-w-[60px] md:min-w-[80px] touch-manipulation"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             >
-              Send
+              <span className="hidden sm:inline">Send</span>
+              <span className="sm:hidden">📤</span>
             </motion.button>
           </div>
         </motion.div>

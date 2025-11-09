@@ -43,11 +43,11 @@ export const RichContent: React.FC<RichContentProps> = ({ content, className = '
           <div className="text-xs text-gray-400 font-mono">JSON Response</div>
           <button
             onClick={() => copyToClipboard(formattedJson)}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-800"
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors p-2 md:p-1 rounded hover:bg-gray-800 touch-manipulation min-h-[32px]"
             title="Copy JSON"
           >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
         <div className={`relative ${isLongJson ? 'max-h-64 overflow-hidden' : ''}`}>
@@ -90,11 +90,11 @@ export const RichContent: React.FC<RichContentProps> = ({ content, className = '
           <div className="text-xs text-gray-400 font-mono">Code ({language})</div>
           <button
             onClick={() => copyToClipboard(code)}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-800"
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors p-2 md:p-1 rounded hover:bg-gray-800 touch-manipulation min-h-[32px]"
             title="Copy code"
           >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
         <pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto">
