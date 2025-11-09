@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Chat UX Phase 3.2: Performance & Feedback**: Implemented latency tracking with response time display in ms/s, error recovery with retry functionality for failed messages, status indicators (sending, sent, delivered, failed) with loading spinners, message status management and retry counters, and React.memo performance optimizations
 - **Copy Button Feature**: Added ChatGPT-style copy buttons for JSON responses and code blocks with visual feedback (copy icon → checkmark) and automatic reset after 2 seconds
 - **Chat UX Phase 3.4: Mobile Optimization**: Implemented ChatGPT-style responsive layout (sidebar pushes content on desktop, overlays on mobile), dynamic content expansion, touch gestures, swipe navigation, mobile-optimized input attributes, and comprehensive testing
+- **Header Layout Optimization**: Fixed chat header to prioritize action buttons (Import/Export/Clear) with proper truncation of long chat titles
 
 ### Changed
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only

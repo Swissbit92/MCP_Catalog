@@ -146,6 +146,7 @@ The Streamlit app demonstrates what a proper chat UX should include:
 - [x] Increased message bubble max width on mobile (85% vs 70%)
 - [x] Enhanced copy buttons with larger touch targets (min-height 32px)
 - [x] Comprehensive unit testing (5 new tests for mobile features)
+- [x] Optimized header layout (action buttons always visible, chat title truncation)
 
 ---
 
