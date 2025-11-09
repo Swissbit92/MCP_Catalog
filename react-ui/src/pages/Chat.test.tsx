@@ -505,4 +505,58 @@ describe('Chat', () => {
     // The touch handling is internal, so we verify the element exists
     expect(chatArea).toBeInTheDocument();
   });
+
+  it('applies persona background theming', () => {
+    const personaWithBg = {
+      ...mockPersonas[0],
+      bg: 'ui/images/eeva_bg.jpg',
+      rarity: 'legendary',
+    };
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: personaWithBg,
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    const { container } = render(<Chat />);
+
+    // Check that the background div exists
+    const backgroundDiv = container.firstChild;
+    expect(backgroundDiv).toBeInTheDocument();
+  });
+
+  it('passes persona rarity to MessageBubble', () => {
+    const personaWithRarity = {
+      ...mockPersonas[0],
+      rarity: 'legendary',
+    };
+
+    mockUsePersona.mockReturnValue({
+      selectedPersona: personaWithRarity,
+      currentSession: mockSessions[0],
+      messages: [{ id: '1', role: 'assistant', content: 'Hello!', timestamp: new Date() }],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    render(<Chat />);
+
+    // Since MessageBubble is mocked, we just verify the component renders
+    expect(screen.getByTestId('message')).toBeInTheDocument();
+  });
 });

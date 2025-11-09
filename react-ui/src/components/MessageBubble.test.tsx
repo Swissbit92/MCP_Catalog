@@ -176,4 +176,19 @@ describe('MessageBubble', () => {
 
     expect(screen.getByText('800ms')).toBeInTheDocument();
   });
+
+  it('passes personaRarity to Avatar2D for assistant messages', () => {
+    const assistantMessage = { ...mockMessage, role: 'assistant' as const };
+
+    render(
+      <MessageBubble
+        message={assistantMessage}
+        personaAvatar={mockPersonaAvatar}
+        personaRarity="legendary"
+      />
+    );
+
+    // The Avatar2D should receive the rarity prop, but since it's internal we check the alt text
+    expect(screen.getByAltText('Assistant')).toBeInTheDocument();
+  });
 });

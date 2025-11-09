@@ -53,4 +53,34 @@ describe('Avatar2D', () => {
     // Should still render (error handling is in the component)
     expect(img).toBeInTheDocument();
   });
+
+  it('applies legendary rarity styles', () => {
+    const { container } = render(<Avatar2D alt="Test" rarity="legendary" />);
+
+    expect(container.firstChild).toHaveClass('ring-2', 'ring-yellow-400', 'shadow-lg', 'shadow-yellow-500/30');
+  });
+
+  it('applies epic rarity styles', () => {
+    const { container } = render(<Avatar2D alt="Test" rarity="epic" />);
+
+    expect(container.firstChild).toHaveClass('ring-2', 'ring-purple-400', 'shadow-lg', 'shadow-purple-500/30');
+  });
+
+  it('applies rare rarity styles', () => {
+    const { container } = render(<Avatar2D alt="Test" rarity="rare" />);
+
+    expect(container.firstChild).toHaveClass('ring-2', 'ring-blue-400', 'shadow-lg', 'shadow-blue-500/30');
+  });
+
+  it('applies common rarity styles by default', () => {
+    const { container } = render(<Avatar2D alt="Test" rarity="common" />);
+
+    expect(container.firstChild).toHaveClass('ring-1', 'ring-gray-400', 'shadow-md', 'shadow-gray-400/20');
+  });
+
+  it('applies hover scale effect', () => {
+    const { container } = render(<Avatar2D alt="Test" />);
+
+    expect(container.firstChild).toHaveClass('hover:scale-105');
+  });
 });
