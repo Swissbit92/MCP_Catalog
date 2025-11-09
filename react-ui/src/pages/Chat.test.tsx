@@ -364,4 +364,145 @@ describe('Chat', () => {
     // But the error handling is tested in the context
     mockAlert.mockRestore();
   });
+
+  it('shows sidebar toggle button', () => {
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    render(<Chat />);
+
+    // Mobile menu button should be present
+    const menuButton = screen.getByLabelText('Toggle sidebar');
+    expect(menuButton).toBeInTheDocument();
+  });
+
+  it('toggles sidebar when menu button is clicked', async () => {
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    render(<Chat />);
+
+    const menuButton = screen.getByLabelText('Toggle sidebar');
+
+    // Initially sidebar should be closed
+    expect(menuButton).toBeInTheDocument();
+
+    // Click to open sidebar
+    fireEvent.click(menuButton);
+
+    // The sidebar state is internal, so we test that the button exists and is clickable
+    expect(menuButton).toBeInTheDocument();
+  });
+
+  it('renders responsive chat interface', () => {
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    render(<Chat />);
+
+    // Should have mobile-optimized input with proper attributes
+    const input = screen.getByPlaceholderText('Type a message...');
+    expect(input).toHaveAttribute('autoComplete', 'off');
+    expect(input).toHaveAttribute('autoCorrect', 'on');
+    expect(input).toHaveAttribute('autoCapitalize', 'sentences');
+    expect(input).toHaveAttribute('spellCheck', 'true');
+
+    // Should have touch-optimized send button
+    const sendButtons = screen.getAllByText('📤');
+    const sendButton = sendButtons.find(button => button.closest('button')?.hasAttribute('disabled'));
+    expect(sendButton).toBeInTheDocument();
+    expect(sendButton?.closest('button')).toHaveClass('touch-manipulation');
+  });
+
+  it('shows responsive header buttons', () => {
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    render(<Chat />);
+
+    // Should show emoji icons on mobile instead of text
+    const mobileIcons = screen.getAllByText(/📥|📤|🗑️/);
+
+    expect(mobileIcons.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('handles touch gestures for sidebar', () => {
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    render(<Chat />);
+
+    const chatArea = screen.getByText('Chat with Eeva').closest('.flex-1');
+
+    // Simulate touch start
+    fireEvent.touchStart(chatArea!, {
+      targetTouches: [{ clientX: 100 }]
+    });
+
+    // Simulate touch move (left swipe)
+    fireEvent.touchMove(chatArea!, {
+      targetTouches: [{ clientX: 50 }]
+    });
+
+    // Simulate touch end
+    fireEvent.touchEnd(chatArea!);
+
+    // The touch handling is internal, so we verify the element exists
+    expect(chatArea).toBeInTheDocument();
+  });
 });

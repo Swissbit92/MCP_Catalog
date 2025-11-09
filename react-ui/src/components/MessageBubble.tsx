@@ -54,7 +54,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       )}
 
       {/* Message bubble */}
-      <div className={`max-w-[70%] ${isUser ? 'order-first' : ''}`}>
+      <div className={`max-w-[85%] md:max-w-[70%] ${isUser ? 'order-first' : ''}`}>
         <motion.div
           className={`px-4 py-3 rounded-2xl shadow-sm ${
             isUser

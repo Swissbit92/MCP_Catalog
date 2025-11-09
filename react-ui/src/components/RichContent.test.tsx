@@ -178,4 +178,26 @@ describe('RichContent', () => {
       { timeout: 2500 }
     );
   });
+
+  it('shows compact copy buttons on mobile', () => {
+    const jsonContent = '{"name": "John"}';
+    render(<RichContent content={jsonContent} />);
+
+    // Should show copy button with icon but no text on mobile
+    const copyButton = screen.getByTitle('Copy JSON');
+    expect(copyButton).toBeInTheDocument();
+
+    // The button should have touch-manipulation class for better mobile interaction
+    expect(copyButton).toHaveClass('touch-manipulation');
+  });
+
+  it('has larger touch targets on mobile', () => {
+    const jsonContent = '{"name": "John"}';
+    render(<RichContent content={jsonContent} />);
+
+    const copyButton = screen.getByTitle('Copy JSON');
+
+    // Should have minimum height for touch targets
+    expect(copyButton).toHaveClass('min-h-[32px]');
+  });
 });
