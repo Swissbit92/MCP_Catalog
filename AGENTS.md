@@ -4,6 +4,7 @@
 - **Setup**: `./setup.sh` (Linux/macOS) or `setup.bat` (Windows)` • Manual: `pip install -r requirements.txt && cd react-ui && npm install`
 - **Python API**: `uvicorn src.coordinator.server:app --reload --port 8000`
 - **React Dev**: `cd react-ui && npm start` • **Build**: `npm run build` (includes ESLint)
+- **Lint**: `cd react-ui && npm run build` (ESLint via build) • Python: No linter
 - **Single test**: `cd react-ui && npm test -- --testNamePattern="test name"` • Python: No tests
 - **Full app**: Set env vars, then `python run.py` + `cd react-ui && npm start` (requires Ollama)
 
