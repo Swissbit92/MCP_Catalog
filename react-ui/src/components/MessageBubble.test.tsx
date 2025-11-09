@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MessageBubble } from './MessageBubble';
 
 describe('MessageBubble', () => {
@@ -88,5 +88,92 @@ describe('MessageBubble', () => {
 
     const messageBubble = container.querySelector('[class*="bg-gray-100"]');
     expect(messageBubble).toBeInTheDocument();
+  });
+
+  it('shows latency information in seconds', () => {
+    const messageWithLatency = {
+      ...mockMessage,
+      latency: 1250, // 1.25 seconds
+    };
+
+    render(<MessageBubble message={messageWithLatency} showTimestamp={true} />);
+
+    expect(screen.getByText('1.3s')).toBeInTheDocument();
+  });
+
+  it('shows latency in milliseconds for fast responses', () => {
+    const messageWithLatency = {
+      ...mockMessage,
+      latency: 450, // 450ms
+    };
+
+    render(<MessageBubble message={messageWithLatency} showTimestamp={true} />);
+
+    expect(screen.getByText('450ms')).toBeInTheDocument();
+  });
+
+  it('shows sending status with loading indicator', () => {
+    const sendingMessage = {
+      ...mockMessage,
+      status: 'sending' as const,
+    };
+
+    render(<MessageBubble message={sendingMessage} />);
+
+    expect(screen.getByText('Sending...')).toBeInTheDocument();
+  });
+
+  it('shows failed status with retry button and attempt count', () => {
+    const mockOnRetry = jest.fn();
+    const failedMessage = {
+      ...mockMessage,
+      status: 'failed' as const,
+      retryCount: 2,
+    };
+
+    render(<MessageBubble message={failedMessage} onRetry={mockOnRetry} />);
+
+    expect(screen.getByText('Failed')).toBeInTheDocument();
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+    expect(screen.getByText('(2 attempts)')).toBeInTheDocument();
+  });
+
+  it('calls onRetry when retry button is clicked', () => {
+    const mockOnRetry = jest.fn();
+    const failedMessage = {
+      ...mockMessage,
+      status: 'failed' as const,
+    };
+
+    render(<MessageBubble message={failedMessage} onRetry={mockOnRetry} />);
+
+    const retryButton = screen.getByText('Retry');
+    fireEvent.click(retryButton);
+
+    expect(mockOnRetry).toHaveBeenCalledWith(mockMessage.id);
+  });
+
+  it('does not show retry button when onRetry is not provided', () => {
+    const failedMessage = {
+      ...mockMessage,
+      status: 'failed' as const,
+    };
+
+    render(<MessageBubble message={failedMessage} />);
+
+    expect(screen.getByText('Failed')).toBeInTheDocument();
+    expect(screen.queryByText('Retry')).not.toBeInTheDocument();
+  });
+
+  it('shows delivered status for successful messages', () => {
+    const deliveredMessage = {
+      ...mockMessage,
+      status: 'delivered' as const,
+      latency: 800,
+    };
+
+    render(<MessageBubble message={deliveredMessage} showTimestamp={true} />);
+
+    expect(screen.getByText('800ms')).toBeInTheDocument();
   });
 });
