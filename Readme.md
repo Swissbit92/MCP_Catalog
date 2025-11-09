@@ -61,9 +61,9 @@
 # 1. Clone and setup
 git clone https://github.com/Swissbit92/MCP_Catalog.git
 cd MCP_Catalog
-./setup.sh  # Linux/macOS
+./setup.sh  # Linux/macOS (includes npm install)
 # or
-setup.bat   # Windows
+setup.bat   # Windows (includes npm install)
 
 # 2. Configure environment
 cp .env.example .env  # Edit with your settings
@@ -77,6 +77,8 @@ python run_react.py
 ```
 
 **🎉 That's it!** Your app will be running at `http://localhost:3000`
+
+> **Note**: The setup script automatically installs both Python and React dependencies. If you prefer manual setup, run `pip install -r requirements.txt && cd react-ui && npm install`.
 
 ## 🤝 Contributing
 
