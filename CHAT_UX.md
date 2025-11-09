@@ -113,9 +113,9 @@ The Streamlit app demonstrates what a proper chat UX should include:
 ### 3.1 Rich Media Support 💍🟡 ✅ **COMPLETED**
 **Effort**: Medium • **Impact**: Medium
 - [x] Add message timestamps
-- [x] Support for JSON responses (syntax highlighting, collapsible)
+- [x] Support for JSON responses (syntax highlighting, collapsible, copy button with feedback)
 - [ ] Image/video message support
-- [x] Code block syntax highlighting
+- [x] Code block syntax highlighting (with copy button and visual feedback)
 - [ ] File attachment handling
 
 ### 3.2 Performance & Feedback 💍🟡 ✅ **COMPLETED**
@@ -252,8 +252,8 @@ interface RichContent {
 - [x] Input blocking during greeting generation
 - [x] Avatar images display correctly and persist when switching chats
 - [x] Latency tracking and error recovery (response time display, retry functionality)
-- [x] Rich media support (JSON syntax highlighting, code blocks, timestamps)
-- [x] Comprehensive unit testing (24 tests covering all new features)
+- [x] Rich media support (JSON syntax highlighting with copy buttons, code blocks with copy buttons, timestamps)
+- [x] Comprehensive unit testing (29 tests covering all new features)
 - [x] Type-safe implementation with proper build verification
 - [ ] Mobile-responsive design
 - [x] Professional polish matching modern chat apps

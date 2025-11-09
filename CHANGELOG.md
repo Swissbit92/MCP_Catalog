@@ -21,8 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Header Component Enhancement (Iteration 2.2)**: Implemented visible particle system, dynamic gradient theming with page-based color changes, enhanced glassmorphism, animated typography with glow effects, and prominent animated bottom border
 - **Header Component Enhancement (Iteration 2.3)**: Added functional mobile hamburger menu with slide-out navigation, persona-aware theming that adapts to selected character, touch-optimized interactions, and mobile-specific UI enhancements
 - **Phase 3: App-Wide Enhancements**: Completed character card visual effects with Framer Motion animations, polished chat interface with smooth scrolling and message animations, and comprehensive mobile optimization across the entire application
-- **Chat UX Phase 3.1: Rich Media Support**: Added message timestamps, JSON syntax highlighting with collapsible display, code block highlighting with language detection, and RichContent component for intelligent content rendering
+- **Chat UX Phase 3.1: Rich Media Support**: Added message timestamps, JSON syntax highlighting with collapsible display and copy buttons with visual feedback, code block highlighting with language detection and copy buttons with visual feedback, and RichContent component for intelligent content rendering
 - **Chat UX Phase 3.2: Performance & Feedback**: Implemented latency tracking with response time display in ms/s, error recovery with retry functionality for failed messages, status indicators (sending, sent, delivered, failed) with loading spinners, message status management and retry counters, and React.memo performance optimizations
+- **Copy Button Feature**: Added ChatGPT-style copy buttons for JSON responses and code blocks with visual feedback (copy icon → checkmark) and automatic reset after 2 seconds
 
 ### Changed
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only

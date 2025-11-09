@@ -37,6 +37,7 @@
 | 💬 **Persistent Chat** | Conversations saved across sessions |
 | 🔄 **Session Switching** | Seamlessly switch between different persona chats |
 | 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
+| 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
 | 🔒 **Local-First** | All data stays on your device |
 | 🤖 **AI-Powered** | Powered by Ollama LLM models |
 
@@ -101,10 +102,10 @@ The React application features comprehensive visual polish and mobile optimizati
 
 - **Header Component**: Modern dark theme with particle effects, dynamic theming, glassmorphism, animated typography, and functional mobile hamburger menu
 - **Character Cards**: Framer Motion animations with staggered entrance effects, interactive hover states, and rarity-based styling
-- **Chat Interface**: Smooth auto-scrolling, animated message bubbles, enhanced typing indicators, rich media support (JSON highlighting, code blocks), latency tracking, error recovery with retry functionality, and polished input interactions
+- **Chat Interface**: Smooth auto-scrolling, animated message bubbles, enhanced typing indicators, rich media support (JSON highlighting with copy buttons and visual feedback, code blocks with copy buttons and visual feedback), latency tracking, error recovery with retry functionality, and polished input interactions
 - **Mobile Optimization**: Fully responsive design with touch-optimized interactions across all screen sizes
 - **Performance**: Optimized animations with 60fps performance, React.memo optimizations, and efficient React patterns
-- **Testing**: Comprehensive unit test coverage (24 tests) with type-safe implementation
+- **Testing**: Comprehensive unit test coverage (29 tests) with type-safe implementation
 
 ### Current Status
 - ✅ **Home Page**: Gacha-style character pulls with card reveal animations

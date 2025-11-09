@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 interface RichContentProps {
   content: string;
@@ -7,6 +8,17 @@ interface RichContentProps {
 
 export const RichContent: React.FC<RichContentProps> = ({ content, className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   // Check if content is JSON
   const isJson = (() => {
@@ -27,7 +39,17 @@ export const RichContent: React.FC<RichContentProps> = ({ content, className = '
 
     return (
       <div className={`relative ${className}`}>
-        <div className="text-xs text-gray-400 mb-1 font-mono">JSON Response</div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-gray-400 font-mono">JSON Response</div>
+          <button
+            onClick={() => copyToClipboard(formattedJson)}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-800"
+            title="Copy JSON"
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
         <div className={`relative ${isLongJson ? 'max-h-64 overflow-hidden' : ''}`}>
           <pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto">
             {formattedJson}
@@ -64,7 +86,17 @@ export const RichContent: React.FC<RichContentProps> = ({ content, className = '
 
     return (
       <div className={`relative ${className}`}>
-        <div className="text-xs text-gray-400 mb-1 font-mono">Code ({language})</div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-gray-400 font-mono">Code ({language})</div>
+          <button
+            onClick={() => copyToClipboard(code)}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-800"
+            title="Copy code"
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
         <pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto">
           {code}
         </pre>
