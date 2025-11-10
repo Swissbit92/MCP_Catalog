@@ -280,12 +280,14 @@ describe('SessionList', () => {
 
     // Check that glassmorphism background layers are applied
     const sessionListContainer = container.firstChild as HTMLElement;
-    expect(sessionListContainer).toHaveClass('bg-white/95');
+    expect(sessionListContainer).toHaveClass('bg-gradient-to-b');
+    expect(sessionListContainer).toHaveClass('from-slate-900/95');
     expect(sessionListContainer).toHaveClass('backdrop-blur-xl');
 
-    // Check that header has glassmorphism styling
+    // Check that header has proper styling
     const header = screen.getByText('Chat History').closest('div');
-    expect(header).toHaveClass('backdrop-blur-md');
+    expect(header).toHaveClass('border-b');
+    expect(header).toHaveClass('border-slate-700/50');
   });
 
   it('applies dynamic background animations based on persona rarity', async () => {
