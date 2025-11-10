@@ -314,6 +314,13 @@ Simply delete the corresponding JSON file from `/personas/` directory and restar
 - 🎯 **Select Character**: Click any card to start chatting
 - 💎 **Collection Display**: View collected vs uncollected characters
 
+### **Classic Cards Showcase (`/cards-v2`)**
+- 🎴 **Card Gallery**: Browse all characters with classic foil effects and animations
+- 🎲 **Gacha Pull**: Experience 1x/5x/10x pulls with sequential reveals and audio feedback
+- 📚 **My Collection**: View collected characters with statistics and management
+- 📊 **Pull History**: Track pulling statistics and session history
+- 🎯 **Choose Characters**: Click "Choose" button on any card to jump directly to chat
+
 ### **Chat Interface (`/chat`)**
 - 💬 **Start Conversations**: Chat with your selected persona
 - 🔄 **Switch Sessions**: Use sidebar to switch between chats
