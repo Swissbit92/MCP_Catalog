@@ -236,11 +236,11 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
             return (
               <motion.div
                 key={session.id}
-                className={`relative mx-2 my-1 p-3 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 cursor-pointer transition-all duration-200 backdrop-blur-sm overflow-hidden ${
+                className={`relative mx-2 my-1 p-3 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 cursor-pointer transition-all duration-100 backdrop-blur-sm overflow-hidden ${
                   isActive ? `${rarityStyles.bg} ${rarityStyles.border} border-2 shadow-lg` : 'bg-slate-800/20'
                 }`}
                 onClick={() => onSessionSelect(session)}
-                whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                whileHover={{ scale: 1.02, transition: { duration: 0.1 } }}
                 whileTap={{ scale: 0.98 }}
               >
                 {/* Rarity-based background glow for active sessions */}
@@ -275,7 +275,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                         <img
                           src={`/images/${persona.avatar}`}
                           alt={persona.display_name}
-                          className="w-10 h-10 rounded-lg object-cover border-2 border-gray-200 relative z-10"
+                          className="w-10 h-10 rounded-lg object-cover relative z-10"
                         />
                         {/* Rarity glow ring */}
                         <div className={`absolute inset-0 rounded-lg ${rarityStyles.border} border-2 opacity-60 scale-110`} />
