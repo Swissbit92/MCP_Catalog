@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Input Blocking**: Added proper blocking of chat input until initial greeting messages are generated
 - **Loading States**: Added visual feedback during session creation and greeting generation
 - **Avatar Images**: Fixed avatar images disappearing when switching between chats and ensured proper use of dedicated avatar images instead of card images
+- **Page Scrolling**: Fixed scrolling issues on all pages by changing main content container from `overflow-hidden` to `overflow-auto` in App.tsx
 
 ### Documentation
 - Updated README with new unified startup process and React UI focus
