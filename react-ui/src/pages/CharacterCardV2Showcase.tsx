@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import CharacterCardV2 from '../components/CharacterCardV2';
+import CharacterCard from '../components/CharacterCard';
 import PullInterface from '../components/PullInterface';
 import CharacterCollection from '../components/CharacterCollection';
 import PullHistory from '../components/PullHistory';
@@ -50,7 +50,7 @@ const CharacterCardV2Showcase: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-white text-xl mb-4">Loading Holographic Cards...</div>
+          <div className="text-white text-xl mb-4">Loading Classic Cards...</div>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
         </div>
       </div>
@@ -63,11 +63,11 @@ const CharacterCardV2Showcase: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
-            Holographic Character Cards V2
+            Classic Character Cards
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Experience the next generation of gacha-style character cards with premium holographic effects,
-            dynamic rarity theming, and immersive visual design.
+            Experience the timeless gacha-style character cards with classic foil effects,
+            elegant rarity theming, and smooth animations that started it all.
           </p>
 
           {/* Tab Navigation */}
@@ -146,7 +146,7 @@ const CharacterCardV2Showcase: React.FC = () => {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 justify-items-center">
           {personas.map((persona, index) => (
-            <CharacterCardV2
+            <CharacterCard
               key={persona.key}
               name={persona.display_name}
               style={persona.style}
@@ -166,26 +166,26 @@ const CharacterCardV2Showcase: React.FC = () => {
             <h3 className="text-xl font-bold text-white mb-4">Interactive Features</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
               <div className="text-gray-300">
-                <div className="font-semibold text-yellow-400 mb-2">✨ Holographic Effects</div>
-                <div className="text-sm">Multi-layered backgrounds with animated foil effects</div>
+                <div className="font-semibold text-yellow-400 mb-2">✨ Classic Foil Effects</div>
+                <div className="text-sm">Traditional card frames with elegant foil overlays and glint effects</div>
               </div>
               <div className="text-gray-300">
                 <div className="font-semibold text-purple-400 mb-2">🎯 Rarity Theming</div>
-                <div className="text-sm">Dynamic colors and glows based on character rarity</div>
+                <div className="text-sm">Beautiful gradient colors and styling based on character rarity</div>
               </div>
               <div className="text-gray-300">
-                <div className="font-semibold text-blue-400 mb-2">🎮 3D Physics Engine</div>
-                <div className="text-sm">Mouse-following tilt with realistic shadows and parallax</div>
+                <div className="font-semibold text-blue-400 mb-2">🎮 Smooth Animations</div>
+                <div className="text-sm">Gentle hover effects with subtle lift and rotation animations</div>
               </div>
               <div className="text-gray-300">
                 <div className="font-semibold text-green-400 mb-2">🎨 Selection States</div>
-                <div className="text-sm">Animated rings and sparkles for selected cards</div>
+                <div className="text-sm">Clean selection highlighting with the classic "Choose" button</div>
               </div>
             </div>
             <div className="mt-6 p-4 bg-black/30 rounded-lg">
               <div className="text-sm text-gray-300">
-                <strong className="text-cyan-400">💡 Pro Tip:</strong> Move your mouse over the cards to see the realistic 3D physics in action!
-                The cards tilt and cast dynamic shadows that follow your cursor movement.
+                <strong className="text-cyan-400">💡 Pro Tip:</strong> Hover over the cards to see the classic gacha animations!
+                Each card has its own personality with smooth entrance effects and elegant interactions.
               </div>
             </div>
           </div>
