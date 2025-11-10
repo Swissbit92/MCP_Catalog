@@ -1,15 +1,35 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PullInterface from './PullInterface';
+import { PersonaProvider } from '../context/PersonaContext';
 
 // Mock the entire services/api module
 jest.mock('../services/api', () => ({
   fetchPersonas: jest.fn(),
+  fetchSessions: jest.fn(),
+  createSession: jest.fn(),
+  getSessionWithMessages: jest.fn(),
+  updateSession: jest.fn(),
+  deleteSession: jest.fn(),
+  sendMessageToSession: jest.fn(),
+  exportSession: jest.fn(),
+  importSession: jest.fn(),
+  clearSessionMessages: jest.fn(),
 }));
 
 // Mock tsparticles
 jest.mock('@tsparticles/react', () => ({
   Particles: () => null,
+}));
+
+// Mock AudioContext
+jest.mock('../context/AudioContext', () => ({
+  AudioProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  useAudio: () => ({
+    playPullSound: jest.fn(),
+    playRevealSound: jest.fn(),
+    playCelebrationSound: jest.fn(),
+  }),
 }));
 
 // Import the mocked function
@@ -18,6 +38,12 @@ const mockFetchPersonas = fetchPersonas as jest.MockedFunction<typeof fetchPerso
 
 describe('PullInterface', () => {
   const mockOnCharacterSelect = jest.fn();
+
+  const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <PersonaProvider>
+      {children}
+    </PersonaProvider>
+  );
 
   const mockPersonas = [
     {
@@ -76,7 +102,11 @@ describe('PullInterface', () => {
   });
 
   it('renders pull interface with initial state', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     expect(screen.getByText('Character Gacha')).toBeInTheDocument();
     expect(screen.getByText('Pull Character')).toBeInTheDocument();
@@ -86,7 +116,11 @@ describe('PullInterface', () => {
   });
 
   it('allows changing pull count', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     const fivePullButton = screen.getByText('5x Pull');
     fireEvent.click(fivePullButton);
@@ -96,7 +130,11 @@ describe('PullInterface', () => {
   });
 
   it('shows loading state during pull', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     const pullButton = screen.getByText('Pull Character');
     fireEvent.click(pullButton);
@@ -107,7 +145,11 @@ describe('PullInterface', () => {
 
   // Skipping async test due to timing issues
   it.skip('prevents multiple pulls while one is in progress', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     const pullButton = screen.getByText('Pull Character');
     fireEvent.click(pullButton);
@@ -121,7 +163,11 @@ describe('PullInterface', () => {
   });
 
   it('displays correct cost based on pull count', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     // Default 1x pull should cost 100
     expect(screen.getByText('Cost: 100 💎')).toBeInTheDocument();
@@ -141,7 +187,11 @@ describe('PullInterface', () => {
 
   // Skipping async test due to timing issues
   it.skip('prevents multiple pulls while one is in progress', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     const pullButton = screen.getByText('Pull Character');
     fireEvent.click(pullButton);
@@ -158,7 +208,11 @@ describe('PullInterface', () => {
   it.skip('handles pull errors gracefully', async () => {
     mockFetchPersonas.mockRejectedValueOnce(new Error('Network error'));
 
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     const pullButton = screen.getByText('Pull Character');
     fireEvent.click(pullButton);
@@ -173,7 +227,11 @@ describe('PullInterface', () => {
   });
 
   it('shows energy particles around pull button when not pulling', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     // The pull button should be visible with energy particles (tested via presence)
     const pullButton = screen.getByText('Pull Character');
@@ -181,13 +239,21 @@ describe('PullInterface', () => {
   });
 
   it('displays rarity information in the interface', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     expect(screen.getByText('Higher pull counts have better odds!')).toBeInTheDocument();
   });
 
   it('has proper accessibility attributes', () => {
-    render(<PullInterface onCharacterSelect={mockOnCharacterSelect} />);
+    render(
+      <TestWrapper>
+        <PullInterface onCharacterSelect={mockOnCharacterSelect} />
+      </TestWrapper>
+    );
 
     const pullButton = screen.getByRole('button', { name: /pull character/i });
     expect(pullButton).toBeInTheDocument();

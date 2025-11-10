@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Code Quality Improvements** - Fixed ESLint warnings in PullInterface component and resolved test suite issues for PullInterface and PersonaContext
 - **Phase 3: Character Gacha System Completion** - Full implementation of advanced gacha system with multi-pull mechanics, particle effects, audio integration, and collection management
 - **Character Card Preference Update** - Switched CharacterCardV2Showcase to use classic CharacterCard component with traditional foil effects and smooth animations instead of holographic V2 cards
 - **Multi-Pull System** - PullInterface component supporting 1x/5x/10x pulls with sequential reveal animations, energy-animated buttons, and result display
