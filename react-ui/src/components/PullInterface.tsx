@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import CharacterCardV2 from '../components/CharacterCardV2';
+import CharacterCard from '../components/CharacterCard';
 import EnergyParticles from '../components/EnergyParticles';
 import { fetchPersonas } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
@@ -328,7 +328,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
               }}
             >
               {pulledCharacter && (
-                <CharacterCardV2
+                <CharacterCard
                   name={pulledCharacter.display_name}
                   style={pulledCharacter.style}
                   image={`/images/${pulledCharacter.image}`}
