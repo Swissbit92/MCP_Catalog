@@ -191,4 +191,45 @@ describe('MessageBubble', () => {
     // The Avatar2D should receive the rarity prop, but since it's internal we check the alt text
     expect(screen.getByAltText('Assistant')).toBeInTheDocument();
   });
+
+  it('shows persona indicator on assistant messages when personaName is provided', () => {
+    const assistantMessage = { ...mockMessage, role: 'assistant' as const };
+
+    render(
+      <MessageBubble
+        message={assistantMessage}
+        personaName="Test Persona"
+        personaRarity="epic"
+      />
+    );
+
+    expect(screen.getByText('Test Persona')).toBeInTheDocument();
+  });
+
+  it('does not show persona indicator on user messages', () => {
+    render(
+      <MessageBubble
+        message={mockMessage}
+        personaName="Test Persona"
+      />
+    );
+
+    expect(screen.queryByText('Test Persona')).not.toBeInTheDocument();
+  });
+
+  it('applies correct rarity styling to persona indicator', () => {
+    const assistantMessage = { ...mockMessage, role: 'assistant' as const };
+
+    const { container } = render(
+      <MessageBubble
+        message={assistantMessage}
+        personaName="Legendary Persona"
+        personaRarity="legendary"
+      />
+    );
+
+    // Check that the persona indicator has the correct rarity styling
+    const indicator = screen.getByText('Legendary Persona');
+    expect(indicator).toHaveClass('bg-yellow-100', 'text-yellow-800');
+  });
 });

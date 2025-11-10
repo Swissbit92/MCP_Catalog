@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - **Chat UX Phase 3.4: Mobile Optimization**: Implemented ChatGPT-style responsive layout (sidebar pushes content on desktop, overlays on mobile), dynamic content expansion, touch gestures, swipe navigation, mobile-optimized input attributes, and comprehensive testing
  - **Header Layout Optimization**: Fixed chat header to prioritize action buttons (Import/Export/Clear) with proper truncation of long chat titles
  - **Persona Customization Phase 3.3**: Implemented gacha-style theming with rarity-based colors (legendary=gold, epic=purple, rare=blue, common=grey), custom character backgrounds with subtle watermark overlays, personalized avatar effects with rarity rings and shadows, cohesive send button theming, and comprehensive unit testing
+ - **Chat History UX Iteration 3: Persona Indicators**: Added small persona name badges on assistant messages with rarity-based styling (legendary=yellow, epic=purple, rare=blue, common=gray) for clear persona identification in conversations
 
 ### Changed
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only

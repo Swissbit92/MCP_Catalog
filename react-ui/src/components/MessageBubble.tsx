@@ -17,6 +17,7 @@ interface MessageBubbleProps {
   showTimestamp?: boolean;
   onRetry?: (messageId: string) => void;
   personaRarity?: string;
+  personaName?: string;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
@@ -26,6 +27,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   showTimestamp = false,
   onRetry,
   personaRarity,
+  personaName,
 }) => {
   const isUser = message.role === 'user';
 
@@ -67,6 +69,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           whileHover={{ scale: 1.02 }}
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         >
+          {/* Persona indicator for assistant messages */}
+          {!isUser && personaName && (
+            <div className="flex items-center gap-1 mb-2">
+              <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                personaRarity === 'legendary' ? 'bg-yellow-100 text-yellow-800' :
+                personaRarity === 'epic' ? 'bg-purple-100 text-purple-800' :
+                personaRarity === 'rare' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {personaName}
+              </div>
+            </div>
+          )}
           <RichContent content={message.content} />
         </motion.div>
 
