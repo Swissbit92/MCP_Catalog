@@ -29,11 +29,9 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
   const [pulledCharacter, setPulledCharacter] = useState<Persona | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [pullCount, setPullCount] = useState(1);
-  const [hapticFeedback, setHapticFeedback] = useState<'none' | 'light' | 'medium' | 'heavy'>('none');
 
   // Haptic feedback simulation
   const triggerHapticFeedback = (intensity: 'light' | 'medium' | 'heavy') => {
-    setHapticFeedback(intensity);
     // Visual feedback - screen shake
     if (typeof window !== 'undefined') {
       document.body.style.animation = `shake-${intensity} 0.3s ease-in-out`;
@@ -41,8 +39,6 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
         document.body.style.animation = '';
       }, 300);
     }
-    // Reset haptic state
-    setTimeout(() => setHapticFeedback('none'), 300);
   };
 
   const handlePull = async () => {
