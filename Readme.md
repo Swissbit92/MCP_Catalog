@@ -33,14 +33,17 @@
 | Feature | Description |
 |---------|-------------|
 | 🎭 **Multiple Personas** | Chat with Eeva, Frieren, Gojo, Hitler, Itachi, and more |
-| 🎯 **Gacha System** | Exciting random character pulls with card animations |
+| 🎯 **Advanced Gacha System** | Classic character pulls with 1x/5x/10x multi-pull, particle effects, and audio feedback |
+| 💎 **Classic Cards** | Elegant collectible cards with foil effects, smooth animations, and rarity-based styling |
+| 🔊 **Audio Integration** | Synthesized sound effects for pulls, reveals, and celebrations with mute controls |
+| 📊 **Collection Management** | Persistent character collection with statistics, pull history, and organized display |
 | 💬 **Persistent Chat** | Conversations saved across sessions |
 | 🔄 **Session Switching** | Seamlessly switch between different persona chats |
- | 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
- | 🎭 **Persona Customization** | Rarity-based theming with custom backgrounds, colors, and avatar effects |
- | 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
- | 🔒 **Local-First** | All data stays on your device |
- | 🤖 **AI-Powered** | Powered by Ollama LLM models |
+| 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
+| 🎭 **Persona Customization** | Rarity-based theming with custom backgrounds, colors, and avatar effects |
+| 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
+| 🔒 **Local-First** | All data stays on your device |
+| 🤖 **AI-Powered** | Powered by Ollama LLM models |
 
 ## 🔧 System Requirements
 
@@ -111,17 +114,18 @@ The chat interface is responsive, centered, and styled like a modern messaging a
  - **Performance**: Optimized animations with 60fps performance, React.memo optimizations, and efficient React patterns
  - **Testing**: Comprehensive unit test coverage (40 tests) with type-safe implementation
 
- ### Current Status
- - ✅ **Home Page**: Gacha-style character pulls with card reveal animations
- - ✅ **Character Selection**: Grid browsing with search functionality
- - ✅ **Chat Interface**: Persona-driven conversations with LLM responses
- - ✅ **Persona Customization**: Rarity-based theming with custom backgrounds, colors, and avatar effects
- - ✅ **Session Management**: Automatic loading of recent chats or creation of new conversations
- - ✅ **Persona Switching**: Seamless switching between different persona chats
- - ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
- - ✅ **Unified Startup**: Single command launches both backend and React UI
- - ✅ **Production Ready**: Optimized React build (131KB gzipped)
- - ✅ **React Migration Complete**: All phases completed with premium visual effects, mobile optimization, and comprehensive testing
+  ### Current Status
+  - ✅ **Home Page**: Advanced gacha system with classic cards, multi-pull (1x/5x/10x), particle effects, and audio feedback
+  - ✅ **Character Selection**: Grid browsing with search functionality and collection showcase
+  - ✅ **Chat Interface**: Persona-driven conversations with LLM responses
+  - ✅ **Persona Customization**: Rarity-based theming with custom backgrounds, colors, and avatar effects
+  - ✅ **Session Management**: Automatic loading of recent chats or creation of new conversations
+  - ✅ **Persona Switching**: Seamless switching between different persona chats
+  - ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
+  - ✅ **Unified Startup**: Single command launches both backend and React UI
+  - ✅ **Production Ready**: Optimized React build (164KB gzipped) with TypeScript safety
+  - ✅ **Phase 3 Complete**: Classic card system, audio integration, collection management, and performance optimization
+  - ✅ **Advanced Features**: Pull history tracking, persistent collections, accessibility support, and mobile optimization
 
 ---
 
@@ -300,12 +304,15 @@ Simply delete the corresponding JSON file from `/personas/` directory and restar
 ## 🎯 How to Use the App
 
 ### **Home Page (`/`)**
-- 🎲 **Pull Character**: Click for exciting random reveals with animations
-- 📚 **Browse Collection**: View all characters in a searchable grid
+- 🎲 **Pull Characters**: Choose 1x, 5x, or 10x pulls with classic card reveals and particle effects
+- 🔊 **Audio Controls**: Mute/unmute sound effects for pulls and celebrations
+- 📊 **View Collection**: See your collected characters with statistics
+- 📈 **Pull History**: Track your pulling statistics and recent activity
 
 ### **Character Selection (`/select`)**
 - 🔍 **Search & Filter**: Find characters by name, style, or rarity
 - 🎯 **Select Character**: Click any card to start chatting
+- 💎 **Collection Display**: View collected vs uncollected characters
 
 ### **Chat Interface (`/chat`)**
 - 💬 **Start Conversations**: Chat with your selected persona
