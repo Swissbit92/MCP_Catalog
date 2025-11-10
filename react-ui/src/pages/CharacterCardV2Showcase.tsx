@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import CharacterCard from '../components/CharacterCard';
 import PullInterface from '../components/PullInterface';
 import CharacterCollection from '../components/CharacterCollection';
 import PullHistory from '../components/PullHistory';
 import { fetchPersonas } from '../services/api';
+import { usePersona } from '../context/PersonaContext';
 
 interface Persona {
   key: string;
   display_name: string;
   style: string;
   image: string;
+  avatar?: string;
+  bg?: string;
   rarity: string;
+  coordinator_label?: string;
   voice?: {
     greeting: string;
   };
@@ -19,8 +24,9 @@ interface Persona {
 
 const CharacterCardV2Showcase: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
-  const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>('cards');
+  const { setSelectedPersona } = usePersona();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getPersonas = async () => {
@@ -31,7 +37,11 @@ const CharacterCardV2Showcase: React.FC = () => {
           display_name: p.display_name || p.key,
           style: p.style,
           image: p.image.replace('ui/images/', ''),
+          avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
+          bg: p.bg ? p.bg.replace('ui/images/', '') : undefined,
           rarity: p.rarity,
+          coordinator_label: p.coordinator_label,
+          voice: p.voice,
         }));
         setPersonas(mappedPersonas);
       } catch (error) {
@@ -42,8 +52,13 @@ const CharacterCardV2Showcase: React.FC = () => {
     getPersonas();
   }, []);
 
-  const handleCardSelect = (personaKey: string) => {
-    setSelectedCard(personaKey === selectedCard ? null : personaKey);
+  const handleCardSelect = async (personaKey: string) => {
+    const personaToSelect = personas.find(p => p.key === personaKey);
+    if (personaToSelect) {
+      setSelectedPersona(personaToSelect);
+      // Navigate to chat - let the Chat component handle session logic
+      navigate('/chat');
+    }
   };
 
   if (personas.length === 0) {
@@ -153,7 +168,7 @@ const CharacterCardV2Showcase: React.FC = () => {
               image={`/images/${persona.image}`}
               rarity={persona.rarity}
               onSelect={handleCardSelect}
-              isSelected={selectedCard === persona.key}
+              isSelected={false}
               personaKey={persona.key}
               index={index}
             />
