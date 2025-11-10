@@ -176,7 +176,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
   const currentTheme = selectedPersona?.rarity || 'common';
 
   return (
-    <div className="w-80 bg-white/95 backdrop-blur-xl border-r border-gray-200/50 flex flex-col h-full relative overflow-hidden">
+    <div className="w-80 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 flex flex-col h-full relative overflow-hidden">
       {/* Enhanced glassmorphism background with multiple layers */}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl"></div>
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80 backdrop-blur-lg"></div>
@@ -214,13 +214,13 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
       ></motion.div>
 
       {/* Header */}
-      <div className="relative p-4 border-b border-gray-200/50 bg-white/20 backdrop-blur-md">
+      <div className="relative p-4 border-b border-slate-700/50">
         <h2 className="text-lg font-semibold text-white drop-shadow-lg">Chat History</h2>
         <p className="text-xs text-gray-300 mt-1 drop-shadow-md">Your conversations</p>
       </div>
 
       {/* Sessions List */}
-      <div className="relative flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto p-2">
         {sessions.length === 0 ? (
           <div className="relative p-6 text-center text-gray-300">
             <div className="text-4xl mb-2 drop-shadow-lg">💬</div>
@@ -236,8 +236,8 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
             return (
               <motion.div
                 key={session.id}
-                className={`relative p-4 border-b border-white/20 hover:bg-white/10 cursor-pointer transition-all duration-200 backdrop-blur-sm overflow-hidden ${
-                  isActive ? `${rarityStyles.bg} ${rarityStyles.border} border-2 shadow-lg` : ''
+                className={`relative mx-2 my-1 p-3 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 cursor-pointer transition-all duration-200 backdrop-blur-sm overflow-hidden ${
+                  isActive ? `${rarityStyles.bg} ${rarityStyles.border} border-2 shadow-lg` : 'bg-slate-800/20'
                 }`}
                 onClick={() => onSessionSelect(session)}
                 whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
@@ -312,24 +312,24 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                               if (e.key === 'Enter') handleEditSave();
                               if (e.key === 'Escape') handleEditCancel();
                             }}
-                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                             className="flex-1 px-3 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
                             placeholder="Enter session title..."
                             autoFocus
                           />
                         </div>
                         <div className="flex gap-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEditSave(); }}
-                            className="px-3 py-1 text-xs bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEditCancel(); }}
-                            className="px-3 py-1 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                           <button
+                             onClick={(e) => { e.stopPropagation(); handleEditSave(); }}
+                             className="px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                           >
+                             Save
+                           </button>
+                           <button
+                             onClick={(e) => { e.stopPropagation(); handleEditCancel(); }}
+                             className="px-3 py-1 text-xs bg-slate-600 text-white rounded-md hover:bg-slate-700 transition-colors"
+                           >
+                             Cancel
+                           </button>
                         </div>
                       </div>
                     ) : (
@@ -374,7 +374,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                     <div className="flex gap-1 flex-shrink-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleEditStart(session); }}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                        className="p-2 text-gray-400 hover:text-white hover:bg-slate-700/50 rounded-md transition-colors"
                         title="Rename conversation"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -383,7 +383,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(session.id); }}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-md transition-colors"
                         title="Delete conversation"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

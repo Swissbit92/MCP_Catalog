@@ -351,8 +351,8 @@ const Chat: React.FC = () => {
           x: isSidebarOpen ? 0 : -320,
           width: 320
         }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed z-50 h-full bg-white border-r border-gray-200"
+        transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+        className="fixed z-50 h-full"
       >
         <SessionList onSessionSelect={handleSessionSelect} />
       </motion.div>
