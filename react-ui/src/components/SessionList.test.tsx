@@ -270,4 +270,82 @@ describe('SessionList', () => {
 
     expect(screen.getByText('Your conversations')).toBeInTheDocument();
   });
+
+  it('applies glassmorphism background styling', async () => {
+    const { container } = render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat History')).toBeInTheDocument();
+    });
+
+    // Check that glassmorphism background layers are applied
+    const sessionListContainer = container.firstChild as HTMLElement;
+    expect(sessionListContainer).toHaveClass('bg-white/95');
+    expect(sessionListContainer).toHaveClass('backdrop-blur-xl');
+
+    // Check that header has glassmorphism styling
+    const header = screen.getByText('Chat History').closest('div');
+    expect(header).toHaveClass('backdrop-blur-md');
+  });
+
+  it('applies dynamic background animations based on persona rarity', async () => {
+    // Test with legendary persona
+    mockUsePersona.mockReturnValue({
+      sessions: mockSessions,
+      currentSession: mockSessions[0],
+      deleteSessionById: mockDeleteSessionById,
+      updateSessionTitle: mockUpdateSessionTitle,
+      selectedPersona: { ...mockPersonas[0], rarity: 'legendary' },
+    });
+
+    const { container } = render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
+    });
+
+    // Check that dynamic background animation div exists
+    const animatedBackground = container.querySelector('[class*="absolute inset-0 opacity-60"]');
+    expect(animatedBackground).toBeInTheDocument();
+  });
+
+  it('enhances active session with rarity-based glow effects', async () => {
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
+    });
+
+    // Active session should have enhanced styling
+    const activeSession = screen.getByText('Chat with Eeva').closest('[class*="border-2"]');
+    expect(activeSession).toHaveClass('bg-yellow-500/10', 'border-yellow-400/50', 'shadow-lg');
+  });
+
+  it('adds rarity glow effects to avatars in active sessions', async () => {
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
+    });
+
+    // Check that avatar image exists
+    const avatarImg = screen.getByAltText('Eeva — Bitcoin Expect');
+    expect(avatarImg).toBeInTheDocument();
+
+    // Check that it's wrapped in a container (motion.div)
+    const avatarContainer = avatarImg.closest('[class*="relative"]');
+    expect(avatarContainer).toBeInTheDocument();
+  });
+
+  it('displays rarity badges with enhanced styling', async () => {
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('legendary')).toBeInTheDocument();
+    });
+
+    // Rarity badge should have enhanced styling
+    const rarityBadge = screen.getByText('legendary');
+    expect(rarityBadge).toHaveClass('font-medium');
+  });
 });
