@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { usePersona } from '../context/PersonaContext';
+import { useAudio } from '../context/AudioContext';
 
 // Particle component for floating background effects
 const FloatingParticles: React.FC = () => {
@@ -38,6 +39,7 @@ const FloatingParticles: React.FC = () => {
 const Header: React.FC = () => {
   const location = useLocation();
   const { selectedPersona, currentSession } = usePersona();
+  const { isMuted, toggleMute } = useAudio();
   const [currentTheme, setCurrentTheme] = useState<'legendary' | 'epic' | 'rare'>('legendary');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -445,18 +447,48 @@ const Header: React.FC = () => {
             ))}
           </motion.nav>
 
-          {/* Mobile Menu Button */}
-          <motion.div
-            className="md:hidden"
-            variants={itemVariants}
-          >
-            <motion.button
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-slate-700/50 transition-colors duration-200"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Open mobile menu"
-            >
+           {/* Audio Control and Mobile Menu */}
+           <motion.div
+             className="flex items-center space-x-2"
+             variants={itemVariants}
+           >
+             {/* Audio Mute Button */}
+             <motion.button
+               className={`p-2 rounded-lg transition-colors duration-200 ${
+                 isMuted
+                   ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
+                   : 'text-green-400 hover:text-green-300 hover:bg-green-900/20'
+               }`}
+               whileHover={{ scale: 1.1 }}
+               whileTap={{ scale: 0.9 }}
+               onClick={toggleMute}
+               aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
+               title={isMuted ? 'Unmute audio' : 'Mute audio'}
+             >
+               <motion.svg
+                 className="w-5 h-5"
+                 fill="none"
+                 stroke="currentColor"
+                 viewBox="0 0 24 24"
+                 animate={isMuted ? { opacity: 0.5 } : { opacity: 1 }}
+                 transition={{ duration: 0.2 }}
+               >
+                 {isMuted ? (
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 7l4 4m0 0l-4 4m4-4H13" />
+                 ) : (
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 9a3 3 0 000 6m-3-3h6m-6 0v6a3 3 0 01-3 3H6a3 3 0 01-3-3V9a3 3 0 013-3h1.5a3 3 0 013 3z" />
+                 )}
+               </motion.svg>
+             </motion.button>
+
+             {/* Mobile Menu Button */}
+             <motion.button
+               className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-slate-700/50 transition-colors duration-200 md:hidden"
+               whileHover={{ scale: 1.1 }}
+               whileTap={{ scale: 0.9 }}
+               onClick={() => setIsMobileMenuOpen(true)}
+               aria-label="Open mobile menu"
+             >
               <motion.svg
                 className="w-5 h-5"
                 fill="none"

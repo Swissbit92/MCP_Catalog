@@ -1,3 +1,10 @@
+// Mock react-router-dom first
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+  MemoryRouter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 // Mock the API
 jest.mock('../services/api', () => ({
   fetchPersonas: jest.fn(),
@@ -7,13 +14,6 @@ jest.mock('../services/api', () => ({
 const mockUsePersona = jest.fn();
 jest.mock('../context/PersonaContext', () => ({
   usePersona: () => mockUsePersona(),
-}));
-
-// Mock useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-  MemoryRouter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 import React from 'react';
