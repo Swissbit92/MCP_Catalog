@@ -7,6 +7,38 @@ import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 import { Menu, X } from 'lucide-react';
 
+// Floating particles component for glassmorphism effect
+const FloatingParticles: React.FC = () => {
+  const particles = Array.from({ length: 8 }, (_, i) => i); // Fewer particles for chat
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle}
+          className="absolute w-1.5 h-1.5 bg-white/30 rounded-full shadow-sm"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+          }}
+          animate={{
+            y: [0, -20, 0],
+            x: [0, Math.random() * 10 - 5, 0],
+            opacity: [0.2, 0.6, 0.2],
+            scale: [0.6, 1.0, 0.6],
+          }}
+          transition={{
+            duration: 3 + Math.random() * 2,
+            repeat: Infinity,
+            delay: Math.random() * 2,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 // Persona color schemes based on rarity (matching character cards)
 const getPersonaColorScheme = (rarity?: string) => {
   switch (rarity) {
@@ -273,21 +305,29 @@ const Chat: React.FC = () => {
     <div
       className={`flex h-full overflow-hidden relative transition-all duration-500 bg-gradient-to-br ${colorScheme.bgGradient}`}
     >
-   {/* Subtle character background for gacha style */}
-   {personaBackground && (
-     <div
-       className="absolute inset-0 opacity-60 pointer-events-none"
-       style={{
-         backgroundImage: `url(${personaBackground})`,
-         backgroundSize: 'cover',
-         backgroundPosition: 'center',
-         backgroundRepeat: 'no-repeat',
-       }}
-     />
-   )}
+      {/* Glassmorphism background layers */}
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-800/70 to-slate-900/70 backdrop-blur-lg"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/50 via-slate-800/50 to-slate-900/50 backdrop-blur-md"></div>
 
-  {/* Background overlay for text readability */}
-  <div className="absolute inset-0 bg-white bg-opacity-75"></div>
+      {/* Floating particles */}
+      <FloatingParticles />
+
+    {/* Subtle character background for gacha style */}
+    {personaBackground && (
+      <div
+        className="absolute inset-0 opacity-10 pointer-events-none"
+        style={{
+          backgroundImage: `url(${personaBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+    )}
+
+   {/* Background overlay for text readability */}
+   <div className="absolute inset-0 bg-white bg-opacity-85"></div>
 
       {/* Content container */}
       <div className="relative z-10 flex h-full w-full">

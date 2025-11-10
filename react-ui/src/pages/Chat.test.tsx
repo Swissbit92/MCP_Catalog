@@ -651,4 +651,30 @@ describe('Chat', () => {
     const backgroundImageDiv = container.querySelector('[style*="background-image"]');
     expect(backgroundImageDiv).not.toBeInTheDocument();
   });
+
+  it('applies glassmorphism background layers to chat interface', () => {
+    mockUsePersona.mockReturnValue({
+      selectedPersona: mockPersonas[0],
+      currentSession: mockSessions[0],
+      messages: [],
+      sessions: mockSessions,
+      createNewSession: jest.fn(),
+      sendMessage: jest.fn(),
+      exportCurrentSession: jest.fn(),
+      importSessionData: jest.fn(),
+      loadSessionMessages: jest.fn(),
+      setSelectedPersona: jest.fn(),
+      clearSessionMessages: jest.fn(),
+    });
+
+    const { container } = render(<Chat />);
+
+    // Check that glassmorphism background layers are applied to the container
+    const glassmorphismLayers = container.querySelectorAll('[class*="backdrop-blur"]');
+    expect(glassmorphismLayers.length).toBeGreaterThanOrEqual(3); // xl, lg, md layers
+
+    // Check that floating particles are rendered
+    const particles = container.querySelectorAll('[class*="absolute w-1.5 h-1.5"]');
+    expect(particles.length).toBeGreaterThan(0);
+  });
 });
