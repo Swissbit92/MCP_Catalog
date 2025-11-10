@@ -310,9 +310,11 @@ Simply delete the corresponding JSON file from `/personas/` directory and restar
 - 📈 **Pull History**: Track your pulling statistics and recent activity
 
 ### **Character Selection (`/select`)**
-- 🔍 **Search & Filter**: Find characters by name, style, or rarity
-- 🎯 **Select Character**: Click any card to start chatting
-- 💎 **Collection Display**: View collected vs uncollected characters
+- 🎴 **Card Gallery**: Browse all characters with search and filtering by name, style, or rarity
+- 🎲 **Gacha Pull**: Experience 1x/5x/10x pulls with sequential reveals and audio feedback
+- 📚 **My Collection**: View collected characters with statistics and management
+- 📊 **Pull History**: Track pulling statistics and session history
+- 🎯 **Choose Characters**: Click "Choose" button on any card to jump directly to chat
 
 ### **Classic Cards Showcase (`/cards-v2`)**
 - 🎴 **Card Gallery**: Browse all characters with search and filtering by name, style, or rarity
