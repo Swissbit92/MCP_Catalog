@@ -71,6 +71,8 @@ This document outlines the completed migration from the existing Streamlit UI to
   - [x] **Phase 3.3: Persona Customization** - Gacha-style theming with rarity-based colors, custom backgrounds, avatar effects ✅ **COMPLETED**
    - [x] **Phase 3.4: Chat History UX Enhancements** - Snappier hover animations (100ms transitions) and removed white avatar borders ✅ **COMPLETED**
    - [x] **Phase 3.5: Home Page UX Consistency** - Applied character page's glassmorphism background effects, animated particles, yellow-themed buttons, and consistent header styling ✅ **COMPLETED**
+   - [x] **Phase 3.6: Home Page Simplification** - Removed gacha pull mechanics from home page, now serves as navigation gateway to character selection page ✅ **COMPLETED**
+   - [x] **Phase 3.7: Direct Tab Navigation** - "Try Your Luck" button navigates directly to Gacha Pull tab for seamless UX ✅ **COMPLETED**
 - [x] **Character Page V2 Enhancement:** Complete gacha-style character system overhaul
   - [x] **CharacterCardV2Showcase** - Modern tabbed interface replacing original character selection ✅ **COMPLETED**
   - [x] **Classic Character Cards** - Traditional foil effects with smooth animations ✅ **COMPLETED**

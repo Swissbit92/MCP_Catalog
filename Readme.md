@@ -115,7 +115,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
  - **Testing**: Comprehensive unit test coverage (40 tests) with type-safe implementation
 
   ### Current Status
-   - ✅ **Home Page**: Advanced gacha system with classic cards, multi-pull (1x/5x/10x), particle effects, and audio feedback, featuring sophisticated glassmorphism theming matching character selection interface
+   - ✅ **Home Page**: Welcome page with navigation to character selection, featuring sophisticated glassmorphism theming matching the character selection interface
   - ✅ **Character Selection**: Grid browsing with search functionality and collection showcase
   - ✅ **Chat Interface**: Persona-driven conversations with LLM responses
   - ✅ **Persona Customization**: Rarity-based theming with custom backgrounds, colors, and avatar effects
@@ -306,10 +306,8 @@ Simply delete the corresponding JSON file from `/personas/` directory and restar
 ## 🎯 How to Use the App
 
 ### **Home Page (`/`)**
-- 🎲 **Pull Characters**: Choose 1x, 5x, or 10x pulls with classic card reveals and particle effects
-- 🔊 **Audio Controls**: Mute/unmute sound effects for pulls and celebrations
-- 📊 **View Collection**: See your collected characters with statistics
-- 📈 **Pull History**: Track your pulling statistics and recent activity
+- 🎲 **Try Your Luck**: Navigate directly to the Gacha Pull section for character pulls with classic card reveals and particle effects
+- 📚 **Browse All Characters**: Navigate to the character selection page to view all available characters
 - 🎨 **Sophisticated Theming**: Glassmorphism background effects, animated particles, and yellow-themed buttons matching the character selection interface
 
 ### **Character Selection (`/select`)**

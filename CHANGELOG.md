@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - **Persona Customization Phase 3.3**: Implemented gacha-style theming with rarity-based colors (legendary=gold, epic=purple, rare=blue, common=grey), custom character backgrounds with subtle watermark overlays, personalized avatar effects with rarity rings and shadows, cohesive send button theming, and comprehensive unit testing
  - **Chat History UX Iteration 3: Persona Indicators**: Added small persona name badges on assistant messages with rarity-based styling (legendary=yellow, epic=purple, rare=blue, common=gray) for clear persona identification in conversations
  - **Home Page UX Consistency**: Applied character selection page's sophisticated theme to home page including glassmorphism background effects, animated particles, yellow-themed buttons matching rarity theming, gradient header text, and consistent visual styling throughout
+ - **Home Page Simplification**: Removed gacha pull mechanics from home page entirely, now serves as a clean navigation gateway to the character selection page where all gacha functionality resides
+ - **Direct Tab Navigation**: "Try Your Luck" button now navigates directly to the Gacha Pull tab on the character selection page for seamless user experience
 
 ### Changed
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only

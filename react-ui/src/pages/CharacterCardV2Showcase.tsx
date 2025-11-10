@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import CharacterCard from '../components/CharacterCard';
 import PullInterface from '../components/PullInterface';
@@ -23,10 +23,13 @@ interface Persona {
 }
 
 const CharacterCardV2Showcase: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as 'cards' | 'pull' | 'collection' | 'history') || 'cards';
+
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>('cards');
+  const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>(initialTab);
   const { setSelectedPersona } = usePersona();
   const navigate = useNavigate();
 
