@@ -1,0 +1,216 @@
+.cards-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+  gap:10px;
+  align-items:start;
+  justify-items:center; /* center cards within each grid cell */
+}
+
+/* Cards now fill their grid cell up to a max width (keeps 2:3 ratio) */
+.card-outer{
+  width:100%;
+  max-width:360px; min-width:140px;
+  aspect-ratio:2/3;
+  border-radius:20px; position:relative; overflow:hidden; margin:0;
+  font-size:clamp(12px,.9vw,16px);
+  background:linear-gradient(160deg,rgba(15,20,35,.85),rgba(20,28,48,.78));
+  box-shadow:0 14px 24px rgba(0,0,0,.35); backdrop-filter:blur(6px) saturate(110%);
+  transform:translateZ(0);
+  transition:transform .18s,box-shadow .18s,filter .18s;
+  isolation:isolate;
+}
+.card-outer:hover{transform:translateY(-3px) rotateZ(-.35deg);box-shadow:0 18px 32px rgba(0,0,0,.45);filter:saturate(1.05)}
+
+.rarity-legendary{--glow:rgba(255,208,80,.9);--glow2:rgba(255,240,166,.7)}
+.rarity-epic{--glow:rgba(186,120,255,.85);--glow2:rgba(246,212,255,.65)}
+.rarity-rare{--glow:rgba(66,245,255,.85);--glow2:rgba(212,246,255,.65)}
+.rarity-common{--glow:rgba(230,230,230,.85);--glow2:rgba(250,250,250,.6)}
+
+.card-outer.selected{transform:translateY(-4px) scale(1.01);filter:saturate(1.12) brightness(1.03);box-shadow:0 20px 40px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.22),0 0 24px var(--glow)}
+.card-outer.selected::before{content:"";position:absolute;inset:-8px;border-radius:26px;background:radial-gradient(60% 50% at 50% 6%,var(--glow2),transparent 60%),radial-gradient(70% 60% at 50% 100%,var(--glow),transparent 70%);filter:blur(14px);opacity:.85;z-index:0;pointer-events:none;animation:haloPulse 2.2s ease-in-out infinite}
+.card-outer.selected .card-frame{box-shadow:0 0 28px var(--glow),inset 0 0 14px var(--glow2),0 0 0 1px rgba(255,255,255,.25)}
+/* Removed: keeping choose overlay hidden on selected cards */
+@keyframes haloPulse{0%{opacity:.7;transform:scale(.995)}50%{opacity:1;transform:scale(1.01)}100%{opacity:.7;transform:scale(.995)}}
+
+.card-frame{position:absolute;inset:0;border-radius:inherit;padding:2px;background:conic-gradient(from 180deg,#fff7cc 0deg,#ffd86b 70deg,#ffb13b 120deg,#ffd86b 220deg,#fff7cc 260deg,#ffe89a 320deg,#fff7cc 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.95;box-shadow:0 0 22px rgba(255,216,107,.35),inset 0 0 10px rgba(255,216,107,.25);z-index:1}
+.card-foil{position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 120% at 0% 0%,rgba(255,255,255,.1),transparent 45%),radial-gradient(120% 120% at 100% 100%,rgba(255,255,255,.1),transparent 45%),linear-gradient(135deg,rgba(255,210,130,.12),rgba(100,200,255,.1) 50%,rgba(255,120,220,.12)),repeating-conic-gradient(from 0deg,rgba(255,255,255,.08) 0deg 6deg,rgba(255,255,255,.02) 6deg 12deg);mix-blend-mode:overlay;pointer-events:none;animation:foilSpin 8s linear infinite;z-index:0}
+.card-glint{position:absolute;inset:-20%;background:linear-gradient(120deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.18) 50%,rgba(255,255,255,0) 65%);transform:translateX(-60%);animation:glintSweep 4.6s ease-in-out infinite;mix-blend-mode:screen;pointer-events:none;z-index:2}
+@keyframes foilSpin{0%{filter:hue-rotate(0) brightness(1)}50%{filter:hue-rotate(30deg) brightness(1.05)}100%{filter:hue-rotate(0) brightness(1)}}
+@keyframes glintSweep{0%{transform:translateX(-70%) rotate(.2deg)}55%{transform:translateX(60%) rotate(.2deg)}100%{transform:translateX(110%) rotate(.2deg)}}
+.rarity-legendary .card-frame{background:conic-gradient(from 180deg,#fff8d6,#ffe07a,#ffbf4a,#ffd36e,#fff0a6,#ffe07a,#fff8d6);box-shadow:0 0 26px rgba(255,208,80,.45),inset 0 0 12px rgba(255,208,80,.35)}
+.rarity-epic .card-frame{background:conic-gradient(from 180deg,#f6d4ff,#d09aff,#b974ff,#ff64f6,#f6d4ff);box-shadow:0 0 24px rgba(186,120,255,.4),inset 0 0 10px rgba(186,120,255,.3)}
+.rarity-rare .card-frame{background:conic-gradient(from 180deg,#d4f6ff,#9fe3ff,#6fd6ff,#42f5ff,#d4f6ff);box-shadow:0 0 22px rgba(66,245,255,.35),inset 0 0 10px rgba(66,245,255,.25)}
+.rarity-common .card-frame{background:conic-gradient(from 180deg,#f2f2f2,#ddd,#ccc,#eee,#f2f2f2);box-shadow:0 0 18px rgba(220,220,220,.25),inset 0 0 8px rgba(230,230,230,.2)}
+.card-body{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;padding:10px;box-sizing:border-box;gap:4px;z-index:3}
+
+/* Card image area is 100% width × 80% height of the card. */
+.card-img{
+  width:82%;
+  height:80%;
+  flex:0 0 80%;
+  object-fit:cover;
+  object-position:50% 22%; /* bias upward for faces */
+  border-radius:14px;
+  border:1px solid rgba(0,0,0,.25);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03)
+}
+.card-img-fallback{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:80%;flex:0 0 80%;
+  font-size:2rem;color:#fef3c7;text-shadow:0 0 10px rgba(255,220,120,.6);
+  border-radius:14px;border:1px solid rgba(0,0,0,.25);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03)
+}
+
+/* Remaining 20%: split 10% + 10% for title and tagline */
+.card-name{flex:0 0 10%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;margin-top:4px;font-weight:800;text-align:center;font-size:1.06em;line-height:1.15;letter-spacing:.02em;color:#fff8e7;text-shadow:0 0 6px rgba(255,220,120,.4),0 1px 0 rgba(0,0,0,.6)}
+.rarity-epic .card-name{text-shadow:0 0 6px rgba(186,120,255,.45),0 1px 0 rgba(0,0,0,.6)}
+.rarity-rare .card-name{text-shadow:0 0 6px rgba(66,245,255,.45),0 1px 0 rgba(0,0,0,.6)}
+.rarity-common .card-name{text-shadow:0 0 6px rgba(220,220,220,.4),0 1px 0 rgba(0,0,0,.6)}
+.card-tagline{flex:0 0 10%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;text-align:center;opacity:.96;font-size:.95em;line-height:1.2;min-height:2.1em;color:#fefce8}
+
+.card-choose{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .14s,transform .14s;pointer-events:none}
+.card-outer:hover .card-choose{opacity:1;transform:scale(1.02);pointer-events:auto}
+.choose-pill{padding:12px 18px;border-radius:999px;background:rgba(17,24,39,.85);color:#fff;border:1px solid rgba(255,255,255,.5);font-weight:700;box-shadow:0 8px 16px rgba(0,0,0,.35);cursor:pointer;user-select:none;text-decoration:none!important;outline:none;border-width:1px;font-size:clamp(.9rem,1.5vw,1rem)}
+.rarity-badge{position:absolute;top:8px;left:10px;z-index:4;padding:4px 10px;font-weight:800;font-size:.78rem;border-radius:999px;letter-spacing:.02em;color:#111827;background:linear-gradient(135deg,#ffe9a6,#ffd36e,#ffbf4a);border:1px solid rgba(0,0,0,.25);box-shadow:0 2px 8px rgba(0,0,0,.25),inset 0 0 6px rgba(255,255,255,.45);text-shadow:0 1px 0 rgba(255,255,255,.6);backdrop-filter:blur(2px)}
+.rarity-epic .rarity-badge{background:linear-gradient(135deg,#f6d4ff,#d09aff,#b974ff);color:#1a0b2e}
+.rarity-rare .rarity-badge{background:linear-gradient(135deg,#d4f6ff,#9fe3ff,#42f5ff);color:#06222a}
+.rarity-common .rarity-badge{background:linear-gradient(135deg,#f4f4f4,#dfdfdf,#cfcfcf);color:#1f2937}
+.mint-plate{position:absolute;top:8px;right:10px;z-index:4;padding:4px 10px;font-weight:700;font-size:.78rem;border-radius:8px;letter-spacing:.02em;color:#fff6d4;background:linear-gradient(135deg,rgba(17,24,39,.9),rgba(45,55,72,.85));border:1px solid rgba(255,255,255,.18);box-shadow:0 2px 8px rgba(0,0,0,.25),inset 0 0 6px rgba(255,255,255,.08);text-shadow:0 1px 0 rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+
+/* Card Reveal Styles */
+.card-reveal-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  perspective: 1000px;
+}
+
+.card-reveal-card {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 480px;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+}
+
+.card-reveal-card:hover {
+  filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.2));
+}
+
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 2px solid #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+}
+
+.card-back-pattern {
+  width: 80%;
+  height: 80%;
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+    linear-gradient(45deg, transparent 40%, rgba(255, 215, 0, 0.05) 50%, transparent 60%);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-back-shine {
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 215, 0, 0.3) 50%, transparent 70%);
+  animation: cardShine 3s ease-in-out infinite;
+}
+
+@keyframes cardShine {
+  0%, 100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.card-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
+
+
+
+/* Pull Button Styles */
+.pull-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  min-height: 400px;
+  justify-content: center;
+}
+
+.pull-button {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pull-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+}
+
+.pull-button:active {
+  transform: translateY(0);
+}
+
+.pull-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pull-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pull-button:hover::before {
+  opacity: 1;
+}
+
+.pull-instructions {
+  text-align: center;
+  color: #666;
+  font-size: 1.1rem;
+  max-width: 400px;
+}
+
+.pull-instructions h2 {
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
