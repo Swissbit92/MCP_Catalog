@@ -24,6 +24,8 @@ interface Persona {
 
 const CharacterCardV2Showcase: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>('cards');
   const { setSelectedPersona } = usePersona();
   const navigate = useNavigate();
@@ -44,6 +46,7 @@ const CharacterCardV2Showcase: React.FC = () => {
           voice: p.voice,
         }));
         setPersonas(mappedPersonas);
+        setFilteredPersonas(mappedPersonas);
       } catch (error) {
         console.error('Failed to fetch personas:', error);
       }
@@ -51,6 +54,22 @@ const CharacterCardV2Showcase: React.FC = () => {
 
     getPersonas();
   }, []);
+
+  // Filter personas based on search query
+  React.useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredPersonas(personas);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = personas.filter(persona =>
+        persona.display_name.toLowerCase().includes(query) ||
+        persona.style.toLowerCase().includes(query) ||
+        persona.key.toLowerCase().includes(query) ||
+        persona.rarity.toLowerCase().includes(query)
+      );
+      setFilteredPersonas(filtered);
+    }
+  }, [searchQuery, personas]);
 
   const handleCardSelect = async (personaKey: string) => {
     const personaToSelect = personas.find(p => p.key === personaKey);
@@ -143,6 +162,17 @@ const CharacterCardV2Showcase: React.FC = () => {
               transition={{ duration: 0.3 }}
             >
 
+        {/* Search Bar */}
+        <div className="flex justify-center mb-6">
+          <input
+            type="text"
+            placeholder="Search by name, style, or rarity..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="px-6 py-3 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent max-w-md w-full"
+          />
+        </div>
+
         {/* Rarity Legend */}
         <div className="flex flex-wrap justify-center gap-4 mb-6">
           {[
@@ -160,7 +190,7 @@ const CharacterCardV2Showcase: React.FC = () => {
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
-          {personas.map((persona, index) => (
+          {filteredPersonas.map((persona, index) => (
             <CharacterCard
               key={persona.key}
               name={persona.display_name}
