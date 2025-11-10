@@ -315,7 +315,7 @@ Simply delete the corresponding JSON file from `/personas/` directory and restar
 - 💎 **Collection Display**: View collected vs uncollected characters
 
 ### **Classic Cards Showcase (`/cards-v2`)**
-- 🎴 **Card Gallery**: Browse all characters with classic foil effects and animations
+- 🎴 **Card Gallery**: Browse all characters with search and filtering by name, style, or rarity
 - 🎲 **Gacha Pull**: Experience 1x/5x/10x pulls with sequential reveals and audio feedback
 - 📚 **My Collection**: View collected characters with statistics and management
 - 📊 **Pull History**: Track pulling statistics and session history

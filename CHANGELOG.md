@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only
 - **Character Card Consistency**: Updated all character card displays (Card Gallery, My Collection, Gacha Pull) in CharacterCardV2Showcase to use classic CharacterCard component with traditional foil effects for consistent styling across the entire page
 - **Choose Button Functionality**: Restored 'Choose' button functionality in CharacterCardV2Showcase to navigate directly to persona-specific chat, matching the behavior of the original CharacterSelection page
+- **Search Functionality**: Added search and filtering capability to the Card Gallery tab in CharacterCardV2Showcase, allowing users to find characters by name, style, or rarity
   - Home page (`/`) now handles all gacha pulls with card reveal animations
   - Character selection page (`/select`) now shows clean grid browsing with search
   - Removed "Ready to Pull?" interface from character selection page
