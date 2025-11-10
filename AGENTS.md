@@ -9,7 +9,6 @@
 - Setup: `./setup.sh` (Linux/macOS) or `setup.bat` (Windows) • Manual: `pip install -r requirements.txt && cd react-ui && npm install`
 - Python API: `uvicorn src.coordinator.server:app --reload --port 8000`
 - React Dev: `cd react-ui && npm start` • Build: `npm run build` (includes ESLint)
-- Lint: `cd react-ui && npm run build` (ESLint via build) • Python: No linter
 - Single test: `cd react-ui && npm test -- --testNamePattern="test name" --watchAll=false`
 - Full app: Set env vars, then `python run.py` + `cd react-ui && npm start` (requires Ollama)
 
@@ -22,11 +21,9 @@
 - Naming: Descriptive. Booleans: `isSelected`, `hasError`. Events: `onClick`, `handleSubmit`.
 - Layout: App uses `h-screen flex flex-col` with Header and `flex-1 overflow-hidden` content area. Chat pages use `h-full` to fit remaining space without scrolling. Use CSS modules for component styles, Tailwind for utilities.
 
-## Testing Guidelines
+## Testing & Security
 - React: Jest + RTL, `*.test.tsx` colocated. Mock APIs, test interactions. Use `--watchAll=false` for CI.
 - Python: No tests implemented. Coverage: Critical paths. Mock Ollama/APIs.
-
-## Security & Best Practices
 - Validate inputs with Pydantic. Never commit secrets; use `.env`.
 - Handle errors gracefully; log without exposing sensitive info.
 - Use TypeScript strict mode. Prefer functional components with hooks.
