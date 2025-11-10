@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import CharacterCardV2 from './CharacterCardV2';
+import CharacterCard from './CharacterCard';
 import { usePersona } from '../context/PersonaContext';
 import { fetchPersonas } from '../services/api';
 
@@ -87,7 +87,7 @@ const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSe
                 transition={{ delay: index * 0.1 }}
                 className="flex justify-center"
               >
-                <CharacterCardV2
+                <CharacterCard
                   name={persona.display_name || persona.key}
                   style={persona.style}
                   image={`/images/${persona.image.replace('ui/images/', '')}`}

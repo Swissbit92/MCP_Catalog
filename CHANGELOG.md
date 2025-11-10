@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **UI Flow Reorganization (2025-01-07)**: Moved pull mechanics to home page, simplified character selection to browsing-only
-- **Character Card Styling**: Updated CharacterCardV2Showcase to use classic CharacterCard component with traditional foil effects instead of holographic V2 cards, while maintaining the modern tabbed interface
+- **Character Card Consistency**: Updated all character card displays (Card Gallery, My Collection, Gacha Pull) in CharacterCardV2Showcase to use classic CharacterCard component with traditional foil effects for consistent styling across the entire page
   - Home page (`/`) now handles all gacha pulls with card reveal animations
   - Character selection page (`/select`) now shows clean grid browsing with search
   - Removed "Ready to Pull?" interface from character selection page

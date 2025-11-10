@@ -139,7 +139,7 @@ Transform the current character selection page into an engaging Gacha-style expe
 ### Component Architecture (Current Implementation)
 ```
 CharacterPage/
-├── CharacterCard.tsx             // Classic card component with foil effects
+├── CharacterCard.tsx             // Classic card component with foil effects (used across all sections)
 ├── CharacterCard.module.css      // Traditional CSS with elegant animations
 ├── PullInterface.tsx             // Multi-pull system (1x/5x/10x) with sequential reveals
 ├── EnergyParticles.tsx           // TSParticles integration for ambient effects
@@ -147,7 +147,7 @@ CharacterPage/
 ├── PullHistory.tsx               // Statistics and pull history tracking
 ├── CharacterSelection.tsx        // Static browsing with search functionality
 ├── CardReveal.tsx                // Card flip/reveal animation (legacy)
-└── CharacterCard.tsx             // Individual character card display (legacy)
+└── CharacterCardV2.tsx           // Holographic card component (not used in main interface)
 ```
 
 ### Audio System
