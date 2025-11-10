@@ -436,6 +436,7 @@ const Chat: React.FC = () => {
                 showTimestamp={true}
                 onRetry={handleRetryMessage}
                 personaRarity={selectedPersona.rarity}
+                personaName={selectedPersona.display_name}
               />
             ))
           )}

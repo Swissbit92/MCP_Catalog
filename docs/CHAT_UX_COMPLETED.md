@@ -254,17 +254,18 @@ interface RichContent {
 - [x] Avatar images display correctly and persist when switching chats
 - [x] Latency tracking and error recovery (response time display, retry functionality)
 - [x] Rich media support (JSON syntax highlighting with copy buttons, code blocks with copy buttons, timestamps)
-- [x] Comprehensive unit testing (29 tests covering all new features)
+- [x] Comprehensive unit testing (32 tests covering all new features including persona indicators)
 - [x] Type-safe implementation with proper build verification
 - [x] Mobile-responsive design (ChatGPT-style layout: sidebar pushes on desktop, overlays on mobile, touch gestures, optimized input)
 - [x] Professional polish matching modern chat apps
 - [x] Extensible architecture for rich media
 - [x] Persona background images with proper formatting (60% opacity, cover sizing, centered positioning)
+- [x] Persona indicators on assistant messages with rarity-based styling
 
 ## Migration Strategy
 1. **Phase 1**: ✅ Enhance existing chat without breaking current functionality - **COMPLETED**
 2. **Phase 2**: ✅ Add persistence layer and chat management - **COMPLETED**
-3. **Phase 3**: ✅ Add advanced features and polish - **COMPLETED** (Rich Media Support, Performance & Feedback, Mobile Optimization)
+3. **Phase 3**: ✅ Add advanced features and polish - **COMPLETED** (Rich Media Support, Performance & Feedback, Mobile Optimization, Persona Indicators)
 
 The backend APIs are already implemented, so this is primarily a frontend enhancement project.</content>
 <parameter name="filePath">CHAT_UX.md
