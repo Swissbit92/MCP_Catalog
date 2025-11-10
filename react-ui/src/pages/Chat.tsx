@@ -90,7 +90,7 @@ const Chat: React.FC = () => {
     const loadPersonas = async () => {
       try {
         const fetchedPersonas = await fetchPersonas();
-        // Process personas the same way as CharacterSelection to include avatar field
+        // Process personas the same way as character selection pages to include avatar field
         const processedPersonas = fetchedPersonas.map(p => ({
           key: p.key,
           display_name: p.display_name || p.key,

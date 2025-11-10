@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import CharacterSelection from './pages/CharacterSelection';
 import CharacterCardV2Showcase from './pages/CharacterCardV2Showcase';
 import Chat from './pages/Chat';
 import Header from './components/Header';
@@ -16,7 +15,7 @@ function App() {
         <div className="flex-1 overflow-auto">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/select" element={<CharacterSelection />} />
+            <Route path="/select" element={<CharacterCardV2Showcase />} />
             <Route path="/cards-v2" element={<CharacterCardV2Showcase />} />
             <Route path="/collection" element={<CharacterCollection onCharacterSelect={(key) => window.location.href = `/chat?persona=${key}`} />} />
             <Route path="/chat" element={<Chat />} />
