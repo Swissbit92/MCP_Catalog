@@ -58,10 +58,10 @@ const CharacterCardV2Showcase: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
             Classic Character Cards
           </h1>
@@ -129,7 +129,7 @@ const CharacterCardV2Showcase: React.FC = () => {
             >
 
         {/* Rarity Legend */}
-        <div className="flex flex-wrap justify-center gap-4 mb-8">
+        <div className="flex flex-wrap justify-center gap-4 mb-6">
           {[
             { rarity: 'legendary', color: 'from-yellow-400 to-amber-600', label: 'Legendary' },
             { rarity: 'epic', color: 'from-purple-400 to-pink-600', label: 'Epic' },
@@ -144,7 +144,7 @@ const CharacterCardV2Showcase: React.FC = () => {
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 justify-items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
           {personas.map((persona, index) => (
             <CharacterCard
               key={persona.key}
@@ -161,7 +161,7 @@ const CharacterCardV2Showcase: React.FC = () => {
         </div>
 
         {/* Instructions */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-8">
           <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 max-w-2xl mx-auto border border-white/10">
             <h3 className="text-xl font-bold text-white mb-4">Interactive Features</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
