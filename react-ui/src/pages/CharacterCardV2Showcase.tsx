@@ -48,10 +48,26 @@ const CharacterCardV2Showcase: React.FC = () => {
           coordinator_label: p.coordinator_label,
           voice: p.voice,
         }));
+
+        // Startup synchronization: clean up localStorage for removed personas
+        const currentPersonaKeys = new Set(mappedPersonas.map(p => p.key));
+        const storedCollected = localStorage.getItem('collectedPersonas');
+        if (storedCollected) {
+          const collectedPersonas = JSON.parse(storedCollected);
+          const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key));
+          if (validCollected.length !== collectedPersonas.length) {
+            localStorage.setItem('collectedPersonas', JSON.stringify(validCollected));
+            console.log(`Cleaned up ${collectedPersonas.length - validCollected.length} removed personas from collection`);
+          }
+        }
+
         setPersonas(mappedPersonas);
         setFilteredPersonas(mappedPersonas);
       } catch (error) {
         console.error('Failed to fetch personas:', error);
+        // Fallback to empty state if API fails
+        setPersonas([]);
+        setFilteredPersonas([]);
       }
     };
 

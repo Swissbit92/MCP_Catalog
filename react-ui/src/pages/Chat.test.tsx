@@ -83,6 +83,7 @@ describe('Chat', () => {
       importSessionData: jest.fn(),
       loadSessionMessages: mockLoadSessionMessages,
       setSelectedPersona: mockSetSelectedPersona,
+      refreshSessions: jest.fn(),
     });
 
     render(<Chat />);

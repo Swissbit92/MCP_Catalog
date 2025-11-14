@@ -84,7 +84,7 @@ const Chat: React.FC = () => {
   const [touchEndX, setTouchEndX] = useState<number>(0);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage } = usePersona();
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
@@ -103,12 +103,16 @@ const Chat: React.FC = () => {
           voice: p.voice,
         }));
         setPersonas(processedPersonas);
+        // Refresh sessions to clean up any orphaned sessions for removed personas
+        if (refreshSessions) {
+          await refreshSessions();
+        }
       } catch (error) {
         console.error('Failed to load personas:', error);
       }
     };
     loadPersonas();
-  }, []);
+  }, [refreshSessions]);
 
 
 

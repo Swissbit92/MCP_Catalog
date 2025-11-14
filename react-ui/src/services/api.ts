@@ -62,29 +62,18 @@ export interface ExportData {
 }
 
 export const fetchPersonas = async (): Promise<PersonaJson[]> => {
-  const personaFiles = [
-    'eeva.json',
-    'frieren.json',
-    'gojo.json',
-    'hitler.json',
-    'itachi.json',
-  ];
-
-  const fetchedPersonas: PersonaJson[] = [];
-  for (const file of personaFiles) {
-    try {
-      const response = await fetch(`/personas/${file}`);
-      if (!response.ok) {
-        console.error(`Failed to fetch ${file}: ${response.statusText}`);
-        continue;
-      }
-      const data: PersonaJson = await response.json();
-      fetchedPersonas.push(data);
-    } catch (error) {
-      console.error('Error fetching persona:', error);
+  try {
+    const response = await fetch(`${API_BASE_URL}/personas`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch personas: ${response.statusText}`);
     }
+    const personas: PersonaJson[] = await response.json();
+    return personas;
+  } catch (error) {
+    console.error('Error fetching personas from API:', error);
+    // Fallback to empty array if API fails
+    return [];
   }
-  return fetchedPersonas;
 };
 
 interface ChatTurn {

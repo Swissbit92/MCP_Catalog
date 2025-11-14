@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dynamic Persona Management** - Implemented automatic persona discovery from JSON files, orphaned session cleanup, collection synchronization, and chat history updates when personas are added/removed/modified
 - **Code Quality Improvements** - Fixed ESLint warnings in PullInterface component and resolved test suite issues for PullInterface and PersonaContext
 - **Chat History UX Enhancements** - Improved SessionList component with snappier hover animations (100ms), removed white avatar borders, and enhanced visual consistency with mobile menu theming
 - **Phase 3: Character Gacha System Completion** - Full implementation of advanced gacha system with multi-pull mechanics, particle effects, audio integration, and collection management
