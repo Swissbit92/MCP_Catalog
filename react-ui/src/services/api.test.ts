@@ -13,54 +13,64 @@ describe('API Service', () => {
     (fetch as jest.Mock).mockClear();
   });
 
-  it('fetchPersonas should return a list of personas', async () => {
+  it('fetchPersonas should return a list of personas from API', async () => {
     const mockPersonas = [
-      { key: 'Eeva', display_name: 'Eeva', style: 'friendly', image: 'ui/images/eeva_card.png' } as any,
-      { key: 'Frieren', display_name: 'Frieren', style: 'wise', image: 'ui/images/frieren_card.png' } as any,
-      { key: 'Gojo', display_name: 'Gojo', style: 'cool', image: 'ui/images/gojo_card.png' } as any,
-      { key: 'Hitler', display_name: 'Hitler', style: 'evil', image: 'ui/images/hitler_card.png' } as any,
-      { key: 'Itachi', display_name: 'Itachi', style: 'ninja', image: 'ui/images/itachi_card.png' } as any,
+      { key: 'Eeva', display_name: 'Eeva — Bitcoin Expect', style: 'nerdy, charming, concise', rarity: 'legendary', image: 'ui/images/eeva_card.png' },
+      { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', image: 'ui/images/frieren_card.png' },
+      { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', image: 'ui/images/gojo_card.png' },
+      { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', image: 'ui/images/hitler_card.png' },
+      { key: 'Itachi', display_name: 'Itachi', style: 'ninja', rarity: 'rare', image: 'ui/images/itachi_card.png' },
     ];
 
-    (fetch as jest.Mock)
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockPersonas[0]),
-        })
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockPersonas[1]),
-        })
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockPersonas[2]),
-        })
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockPersonas[3]),
-        })
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockPersonas[4]),
-        })
-      );
+    (fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockPersonas),
+      })
+    );
 
     const personas = await fetchPersonas();
-    expect(personas.length).toBe(5); // Expecting 5 personas as per api.ts
+    expect(personas.length).toBe(5);
     expect(personas[0].key).toBe('Eeva');
+    expect(personas[0].display_name).toBe('Eeva — Bitcoin Expect');
+    expect(personas[0].rarity).toBe('legendary');
     expect(personas[1].key).toBe('Frieren');
     expect(personas[2].key).toBe('Gojo');
     expect(personas[3].key).toBe('Hitler');
     expect(personas[4].key).toBe('Itachi');
+    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/personas');
+  });
+
+  it('fetchPersonas should return empty array on API error', async () => {
+    (fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        statusText: 'Internal Server Error',
+      })
+    );
+
+    const personas = await fetchPersonas();
+    expect(personas).toEqual([]);
+  });
+
+  it('fetchPersonas should handle personas with missing optional fields', async () => {
+    const mockPersonas = [
+      { key: 'minimal', display_name: 'Minimal Persona' }, // Missing style, rarity, etc.
+      { key: 'full', display_name: 'Full Persona', style: 'confident', rarity: 'legendary', voice: { greeting: 'Hi!' } }
+    ];
+
+    (fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockPersonas),
+      })
+    );
+
+    const personas = await fetchPersonas();
+    expect(personas.length).toBe(2);
+    expect(personas[0].key).toBe('minimal');
+    expect(personas[0].style).toBeUndefined(); // Should handle missing fields gracefully
+    expect(personas[1].voice.greeting).toBe('Hi!');
   });
 
   it('sendMessage should return AI response', async () => {

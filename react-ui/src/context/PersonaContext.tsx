@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { ChatSession, SessionWithMessages, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, clearSessionMessages as clearSessionMessagesApi } from '../services/api';
 import { Message } from '../components/MessageBubble';
 
@@ -42,6 +42,7 @@ interface PersonaContextType {
   messages: Message[];
   setCurrentSession: (session: ChatSession | null) => void;
   loadSessions: () => Promise<void>;
+  refreshSessions: () => Promise<void>;
   createNewSession: (personaKey: string, title?: string) => Promise<ChatSession>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
@@ -82,14 +83,14 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
     return stored ? JSON.parse(stored) : [];
   });
 
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       const fetchedSessions = await fetchSessions();
       setSessions(fetchedSessions);
     } catch (error) {
       console.error('Failed to load sessions:', error);
     }
-  };
+  }, []);
 
   const createNewSession = async (personaKey: string, title?: string): Promise<ChatSession> => {
     const newSession = await createSession(personaKey, title);
@@ -341,7 +342,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Load sessions on mount
   useEffect(() => {
     loadSessions();
-  }, []);
+  }, [loadSessions]);
 
   return (
     <PersonaContext.Provider value={{
@@ -352,6 +353,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       messages,
       setCurrentSession,
       loadSessions,
+      refreshSessions: loadSessions,
       createNewSession,
       loadSessionMessages,
       updateSessionTitle,

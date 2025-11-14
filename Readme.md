@@ -32,18 +32,19 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🎭 **Multiple Personas** | Chat with Eeva, Frieren, Gojo, Hitler, Itachi, and more |
+| 🎭 **Dynamic Personas** | Chat with Eeva, Frieren, Gojo, Hitler, Itachi, and more - add/remove personas seamlessly |
 | 🎯 **Advanced Gacha System** | Classic character pulls with 1x/5x/10x multi-pull, particle effects, and audio feedback |
 | 💎 **Classic Cards** | Elegant collectible cards with foil effects, smooth animations, and rarity-based styling |
 | 🔊 **Audio Integration** | Synthesized sound effects for pulls, reveals, and celebrations with mute controls |
 | 📊 **Collection Management** | Persistent character collection with statistics, pull history, and organized display |
-| 💬 **Persistent Chat** | Conversations saved across sessions |
+| 💬 **Persistent Chat** | Conversations saved across sessions with automatic cleanup |
 | 🔄 **Session Switching** | Seamlessly switch between different persona chats |
 | 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
 | 🎭 **Persona Customization** | Rarity-based theming with custom backgrounds, colors, and avatar effects |
 | 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
 | 🔒 **Local-First** | All data stays on your device |
 | 🤖 **AI-Powered** | Powered by Ollama LLM models |
+| 🔄 **Dynamic Persona Management** | Automatic persona discovery, orphaned session cleanup, collection synchronization, and chat history updates |
 
 ## 🔧 System Requirements
 
@@ -124,6 +125,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
   - ✅ **Backend Integration**: FastAPI coordinator with Ollama LLM support
   - ✅ **Unified Startup**: Single command launches both backend and React UI
   - ✅ **Production Ready**: Optimized React build (162.47KB gzipped) with TypeScript safety
+   - ✅ **Dynamic Persona Management**: Automatic persona discovery, session cleanup, collection synchronization, and chat history updates
    - ✅ **Phase 3 Complete**: Classic card system, audio integration, collection management, and performance optimization
    - ✅ **Advanced Features**: Pull history tracking, persistent collections, accessibility support, and mobile optimization
    - ✅ **Testing Complete**: All component tests passing, lint warnings resolved, production build verified
@@ -285,11 +287,21 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
      "logo": "ui/images/your_logo.png"
    }
    ```
-3. **Restart app**: The new persona will auto-load
+3. **Auto-discovery**: The new persona appears automatically in the React UI without restart
+4. **Summary generation**: CV-style summary is auto-generated on first access
 
 ### 🗑️ Removing a Persona
 
-Simply delete the corresponding JSON file from `/personas/` directory and restart the app.
+1. **Delete persona file**: Remove the JSON file from `/personas/` directory
+2. **Automatic cleanup**: Sessions and chats for removed personas are automatically deleted from the database
+3. **Collection cleanup**: Removed personas are automatically cleaned from user collections on next app load
+4. **Chat history update**: The chat history panel immediately reflects the removal - orphaned chats disappear
+
+### 🔄 Modifying a Persona
+
+1. **Edit persona file**: Update the JSON file with new details
+2. **Auto-update**: Summary is regenerated automatically on next access
+3. **UI refresh**: Changes appear immediately in the React interface
 
 ### 📋 Available Personas
 
