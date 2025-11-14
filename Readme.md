@@ -288,7 +288,7 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
    }
    ```
 3. **Auto-discovery**: The new persona appears automatically in the React UI without restart
-4. **Summary generation**: CV-style summary is auto-generated on first access
+4. **Single source of truth**: All persona data is managed from the `personas/` directory
 
 ### 🗑️ Removing a Persona
 
