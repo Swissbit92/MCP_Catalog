@@ -288,4 +288,50 @@ describe('CharacterShowcase', () => {
     const bioContent = screen.getByText(/Eeva is a brilliant cryptocurrency analyst/).closest('[class*="overflow-y-auto"]');
     expect(bioContent).toBeInTheDocument();
   });
+
+  it('applies enhanced glassmorphism styling to main panel', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Main panel should have enhanced glassmorphism
+    const mainPanel = screen.getByText('Eeva — Bitcoin Expert').closest('.backdrop-blur-2xl');
+    expect(mainPanel).toBeInTheDocument();
+    expect(mainPanel).toHaveClass('bg-slate-900/50');
+  });
+
+
+
+  it('applies enhanced typography styling', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Character name should have enhanced typography
+    const characterName = screen.getByText('Eeva — Bitcoin Expert');
+    expect(characterName).toHaveClass('tracking-wide', 'drop-shadow-lg');
+
+    // Character title should have enhanced typography
+    const characterTitle = screen.getByText('Cryptocurrency Analyst');
+    expect(characterTitle).toHaveClass('tracking-wider', 'drop-shadow-md');
+  });
+
+  it('navigation buttons have enhanced hover effects', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Navigation buttons should have hover scale effects
+    const prevButton = screen.getByText('‹');
+    const nextButton = screen.getByText('›');
+
+    expect(prevButton).toHaveClass('hover:scale-110', 'transition-all', 'duration-300');
+    expect(nextButton).toHaveClass('hover:scale-110', 'transition-all', 'duration-300');
+  });
 });

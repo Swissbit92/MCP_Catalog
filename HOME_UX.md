@@ -200,9 +200,9 @@ HomePage (existing)
 - [x] Integrate with existing `/personas` API for character data
 - [x] Add comprehensive unit tests (11 tests passing)
 
-### MVP 2: Visual Polish 📋
-- [ ] **Iteration 2.1**: Fantasy borders & rarity system (summary optimization, scroll borders, cyberpunk effects)
-- [ ] **Iteration 2.2**: Enhanced visual effects & animations
+### MVP 2: Visual Polish ✅
+- [x] **Iteration 2.1**: Bolted plate borders & rarity system (summary optimization, circular cutouts, rarity colors)
+- [x] **Iteration 2.2**: Enhanced visual effects (glassmorphism, textures, animations, typography)
 
 ### MVP 3: Enhanced Navigation 📋
 - [ ] Add character selector with thumbnails and pagination dots
@@ -227,13 +227,13 @@ HomePage (existing)
 - [ ] URL parameter support for direct character linking
 - [ ] Smooth panel transitions (target: 30fps+)
 
-### MVP 2: Visual Polish
-- [ ] Authentic HSR visual styling and animations
-- [ ] Bolted plate borders with circular cutouts and rarity colors
-- [ ] Industrial/fantasy "bolted to wall" aesthetic with transparent effects
-- [ ] Fixed-size information panels with 100-token summaries
-- [ ] Multi-layered border system with rarity-based animations
-- [ ] Glassmorphism overlay panel effects
+### MVP 2: Visual Polish ✅
+- [x] Authentic HSR visual styling and animations
+- [x] Bolted plate borders with circular cutouts and rarity colors
+- [x] Industrial/fantasy "bolted to wall" aesthetic with transparent effects
+- [x] Fixed-size information panels with 100-token summaries
+- [x] Multi-layered border system with rarity-based animations
+- [x] Enhanced glassmorphism overlay panel effects
 
 ### MVP 3: Enhanced Navigation
 - [ ] Character selector thumbnails at bottom
@@ -317,8 +317,8 @@ HomePage (existing)
 
 ## MVP Summary
 
-**🎯 MVP 1 (Weeks 1-3)**: Authentic overlay panel - Character on right, info on left
-**✨ MVP 2 (Weeks 4-5)**: Bolted plate borders with circular cutouts and 100-token summaries
+**🎯 MVP 1 (Weeks 1-3)**: Authentic overlay panel - Character on right, info on left ✅
+**✨ MVP 2 (Weeks 4-5)**: Bolted plate borders with circular cutouts and 100-token summaries ✅
 **🎯 MVP 3 (Weeks 6-7)**: Enhanced navigation with thumbnails
 **🎵 MVP 4 (Weeks 8-9)**: Audio features and voice actor toggle
 **📱 MVP 5 (Week 10)**: Mobile optimization and performance
@@ -330,4 +330,4 @@ HomePage (existing)
 ---
 
 *Last Updated: November 16, 2025*
-*Status: MVP 1 Complete - Ready for MVP 2: Bolted Plate Borders & Rarity System*
+*Status: MVP 2 Complete - Enhanced Visual Effects Implemented*

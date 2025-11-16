@@ -146,18 +146,30 @@ const CharacterShowcase: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-6xl mx-auto bg-black/90 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden"
+        className="w-full max-w-6xl mx-auto bg-slate-900/50 backdrop-blur-2xl border border-slate-700/30 rounded-2xl overflow-hidden shadow-2xl shadow-slate-900/70"
       >
+          {/* Background Texture */}
+          <div
+            className="absolute inset-0 opacity-10 pointer-events-none"
+            style={{
+              backgroundImage: `
+                radial-gradient(circle at 25% 25%, rgba(59,130,246,0.15) 1px, transparent 1px),
+                radial-gradient(circle at 75% 75%, rgba(147,51,234,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px',
+            }}
+          />
+
         {/* Navigation Arrows - Outside Panel */}
         <button
           onClick={handlePrev}
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-4 rounded-full transition-colors z-10 shadow-lg"
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30"
         >
           ‹
         </button>
         <button
           onClick={handleNext}
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-4 rounded-full transition-colors z-10 shadow-lg"
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30"
         >
           ›
         </button>
@@ -175,12 +187,16 @@ const CharacterShowcase: React.FC = () => {
               key={`header-${currentPersona.key}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
+              transition={{
+                delay: 0.1,
+                duration: 0.4,
+                ease: [0.25, 0.46, 0.45, 0.94]
+              }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-wide drop-shadow-lg">
                 {currentPersona.display_name}
               </h2>
-              <p className="text-xl text-gray-300">
+              <p className="text-xl text-gray-300 font-medium tracking-wider drop-shadow-md">
                 {currentPersona.coordinator_label}
               </p>
             </motion.div>
@@ -191,10 +207,14 @@ const CharacterShowcase: React.FC = () => {
                 key={`bio-${currentPersona.key}`}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
+                transition={{
+                  delay: 0.3,
+                  duration: 0.6,
+                  ease: [0.25, 0.46, 0.45, 0.94]
+                }}
                 className="h-full flex flex-col justify-center"
               >
-                <div className="text-white text-base md:text-lg leading-relaxed overflow-y-auto">
+                <div className="text-slate-100 text-base md:text-lg leading-relaxed overflow-y-auto font-light tracking-wide">
                   {isLoadingBio ? (
                     <div className="text-gray-400">Loading character bio...</div>
                   ) : characterBio ? (
@@ -213,9 +233,13 @@ const CharacterShowcase: React.FC = () => {
           <div className="w-1/2 h-[600px] flex items-center justify-center p-8">
             <motion.div
               key={`image-${currentPersona.key}`}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{
+        delay: 0.2,
+        duration: 0.6,
+        ease: [0.25, 0.46, 0.45, 0.94]
+      }}
               className="relative"
             >
               <img
