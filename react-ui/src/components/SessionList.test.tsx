@@ -23,6 +23,23 @@ describe('SessionList', () => {
       image: 'eeva_card.png',
       avatar: 'eeva_avatar.png',
       rarity: 'legendary',
+      style: 'nerdy',
+      coordinator_label: 'Eeva',
+      logo: 'eeva_logo.png',
+      emoji: '🤖',
+      allowed_mcp: ['chat'],
+      lore: ['Bitcoin expert'],
+      voice: {},
+      do: ['Be helpful'],
+      dont: ['Be rude'],
+      behavior: {},
+      emotional_profile: {},
+      boundaries: {},
+      dialogue_prefs: {},
+      expertise: {},
+      signature_moves: [],
+      example_phrases: [],
+      escalation_policy: {},
     },
     {
       key: 'frieren',
@@ -30,6 +47,23 @@ describe('SessionList', () => {
       image: 'frieren_card.png',
       avatar: 'frieren_avatar.png',
       rarity: 'epic',
+      style: 'wise',
+      coordinator_label: 'Frieren',
+      logo: 'frieren_logo.png',
+      emoji: '🧙',
+      allowed_mcp: ['chat'],
+      lore: ['Elf mage'],
+      voice: {},
+      do: ['Be wise'],
+      dont: ['Be impatient'],
+      behavior: {},
+      emotional_profile: {},
+      boundaries: {},
+      dialogue_prefs: {},
+      expertise: {},
+      signature_moves: [],
+      example_phrases: [],
+      escalation_policy: {},
     },
   ];
 
@@ -280,12 +314,14 @@ describe('SessionList', () => {
 
     // Check that glassmorphism background layers are applied
     const sessionListContainer = container.firstChild as HTMLElement;
-    expect(sessionListContainer).toHaveClass('bg-white/95');
+    expect(sessionListContainer).toHaveClass('bg-gradient-to-b');
+    expect(sessionListContainer).toHaveClass('from-slate-900/95');
     expect(sessionListContainer).toHaveClass('backdrop-blur-xl');
 
-    // Check that header has glassmorphism styling
+    // Check that header has proper styling
     const header = screen.getByText('Chat History').closest('div');
-    expect(header).toHaveClass('backdrop-blur-md');
+    expect(header).toHaveClass('border-b');
+    expect(header).toHaveClass('border-slate-700/50');
   });
 
   it('applies dynamic background animations based on persona rarity', async () => {

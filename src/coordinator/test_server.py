@@ -49,9 +49,9 @@ class TestSessionAPI:
         response = client.get("/sessions?persona_key=gojo")
         assert response.status_code == 200
         data = response.json()
-        assert "sessions" in data
-        assert len(data["sessions"]) == 1
-        assert data["sessions"][0]["id"] == "session_123"
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["id"] == "session_123"
 
     def test_create_session(self, client, mock_db):
         """Test creating a new chat session."""
@@ -294,6 +294,90 @@ class TestExportImportAPI:
         assert response.status_code == 400
         error_detail = response.json()["detail"]
         assert "not found" in error_detail or "Invalid import data structure" in error_detail
+
+class TestPersonasAPI:
+    """Test personas API endpoints."""
+
+    @patch('coordinator.server._load_all_cards_cached')
+    def test_list_personas(self, mock_load_cards, client):
+        """Test listing all available personas."""
+        mock_personas = [
+            {
+                "key": "eeva",
+                "display_name": "Eeva — Bitcoin Expect",
+                "style": "nerdy, charming, concise",
+                "rarity": "legendary",
+                "coordinator_label": "Eeva (Nerdy Charming)",
+                "image": "ui/images/eeva_card.png",
+                "avatar": "ui/images/eeva_avatar.png",
+                "bg": "ui/images/eeva_bg.png",
+                "voice": {"greeting": "Hey! 😊"}
+            },
+            {
+                "key": "gojo",
+                "display_name": "Gojo Satoru",
+                "style": "confident sorcerer",
+                "rarity": "legendary",
+                "image": "ui/images/gojo_card.png"
+            }
+        ]
+        mock_load_cards.return_value = mock_personas
+
+        response = client.get("/personas")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 2
+        assert data[0]["key"] == "eeva"
+        assert data[0]["display_name"] == "Eeva — Bitcoin Expect"
+        assert data[0]["rarity"] == "legendary"
+        assert data[0]["voice"]["greeting"] == "Hey! 😊"
+        assert data[1]["key"] == "gojo"
+        assert data[1]["display_name"] == "Gojo Satoru"
+
+    @patch('coordinator.server._load_all_cards_cached')
+    def test_list_personas_empty(self, mock_load_cards, client):
+        """Test listing personas when none exist."""
+        mock_load_cards.return_value = []
+
+        response = client.get("/personas")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == []
+
+    @patch('coordinator.server._load_all_cards_cached')
+    def test_list_personas_error(self, mock_load_cards, client):
+        """Test listing personas when an error occurs."""
+        mock_load_cards.side_effect = Exception("Database error")
+
+        response = client.get("/personas")
+        assert response.status_code == 500
+        error_detail = response.json()["detail"]
+        assert "Failed to list personas" in error_detail
+
+    @patch('coordinator.server._load_all_cards_cached')
+    def test_cleanup_orphaned_sessions(self, mock_load_cards, client, mock_db):
+        """Test that orphaned sessions are cleaned up when personas are listed."""
+        # Mock current personas (only 'gojo' exists)
+        mock_load_cards.return_value = [{"key": "gojo", "display_name": "Gojo Satoru"}]
+
+        # Mock existing sessions (including one for removed persona 'eeva')
+        mock_db.fetchall.return_value = [
+            {"id": "session_1", "persona_key": "gojo"},  # Valid session
+            {"id": "session_2", "persona_key": "eeva"},  # Orphaned session
+            {"id": "session_3", "persona_key": "frieren"} # Another orphaned session
+        ]
+
+        response = client.get("/personas")
+        assert response.status_code == 200
+
+        # Verify that orphaned sessions were deleted
+        # The execute call should have been made to delete sessions 2 and 3
+        assert mock_db.execute.call_count >= 1
+
+        # Check that the delete query was called with the orphaned session IDs
+        delete_calls = [call for call in mock_db.execute.call_args_list if 'DELETE FROM chat_sessions' in str(call)]
+        assert len(delete_calls) > 0
 
 class TestChatAPI:
     """Test chat functionality."""

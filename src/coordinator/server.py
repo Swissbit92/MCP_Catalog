@@ -19,7 +19,7 @@ from .ollama_utils import assert_model_available
 from .llm_client import LC_OllamaClient
 from .persona_memory import (
     build_system_prompt, build_greeting_user_prompt, get_persona_card,
-    get_or_build_cv_summary, ensure_all_summaries_serialized
+    get_or_build_cv_summary, ensure_all_summaries_serialized, _load_all_cards_cached
 )
 
 app = FastAPI(title="Local Coordinator (Chat-only)", version="0.5.0")
@@ -104,6 +104,49 @@ def _fetchone_dict(cur) -> Optional[Dict[str, Any]]:
 
 def _fetchall_list(cur) -> List[Dict[str, Any]]:
     return [dict(r) for r in cur.fetchall()]
+
+def _cleanup_orphaned_sessions():
+    """
+    Remove chat sessions for personas that no longer exist.
+    This should be called when personas are loaded to ensure cleanup.
+    """
+    try:
+        # Get all current persona keys
+        cards = _load_all_cards_cached()
+        current_persona_keys = {card.get("key") for card in cards if card.get("key")}
+
+        with _DB_LOCK:
+            c = _conn()
+            cur = c.cursor()
+
+            # Find sessions with personas that no longer exist
+            cur.execute("SELECT id, persona_key FROM chat_sessions")
+            all_sessions = cur.fetchall()
+
+            orphaned_sessions = []
+            for session in all_sessions:
+                session_id = session["id"]
+                persona_key = session["persona_key"]
+                if persona_key not in current_persona_keys:
+                    orphaned_sessions.append((session_id, persona_key))
+
+            # Delete orphaned sessions (messages will be cascade deleted)
+            if orphaned_sessions:
+                orphaned_ids = [s[0] for s in orphaned_sessions]
+                orphaned_personas = list(set(s[1] for s in orphaned_sessions))  # Unique persona keys
+
+                # Delete sessions (messages will be cascade deleted due to FOREIGN KEY)
+                placeholders = ','.join('?' * len(orphaned_ids))
+                cur.execute(f"DELETE FROM chat_sessions WHERE id IN ({placeholders})", orphaned_ids)
+
+                c.commit()
+                print(f"Cleaned up {len(orphaned_sessions)} orphaned sessions for removed personas: {orphaned_personas}")
+
+            c.close()
+
+    except Exception as e:
+        print(f"Warning: Failed to cleanup orphaned sessions: {e}")
+        # Don't raise - this is not critical for app startup
 
 
 
@@ -288,6 +331,31 @@ def greet_with_session(session_id: str, body: GreetBody):
     add_message(session_id, greeting_msg_body)
 
     return response
+
+@app.get("/personas")
+def list_personas():
+    """Return list of available personas with metadata."""
+    try:
+        # Clean up orphaned sessions before returning personas
+        _cleanup_orphaned_sessions()
+
+        cards = _load_all_cards_cached()
+        personas = []
+        for card in cards:
+            personas.append({
+                "key": card.get("key"),
+                "display_name": card.get("display_name") or card.get("key"),
+                "style": card.get("style", ""),
+                "rarity": card.get("rarity", "common"),
+                "coordinator_label": card.get("coordinator_label"),
+                "image": card.get("image"),
+                "avatar": card.get("avatar"),
+                "bg": card.get("bg"),
+                "voice": card.get("voice"),
+            })
+        return personas
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list personas: {e}")
 
 @app.post("/persona/summary")
 def summary(body: SummaryBody):

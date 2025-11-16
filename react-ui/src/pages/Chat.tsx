@@ -84,13 +84,13 @@ const Chat: React.FC = () => {
   const [touchEndX, setTouchEndX] = useState<number>(0);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage } = usePersona();
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
       try {
         const fetchedPersonas = await fetchPersonas();
-        // Process personas the same way as CharacterSelection to include avatar field
+        // Process personas the same way as character selection pages to include avatar field
         const processedPersonas = fetchedPersonas.map(p => ({
           key: p.key,
           display_name: p.display_name || p.key,
@@ -103,12 +103,16 @@ const Chat: React.FC = () => {
           voice: p.voice,
         }));
         setPersonas(processedPersonas);
+        // Refresh sessions to clean up any orphaned sessions for removed personas
+        if (refreshSessions) {
+          await refreshSessions();
+        }
       } catch (error) {
         console.error('Failed to load personas:', error);
       }
     };
     loadPersonas();
-  }, []);
+  }, [refreshSessions]);
 
 
 
@@ -351,8 +355,8 @@ const Chat: React.FC = () => {
           x: isSidebarOpen ? 0 : -320,
           width: 320
         }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed z-50 h-full bg-white border-r border-gray-200"
+        transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+        className="fixed z-50 h-full"
       >
         <SessionList onSessionSelect={handleSessionSelect} />
       </motion.div>
