@@ -12,7 +12,7 @@ Backend: Python 3.8+, FastAPI, Pydantic, SQLite, Ollama. Frontend: React 19, Typ
 
 ## Code Style Guidelines
 - **Python**: PEP 8, 4-space indent, type hints. `snake_case` functions/modules, `PascalCase` classes. Relative imports.
-- **React/TS**: `PascalCase` components, explicit TS types, strict mode. Hooks: `useThing`. Absolute imports.
+- **React/TS**: `PascalCase` components, explicit TS types, strict mode. Hooks: `useThing`. Absolute imports. Prefer functional components with hooks.
 - **Imports**: Group stdlib → third-party → local. No wildcards.
 - **Error handling**: FastAPI uses `HTTPException`. React uses try/catch with user messages.
 - **Formatting**: 4-space Python, consistent TS/JS. No semicolons in TS. Prefer async/await.
@@ -23,4 +23,3 @@ Backend: Python 3.8+, FastAPI, Pydantic, SQLite, Ollama. Frontend: React 19, Typ
 - **React**: Jest + RTL, `*.test.tsx` colocated. Mock APIs, test interactions. Use `--watchAll=false` for CI.
 - **Python**: No tests implemented. Coverage: Critical paths. Mock Ollama/APIs.
 - **Security**: Validate inputs with Pydantic. Never commit secrets; use `.env`. Handle errors gracefully; log without exposing sensitive info.
-- **Components**: Prefer functional components with hooks.
