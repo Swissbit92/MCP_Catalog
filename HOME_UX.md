@@ -63,12 +63,19 @@ Recreate the authentic Honkai Star Rail character showcase experience with overl
 **Effort: Medium | Impact: Medium-High**
 **Goal:** Elevate visual quality to match HSR's mystical aesthetic
 
-#### Iteration 2.1: Fantasy Borders & Rarity Styling
+#### Iteration 2.1: Fantasy Borders & Rarity System
 - [ ] Create fantasy/gacha-themed border system with rarity colors
 - [ ] Implement non-symmetrical border styling and effects
-- [ ] Add glassmorphism effects for the overlay panel
+- [ ] Add rarity-based colors: Legendary (gold), Epic (purple), Rare (blue), Common (gray)
+- [ ] Design unique border shapes and patterns for each rarity
+- [ ] Add border animations and glow effects
+
+#### Iteration 2.2: Enhanced Visual Effects
+- [ ] Enhance glassmorphism effects for the overlay panel
+- [ ] Add subtle background patterns or textures
+- [ ] Implement smooth character transition animations
 - [ ] Style with HSR-inspired dark theme and professional typography
-- [ ] Implement smooth transitions and panel animations
+- [ ] Add hover effects and micro-interactions
 
 ### **🎯 MVP 3: Enhanced Navigation (Weeks 6-7)**
 **Effort: Medium | Impact: Medium**
@@ -194,10 +201,8 @@ HomePage (existing)
 - [x] Add comprehensive unit tests (11 tests passing)
 
 ### MVP 2: Visual Polish 📋
-- [ ] Create fantasy/gacha-themed border system
-- [ ] Implement rarity-based border colors and non-symmetrical styling
-- [ ] Add glassmorphism effects for overlay panel
-- [ ] Ensure responsive character sizing and typography
+- [ ] **Iteration 2.1**: Fantasy borders & rarity system
+- [ ] **Iteration 2.2**: Enhanced visual effects & animations
 
 ### MVP 3: Enhanced Navigation 📋
 - [ ] Add character selector with thumbnails and pagination dots
@@ -282,11 +287,18 @@ HomePage (existing)
 - **Responsive design**: Panel adapts to window size dynamically ✅
 
 ### **🎯 Next: MVP 2 - Visual Polish (Weeks 4-5)**
+
+#### **Iteration 2.1: Fantasy Borders & Rarity System**
 1. **Fantasy borders**: Create rarity-based border system with gacha styling
 2. **Non-symmetrical borders**: Implement unique border shapes and effects
 3. **Rarity colors**: Legendary (gold), Epic (purple), Rare (blue), Common (gray)
-4. **Glassmorphism enhancement**: Improve panel backdrop and border effects
-5. **Animation polish**: Smooth character transitions and border animations
+4. **Border animations**: Add glow effects and dynamic animations
+
+#### **Iteration 2.2: Enhanced Visual Effects**
+1. **Glassmorphism enhancement**: Improve panel backdrop and border effects
+2. **Background textures**: Add subtle patterns or textures
+3. **Animation polish**: Smooth character transitions and micro-interactions
+4. **Typography refinement**: HSR-inspired fonts and spacing
 
 ### **MVP 3-5 Roadmap (Weeks 6-10)**
 - **Week 6-7**: Character selector thumbnails and pagination
