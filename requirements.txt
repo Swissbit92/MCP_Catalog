@@ -9,6 +9,7 @@ langchain-ollama
 ollama
 pyyaml
 pydantic
+tiktoken
 
 # Note: This project also requires Node.js and npm for the React UI
 # Install Node.js from: https://nodejs.org/

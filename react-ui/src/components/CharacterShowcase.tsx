@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { fetchPersonas, fetchCharacterBio } from '../services/api';
+import BoltedPlateBorder from './BoltedPlateBorder';
 
 interface PersonaJson {
   key: string;
@@ -166,11 +167,12 @@ const CharacterShowcase: React.FC = () => {
           {currentIndex + 1} / {personas.length}
         </div>
 
-        <div className="flex min-h-96">
+        <div className="flex min-h-[600px]">
           {/* Information Section - Left Side */}
-          <div className="flex-1 p-8 flex flex-col justify-center">
+          <div className="w-1/2 h-[600px] p-8 flex flex-col justify-center space-y-6">
+            {/* Character Name and Title - Outside Border */}
             <motion.div
-              key={`info-${currentPersona.key}`}
+              key={`header-${currentPersona.key}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
@@ -178,33 +180,37 @@ const CharacterShowcase: React.FC = () => {
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
                 {currentPersona.display_name}
               </h2>
-              <p className="text-xl text-gray-300 mb-6">
+              <p className="text-xl text-gray-300">
                 {currentPersona.coordinator_label}
               </p>
+            </motion.div>
 
-              {/* Bio Content */}
+            {/* Bio Content - Inside Bolted Plate Border */}
+            <BoltedPlateBorder rarity={currentPersona.rarity} className="flex-1">
               <motion.div
                 key={`bio-${currentPersona.key}`}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
-                className="text-white text-base md:text-lg leading-relaxed max-h-80 overflow-y-auto"
+                className="h-full flex flex-col justify-center"
               >
-                {isLoadingBio ? (
-                  <div className="text-gray-400">Loading character bio...</div>
-                ) : characterBio ? (
-                  <div className="space-y-4">
-                    {characterBio.summary}
-                  </div>
-                ) : (
-                  <div className="text-gray-400">Bio not available</div>
-                )}
+                <div className="text-white text-base md:text-lg leading-relaxed overflow-y-auto">
+                  {isLoadingBio ? (
+                    <div className="text-gray-400">Loading character bio...</div>
+                  ) : characterBio ? (
+                    <div className="space-y-4">
+                      {characterBio.summary}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400">Bio not available</div>
+                  )}
+                </div>
               </motion.div>
-            </motion.div>
+            </BoltedPlateBorder>
           </div>
 
           {/* Character Image - Right Side */}
-          <div className="w-96 flex items-center justify-center p-8">
+          <div className="w-1/2 h-[600px] flex items-center justify-center p-8">
             <motion.div
               key={`image-${currentPersona.key}`}
               initial={{ opacity: 0, scale: 0.9 }}
