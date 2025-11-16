@@ -35,43 +35,62 @@ Recreate the authentic Honkai Star Rail character showcase experience with full-
 - Professional HSR-style presentation (name, VA, bio)
 - Smooth transitions between character states
 
-## Implementation Roadmap
+## MVP Implementation Roadmap
 
-### Phase 1: Core Foundation (2-3 weeks)
-**Goal:** Recreate the essential HSR character poster carousel experience
+### **🎯 MVP 1: Core Experience (Weeks 1-3)**
+**Effort: Medium-High | Impact: High**
+**Goal:** Deliver functional HSR-style character carousel with information overlays
 
-#### Iteration 1.1: Full-Screen Poster Layout
+#### Iteration 1.1: Full-Screen Poster Carousel
 - [ ] Create `CharacterShowcase` component replacing side-by-side approach
 - [ ] Implement horizontal carousel/slider for character posters
-- [ ] Add character-specific background images that fill the screen
-- [ ] Create overlay information panels that slide in/out smoothly
-
-#### Iteration 1.2: Character Data & Navigation
-- [ ] Integrate with existing `/personas` API for character data
 - [ ] Add left/right navigation arrows for carousel control
 - [ ] Implement URL parameter support (`?character=eeva`)
 - [ ] Add character selection from poster clicks
 
-#### Iteration 1.3: Visual Polish & HSR Styling
+#### Iteration 1.2: Character Information Overlays
+- [ ] Create overlay information panels that slide in/out smoothly
+- [ ] Add character name and basic bio display
+- [ ] Integrate with existing `/personas` API for character data
+- [ ] Add scrollable bio text with professional typography
+
+### **✨ MVP 2: Visual Polish (Weeks 4-5)**
+**Effort: Medium | Impact: Medium-High**
+**Goal:** Elevate visual quality to match HSR's mystical aesthetic
+
+#### Iteration 2.1: Background Images & HSR Styling
+- [ ] Add character-specific background images that fill the screen
+- [ ] Implement dynamic background transitions between characters
 - [ ] Add glassmorphism effects for information overlays
-- [ ] Implement smooth transitions between characters
-- [ ] Add character name, voice actor, and portrait display
 - [ ] Style with HSR-inspired dark theme and professional typography
+- [ ] Implement smooth transitions and animations
 
-### Phase 2: Enhanced Experience (1-2 weeks)
-**Goal:** Add advanced features, mobile optimization, and performance
+### **🎯 MVP 3: Enhanced Navigation (Weeks 6-7)**
+**Effort: Medium | Impact: Medium**
+**Goal:** Improve navigation UX for character discovery
 
-#### Iteration 2.1: Bio Display & Interactions
-- [ ] Add scrollable character bio panels with HSR-style formatting
-- [ ] Implement typing animation for bio text reveal
+#### Iteration 3.1: Character Selector & Interactions
+- [ ] Add character selector dots/thumbnails at bottom
+- [ ] Include pagination dots for navigation indicators
 - [ ] Add hover effects and focus states on posters
 - [ ] Include character metadata display (rarity, style, etc.)
-- [ ] Add character selector dots/thumbnails at bottom
+- [ ] Implement typing animation for bio text reveal
+
+### **🎵 MVP 4: Audio & Advanced Features (Weeks 8-9)**
+**Effort: High | Impact: Medium**
+**Goal:** Add immersive audio and advanced interactions
+
+#### Iteration 4.1: Voice Actor & Audio Integration
 - [ ] Implement voice actor language toggle (EN/CN/JP)
 - [ ] Add audio controls for character voice lines
 - [ ] Include character quotes/subtitle display
+- [ ] Add audio file management and playback functionality
 
-#### Iteration 2.2: Mobile & Performance Optimization
+### **📱 MVP 5: Mobile & Performance (Week 10)**
+**Effort: Medium | Impact: Medium**
+**Goal:** Ensure seamless experience across all devices
+
+#### Iteration 5.1: Mobile Optimization & Performance
 - [ ] Ensure responsive carousel design (adapts to mobile screens)
 - [ ] Add touch/swipe gestures for mobile navigation
 - [ ] Implement lazy loading for poster images and bios
@@ -153,41 +172,67 @@ HomePage (existing)
 ### Completed ✅
 - [x] Deep analysis of actual HSR character showcase page
 - [x] Identification of correct UX paradigm (poster carousel vs side-by-side)
-- [x] Component architecture redesign
+- [x] Component architecture redesign with MVP iterations
 - [x] Technical requirements updated for carousel approach
+- [x] Effort/Impact analysis and MVP prioritization
 
-### In Progress 🔄
-- [ ] Phase 1 implementation planning
-
-### Upcoming 📋
+### MVP 1: Core Experience 🔄
 - [ ] Create CharacterCarousel component with horizontal slider
 - [ ] Implement full-screen poster layout
-- [ ] Add background image management system
+- [ ] Add navigation arrows and URL parameter support
 - [ ] Create overlay information panels
+- [ ] Integrate with existing `/personas` API
+
+### MVP 2: Visual Polish 📋
+- [ ] Add background image management system
+- [ ] Implement HSR-inspired styling and animations
+- [ ] Add glassmorphism overlay effects
+
+### MVP 3: Enhanced Navigation 📋
 - [ ] Add character selector with thumbnails and pagination dots
+- [ ] Implement hover effects and focus states
+
+### MVP 4: Audio Features 📋
 - [ ] Implement voice actor language toggle
 - [ ] Add audio controls for character voice lines
-- [ ] Integrate with existing character data APIs
-- [ ] Add navigation controls and URL parameters
-- [ ] Style with authentic HSR visual design
+- [ ] Include character quotes/subtitle display
 
-## Success Metrics
+### MVP 5: Mobile & Performance 📋
+- [ ] Ensure responsive carousel design
+- [ ] Add touch/swipe gestures for mobile navigation
+- [ ] Implement lazy loading and performance optimizations
 
-### User Experience
-- [ ] Authentic HSR character showcase experience
-- [ ] Smooth 60fps carousel transitions
-- [ ] Intuitive poster-based navigation with thumbnail selector
-- [ ] Professional character presentation with voice actor options
-- [ ] Audio playback functionality for character voice lines
-- [ ] Seamless mobile carousel experience with touch gestures
-- [ ] Fast loading of character posters and backgrounds
+## Success Metrics by MVP
 
-### Technical Performance
+### MVP 1: Core Experience
+- [ ] Functional character carousel with poster navigation
+- [ ] Character information overlays with bios
+- [ ] URL parameter support for direct character linking
+- [ ] Smooth carousel transitions (target: 30fps+)
+
+### MVP 2: Visual Polish
+- [ ] Authentic HSR visual styling and animations
+- [ ] Dynamic background images per character
+- [ ] Glassmorphism overlay effects
+- [ ] Professional typography and spacing
+
+### MVP 3: Enhanced Navigation
+- [ ] Character selector thumbnails at bottom
+- [ ] Pagination dots and hover effects
+- [ ] Intuitive navigation between characters
+
+### MVP 4: Audio Features
+- [ ] Voice actor language toggle functionality
+- [ ] Audio playback for character voice lines
+- [ ] Character quotes/subtitle display
+
+### MVP 5: Mobile & Performance
+- [ ] Responsive design across all screen sizes
+- [ ] Touch/swipe gestures on mobile devices
 - [ ] Lighthouse score > 90
-- [ ] Bundle size increase < 150KB (simpler than original plan)
+- [ ] Bundle size increase < 150KB
 - [ ] API response time < 500ms for bio fetching
-- [ ] Memory usage optimized for background image switching
-- [ ] No breaking changes to existing functionality
+- [ ] 60fps animations on target devices
 
 ## Risks & Mitigations
 
@@ -212,19 +257,46 @@ HomePage (existing)
 2. **Medium Priority**: Visual polish (HSR styling, smooth animations)
 3. **Low Priority**: Advanced features (keyboard navigation, search)
 
-## Next Steps
+## Next Steps by MVP
 
-1. **Start with Iteration 1.1**: Create CharacterCarousel component structure
+### **Immediate: Start MVP 1 (Week 1)**
+1. **Create CharacterCarousel component**: Set up horizontal slider structure
 2. **Implement full-screen posters**: Replace side-by-side layout completely
-3. **Add background management**: Dynamic background switching system
-4. **Create overlay panels**: Slide-in information displays with voice actor toggle
-5. **Add character selector**: Bottom thumbnail navigation with pagination dots
-6. **Implement audio controls**: Voice line playback functionality
-7. **Integrate character data**: Connect with existing `/personas` API
-8. **Test carousel navigation**: Ensure smooth poster transitions
-9. **Apply HSR styling**: Professional dark theme and typography
+3. **Add basic navigation**: Left/right arrows and URL parameters
+4. **Create information overlays**: Character name and bio display
+5. **Integrate `/personas` API**: Connect with existing character data
+
+### **MVP 1 Milestone (Week 3)**
+- Functional character carousel with information overlays
+- Ready for initial user testing and feedback
+
+### **MVP 2-5 Roadmap (Weeks 4-10)**
+- **Week 4-5**: Add background images and HSR styling
+- **Week 6-7**: Implement character selector thumbnails
+- **Week 8-9**: Add voice actor toggle and audio features
+- **Week 10**: Mobile optimization and performance tuning
+
+### **Development Guidelines**
+- **Test early and often**: Validate each MVP iteration with users
+- **Progressive enhancement**: Start simple, add complexity iteratively
+- **Mobile-first approach**: Design for mobile, enhance for desktop
+- **Performance monitoring**: Track frame rates and loading times
+
+---
+
+## MVP Summary
+
+**🎯 MVP 1 (Weeks 1-3)**: Core carousel experience - High impact, go-live ready
+**✨ MVP 2 (Weeks 4-5)**: Visual polish with backgrounds and styling
+**🎯 MVP 3 (Weeks 6-7)**: Enhanced navigation with thumbnails
+**🎵 MVP 4 (Weeks 8-9)**: Audio features and voice actor toggle
+**📱 MVP 5 (Week 10)**: Mobile optimization and performance
+
+**Total Timeline**: 10 weeks to production-ready HSR character showcase
+**Risk Level**: Low - Progressive MVP approach with early validation
+**Success Criteria**: Authentic HSR experience with professional presentation
 
 ---
 
 *Last Updated: November 16, 2025*
-*Status: Bulletproof HSR Implementation - Ready for Development*
+*Status: MVP-Structured HSR Implementation - Ready for Development*
