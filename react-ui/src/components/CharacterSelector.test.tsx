@@ -165,4 +165,36 @@ describe('CharacterSelector', () => {
     expect(thumbnails[0]).toBeInTheDocument();
     expect(thumbnails[1]).toBeInTheDocument();
   });
+
+  it('disables thumbnails during transitions', () => {
+    render(
+      <CharacterSelector
+        personas={mockPersonas}
+        currentIndex={0}
+        onCharacterSelect={mockOnCharacterSelect}
+        isTransitioning={true}
+      />
+    );
+
+    const thumbnails = screen.getAllByRole('button');
+    expect(thumbnails[0]).toBeDisabled();
+    expect(thumbnails[1]).toBeDisabled();
+    expect(thumbnails[0]).toHaveClass('opacity-60', 'cursor-not-allowed');
+  });
+
+  it('enables thumbnails when not transitioning', () => {
+    render(
+      <CharacterSelector
+        personas={mockPersonas}
+        currentIndex={0}
+        onCharacterSelect={mockOnCharacterSelect}
+        isTransitioning={false}
+      />
+    );
+
+    const thumbnails = screen.getAllByRole('button');
+    expect(thumbnails[0]).not.toBeDisabled();
+    expect(thumbnails[1]).not.toBeDisabled();
+    expect(thumbnails[0]).not.toHaveClass('opacity-60');
+  });
 });

@@ -42,6 +42,7 @@ const CharacterShowcase: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [characterBio, setCharacterBio] = useState<CharacterBio | null>(null);
   const [isLoadingBio, setIsLoadingBio] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   // Panel is always visible - no show/hide state needed
 
   // Load personas on component mount
@@ -114,13 +115,52 @@ const CharacterShowcase: React.FC = () => {
     loadBio();
   }, [currentIndex, personas]);
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % personas.length);
+  const handlePrev = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : personas.length - 1));
+    setTimeout(() => setIsTransitioning(false), 300);
   };
 
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + personas.length) % personas.length);
+  const handleNext = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => (prev < personas.length - 1 ? prev + 1 : 0));
+    setTimeout(() => setIsTransitioning(false), 300);
   };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (isTransitioning) return;
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          handlePrev();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          handleNext();
+          break;
+        case 'Home':
+          event.preventDefault();
+          setIsTransitioning(true);
+          setCurrentIndex(0);
+          setTimeout(() => setIsTransitioning(false), 300);
+          break;
+        case 'End':
+          event.preventDefault();
+          setIsTransitioning(true);
+          setCurrentIndex(personas.length - 1);
+          setTimeout(() => setIsTransitioning(false), 300);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isTransitioning, personas.length]);
 
   // Navigation handlers - panel is always visible
 
@@ -164,13 +204,15 @@ const CharacterShowcase: React.FC = () => {
         {/* Navigation Arrows - Outside Panel */}
         <button
           onClick={handlePrev}
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30"
+          disabled={isTransitioning}
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           ‹
         </button>
         <button
           onClick={handleNext}
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30"
+          disabled={isTransitioning}
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           ›
         </button>
@@ -186,11 +228,11 @@ const CharacterShowcase: React.FC = () => {
             {/* Character Name and Title - Outside Border */}
             <motion.div
               key={`header-${currentPersona.key}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{
                 delay: 0.1,
-                duration: 0.4,
+                duration: 0.5,
                 ease: [0.25, 0.46, 0.45, 0.94]
               }}
             >
@@ -206,8 +248,8 @@ const CharacterShowcase: React.FC = () => {
             <BoltedPlateBorder rarity={currentPersona.rarity} className="flex-1">
               <motion.div
                 key={`bio-${currentPersona.key}`}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{
                   delay: 0.3,
                   duration: 0.6,
@@ -217,13 +259,36 @@ const CharacterShowcase: React.FC = () => {
               >
                 <div className="text-slate-100 text-base md:text-lg leading-relaxed overflow-y-auto font-light tracking-wide">
                   {isLoadingBio ? (
-                    <div className="text-gray-400">Loading character bio...</div>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center space-x-2 text-slate-400"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full"
+                      />
+                      <span>Loading character bio...</span>
+                    </motion.div>
                   ) : characterBio ? (
-                    <div className="space-y-4">
+                    <motion.div
+                      key={`content-${currentPersona.key}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4, duration: 0.3 }}
+                      className="space-y-4"
+                    >
                       {characterBio.summary}
-                    </div>
+                    </motion.div>
                   ) : (
-                    <div className="text-gray-400">Bio not available</div>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-slate-400"
+                    >
+                      Bio not available
+                    </motion.div>
                   )}
                 </div>
               </motion.div>
@@ -233,14 +298,13 @@ const CharacterShowcase: React.FC = () => {
           {/* Character Image - Right Side */}
           <div className="w-1/2 h-[600px] flex items-center justify-center p-8">
             <motion.div
-              key={`image-${currentPersona.key}`}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{
-        delay: 0.2,
-        duration: 0.6,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }}
+              key={currentPersona.key} // Re-animate when character changes
+              initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
+              animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+              transition={{
+                duration: 0.5,
+                ease: [0.25, 0.46, 0.45, 0.94]
+              }}
               className="relative"
             >
               <img
@@ -261,6 +325,7 @@ const CharacterShowcase: React.FC = () => {
           personas={personas}
           currentIndex={currentIndex}
           onCharacterSelect={setCurrentIndex}
+          isTransitioning={isTransitioning}
         />
       </motion.div>
     </div>

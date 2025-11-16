@@ -334,4 +334,93 @@ describe('CharacterShowcase', () => {
     expect(prevButton).toHaveClass('hover:scale-110', 'transition-all', 'duration-300');
     expect(nextButton).toHaveClass('hover:scale-110', 'transition-all', 'duration-300');
   });
+
+  it('shows loading spinner during bio loading', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Should show loading spinner initially
+    expect(screen.getByText('Loading character bio...')).toBeInTheDocument();
+
+    // Should have animated spinner
+    const spinner = document.querySelector('[class*="animate-spin"], [class*="rotate-360"]');
+    expect(spinner).toBeInTheDocument();
+  });
+
+  it('handles keyboard navigation with arrow keys', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Simulate right arrow key press
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    // Should eventually show the next character (Frieren)
+    await waitFor(() => {
+      expect(screen.getByText('Frieren')).toBeInTheDocument();
+    });
+  });
+
+  it('handles Home and End key navigation', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Simulate End key press (should go to last character)
+    fireEvent.keyDown(window, { key: 'End' });
+
+    // Should show the last character
+    await waitFor(() => {
+      expect(screen.getByText('Frieren')).toBeInTheDocument();
+    });
+
+    // Simulate Home key press (should go to first character)
+    fireEvent.keyDown(window, { key: 'Home' });
+
+    // Should show the first character
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+  });
+
+  it('disables navigation during transitions', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    const prevButton = screen.getByText('‹');
+    const nextButton = screen.getByText('›');
+
+    // Initially buttons should not be disabled
+    expect(prevButton).not.toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+
+    // Click next to trigger transition
+    fireEvent.click(nextButton);
+
+    // Buttons should be disabled during transition
+    expect(prevButton).toBeDisabled();
+    expect(nextButton).toBeDisabled();
+  });
+
+  it('applies smooth transition animations', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Main panel should have transition animations
+    const mainPanel = screen.getByText('Eeva — Bitcoin Expert').closest('[class*="motion"]');
+    expect(mainPanel).toBeInTheDocument();
+  });
 });
