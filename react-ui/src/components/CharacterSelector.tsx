@@ -13,12 +13,14 @@ interface CharacterSelectorProps {
   personas: PersonaJson[];
   currentIndex: number;
   onCharacterSelect: (index: number) => void;
+  isTransitioning?: boolean;
 }
 
 const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   personas,
   currentIndex,
-  onCharacterSelect
+  onCharacterSelect,
+  isTransitioning = false
 }) => {
   return (
     <motion.div
@@ -33,6 +35,7 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <motion.button
             key={persona.key}
             onClick={() => onCharacterSelect(index)}
+            disabled={isTransitioning}
             className={`
               relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden
               border-2 transition-all duration-300
@@ -40,9 +43,10 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 ? 'border-blue-400 shadow-lg shadow-blue-400/30 scale-110'
                 : 'border-slate-600/50 hover:border-slate-500/70 hover:scale-105'
               }
+              ${isTransitioning ? 'opacity-60 cursor-not-allowed' : ''}
             `}
-            whileHover={{ scale: index === currentIndex ? 1.1 : 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: isTransitioning ? 1 : (index === currentIndex ? 1.1 : 1.05) }}
+            whileTap={{ scale: isTransitioning ? 1 : 0.95 }}
           >
             {/* Character Image */}
             <img
