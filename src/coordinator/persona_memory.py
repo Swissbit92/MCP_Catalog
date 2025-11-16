@@ -30,6 +30,36 @@ def _llm() -> OllamaLLM:
     assert_model_available(base, model)
     return OllamaLLM(base_url=base, model=model, temperature=get_persona_temperature())
 
+def _count_tokens(text: str) -> int:
+    """Count tokens in text using approximation (roughly 4 chars per token for English text)."""
+    # More accurate approximation: ~4.5 chars per token for typical English text
+    # This is a conservative estimate that works well for our use case
+    return max(1, len(text) // 4)
+
+def _truncate_to_tokens(text: str, max_tokens: int) -> str:
+    """Truncate text to fit within max_tokens, preserving word boundaries."""
+    if _count_tokens(text) <= max_tokens:
+        return text
+
+    # Binary search to find the right length
+    text_words = text.split()
+    low, high = 0, len(text_words)
+
+    while low < high:
+        mid = (low + high + 1) // 2
+        truncated = ' '.join(text_words[:mid])
+        if _count_tokens(truncated) <= max_tokens:
+            low = mid
+        else:
+            high = mid - 1
+
+    result = ' '.join(text_words[:low])
+    # Ensure we don't exceed the limit
+    while _count_tokens(result) > max_tokens and len(result.split()) > 1:
+        result = ' '.join(result.split()[:-1])
+
+    return result
+
 # ---------------- Persona discovery ----------------
 
 def _iter_persona_files() -> List[str]:
@@ -315,7 +345,7 @@ def _make_cv_summary(card: Dict) -> str:
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You write short, elegant, first-person CV bios that read like a story."),
         ("user",
-         "Write a compact CV-style narrative (120–220 words) for {name}.\n"
+         "Write a compact CV-style narrative (maximum 100 tokens) for {name}.\n"
          "Tone: consistent with '{style}'.\n"
          "Use full sentences (no bullet points). Prefer one cohesive paragraph.\n"
          "Use third person. Focus on strengths, style, and signature habits.\n"
@@ -327,7 +357,11 @@ def _make_cv_summary(card: Dict) -> str:
     ]).format_prompt(**values).to_string()
 
     try:
-        return lc.invoke(prompt).strip()
+        summary = lc.invoke(prompt).strip()
+        # Enforce 100 token limit
+        if _count_tokens(summary) > 100:
+            summary = _truncate_to_tokens(summary, 100)
+        return summary
     except ResponseError as e:
         raise RuntimeError(str(e))
 
@@ -436,6 +470,25 @@ def cleanup_summary_store() -> None:
                 f.unlink()
             except Exception:
                 pass
+
+def clear_summary_cache() -> int:
+    """
+    Clear all cached summaries to force regeneration.
+    Returns the number of files deleted.
+    """
+    dir_ = _summary_dir()
+    if not dir_.exists():
+        return 0
+
+    deleted = 0
+    for f in dir_.glob("*.json"):
+        if f.name != ".lock":
+            try:
+                f.unlink()
+                deleted += 1
+            except Exception:
+                pass
+    return deleted
 
 def ensure_all_summaries() -> Tuple[int, int]:
     """

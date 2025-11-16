@@ -152,7 +152,7 @@ describe('CharacterShowcase', () => {
     });
   });
 
-  it('displays character information in overlay panel', async () => {
+  it('displays character information in overlay panel with bolted plate border', async () => {
     render(<CharacterShowcase />);
 
     await waitFor(() => {
@@ -166,6 +166,10 @@ describe('CharacterShowcase', () => {
     await waitFor(() => {
       expect(screen.getByText('Eeva is a brilliant cryptocurrency analyst...')).toBeInTheDocument();
     });
+
+    // Check that bolted plate border is applied to bio content (should have clip-path styling)
+    const bioContent = screen.getByText(/Eeva is a brilliant cryptocurrency analyst/).closest('[style*="clip-path"]');
+    expect(bioContent).toBeInTheDocument();
   });
 
   it('displays character image in overlay panel', async () => {
@@ -226,5 +230,62 @@ describe('CharacterShowcase', () => {
       const image = screen.getByAltText('Eeva — Bitcoin Expert');
       expect(image).toHaveAttribute('src', '/images/eeva_card.png');
     });
+  });
+
+  it('maintains fixed panel height for information section', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Information section should have fixed height
+    const infoSection = screen.getByText('Eeva — Bitcoin Expert').closest('[class*="w-1/2"][class*="h-\\[600px\\]"]');
+    expect(infoSection).toBeInTheDocument();
+  });
+
+  it('applies rarity-based bolted plate styling', async () => {
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Wait for bio to load
+    await waitFor(() => {
+      expect(mockFetchCharacterBio).toHaveBeenCalledWith('eeva');
+    });
+
+    // Legendary rarity should have gold border styling on bio content
+    const bioContent = screen.getByText('Eeva is a brilliant cryptocurrency analyst...');
+    const borderElement = bioContent.closest('[class*="border-yellow-400"]');
+    expect(borderElement).toBeInTheDocument();
+  });
+
+  it('limits bio content height with scroll', async () => {
+    // Create a longer bio to test scrolling
+    const longBio = {
+      key: 'eeva',
+      summary: 'Eeva is a brilliant cryptocurrency analyst who has been working in the field for over a decade. She specializes in technical analysis and has a deep understanding of blockchain technology. Her expertise includes market trends, investment strategies, and risk management. She has worked with major financial institutions and has published numerous articles on cryptocurrency markets. Her analytical skills are unmatched in the industry.'.repeat(3),
+      hash: 'abc123',
+      updated: '2024-01-01'
+    };
+
+    mockFetchCharacterBio.mockResolvedValue(longBio);
+
+    render(<CharacterShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eeva — Bitcoin Expert')).toBeInTheDocument();
+    });
+
+    // Wait for the long bio to load
+    await waitFor(() => {
+      expect(screen.getByText(/Eeva is a brilliant cryptocurrency analyst/)).toBeInTheDocument();
+    });
+
+    // Bio content should have overflow scroll
+    const bioContent = screen.getByText(/Eeva is a brilliant cryptocurrency analyst/).closest('[class*="overflow-y-auto"]');
+    expect(bioContent).toBeInTheDocument();
   });
 });
