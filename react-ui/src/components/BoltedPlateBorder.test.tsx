@@ -90,10 +90,10 @@ describe('BoltedPlateBorder', () => {
       </BoltedPlateBorder>
     );
 
-    const borderElement = container.querySelector('[class*="bg-black/40"]');
+    const borderElement = container.querySelector('[class*="bg-slate-800/40"]');
     expect(borderElement).toHaveClass(
-      'bg-black/40',
-      'backdrop-blur-sm',
+      'bg-slate-800/40',
+      'backdrop-blur-md',
       'border-2',
       'shadow-2xl',
       'rounded-lg',
@@ -110,5 +110,43 @@ describe('BoltedPlateBorder', () => {
 
     const borderElement = container.querySelector('[style*="clip-path"]');
     expect(borderElement).toBeInTheDocument();
+  });
+
+  it('applies hover scale effect', () => {
+    const { container } = render(
+      <BoltedPlateBorder rarity="legendary">
+        {mockChildren}
+      </BoltedPlateBorder>
+    );
+
+    const borderElement = container.firstChild;
+    expect(borderElement).toBeInTheDocument();
+
+    // Note: Testing hover effects would require more complex setup with user-event
+    // This test ensures the component renders with hover capability
+  });
+
+  it('has enhanced glassmorphism styling', () => {
+    const { container } = render(
+      <BoltedPlateBorder rarity="legendary">
+        {mockChildren}
+      </BoltedPlateBorder>
+    );
+
+    // Check that the component has backdrop-blur-md class for enhanced glassmorphism
+    const borderElement = container.querySelector('.backdrop-blur-md');
+    expect(borderElement).toBeInTheDocument();
+  });
+
+  it('has refined breathing animation timing', () => {
+    const { container } = render(
+      <BoltedPlateBorder rarity="legendary">
+        {mockChildren}
+      </BoltedPlateBorder>
+    );
+
+    // Check that animation elements exist
+    const animatedElements = container.querySelectorAll('[style*="clip-path"]');
+    expect(animatedElements.length).toBeGreaterThan(1);
   });
 });

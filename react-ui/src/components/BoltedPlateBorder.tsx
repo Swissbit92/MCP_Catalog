@@ -42,23 +42,33 @@ const BoltedPlateBorder: React.FC<BoltedPlateBorderProps> = ({
   rarity,
   className = ''
 }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
   const colors = getRarityColors(rarity);
 
   return (
     <motion.div
       className={`relative ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
+      animate={{
+        opacity: 1,
+        scale: isHovered ? 1.02 : 1
+      }}
+      transition={{
+        duration: 0.5,
+        ease: [0.25, 0.46, 0.45, 0.94]
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Base Plate with Circular Cutouts */}
       <div
         className={`
-          relative bg-black/40 backdrop-blur-sm border-2 ${colors.base}
-          shadow-2xl ${colors.glow}
+          relative bg-slate-800/40 backdrop-blur-md border-2 ${colors.base}
+          shadow-2xl ${colors.glow} shadow-slate-900/30
           rounded-lg overflow-hidden
         `}
         style={{
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.6) 0%, rgba(30,41,59,0.3) 100%)',
           clipPath: `
             polygon(
               12px 0%, calc(100% - 12px) 0%,
@@ -91,13 +101,13 @@ const BoltedPlateBorder: React.FC<BoltedPlateBorderProps> = ({
         <motion.div
           className={`absolute inset-0 ${colors.accent} opacity-10 pointer-events-none`}
           animate={{
-            opacity: [0.05, 0.15, 0.05],
-            scale: [1, 1.02, 1]
+            opacity: [0.03, 0.08, 0.03],
+            scale: [1, 1.005, 1]
           }}
           transition={{
-            duration: rarity === 'legendary' ? 3 : rarity === 'epic' ? 4 : 5,
+            duration: rarity === 'legendary' ? 4 : rarity === 'epic' ? 5 : 6,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: [0.4, 0, 0.6, 1]
           }}
           style={{
             clipPath: `
