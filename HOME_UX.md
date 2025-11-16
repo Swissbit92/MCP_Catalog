@@ -204,9 +204,9 @@ HomePage (existing)
 - [x] **Iteration 2.1**: Bolted plate borders & rarity system (summary optimization, circular cutouts, rarity colors)
 - [x] **Iteration 2.2**: Enhanced visual effects (glassmorphism, textures, animations, typography)
 
-### MVP 3: Enhanced Navigation 📋
-- [ ] Add character selector with thumbnails and pagination dots
-- [ ] Implement hover effects and focus states
+### MVP 3: Enhanced Navigation ✅
+- [x] **Iteration 3.1**: Character thumbnail grid/carousel with click navigation and visual indicators
+- [ ] **Iteration 3.2**: Enhanced hover effects, tooltips, and smooth animations
 
 ### MVP 4: Audio Features 📋
 - [ ] Implement voice actor language toggle
@@ -319,6 +319,7 @@ HomePage (existing)
 
 **🎯 MVP 1 (Weeks 1-3)**: Authentic overlay panel - Character on right, info on left ✅
 **✨ MVP 2 (Weeks 4-5)**: Bolted plate borders with circular cutouts and 100-token summaries ✅
+**🎮 MVP 3 (Weeks 6-7)**: Character thumbnail navigation with visual indicators ✅
 **🎯 MVP 3 (Weeks 6-7)**: Enhanced navigation with thumbnails
 **🎵 MVP 4 (Weeks 8-9)**: Audio features and voice actor toggle
 **📱 MVP 5 (Week 10)**: Mobile optimization and performance
@@ -330,4 +331,4 @@ HomePage (existing)
 ---
 
 *Last Updated: November 16, 2025*
-*Status: MVP 2 Complete - Enhanced Visual Effects Implemented*
+*Status: MVP 3.1 Complete - Character Navigation Implemented*

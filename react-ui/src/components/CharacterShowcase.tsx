@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { fetchPersonas, fetchCharacterBio } from '../services/api';
 import BoltedPlateBorder from './BoltedPlateBorder';
+import CharacterSelector from './CharacterSelector';
 
 interface PersonaJson {
   key: string;
@@ -254,6 +255,13 @@ const CharacterShowcase: React.FC = () => {
             </motion.div>
           </div>
         </div>
+
+        {/* Character Selector */}
+        <CharacterSelector
+          personas={personas}
+          currentIndex={currentIndex}
+          onCharacterSelect={setCurrentIndex}
+        />
       </motion.div>
     </div>
   );
