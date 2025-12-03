@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dependency Security Fixes**: Resolved 10 high-severity and 2 moderate npm audit vulnerabilities in React dependencies through targeted package overrides and updates. Reduced total vulnerabilities from 12 to 2 moderate issues in development dependencies only.
+
 ### Added
 - **Dynamic Persona Management** - Implemented automatic persona discovery from JSON files, orphaned session cleanup, collection synchronization, and chat history updates when personas are added/removed/modified
 - **Code Quality Improvements** - Fixed ESLint warnings in PullInterface component and resolved test suite issues for PullInterface and PersonaContext
