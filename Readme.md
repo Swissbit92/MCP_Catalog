@@ -43,6 +43,7 @@
 | 🎭 **Persona Customization** | Rarity-based theming with custom backgrounds, colors, and avatar effects |
 | 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
 | 🔒 **Local-First** | All data stays on your device |
+| 🛡️ **Secure Dependencies** | Regular security audits with minimal vulnerabilities in production |
 | 🤖 **AI-Powered** | Powered by Ollama LLM models |
 | 🔄 **Dynamic Persona Management** | Automatic persona discovery, orphaned session cleanup, collection synchronization, and chat history updates |
 
@@ -353,6 +354,13 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 - Handle graceful shutdown of both services
 
 ---
+
+## 🛡️ Security
+
+- **Dependency Audits**: Regular npm audit checks with minimal vulnerabilities (2 moderate issues in dev dependencies only)
+- **Local-First Security**: All AI processing and data storage happens locally - no external API calls or data transmission
+- **Package Overrides**: Security fixes applied via package.json overrides for transitive dependency vulnerabilities
+- **Production Ready**: Optimized build with no security issues affecting production runtime
 
 ## ⚠️ Important Notes
 
