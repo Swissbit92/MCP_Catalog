@@ -52,6 +52,8 @@ interface PersonaContextType {
   retryMessage: (messageId: string) => Promise<void>;
   exportCurrentSession: () => Promise<string>;
   importSessionData: (exportData: any) => Promise<ChatSession>;
+  // Search status
+  isSearching: boolean;
   // Collection management
   collectedPersonas: Set<string>;
   addToCollection: (personaKey: string) => void;
@@ -70,6 +72,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
 
   // Collection management
   const [collectedPersonas, setCollectedPersonas] = useState<Set<string>>(() => {
@@ -182,6 +185,8 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
         status: 'sending',
       };
       setMessages(prev => [...prev, userMessage]);
+      // Start search indicator immediately
+      setIsSearching(true);
     }
 
     try {
@@ -198,9 +203,12 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
         status: 'delivered',
       };
 
-      console.log('Received assistant message with latency:', latency, 'ms');
+      console.log('Received assistant message with latency:', latency, 'ms', 'used_search:', assistantMessage.used_search);
 
       if (shouldUpdateUI) {
+        // Stop search indicator (response received)
+        setIsSearching(false);
+
         // Update the user message status to sent
         setMessages(prev => prev.map(msg =>
           msg.id.startsWith('user-') && msg.content === message && msg.status === 'sending'
@@ -219,6 +227,9 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.error('Error sending message:', error);
 
       if (shouldUpdateUI) {
+        // Stop search indicator on error
+        setIsSearching(false);
+
         // Update the user message status to failed
         setMessages(prev => prev.map(msg =>
           msg.id.startsWith('user-') && msg.content === message && msg.status === 'sending'
@@ -363,6 +374,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       retryMessage,
       exportCurrentSession,
       importSessionData,
+      isSearching,
       collectedPersonas,
       addToCollection,
       isCollected,

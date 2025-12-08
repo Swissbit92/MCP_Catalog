@@ -49,6 +49,8 @@ export interface Message {
   content: string;
   timestamp: Date;
   latency_ms?: number;
+  used_search?: boolean; // Whether web search was used for this message
+  search_results_count?: number; // Number of search results returned
 }
 
 export interface SessionWithMessages {
@@ -108,7 +110,11 @@ export const sendMessage = async (persona: string, message: string, history: Cha
   }
 
   const data = await response.json();
-  return data.answer;
+  return {
+    answer: data.answer,
+    used_search: data.used_search || false,
+    search_results_count: data.search_results_count || 0,
+  };
 };
 
 export const getPersonaGreeting = async (persona: string) => {
@@ -215,6 +221,8 @@ export const sendMessageToSession = async (sessionId: string, message: string): 
     role: 'assistant',
     content: data.answer,
     timestamp: new Date(),
+    used_search: data.used_search || false,
+    search_results_count: data.search_results_count || 0,
   };
 };
 

@@ -13,7 +13,9 @@
       "Bash(python test_function_calling.py:*)",
       "Bash(python:*)",
       "Bash(npm install:*)",
-      "Bash(npx react-scripts --version)"
+      "Bash(npx react-scripts --version)",
+      "Bash(npm run build:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
