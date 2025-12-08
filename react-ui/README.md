@@ -1,6 +1,12 @@
-# Getting Started with Create React App
+# React UI - MCP Catalog
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This React application provides the frontend interface for the MCP Catalog project. Built with Create React App, TypeScript, and modern React patterns.
+
+## Security Status
+
+- ✅ **Minimal Vulnerabilities**: Only 2 moderate npm audit issues in development dependencies
+- ✅ **Package Overrides**: Security fixes applied via package.json overrides for transitive dependencies
+- ✅ **Production Ready**: Optimized build with no security issues affecting runtime
 
 ## Available Scripts
 

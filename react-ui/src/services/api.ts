@@ -26,6 +26,14 @@ interface PersonaJson {
   escalation_policy: any; // Simplified for now
 }
 
+interface CharacterBio {
+  key: string;
+  summary: string; // 120-220 words CV-style bio from LLM
+  hash: string;
+  updated: string;
+}
+
+
 export interface ChatSession {
   id: string;
   persona_key: string;
@@ -264,4 +272,17 @@ export const clearSessionMessages = async (sessionId: string): Promise<void> => 
     const errorText = await response.text();
     throw new Error(`Clear Messages API Error: ${response.status} ${response.statusText} - ${errorText}`);
   }
+};
+
+// Character showcase functions
+export const fetchCharacterBio = async (personaKey: string): Promise<CharacterBio> => {
+  const response = await fetch(`${API_BASE_URL}/persona/summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ persona: personaKey })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch character bio: ${response.statusText}`);
+  }
+  return response.json();
 };

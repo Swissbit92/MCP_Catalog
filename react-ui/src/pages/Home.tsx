@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import EnergyParticles from '../components/EnergyParticles';
+import CharacterShowcase from '../components/CharacterShowcase';
 import styles from '../components/CharacterCard.module.css';
 
 const Home: React.FC = () => {
@@ -67,6 +68,14 @@ const Home: React.FC = () => {
             </motion.button>
           </div>
         </motion.div>
+
+        {/* Character Showcase */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-white text-center mb-6">
+            Character Showcase
+          </h2>
+          <CharacterShowcase />
+        </div>
       </div>
     </div>
   );
