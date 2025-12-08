@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 import { Avatar2D } from './Avatar2D';
 import { RichContent } from './RichContent';
 import { Message as ApiMessage } from '../services/api';
@@ -80,6 +81,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               }`}>
                 {personaName}
               </div>
+              {/* Search badge */}
+              {message.used_search && (
+                <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1">
+                  <Search size={12} />
+                  <span>Web Search</span>
+                  {message.search_results_count && message.search_results_count > 0 && (
+                    <span className="opacity-70">({message.search_results_count})</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <RichContent content={message.content} />
