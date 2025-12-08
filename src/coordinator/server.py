@@ -14,13 +14,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 
-from .config import get_ollama_base, get_persona_model, get_persona_temperature
+from .config import (
+    get_ollama_base, get_persona_model, get_persona_temperature,
+    is_brave_enabled, get_brave_api_key, get_brave_max_results,
+    get_brave_safesearch, get_brave_search_timeout, get_brave_enabled_rarities
+)
 from .ollama_utils import assert_model_available
 from .llm_client import LC_OllamaClient
 from .persona_memory import (
     build_system_prompt, build_greeting_user_prompt, get_persona_card,
     get_or_build_cv_summary, ensure_all_summaries_serialized, _load_all_cards_cached
 )
+from .mcp_client import BraveMCPClient
+from .tool_definitions import get_tools_for_persona
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Local Coordinator (Chat-only)", version="0.5.0")
 
@@ -32,6 +43,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ----------------- Brave MCP Client (Web Search) -----------------
+_brave_client: Optional[BraveMCPClient] = None
+
+def get_brave_client() -> Optional[BraveMCPClient]:
+    """Get the global Brave MCP client instance."""
+    return _brave_client
+
+def _init_brave_client():
+    """Initialize Brave MCP client if enabled."""
+    global _brave_client
+    if not is_brave_enabled():
+        logger.info("Brave MCP is disabled (no API key)")
+        return
+
+    try:
+        api_key = get_brave_api_key()
+        max_results = get_brave_max_results()
+        safesearch = get_brave_safesearch()
+        timeout = get_brave_search_timeout()
+
+        _brave_client = BraveMCPClient(
+            api_key=api_key,
+            max_results=max_results,
+            safesearch=safesearch,
+            timeout=timeout
+        )
+        logger.info(f"Brave MCP client initialized (max_results={max_results}, timeout={timeout}s)")
+    except Exception as e:
+        logger.error(f"Failed to initialize Brave MCP client: {e}")
+        _brave_client = None
 
 # ----------------- SQLite persistence (tiny DAO) -----------------
 _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
@@ -229,16 +271,30 @@ class ImportChatBody(BaseModel):
 # ----------------- Chat Inference -----------------
 @app.post("/persona/chat")
 def chat(body: ChatBody):
+    """Chat with a persona, with autonomous web search support for rare/epic/legendary personas."""
     card = get_persona_card(body.persona)
     if not card:
         raise HTTPException(status_code=400, detail="Unknown persona.")
+
+    persona_key = card.get("key")
+    persona_rarity = card.get("rarity", "common").lower()
     system = build_system_prompt(body.persona)
 
+    # Check if this persona has web search enabled
+    enabled_rarities = get_brave_enabled_rarities()
+    tools_enabled = persona_rarity in enabled_rarities and _brave_client is not None
+
+    logger.info(f"Chat request: persona={persona_key}, rarity={persona_rarity}, tools_enabled={tools_enabled}")
+
+    # Initialize LLM client with optional MCP client
     client = LC_OllamaClient(
         base=get_ollama_base(),
         model=get_persona_model(),
         temperature=get_persona_temperature(),
+        mcp_client=_brave_client if tools_enabled else None
     )
+
+    # Build conversation context from history
     history = body.history[-6:]
     lines = []
     for t in history:
@@ -247,8 +303,33 @@ def chat(body: ChatBody):
     lines.append(f"[User]\n{body.message}")
     user_compiled = "\n\n".join(lines)
 
-    answer = client.complete(system=system, user_prompt=user_compiled)
-    return {"answer": answer}
+    # Get tools for this persona (if enabled)
+    tools = get_tools_for_persona(persona_key, persona_rarity) if tools_enabled else []
+
+    if tools:
+        # Use tool-enhanced completion
+        logger.info(f"Using tool-enhanced completion with {len(tools)} tools")
+        answer, tool_call, search_results = client.complete_with_tools(
+            persona_system=system,
+            user_prompt=user_compiled,
+            tools=tools
+        )
+
+        response = {
+            "answer": answer,
+            "used_search": tool_call is not None,
+        }
+
+        # Add search results metadata if available
+        if search_results:
+            response["search_results_count"] = len(search_results)
+            logger.info(f"Chat completed with {len(search_results)} search results")
+
+        return response
+    else:
+        # Regular completion (no tools)
+        answer = client.complete(system=system, user_prompt=user_compiled)
+        return {"answer": answer, "used_search": False}
 
 @app.post("/sessions/{session_id}/chat")
 def chat_with_session(session_id: str, body: ChatBody):
@@ -678,6 +759,18 @@ try:
 except Exception as e:
     print(f"Database init failed: {e}")
     raise
+
+# Initialize Brave MCP client
+try:
+    _init_brave_client()
+    if _brave_client:
+        enabled_rarities = get_brave_enabled_rarities()
+        print(f"Brave MCP enabled for rarities: {', '.join(enabled_rarities)}")
+    else:
+        print("Brave MCP disabled (web search not available)")
+except Exception as e:
+    print(f"Brave MCP initialization warning: {e}")
+    # Non-critical, continue without web search
 
 # Best-effort no-op refresh (non-blocking). If another process holds the lock, we just skip.
 try:

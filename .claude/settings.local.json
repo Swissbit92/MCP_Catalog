@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if exist \".cursor\\rules\" dir .cursorrules /b)",
+      "Bash(grep:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m unittest:*)",
+      "Bash(python test_mcp_client.py:*)",
+      "Bash(docker --version:*)",
+      "Bash(python test_brave_mcp_connectivity.py:*)",
+      "Bash(ollama list:*)",
+      "Bash(ollama show:*)",
+      "Bash(python test_function_calling.py:*)",
+      "Bash(python:*)",
+      "Bash(npm install:*)",
+      "Bash(npx react-scripts --version)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
