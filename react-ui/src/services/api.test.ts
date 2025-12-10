@@ -15,11 +15,11 @@ describe('API Service', () => {
 
   it('fetchPersonas should return a list of personas from API', async () => {
     const mockPersonas = [
-      { key: 'Eeva', display_name: 'Eeva — Bitcoin Expect', style: 'nerdy, charming, concise', rarity: 'legendary', image: 'ui/images/eeva_card.png' },
-      { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', image: 'ui/images/frieren_card.png' },
-      { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', image: 'ui/images/gojo_card.png' },
-      { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', image: 'ui/images/hitler_card.png' },
-      { key: 'Itachi', display_name: 'Itachi', style: 'ninja', rarity: 'rare', image: 'ui/images/itachi_card.png' },
+      { key: 'Eeva', display_name: 'Eeva — Bitcoin Expect', style: 'nerdy, charming, concise', rarity: 'legendary', image: 'images/eeva_card.png' },
+      { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', image: 'images/frieren_card.png' },
+      { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', image: 'images/gojo_card.png' },
+      { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', image: 'images/hitler_card.png' },
+      { key: 'Itachi', display_name: 'Itachi', style: 'ninja', rarity: 'rare', image: 'images/itachi_card.png' },
     ];
 
     (fetch as jest.Mock).mockImplementationOnce(() =>

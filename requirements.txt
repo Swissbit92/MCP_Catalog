@@ -1,7 +1,6 @@
 # requirements.txt
 fastapi
 uvicorn[standard]
-streamlit
 requests
 python-dotenv
 langchain-core
@@ -11,8 +10,6 @@ pyyaml
 pydantic
 tiktoken
 
-# Note: This project also requires Node.js and npm for the React UI
+# Note: This project requires Node.js and npm for the React UI
 # Install Node.js from: https://nodejs.org/
 # After installing Node.js, run: cd react-ui && npm install
-
-# instead of fixed Streamlit columns (which "snap" all cards at once), we'll switch to a pure CSS Grid that uses repeat(auto-fit, minmax(...))

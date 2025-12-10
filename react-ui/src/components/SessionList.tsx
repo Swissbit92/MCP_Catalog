@@ -131,8 +131,8 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
         const processedPersonas = fetchedPersonas.map(p => ({
           key: p.key,
           display_name: p.display_name || p.key,
-          image: p.image.replace('ui/images/', ''),
-          avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
+          image: p.image.replace('images/', ''),
+          avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
           rarity: p.rarity,
         }));
         setPersonas(processedPersonas);

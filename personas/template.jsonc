@@ -22,10 +22,10 @@
   "coordinator_label": "Name (Tagline)",
 
   // OPTIONAL images (resolver will fall back to defaults if missing)
-  "image": "ui/images/name_card.png",   // shown on card & Bio
-  "avatar": "ui/images/name_avatar.png",// chat avatar; can be an emoji instead
-  "logo": "ui/images/name_logo.png",    // header/bio logo
-  "bg": "ui/images/name_bg.jpg",        // future: chat background
+  "image": "images/name_card.png",   // shown on card & Bio
+  "avatar": "images/name_avatar.png",// chat avatar; can be an emoji instead
+  "logo": "images/name_logo.png",    // header/bio logo
+  "bg": "images/name_bg.jpg",        // future: chat background
 
   // OPTIONAL single-char emoji used as avatar fallback
   "emoji": "🙂",

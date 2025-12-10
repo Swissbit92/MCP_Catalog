@@ -67,7 +67,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
         key: personas[randomIndex].key,
         display_name: personas[randomIndex].display_name || personas[randomIndex].key,
         style: personas[randomIndex].style,
-        image: personas[randomIndex].image.replace('ui/images/', ''),
+        image: personas[randomIndex].image.replace('images/', ''),
         rarity: personas[randomIndex].rarity,
       };
 

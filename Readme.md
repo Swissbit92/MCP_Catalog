@@ -283,9 +283,9 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
      "display_name": "Your Persona Name",
      "style": "personality description",
      "rarity": "legendary",
-     "image": "ui/images/your_card.png",
-     "avatar": "ui/images/your_avatar.png",
-     "logo": "ui/images/your_logo.png"
+     "image": "images/your_card.png",
+     "avatar": "images/your_avatar.png",
+     "logo": "images/your_logo.png"
    }
    ```
 3. **Auto-discovery**: The new persona appears automatically in the React UI without restart

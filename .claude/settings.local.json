@@ -15,7 +15,9 @@
       "Bash(npm install:*)",
       "Bash(npx react-scripts --version)",
       "Bash(npm run build:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(find:*)",
+      "Bash(del \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\react-ui\\src\\components\\ChatMessage.tsx\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\react-ui\\src\\components\\ChatMessage.test.tsx\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\response.html\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\temp.html\")"
     ],
     "deny": [],
     "ask": []
