@@ -7,6 +7,7 @@ __pycache__/
 # Virtual environments
 bin/
 include/
+Include/
 lib/
 lib64/
 Scripts/
@@ -19,6 +20,7 @@ pyvenv.cfg
 # Databases
 *.db
 chat.db
+chats.db
 
 # Node.js
 node_modules/
@@ -28,8 +30,26 @@ yarn-error.log*
 .npm
 .yarn-integrity
 
+# React build
+react-ui/build/
+
 # Environment variables
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*.bak
+
+# Persona summaries cache
+personas/_summaries/.lock

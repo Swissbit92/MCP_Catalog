@@ -510,7 +510,7 @@ describe('Chat', () => {
   it('applies persona background theming', () => {
     const personaWithBg = {
       ...mockPersonas[0],
-      bg: 'ui/images/eeva_bg.png',
+      bg: 'images/eeva_bg.png',
       rarity: 'legendary',
     };
 

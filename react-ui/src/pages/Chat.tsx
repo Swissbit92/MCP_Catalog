@@ -96,9 +96,9 @@ const Chat: React.FC = () => {
           key: p.key,
           display_name: p.display_name || p.key,
           style: p.style,
-          image: p.image.replace('ui/images/', ''),
-          avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
-          bg: p.bg ? p.bg.replace('ui/images/', '') : undefined,
+          image: p.image.replace('images/', ''),
+          avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
+          bg: p.bg ? p.bg.replace('images/', '') : undefined,
           rarity: p.rarity,
           coordinator_label: p.coordinator_label,
           voice: p.voice,
@@ -303,7 +303,7 @@ const Chat: React.FC = () => {
   };
 
   // Get persona background and color scheme
-  const personaBackground = selectedPersona?.bg ? `/images/${selectedPersona.bg.replace('ui/images/', '')}` : null;
+  const personaBackground = selectedPersona?.bg ? `/images/${selectedPersona.bg.replace('images/', '')}` : null;
   const colorScheme = getPersonaColorScheme(selectedPersona?.rarity);
 
   return (

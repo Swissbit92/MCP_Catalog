@@ -49,8 +49,12 @@ cd react-ui && npm test
 # Single test pattern
 cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 
-# Python backend tests (if available)
-pytest src/coordinator/test_server.py
+# Python backend tests
+python src/coordinator/test_server.py
+python src/coordinator/test_mcp_client.py
+python src/coordinator/test_tool_calling.py
+
+# Note: Python tests are standalone scripts, not pytest-based
 ```
 
 ### Ollama Setup
@@ -71,6 +75,12 @@ ollama pull llama3.1:latest
 - `llm_client.py` - LangChain Ollama client wrapper
 - `ollama_utils.py` - Ollama health checks, model availability assertions
 - `config.py` - Environment variable helpers for Ollama base, model, temperature, persona dir
+- `mcp_client.py` - MCP (Model Context Protocol) client for connecting to MCP servers
+- `tool_definitions.py` - Tool/function definitions for LLM function calling
+- `test_server.py`, `test_mcp_client.py`, `test_tool_calling.py` - Backend test files
+
+### Shared (`src/shared/`)
+- `persona_assets.py` - Shared utilities for persona asset paths and loading
 
 ### Frontend (`react-ui/src/`)
 - `pages/` - Top-level routes: `Home.tsx`, `Chat.tsx`, `CharacterCardV2Showcase.tsx`
@@ -98,7 +108,7 @@ Each persona is a JSON file defining:
 ### Adding a New Persona
 1. Copy `personas/template.jsonc` to `personas/[name].json`
 2. Fill in persona details (key, display_name, rarity, lore, voice, behavior, expertise)
-3. Add persona images to `ui/images/` (optional)
+3. Add persona images to `react-ui/public/images/` with paths like `"image": "images/[name]_card.png"`
 4. Persona auto-discovered on next backend/frontend load - no restart needed
 5. Summary auto-generated on first access via `persona_memory.py`
 
@@ -123,7 +133,7 @@ Each persona is a JSON file defining:
 
 ## Environment Variables
 
-Required in `.env` at project root:
+Required in `.env` at project root (no .env.example exists - create from scratch):
 ```bash
 OLLAMA_BASE=http://127.0.0.1:11434     # Ollama API endpoint
 PERSONA_MODEL=llama3.1:latest          # LLM model to use
@@ -134,6 +144,7 @@ PERSONA_DIR=personas                   # Persona JSON directory
 ```
 
 Optional:
+- `REACT_PORT=3000` - React dev server port (default: 3000)
 - `DEFAULT_PERSONA` - Preselect persona on load
 - `APP_LOGO_PATH`, `USER_AVATAR` - UI branding paths
 - `COORDINATOR_DB_PATH` - Custom SQLite path (default: `chats.db`)
@@ -162,6 +173,12 @@ Optional:
 - Python: Limited test coverage currently, mock Ollama for critical paths
 
 ## Important Implementation Details
+
+### MCP (Model Context Protocol) Integration
+- The coordinator can connect to external MCP servers (e.g., RAG, knowledge graph, Brave search, MongoDB)
+- MCP client in `mcp_client.py` handles server discovery and tool invocation
+- Tool definitions in `tool_definitions.py` define available functions for LLM function calling
+- Architecture supports multiple MCP servers bridged through the coordinator
 
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
@@ -216,6 +233,7 @@ Optional:
 ## Additional Documentation
 
 - `README.md` - User-facing setup guide, features, architecture diagram
+- `ASSESSMENT.md` - Comprehensive codebase quality assessment and scoring (Dec 2025)
 - `AGENTS.md` - Tech stack, build commands, code style guidelines
 - `CHANGELOG.md` - Version history, feature additions, security fixes
 - `REACT.md` - React-specific implementation details (if present)
@@ -229,7 +247,6 @@ Optional:
 - langchain-core, langchain-ollama - LLM orchestration
 - pydantic - Data validation
 - python-dotenv - Environment variable loading
-- streamlit - Alternative UI (legacy, not used in React flow)
 
 **React:**
 - react 19, react-dom 19, react-router-dom - Core framework

@@ -90,7 +90,7 @@ const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSe
                 <CharacterCard
                   name={persona.display_name || persona.key}
                   style={persona.style}
-                  image={`/images/${persona.image.replace('ui/images/', '')}`}
+                  image={`/images/${persona.image.replace('images/', '')}`}
                   rarity={persona.rarity}
                   onSelect={onCharacterSelect}
                   isSelected={false}
