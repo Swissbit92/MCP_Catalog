@@ -11,7 +11,6 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Latest-orange.svg)](https://ollama.ai)
 
 **🚀 One-Command Setup • 🎭 Multiple Personas • 💬 Persistent Chat**
-
 [Quick Start](#-quick-start) • [Installation](#-installation) • [Usage](#-usage)
 
 </div>
@@ -19,6 +18,7 @@
 ---
 
 ## 📋 Table of Contents
+
 - [✨ Features](#-features)
 - [🔧 System Requirements](#-system-requirements)
 - [⚡ Quick Start](#-quick-start)
@@ -88,6 +88,7 @@ python run_react.py
 ## 🤝 Contributing
 
 See Repository Guidelines in `AGENTS.md` for:
+
 - Project structure overview and entrypoints
 - Setup and run commands (Python, FastAPI, React)
 - Coding style and test conventions
@@ -105,7 +106,8 @@ It runs entirely **locally**, connects to a **FastAPI Coordinator** (the backend
 Personas such as **Eeva**, **Frieren**, **Gojo**, and others can be selected via an interactive dual-mode interface: exciting gacha-style random pulls on the home page or convenient static browsing with search on the character selection page.
 The chat interface is responsive, centered, and styled like a modern messaging app with premium visual effects.
 
- ### 🎨 React UI Enhancements (Completed)
+### 🎨 React UI Enhancements (Completed)
+
  The React application features comprehensive visual polish and mobile optimization:
 
  - **Header Component**: Modern dark theme with particle effects, dynamic theming, glassmorphism, animated typography, and functional mobile hamburger menu
@@ -117,6 +119,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
  - **Testing**: Comprehensive unit test coverage (40 tests) with type-safe implementation
 
   ### Current Status
+
    - ✅ **Home Page**: Welcome page with navigation to character selection, featuring sophisticated glassmorphism theming matching the character selection interface
   - ✅ **Character Selection**: Grid browsing with search functionality and collection showcase
   - ✅ **Chat Interface**: Persona-driven conversations with LLM responses
@@ -183,6 +186,7 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 ## 🧩 Installation
 
 ### 📥 Step 1: Clone the Repository
+
 ```bash
 git clone https://github.com/Swissbit92/MCP_Catalog.git
 cd MCP_Catalog
@@ -191,6 +195,7 @@ cd MCP_Catalog
 ### 🔧 Step 2: Install Dependencies
 
 #### **Option A: Automated Setup (Recommended)**
+
 ```bash
 # Linux/macOS
 chmod +x setup.sh
@@ -201,27 +206,35 @@ setup.bat
 ```
 
 #### **Option B: Manual Setup**
+
+Create venv env 'MCP_Catalog'
+
 ```bash
 # Python dependencies
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # React dependencies
-cd react-ui && npm install && cd ..
+cd react-ui 
+npm install
+cd ..
 ```
 
 ### 🤖 Step 3: Setup Ollama
 
 #### **Install Ollama**
+
 Visit [ollama.ai](https://ollama.ai) and download the installer for your OS.
 
 #### **Start Ollama Service**
+
 ```bash
 # Start Ollama in the background
 ollama serve
 ```
 
 #### **Pull Required Model**
+
 ```bash
 # Pull the Llama 3.1 model (required for chat)
 ollama pull llama3.1:latest
@@ -241,6 +254,7 @@ PERSONA_DIR=personas
 ```
 
 **Environment Variables:**
+
 - `COORD_PORT`: Port for the FastAPI backend (default: 8000)
 - `OLLAMA_BASE`: Ollama API endpoint (default: http://127.0.0.1:11434)
 - `PERSONA_MODEL`: LLM model to use (default: llama3.1:latest)
@@ -252,12 +266,15 @@ PERSONA_DIR=personas
 ### ▶️ Starting the Application
 
 #### **Option A: Unified Startup (Recommended)**
+
 ```bash
 python run_react.py
 ```
+
 **🎯 This starts both backend and frontend automatically!**
 
 #### **Option B: Manual Startup**
+
 ```bash
 # Terminal 1: Backend
 python run.py
@@ -267,6 +284,7 @@ cd react-ui && npm start
 ```
 
 ### 🛑 Stopping the Application
+
 Press `Ctrl+C` in the terminal running `python run_react.py` to stop both services gracefully.
 
 ---
@@ -277,6 +295,7 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 
 1. **Create persona file**: Copy `personas/template.jsonc` to `personas/[name].json`
 2. **Configure persona**: Edit the JSON with character details:
+
    ```json
    {
      "key": "your_persona",
@@ -288,6 +307,7 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
      "logo": "images/your_logo.png"
    }
    ```
+
 3. **Auto-discovery**: The new persona appears automatically in the React UI without restart
 4. **Single source of truth**: All persona data is managed from the `personas/` directory
 
@@ -319,11 +339,13 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 ## 🎯 How to Use the App
 
 ### **Home Page (`/`)**
+
 - 🎲 **Try Your Luck**: Navigate directly to the Gacha Pull section for character pulls with classic card reveals and particle effects
 - 📚 **Browse All Characters**: Navigate to the character selection page to view all available characters
 - 🎨 **Sophisticated Theming**: Glassmorphism background effects, animated particles, and yellow-themed buttons matching the character selection interface
 
 ### **Character Selection (`/select`)**
+
 - 🎴 **Card Gallery**: Browse all characters with search and filtering by name, style, or rarity
 - 🎲 **Gacha Pull**: Experience 1x/5x/10x pulls with sequential reveals and audio feedback
 - 📚 **My Collection**: View collected characters with statistics and management
@@ -331,6 +353,7 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 - 🎯 **Choose Characters**: Click "Choose" button on any card to jump directly to chat
 
 ### **Classic Cards Showcase (`/cards-v2`)**
+
 - 🎴 **Card Gallery**: Browse all characters with search and filtering by name, style, or rarity
 - 🎲 **Gacha Pull**: Experience 1x/5x/10x pulls with sequential reveals and audio feedback
 - 📚 **My Collection**: View collected characters with statistics and management
@@ -338,6 +361,7 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 - 🎯 **Choose Characters**: Click "Choose" button on any card to jump directly to chat
 
 ### **Chat Interface (`/chat`)**
+
 - 💬 **Start Conversations**: Chat with your selected persona
 - 🔄 **Switch Sessions**: Use sidebar to switch between chats
 - 💾 **Export Chats**: Save conversations as JSON files
