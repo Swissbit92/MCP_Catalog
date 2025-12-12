@@ -17,7 +17,10 @@ from contextlib import asynccontextmanager
 from .config import (
     get_ollama_base, get_persona_model, get_persona_temperature,
     is_brave_enabled, get_brave_api_key, get_brave_max_results,
-    get_brave_safesearch, get_brave_search_timeout, get_brave_enabled_rarities
+    get_brave_safesearch, get_brave_search_timeout, get_brave_enabled_rarities,
+    is_mongodb_enabled, get_mongodb_uri, get_mongodb_timeout,
+    get_mongodb_max_response_bytes, get_mongodb_enabled_rarities,
+    get_mongodb_cache_ttl
 )
 from .ollama_utils import assert_model_available
 from .llm_client import LC_OllamaClient
@@ -26,7 +29,9 @@ from .persona_memory import (
     get_or_build_cv_summary, ensure_all_summaries_serialized, _load_all_cards_cached
 )
 from .mcp_client import BraveMCPClient
-from .tool_definitions import get_tools_for_persona
+from .mongodb_mcp_client import MongoDBMCPClient
+from .cache import get_cache, MongoDBCache
+from .tool_definitions import get_tools_for_persona, classify_query_intent, get_tools_for_query, QueryIntent
 
 import logging
 
@@ -74,6 +79,46 @@ def _init_brave_client():
     except Exception as e:
         logger.error(f"Failed to initialize Brave MCP client: {e}")
         _brave_client = None
+
+# ----------------- MongoDB MCP Client (Trading Data) -----------------
+_mongodb_client: Optional[MongoDBMCPClient] = None
+_mongodb_cache: Optional[MongoDBCache] = None
+
+def get_mongodb_client() -> Optional[MongoDBMCPClient]:
+    """Get the global MongoDB MCP client instance."""
+    return _mongodb_client
+
+def get_mongodb_cache() -> Optional[MongoDBCache]:
+    """Get the global MongoDB cache instance."""
+    return _mongodb_cache
+
+def _init_mongodb_client():
+    """Initialize MongoDB MCP client if enabled."""
+    global _mongodb_client, _mongodb_cache
+    if not is_mongodb_enabled():
+        logger.info("MongoDB MCP is disabled (no URI or feature flag off)")
+        return
+
+    try:
+        mongodb_uri = get_mongodb_uri()
+        timeout = get_mongodb_timeout()
+        max_response_bytes = get_mongodb_max_response_bytes()
+
+        _mongodb_client = MongoDBMCPClient(
+            connection_uri=mongodb_uri,
+            timeout=timeout,
+            max_response_bytes=max_response_bytes
+        )
+
+        # Initialize cache
+        _mongodb_cache = get_cache()
+
+        logger.info(f"MongoDB MCP client initialized (timeout={timeout}s, max_response={max_response_bytes} bytes)")
+        logger.info(f"MongoDB cache initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize MongoDB MCP client: {e}")
+        _mongodb_client = None
+        _mongodb_cache = None
 
 # ----------------- SQLite persistence (tiny DAO) -----------------
 _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
@@ -268,10 +313,311 @@ class ImportChatBody(BaseModel):
     persona: str
     chat: Dict[str, Any] = Field(..., description="JSON with {title, messages: [{role,content,ts?}]}")
 
+# Response Metadata for MCP data sources
+class ResponseMetadata(BaseModel):
+    source_type: str = "llm"  # "llm", "brave_mcp", "mongodb_mcp", "multi_mcp"
+    tools_used: List[str] = []
+    cache_status: Optional[str] = None  # "hit", "miss", None
+    data_timestamp: Optional[str] = None
+    latency_breakdown: Optional[Dict[str, int]] = None  # {"llm": 3000, "mongodb": 500}
+
+# ----------------- MongoDB Tool Handlers -----------------
+
+def _check_cache_or_fetch(tool_name: str, fetch_func, force_refresh: bool = False):
+    """Check cache first, then fetch from MongoDB if needed."""
+    if not _mongodb_cache or not _mongodb_client:
+        return None, "miss"
+
+    # Check cache unless force refresh
+    if not force_refresh:
+        cached = _mongodb_cache.get(tool_name)
+        if cached:
+            logger.info(f"Cache HIT for {tool_name} (age: {cached.age_seconds()}s)")
+            return cached.data, "hit"
+
+    # Cache miss or force refresh - fetch from MongoDB
+    logger.info(f"Cache MISS for {tool_name}, fetching from MongoDB...")
+    try:
+        data = fetch_func()
+        # Cache the result
+        ttl = get_mongodb_cache_ttl(tool_name)
+        _mongodb_cache.set(tool_name, data, ttl=ttl, source="mongodb_mcp")
+        logger.info(f"Cached {tool_name} with TTL={ttl}s")
+        return data, "miss"
+    except Exception as e:
+        logger.error(f"MongoDB fetch error for {tool_name}: {e}")
+        raise
+
+def handle_bitcoin_current_price(reason: str, include_indicators: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Get current Bitcoin price with key technical indicators."""
+    if not _mongodb_client:
+        raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+    def fetch():
+        # Query 1h_price_data for latest document
+        result = _mongodb_client.find(
+            database="btc_data",
+            collection="1h_price_data",
+            filter={},
+            sort={"timestamp": -1},
+            limit=1
+        )
+
+        if not result or len(result) == 0:
+            raise HTTPException(status_code=404, detail="No price data found")
+
+        latest = result[0]
+
+        # Build response with technical explanations
+        indicators_to_include = include_indicators or ["RSI", "MACD_Line", "BB_High", "BB_Low", "EMA_20", "EMA_50"]
+
+        indicators_data = {}
+        for ind in indicators_to_include:
+            if ind in latest:
+                indicators_data[ind] = latest[ind]
+
+        # Add signal interpretations
+        rsi = latest.get("RSI", 0)
+        rsi_signal = "Overbought" if rsi > 70 else "Oversold" if rsi < 30 else "Neutral-Bullish" if rsi > 50 else "Neutral-Bearish"
+
+        macd_hist = latest.get("MACD_Histogram", 0)
+        macd_trend = "Bullish crossover" if macd_hist > 0 else "Bearish crossover"
+
+        price = latest.get("Close", 0)
+        bb_upper = latest.get("BB_High", 0)
+        bb_lower = latest.get("BB_Low", 0)
+        bb_mid = (bb_upper + bb_lower) / 2 if bb_upper and bb_lower else 0
+        bb_position = "Near upper band" if price > bb_mid else "Near lower band"
+
+        return {
+            "price": latest.get("Close"),
+            "timestamp": latest.get("timestamp"),
+            "volume": latest.get("Volume"),
+            "indicators": {
+                "RSI": {"value": rsi, "signal": rsi_signal},
+                "MACD": {
+                    "line": latest.get("MACD_Line"),
+                    "signal": latest.get("MACD_Signal"),
+                    "histogram": macd_hist,
+                    "trend": macd_trend
+                },
+                "Bollinger_Bands": {
+                    "upper": bb_upper,
+                    "lower": bb_lower,
+                    "signal": bb_position
+                },
+                "EMA_20": latest.get("EMA_20"),
+                "EMA_50": latest.get("EMA_50"),
+                "raw_indicators": indicators_data
+            },
+            "data_source": "1h_price_data"
+        }
+
+    data, cache_status = _check_cache_or_fetch("bitcoin_current_price", fetch)
+    data["cache_status"] = cache_status
+    return data
+
+def handle_bitcoin_historical_prices(reason: str, start_date: str, end_date: Optional[str] = None,
+                                     timeframe: str = "daily", indicators: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Query historical Bitcoin price data with date range."""
+    if not _mongodb_client:
+        raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+    collection = "daily_price_data" if timeframe == "daily" else "1h_price_data"
+
+    # Build query filter
+    query_filter = {}
+    if start_date:
+        if not end_date:
+            end_date = datetime.utcnow().strftime("%Y-%m-%d")
+        query_filter["timestamp"] = {"$gte": start_date, "$lte": end_date}
+
+    # Build projection
+    projection = {
+        "timestamp": 1,
+        "Open": 1,
+        "High": 1,
+        "Low": 1,
+        "Close": 1,
+        "Volume": 1
+    }
+
+    if indicators:
+        for ind in indicators:
+            projection[ind] = 1
+
+    def fetch():
+        results = _mongodb_client.find(
+            database="btc_data",
+            collection=collection,
+            filter=query_filter,
+            projection=projection,
+            sort={"timestamp": 1},
+            limit=100  # Safety limit
+        )
+
+        return {
+            "timeframe": timeframe,
+            "start_date": start_date,
+            "end_date": end_date,
+            "count": len(results),
+            "data": results,
+            "data_source": collection
+        }
+
+    # Use a cache key that includes the date range
+    cache_key = f"bitcoin_historical_prices_{start_date}_{end_date}_{timeframe}"
+    data, cache_status = _check_cache_or_fetch(cache_key, fetch)
+    data["cache_status"] = cache_status
+    return data
+
+def handle_bitcoin_trading_summary(reason: str, start_date: Optional[str] = None,
+                                   end_date: Optional[str] = None) -> Dict[str, Any]:
+    """Get DCA (Dollar Cost Averaging) trading statistics."""
+    if not _mongodb_client:
+        raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+    def fetch():
+        # Build match stage
+        match_stage = {}
+        if start_date or end_date:
+            match_stage["timestamp"] = {}
+            if start_date:
+                match_stage["timestamp"]["$gte"] = start_date
+            if end_date:
+                match_stage["timestamp"]["$lte"] = end_date
+
+        # Aggregation pipeline
+        pipeline = [
+            {"$match": match_stage} if match_stage else {"$match": {}},
+            {"$group": {
+                "_id": None,
+                "total_btc": {"$sum": "$dealSize"},
+                "total_usdt_spent": {"$sum": "$dealFunds"},
+                "total_fees": {"$sum": "$fee"},
+                "num_purchases": {"$sum": 1},
+                "avg_price": {"$avg": "$price"},
+                "min_price": {"$min": "$price"},
+                "max_price": {"$max": "$price"},
+                "first_purchase": {"$min": "$timestamp"},
+                "last_purchase": {"$max": "$timestamp"}
+            }}
+        ]
+
+        results = _mongodb_client.aggregate(
+            database="btc_data",
+            collection="BTC dayli buying",
+            pipeline=pipeline
+        )
+
+        if not results or len(results) == 0:
+            return {
+                "total_btc": 0,
+                "total_usdt_spent": 0,
+                "total_fees": 0,
+                "num_purchases": 0,
+                "data_source": "BTC dayli buying"
+            }
+
+        summary = results[0]
+        summary["data_source"] = "BTC dayli buying"
+        return summary
+
+    cache_key = f"bitcoin_trading_summary_{start_date}_{end_date}"
+    data, cache_status = _check_cache_or_fetch(cache_key, fetch)
+    data["cache_status"] = cache_status
+    return data
+
+def handle_bitcoin_technical_analysis(reason: str, timeframe: str = "hourly") -> Dict[str, Any]:
+    """Multi-timeframe technical analysis."""
+    if not _mongodb_client:
+        raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+    def fetch():
+        collection = "1h_price_data" if timeframe == "hourly" else "daily_price_data"
+
+        # Get latest data
+        results = _mongodb_client.find(
+            database="btc_data",
+            collection=collection,
+            filter={},
+            sort={"timestamp": -1},
+            limit=1
+        )
+
+        if not results or len(results) == 0:
+            raise HTTPException(status_code=404, detail="No data found")
+
+        latest = results[0]
+
+        # Analyze indicators
+        price = latest.get("Close", 0)
+        ema_20 = latest.get("EMA_20", 0)
+        ema_50 = latest.get("EMA_50", 0)
+        ema_200 = latest.get("EMA_200", 0)
+
+        trend = "bullish" if price > ema_20 > ema_50 else "bearish"
+
+        rsi = latest.get("RSI", 0)
+        rsi_signal = "overbought" if rsi > 70 else "oversold" if rsi < 30 else "neutral"
+
+        macd_hist = latest.get("MACD_Histogram", 0)
+        macd_crossover = "bullish" if macd_hist > 0 else "bearish"
+
+        bb_high = latest.get("BB_High", 0)
+        bb_low = latest.get("BB_Low", 0)
+        bb_mid = (bb_high + bb_low) / 2 if bb_high and bb_low else 0
+        bb_position = "upper" if price > bb_mid else "lower"
+
+        analysis = {
+            "price": price,
+            "timestamp": latest.get("timestamp"),
+            "timeframe": timeframe,
+            "trend_indicators": {
+                "EMA_20": ema_20,
+                "EMA_50": ema_50,
+                "EMA_200": ema_200,
+                "trend": trend
+            },
+            "momentum_indicators": {
+                "RSI": {
+                    "value": rsi,
+                    "signal": rsi_signal
+                },
+                "MACD": {
+                    "line": latest.get("MACD_Line"),
+                    "signal": latest.get("MACD_Signal"),
+                    "histogram": macd_hist,
+                    "crossover": macd_crossover
+                },
+                "Stochastic_RSI": latest.get("Stoch_RSI")
+            },
+            "volatility_indicators": {
+                "Bollinger_Bands": {
+                    "upper": bb_high,
+                    "lower": bb_low,
+                    "position": bb_position
+                }
+            },
+            "support_resistance": {
+                "Donchian_High": latest.get("Donchian_High"),
+                "Donchian_Low": latest.get("Donchian_Low"),
+                "Ichimoku_Base": latest.get("Ichimoku_Base")
+            },
+            "data_source": collection
+        }
+
+        return analysis
+
+    cache_key = f"bitcoin_technical_analysis_{timeframe}"
+    data, cache_status = _check_cache_or_fetch(cache_key, fetch)
+    data["cache_status"] = cache_status
+    return data
+
 # ----------------- Chat Inference -----------------
 @app.post("/persona/chat")
 def chat(body: ChatBody):
-    """Chat with a persona, with autonomous web search support for rare/epic/legendary personas."""
+    """Chat with a persona, with autonomous tool support (web search + MongoDB) for higher rarity personas."""
     card = get_persona_card(body.persona)
     if not card:
         raise HTTPException(status_code=400, detail="Unknown persona.")
@@ -279,20 +625,6 @@ def chat(body: ChatBody):
     persona_key = card.get("key")
     persona_rarity = card.get("rarity", "common").lower()
     system = build_system_prompt(body.persona)
-
-    # Check if this persona has web search enabled
-    enabled_rarities = get_brave_enabled_rarities()
-    tools_enabled = persona_rarity in enabled_rarities and _brave_client is not None
-
-    logger.info(f"Chat request: persona={persona_key}, rarity={persona_rarity}, tools_enabled={tools_enabled}")
-
-    # Initialize LLM client with optional MCP client
-    client = LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
-        temperature=get_persona_temperature(),
-        mcp_client=_brave_client if tools_enabled else None
-    )
 
     # Build conversation context from history
     history = body.history[-6:]
@@ -303,33 +635,179 @@ def chat(body: ChatBody):
     lines.append(f"[User]\n{body.message}")
     user_compiled = "\n\n".join(lines)
 
-    # Get tools for this persona (if enabled)
-    tools = get_tools_for_persona(persona_key, persona_rarity) if tools_enabled else []
+    # Use intent classification to determine which tools to inject
+    intent = classify_query_intent(body.message, persona_rarity)
+    logger.info(f"Chat request: persona={persona_key}, rarity={persona_rarity}, intent={intent}")
 
-    if tools:
-        # Use tool-enhanced completion
-        logger.info(f"Using tool-enhanced completion with {len(tools)} tools")
+    # Get tools based on intent
+    tools = get_tools_for_query(body.message, persona_key, persona_rarity)
+
+    # Prepare metadata
+    metadata = ResponseMetadata(
+        source_type="llm",
+        tools_used=[],
+        cache_status=None,
+        data_timestamp=None
+    )
+
+    if not tools:
+        # No tools needed - regular LLM completion
+        logger.info("No tools needed, using regular completion")
+        client = LC_OllamaClient(
+            base=get_ollama_base(),
+            model=get_persona_model(),
+            temperature=get_persona_temperature()
+        )
+        answer = client.complete(system=system, user_prompt=user_compiled)
+        return {"answer": answer, "used_search": False, "metadata": metadata.dict()}
+
+    # Tools needed - check if MongoDB tools are included
+    mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "").startswith("bitcoin_")]
+    brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
+
+    if mongodb_tools and not brave_tools:
+        # MongoDB-only query - handle directly without llm_client tool calling
+        # This is more efficient for MongoDB queries
+        logger.info(f"MongoDB-only query detected, using direct handlers")
+
+        # For simplicity, use the first MongoDB tool (LLM will decide which one)
+        # In production, we'd want the LLM to make this decision
+        tool_name = mongodb_tools[0]["function"]["name"]
+        logger.info(f"Using MongoDB tool: {tool_name}")
+
+        try:
+            # Execute MongoDB tool directly
+            mongodb_result = None
+            if tool_name == "bitcoin_current_price":
+                mongodb_result = handle_bitcoin_current_price(reason="User query about current price")
+            elif tool_name == "bitcoin_historical_prices":
+                # Extract date from query if possible, otherwise use last 7 days
+                import re
+                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', body.message)
+                start_date = date_match.group(1) if date_match else "2025-12-01"
+                mongodb_result = handle_bitcoin_historical_prices(reason="User query about historical data", start_date=start_date)
+            elif tool_name == "bitcoin_trading_summary":
+                mongodb_result = handle_bitcoin_trading_summary(reason="User query about trading stats")
+            elif tool_name == "bitcoin_technical_analysis":
+                mongodb_result = handle_bitcoin_technical_analysis(reason="User query about technical analysis")
+
+            if mongodb_result:
+                # Format results for LLM to synthesize
+                import json
+                formatted_data = json.dumps(mongodb_result, indent=2)
+
+                # Ask LLM to synthesize the response
+                client = LC_OllamaClient(
+                    base=get_ollama_base(),
+                    model=get_persona_model(),
+                    temperature=get_persona_temperature()
+                )
+
+                synthesis_prompt = f"""{user_compiled}
+
+[MongoDB Data Retrieved]
+{formatted_data}
+
+Please synthesize this data into a natural, conversational response. Include key technical insights and interpretations."""
+
+                answer = client.complete(system=system, user_prompt=synthesis_prompt)
+
+                # Update metadata
+                metadata.source_type = "mongodb_mcp"
+                metadata.tools_used = [tool_name]
+                metadata.cache_status = mongodb_result.get("cache_status", "miss")
+                metadata.data_timestamp = mongodb_result.get("timestamp", "")
+
+                logger.info(f"MongoDB query completed: tool={tool_name}, cache={metadata.cache_status}")
+
+                return {
+                    "answer": answer,
+                    "used_search": True,
+                    "metadata": metadata.dict()
+                }
+        except Exception as e:
+            logger.error(f"MongoDB query failed: {e}")
+            # Fallback to regular LLM response
+            client = LC_OllamaClient(
+                base=get_ollama_base(),
+                model=get_persona_model(),
+                temperature=get_persona_temperature()
+            )
+            answer = client.complete(system=system, user_prompt=user_compiled)
+            return {"answer": answer, "used_search": False, "metadata": metadata.dict()}
+
+    elif brave_tools and not mongodb_tools:
+        # Brave-only query - use existing tool calling system
+        logger.info("Brave-only query, using tool-enhanced completion")
+        client = LC_OllamaClient(
+            base=get_ollama_base(),
+            model=get_persona_model(),
+            temperature=get_persona_temperature(),
+            mcp_client=_brave_client
+        )
+
         answer, tool_call, search_results = client.complete_with_tools(
             persona_system=system,
             user_prompt=user_compiled,
             tools=tools
         )
 
+        metadata.source_type = "brave_mcp"
+        metadata.tools_used = ["brave_web_search"] if tool_call else []
+
         response = {
             "answer": answer,
             "used_search": tool_call is not None,
+            "metadata": metadata.dict()
         }
 
-        # Add search results metadata if available
         if search_results:
             response["search_results_count"] = len(search_results)
             logger.info(f"Chat completed with {len(search_results)} search results")
 
         return response
+
+    elif brave_tools and mongodb_tools:
+        # Multi-MCP query - combine both sources
+        logger.info("Multi-MCP query detected (Brave + MongoDB)")
+        # For MVP, execute sequentially (parallel execution can be added later)
+
+        # Execute Brave search first
+        client = LC_OllamaClient(
+            base=get_ollama_base(),
+            model=get_persona_model(),
+            temperature=get_persona_temperature(),
+            mcp_client=_brave_client
+        )
+
+        answer, tool_call, search_results = client.complete_with_tools(
+            persona_system=system,
+            user_prompt=user_compiled,
+            tools=brave_tools
+        )
+
+        # TODO: Add MongoDB query execution and combine results
+        # For now, just return Brave results
+        metadata.source_type = "multi_mcp"
+        metadata.tools_used = ["brave_web_search"]
+
+        response = {
+            "answer": answer,
+            "used_search": True,
+            "metadata": metadata.dict()
+        }
+
+        return response
+
     else:
-        # Regular completion (no tools)
+        # Fallback to regular completion
+        client = LC_OllamaClient(
+            base=get_ollama_base(),
+            model=get_persona_model(),
+            temperature=get_persona_temperature()
+        )
         answer = client.complete(system=system, user_prompt=user_compiled)
-        return {"answer": answer, "used_search": False}
+        return {"answer": answer, "used_search": False, "metadata": metadata.dict()}
 
 @app.post("/sessions/{session_id}/chat")
 def chat_with_session(session_id: str, body: ChatBody):
@@ -771,6 +1249,18 @@ try:
 except Exception as e:
     print(f"Brave MCP initialization warning: {e}")
     # Non-critical, continue without web search
+
+# Initialize MongoDB MCP client
+try:
+    _init_mongodb_client()
+    if _mongodb_client:
+        enabled_rarities = get_mongodb_enabled_rarities()
+        print(f"MongoDB MCP enabled for rarities: {', '.join(enabled_rarities)}")
+    else:
+        print("MongoDB MCP disabled (no URI or feature flag off)")
+except Exception as e:
+    print(f"MongoDB MCP initialization warning: {e}")
+    # Non-critical, continue without MongoDB access
 
 # Best-effort no-op refresh (non-blocking). If another process holds the lock, we just skip.
 try:

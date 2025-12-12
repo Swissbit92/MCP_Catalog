@@ -67,3 +67,46 @@ def get_brave_enabled_rarities() -> set:
 def is_brave_enabled() -> bool:
     """Check if Brave MCP is enabled (API key is set)."""
     return bool(get_brave_api_key())
+
+# MongoDB MCP Configuration
+def get_mongodb_uri() -> str:
+    """Get MongoDB connection URI (required if MongoDB MCP is enabled)."""
+    return os.getenv("MONGODB_URI", "").strip()
+
+def get_mongodb_timeout() -> int:
+    """Get MongoDB operation timeout in seconds (default 30)."""
+    try:
+        return int(os.getenv("MONGODB_TIMEOUT", "30"))
+    except ValueError:
+        return 30
+
+def get_mongodb_max_response_bytes() -> int:
+    """Get max response size in bytes (default 100KB)."""
+    try:
+        return int(os.getenv("MONGODB_MAX_RESPONSE_BYTES", "100000"))
+    except ValueError:
+        return 100000
+
+def get_mongodb_enabled_rarities() -> set:
+    """Get set of persona rarities that have MongoDB access enabled."""
+    rarities_str = os.getenv("MONGODB_ENABLED_RARITIES", "epic,legendary").strip()
+    if not rarities_str:
+        return set()
+    return {r.strip().lower() for r in rarities_str.split(",") if r.strip()}
+
+def is_mongodb_enabled() -> bool:
+    """Check if MongoDB MCP is enabled (URI is set and feature flag is true)."""
+    enabled_flag = os.getenv("MONGODB_ENABLED", "false").lower() in ("true", "1", "yes")
+    has_uri = bool(get_mongodb_uri())
+    return enabled_flag and has_uri
+
+# Cache TTL Configuration
+def get_mongodb_cache_ttl(tool_name: str) -> int:
+    """Get cache TTL for a specific MongoDB tool (in seconds)."""
+    ttl_map = {
+        "bitcoin_current_price": int(os.getenv("MONGODB_CACHE_CURRENT_PRICE", "60")),
+        "bitcoin_technical_analysis": int(os.getenv("MONGODB_CACHE_TECHNICAL", "60")),
+        "bitcoin_historical_prices": int(os.getenv("MONGODB_CACHE_HISTORICAL", "3600")),
+        "bitcoin_trading_summary": int(os.getenv("MONGODB_CACHE_TRADING", "300")),
+    }
+    return ttl_map.get(tool_name, 60)  # Default 60s

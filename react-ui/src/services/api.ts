@@ -43,6 +43,15 @@ export interface ChatSession {
   message_count: number;
 }
 
+// Response metadata for MCP data sources
+export interface ResponseMetadata {
+  source_type: 'llm' | 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp';
+  tools_used: string[];
+  cache_status?: 'hit' | 'miss' | null;
+  data_timestamp?: string | null;
+  latency_breakdown?: Record<string, number> | null;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -51,6 +60,7 @@ export interface Message {
   latency_ms?: number;
   used_search?: boolean; // Whether web search was used for this message
   search_results_count?: number; // Number of search results returned
+  metadata?: ResponseMetadata; // Response metadata from backend
 }
 
 export interface SessionWithMessages {
@@ -114,6 +124,7 @@ export const sendMessage = async (persona: string, message: string, history: Cha
     answer: data.answer,
     used_search: data.used_search || false,
     search_results_count: data.search_results_count || 0,
+    metadata: data.metadata || null,
   };
 };
 
@@ -223,6 +234,7 @@ export const sendMessageToSession = async (sessionId: string, message: string): 
     timestamp: new Date(),
     used_search: data.used_search || false,
     search_results_count: data.search_results_count || 0,
+    metadata: data.metadata || null,
   };
 };
 

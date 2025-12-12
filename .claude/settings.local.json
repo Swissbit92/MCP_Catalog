@@ -17,7 +17,15 @@
       "Bash(npm run build:*)",
       "Bash(npm test:*)",
       "Bash(find:*)",
-      "Bash(del \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\react-ui\\src\\components\\ChatMessage.tsx\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\react-ui\\src\\components\\ChatMessage.test.tsx\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\response.html\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\temp.html\")"
+      "Bash(del \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\react-ui\\src\\components\\ChatMessage.tsx\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\react-ui\\src\\components\\ChatMessage.test.tsx\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\response.html\" \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\temp.html\")",
+      "Bash(findstr:*)",
+      "Bash(pip install:*)",
+      "Bash(timeout 30 bash:*)",
+      "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Application is ready!\"\"')",
+      "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Ready!\"\"')",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Server ready\"\"')"
     ],
     "deny": [],
     "ask": []

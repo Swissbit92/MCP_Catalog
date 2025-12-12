@@ -90,6 +90,59 @@ describe('MessageBubble', () => {
     expect(messageBubble).toBeInTheDocument();
   });
 
+  it('displays SourceIndicator for assistant messages with metadata', () => {
+    const assistantMessageWithMetadata = {
+      ...mockMessage,
+      role: 'assistant' as const,
+      metadata: {
+        source_type: 'mongodb_mcp' as const,
+        tools_used: ['bitcoin_current_price'],
+        cache_status: 'hit' as const,
+        data_timestamp: '2025-12-11 20:00:00',
+      },
+    };
+
+    render(
+      <MessageBubble
+        message={assistantMessageWithMetadata}
+        personaName="Eeva"
+        personaRarity="epic"
+      />
+    );
+
+    expect(screen.getByText('Trading Data (MongoDB MCP)')).toBeInTheDocument();
+    expect(screen.getByTitle('Retrieved from cache')).toBeInTheDocument();
+  });
+
+  it('does not display SourceIndicator for user messages', () => {
+    const userMessageWithMetadata = {
+      ...mockMessage,
+      metadata: {
+        source_type: 'llm' as const,
+        tools_used: [],
+      },
+    };
+
+    render(
+      <MessageBubble message={userMessageWithMetadata} />
+    );
+
+    expect(screen.queryByText('Pure LLM Response')).not.toBeInTheDocument();
+  });
+
+  it('does not display SourceIndicator when metadata is missing', () => {
+    const assistantMessage = { ...mockMessage, role: 'assistant' as const };
+
+    render(
+      <MessageBubble
+        message={assistantMessage}
+        personaName="Eeva"
+      />
+    );
+
+    expect(screen.queryByText(/MCP/i)).not.toBeInTheDocument();
+  });
+
   it('shows latency information in seconds', () => {
     const messageWithLatency = {
       ...mockMessage,
