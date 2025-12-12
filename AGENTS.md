@@ -1,4 +1,22 @@
-# Agent Coding Guidelines
+# AI Agent Coding Guidelines
+
+> **Purpose**: Guidelines for AI assistants (Claude, Gemini, etc.) working with this codebase.
+
+## Project Overview
+
+**MCP Coordinator** is a local, persona-driven chat interface for interacting with GraphRAG and other MCP (Modular Computation Process) servers. It features:
+- **Backend**: Python + FastAPI + Ollama for local LLM inference
+- **Frontend**: React 19 + TypeScript with gacha-style character selection
+- **Architecture**: Modular design with persona-based routing and MCP integration
+- **Key Features**: Advanced gacha system, persistent chat, character collection, web search (Brave MCP), Bitcoin data queries (MongoDB MCP)
+
+### Project Structure
+
+- `run_react.py` - Main entry point (starts both backend and frontend)
+- `src/coordinator/server.py` - FastAPI backend with chat, sessions, persona management
+- `react-ui/` - React frontend with modern UI and animations
+- `personas/` - JSON persona definitions (auto-discovered)
+- `requirements.txt` - Python dependencies
 
 ## Tech Stack
 Backend: Python 3.8+, FastAPI, Pydantic, SQLite, Ollama. Frontend: React 19, TypeScript 4.9.5, Tailwind CSS, Framer Motion.
@@ -24,3 +42,13 @@ Backend: Python 3.8+, FastAPI, Pydantic, SQLite, Ollama. Frontend: React 19, Typ
 - **Python**: No tests implemented. Mock Ollama/APIs for critical paths.
 - **Security**: Validate with Pydantic. Never commit secrets; use `.env`. Handle errors gracefully without exposing sensitive info.
 - **Known Issues**: React-scripts 5.0.1 has 2 moderate npm audit vulnerabilities in nested dev dependencies. Fixed high-severity issues via package overrides. These don't affect production builds.
+
+## Development Conventions
+
+- **Architecture**: Modular design with clear separation between frontend and backend
+- **Configuration**: All config via `.env` file (never commit secrets)
+- **Personas**: JSON files in `personas/` directory - auto-discovered on startup
+- **Entry Point**: `run_react.py` launches both backend and frontend together
+- **UI System**: Gacha-style character selection with classic cards, audio integration, and collection management
+- **Testing**: TypeScript strict mode with comprehensive Jest + React Testing Library coverage
+- **Documentation**: See `AI_documentation/` for historical specs, completion summaries, and feature implementation details
