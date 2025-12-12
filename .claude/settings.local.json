@@ -25,7 +25,10 @@
       "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Ready!\"\"')",
       "Bash(curl:*)",
       "Bash(cat:*)",
-      "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Server ready\"\"')"
+      "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Server ready\"\"')",
+      "Bash(ls:*)",
+      "Bash(del \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\GEMINI.md\")",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

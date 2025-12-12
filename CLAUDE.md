@@ -232,13 +232,18 @@ Optional:
 
 ## Additional Documentation
 
+**Active Documentation (Root Directory):**
 - `README.md` - User-facing setup guide, features, architecture diagram
 - `ASSESSMENT.md` - Comprehensive codebase quality assessment and scoring (Dec 2025)
-- `AGENTS.md` - Tech stack, build commands, code style guidelines
+- `AGENTS.md` - AI coding guidelines, tech stack, build commands, code style
 - `CHANGELOG.md` - Version history, feature additions, security fixes
-- `REACT.md` - React-specific implementation details (if present)
-- `GEMINI.md` - Gemini-specific guidance (if present)
-- `HOME_UX.md`, `Chat_History_UX.md`, `Character_Page_UX.md` - UX design docs
+
+**Historical Documentation (Archive):**
+- `AI_documentation/` - Historical specs, completion summaries, feature implementation details
+  - `01_implementation_history/` - MVP and phase completion summaries
+  - `02_ux_design_specs/` - UX design roadmaps (Home, Chat, Character pages, Gacha)
+  - `03_feature_specs/` - Feature specs (Brave MCP, MongoDB MCP, model recommendations)
+  - `04_deprecated/` - Obsolete docs kept for reference (React migration complete)
 
 ## Dependencies
 
