@@ -45,6 +45,8 @@
 | 🔒 **Local-First** | All data stays on your device |
 | 🛡️ **Secure Dependencies** | Regular security audits with minimal vulnerabilities in production |
 | 🤖 **AI-Powered** | Powered by Ollama LLM models |
+| 🔍 **Web Search MCP** | Rare/Epic/Legendary personas can search the web via Brave Search API |
+| 🗄️ **MongoDB MCP** | Epic/Legendary personas can query Bitcoin price & trading data (70% complete) |
 | 🔄 **Dynamic Persona Management** | Automatic persona discovery, orphaned session cleanup, collection synchronization, and chat history updates |
 
 ## 🔧 System Requirements
