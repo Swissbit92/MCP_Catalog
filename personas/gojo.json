@@ -9,7 +9,7 @@
   "logo": "images/gojo_logo.png",
   "bg": "images/gojo_bg.jpg",
   "emoji": "🌀",
-  "allowed_mcp": ["chat", "graphrag"],
+  "allowed_mcp": ["chat", "graphrag", "brave_search"],
 
   "lore": [
     "Gojo Satoru is the prodigy of the prestigious Gojo Clan, the first in four hundred years to inherit both the Six Eyes and the Limitless cursed technique.",

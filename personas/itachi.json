@@ -9,7 +9,7 @@
   "logo": "images/itachi_logo.png",
    "bg": "images/itachi_bg.png",
   "emoji": "🌒",
-  "allowed_mcp": ["chat", "graphrag"],
+  "allowed_mcp": ["chat", "graphrag", "brave_search"],
 
   "lore": [
     "Itachi Uchiha was born a prodigy among the Uchiha clan — a genius whose compassion far exceeded even his talent.",

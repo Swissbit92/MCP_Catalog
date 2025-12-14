@@ -180,6 +180,109 @@ Optional:
 - Tool definitions in `tool_definitions.py` define available functions for LLM function calling
 - Architecture supports multiple MCP servers bridged through the coordinator
 
+### Brave MCP Integration (Web Search)
+**Status:** ✅ Fully implemented (MVP 2-4 complete)
+
+Rare, Epic, and Legendary personas can perform autonomous web searches using the Brave Search API.
+
+**Features:**
+- **Autonomous Decision-Making:** Personas intelligently decide when to search vs. answer directly
+- **Mandatory Citations:** All web search responses must include properly formatted source citations
+- **Smart UI Indicators:** SearchIndicator shown for predicted searches, TypingIndicator for direct answers
+- **Citation Validation:** Backend validates that responses include "🔍 Sources:" section with markdown links
+- **Client-Side Prediction:** ~85-90% accuracy predicting when search will be used (for optimal UX)
+- **Rarity-Based Access:** Common personas blocked, Rare+ have web search enabled
+
+**Configuration:**
+```bash
+BRAVE_API_KEY=your_api_key_here           # Required for web search
+BRAVE_MAX_RESULTS=5                        # Number of search results (default: 5)
+BRAVE_SAFESEARCH=moderate                  # moderate|strict|off
+BRAVE_SEARCH_TIMEOUT=10                    # Timeout in seconds
+BRAVE_ENABLED_RARITIES=rare,epic,legendary # Which rarities can search
+```
+
+**Persona Configuration:**
+```json
+{
+  "key": "Eeva",
+  "rarity": "legendary",
+  "allowed_mcp": ["chat", "graphrag", "brave_search"],
+  ...
+}
+```
+
+**Citation Format (Enforced):**
+```
+🔍 Sources:
+• [Article Title - Source Name](https://url1.com)
+• [Article Title - Source Name](https://url2.com)
+• [Article Title - Source Name](https://url3.com)
+```
+
+**Usage:**
+Users simply ask questions requiring current info. Personas automatically search when needed.
+
+**Example Flow:**
+1. User: "What is the current Bitcoin price?"
+2. Frontend predicts search needed → shows SearchIndicator 🔍
+3. Backend classifies query → injects `brave_web_search` tool
+4. LLM decides to search → executes Brave API call
+5. LLM synthesizes response with mandatory citations
+6. Backend validates citations → returns with `citation_valid` flag
+7. Frontend renders answer with citation section styled separately
+
+**Synthesis Prompt (Anti-Hallucination):**
+The system uses a dedicated synthesis prompt (`build_synthesis_prompt()` in `tool_definitions.py`) when generating answers from web search results. This prevents three critical issues:
+
+1. **Hallucination Prevention:** Explicitly instructs LLM to "ONLY use information from web search results" and "Do NOT use training data"
+   - Example: Prevents using outdated $1,850 Ethereum price from training data when search returns $3,245
+
+2. **Natural Synthesis:** Instructs LLM to combine information from multiple sources into cohesive answer
+   - Prevents raw dumps of search result titles
+
+3. **Citation Formatting:** Enforces bullet point format with specific examples
+   - Prevents inline citations `[Source](url)[Source](url)`
+
+**Synthesis Rules (5 Core Rules):**
+- **RULE 1: USE ONLY SEARCH RESULTS** - No training data, no estimates
+- **RULE 2: SYNTHESIZE NATURALLY** - Combine sources, don't list
+- **RULE 3: STAY IN CHARACTER** - Maintain persona voice
+- **RULE 4: BE ACCURATE** - Exact numbers, dates, facts from search
+- **RULE 5: MANDATORY CITATIONS** - Bullet points with emoji + markdown links
+
+**Implementation:** `src/coordinator/llm_client.py` line 173-187 builds synthesis prompt before final response generation.
+
+**Testing:**
+```bash
+# Backend synthesis prompt tests (10 unit tests)
+python src/coordinator/test_synthesis_prompt.py
+
+# Backend integration tests (3 end-to-end tests)
+# Requires backend running on port 8000
+python test_synthesis_integration.py
+
+# Backend citation validation
+python -c "from server import validate_citations; ..."
+
+# Frontend SearchIndicator tests
+cd react-ui && npm test -- SearchIndicator --watchAll=false
+
+# Frontend citation rendering tests
+cd react-ui && npm test -- MessageBubble.citations --watchAll=false
+
+# Search heuristics tests
+cd react-ui && npm test -- searchHeuristics --watchAll=false
+```
+
+**Logging:**
+- `[Chat]` - Request received with query preview
+- `[Intent]` - Query classification result
+- `[Tools]` - Tools injected for this request
+- `[Brave]` - Workflow status, timing, results count
+- `[Citations]` - Validation results (✅/❌)
+- `[Synthesis]` - Synthesis prompt usage, length, answer generation (NEW)
+
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
 - CV summary auto-generated and cached in `personas/_summaries/` for token efficiency

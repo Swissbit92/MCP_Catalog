@@ -8,6 +8,7 @@ from datetime import datetime
 import sqlite3
 import os
 import threading
+import time
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,9 +35,77 @@ from .cache import get_cache, MongoDBCache
 from .tool_definitions import get_tools_for_persona, classify_query_intent, get_tools_for_query, QueryIntent
 
 import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# ----------------- Citation Validation -----------------
+
+def validate_citations(answer: str, used_search: bool, search_results_count: int = 0) -> tuple[str, bool, dict]:
+    """
+    Validate that web search responses include proper source citations.
+
+    Args:
+        answer: LLM's response text
+        used_search: Whether web search was used
+        search_results_count: Number of search results returned
+
+    Returns:
+        Tuple of (answer, has_valid_citations, validation_details)
+        - answer: Potentially modified answer (with warning if citations missing)
+        - has_valid_citations: Boolean indicating if citations are valid
+        - validation_details: Dict with validation results
+    """
+    validation = {
+        "has_citation_section": False,
+        "has_markdown_links": False,
+        "citation_count": 0,
+        "has_emoji": False,
+        "valid": False
+    }
+
+    if not used_search:
+        validation["valid"] = True
+        return answer, True, validation
+
+    # Check for citation section markers (with or without emoji)
+    has_citation_with_emoji = "🔍 Sources:" in answer or "🔍 **Sources:**" in answer
+    has_citation_without_emoji = bool(re.search(r'\*\*Sources:\*\*|\nSources:\n', answer))
+
+    validation["has_citation_section"] = has_citation_with_emoji or has_citation_without_emoji
+    validation["has_emoji"] = has_citation_with_emoji
+
+    # Check for markdown links [text](url)
+    markdown_links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', answer)
+    validation["has_markdown_links"] = len(markdown_links) > 0
+    validation["citation_count"] = len(markdown_links)
+
+    # Check if links contain http/https URLs
+    has_http_links = any('http' in url for _, url in markdown_links)
+
+    # Valid if: has citation section + has markdown links with URLs
+    if validation["has_citation_section"] and validation["has_markdown_links"] and has_http_links:
+        validation["valid"] = True
+
+        # Log success
+        logger.info(f"[Citations] ✅ Valid citations found: {validation['citation_count']} sources, emoji={'✅' if validation['has_emoji'] else '❌'}")
+
+        return answer, True, validation
+
+    # Invalid citations - log warning
+    logger.warning(f"[Citations] ❌ Missing or invalid citations for search query")
+    logger.warning(f"[Citations] Details: section={validation['has_citation_section']}, links={validation['has_markdown_links']}, count={validation['citation_count']}")
+
+    # Auto-append reminder if citations are completely missing
+    if not validation["has_citation_section"]:
+        reminder = f"\n\n⚠️ Note: {search_results_count} web source(s) were consulted but citations were not included in the response."
+        answer = answer + reminder
+        logger.info(f"[Citations] Appended missing citation reminder to response")
+
+    return answer, False, validation
+
 
 app = FastAPI(title="Local Coordinator (Chat-only)", version="0.5.0")
 
@@ -637,10 +706,13 @@ def chat(body: ChatBody):
 
     # Use intent classification to determine which tools to inject
     intent = classify_query_intent(body.message, persona_rarity)
-    logger.info(f"Chat request: persona={persona_key}, rarity={persona_rarity}, intent={intent}")
+    logger.info(f"[Chat] Request received: persona={persona_key}, rarity={persona_rarity}, query_preview='{body.message[:60]}...'")
+    logger.info(f"[Intent] Classification result: {intent.value}")
 
     # Get tools based on intent
     tools = get_tools_for_query(body.message, persona_key, persona_rarity)
+    tool_names = [t["function"]["name"] for t in tools] if tools else []
+    logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
 
     # Prepare metadata
     metadata = ResponseMetadata(
@@ -738,7 +810,9 @@ Please synthesize this data into a natural, conversational response. Include key
 
     elif brave_tools and not mongodb_tools:
         # Brave-only query - use existing tool calling system
-        logger.info("Brave-only query, using tool-enhanced completion")
+        logger.info("[Brave] Starting Brave-only query workflow")
+        start_time = time.time()
+
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
@@ -752,18 +826,31 @@ Please synthesize this data into a natural, conversational response. Include key
             tools=tools
         )
 
+        elapsed = time.time() - start_time
+
         metadata.source_type = "brave_mcp"
         metadata.tools_used = ["brave_web_search"] if tool_call else []
+
+        # Validate citations for web search responses
+        search_count = len(search_results) if search_results else 0
+        answer, has_valid_citations, citation_details = validate_citations(
+            answer=answer,
+            used_search=tool_call is not None,
+            search_results_count=search_count
+        )
 
         response = {
             "answer": answer,
             "used_search": tool_call is not None,
-            "metadata": metadata.dict()
+            "metadata": metadata.dict(),
+            "citation_valid": has_valid_citations
         }
 
         if search_results:
             response["search_results_count"] = len(search_results)
-            logger.info(f"Chat completed with {len(search_results)} search results")
+            logger.info(f"[Brave] ✅ Workflow completed: used_search={tool_call is not None}, results_count={len(search_results)}, citations_valid={has_valid_citations}, total_time={elapsed:.2f}s")
+        else:
+            logger.info(f"[Brave] ✅ Workflow completed: used_search=False, total_time={elapsed:.2f}s (LLM answered directly)")
 
         return response
 
@@ -791,10 +878,20 @@ Please synthesize this data into a natural, conversational response. Include key
         metadata.source_type = "multi_mcp"
         metadata.tools_used = ["brave_web_search"]
 
+        # Validate citations
+        search_count = len(search_results) if search_results else 0
+        answer, has_valid_citations, citation_details = validate_citations(
+            answer=answer,
+            used_search=True,
+            search_results_count=search_count
+        )
+
         response = {
             "answer": answer,
             "used_search": True,
-            "metadata": metadata.dict()
+            "metadata": metadata.dict(),
+            "citation_valid": has_valid_citations,
+            "search_results_count": search_count
         }
 
         return response

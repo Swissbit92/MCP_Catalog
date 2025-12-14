@@ -60,6 +60,7 @@ export interface Message {
   latency_ms?: number;
   used_search?: boolean; // Whether web search was used for this message
   search_results_count?: number; // Number of search results returned
+  citation_valid?: boolean; // Whether citations were properly included
   metadata?: ResponseMetadata; // Response metadata from backend
 }
 
@@ -124,6 +125,7 @@ export const sendMessage = async (persona: string, message: string, history: Cha
     answer: data.answer,
     used_search: data.used_search || false,
     search_results_count: data.search_results_count || 0,
+    citation_valid: data.citation_valid,
     metadata: data.metadata || null,
   };
 };
@@ -234,6 +236,7 @@ export const sendMessageToSession = async (sessionId: string, message: string): 
     timestamp: new Date(),
     used_search: data.used_search || false,
     search_results_count: data.search_results_count || 0,
+    citation_valid: data.citation_valid,
     metadata: data.metadata || null,
   };
 };
