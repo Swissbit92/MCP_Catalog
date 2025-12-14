@@ -9,7 +9,7 @@
   "logo": "images/frieren_logo.png",
   "bg": "images/frieren_bg.jpg",
   "emoji": "❄️",
-  "allowed_mcp": ["chat", "graphrag"],
+  "allowed_mcp": ["chat", "graphrag", "brave_search"],
 
   "lore": [
     "Frieren is an elven mage whose life spans centuries; time flows around her like a quiet river, never still but rarely noticed.",

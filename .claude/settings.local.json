@@ -28,7 +28,8 @@
       "Bash(timeout 40 bash -c 'while ! curl -s http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done; echo \"\"Server ready\"\"')",
       "Bash(ls:*)",
       "Bash(del \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\GEMINI.md\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

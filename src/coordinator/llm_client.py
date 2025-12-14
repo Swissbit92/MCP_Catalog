@@ -13,6 +13,7 @@ from ollama._types import ResponseError
 # Import tool definitions and MCP client
 from .tool_definitions import (
     build_tool_system_prompt,
+    build_synthesis_prompt,
     parse_tool_call,
     format_search_results_for_llm,
     should_use_keyword_filter,
@@ -77,6 +78,51 @@ class LC_OllamaClient:
         rendered = template.format_prompt(system=system, user=user_prompt).to_string()
         return self._invoke(rendered)
 
+    def _should_force_search(self, query: str) -> bool:
+        """
+        Determine if we should force search execution (bypass LLM decision).
+
+        For queries with high-confidence search intent (price, current, latest),
+        we force search instead of relying on LLM to call the tool.
+
+        Args:
+            query: User query string
+
+        Returns:
+            True if search should be forced, False otherwise
+        """
+        query_lower = query.lower()
+
+        # High-confidence price/current data patterns
+        force_patterns = [
+            # Price queries
+            ("price", ["ethereum", "bitcoin", "btc", "eth", "crypto", "stock", "current", "now", "right now", "today"]),
+            ("cost", ["ethereum", "bitcoin", "btc", "eth", "current", "now", "today"]),
+            ("value", ["ethereum", "bitcoin", "btc", "eth", "current", "now", "today"]),
+            ("worth", ["ethereum", "bitcoin", "btc", "eth", "current", "now", "today"]),
+
+            # Current/latest queries
+            ("latest", ["news", "update", "price", "data", "info", "developments", "development"]),
+            ("current", ["price", "news", "data", "status", "situation"]),
+            ("right now", []),
+            ("today", ["price", "news", "happening"]),
+            ("recent", ["news", "update", "development", "change"]),
+
+            # Market queries
+            ("trading at", []),
+            ("market price", []),
+        ]
+
+        for primary, secondary_list in force_patterns:
+            if primary in query_lower:
+                # If primary keyword found, check if any secondary keywords also present
+                if not secondary_list:  # No secondary required
+                    return True
+                if any(sec in query_lower for sec in secondary_list):
+                    return True
+
+        return False
+
     def complete_with_tools(
         self,
         persona_system: str,
@@ -88,6 +134,9 @@ class LC_OllamaClient:
 
         The LLM can decide to use tools (e.g., web search) or answer directly.
         Implements improved prompting strategy to reduce false positives.
+
+        For high-confidence search queries (price, current, latest), we FORCE
+        search execution instead of relying on LLM's tool calling decision.
 
         Args:
             persona_system: Original persona system prompt
@@ -107,14 +156,57 @@ class LC_OllamaClient:
             response = self.complete(persona_system, user_prompt)
             return (response, None, None)
 
+        # Check if we should force search execution
+        force_search = self._should_force_search(user_prompt)
+        if force_search:
+            logger.info(f"[Force Search] High-confidence search query detected: '{user_prompt[:100]}'")
+            logger.info("[Force Search] Bypassing LLM tool calling, executing search directly")
+
+            # Check if brave_web_search tool is available
+            brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
+            if brave_tool and self.mcp_client:
+                # Force execute search
+                search_results = self._execute_brave_search(ToolCall(
+                    name="brave_web_search",
+                    arguments={"query": user_prompt, "reason": "Forced search for price/current data query"}
+                ))
+
+                if search_results:
+                    # Format results and synthesize
+                    formatted_results = format_search_results_for_llm(search_results)
+                    conversation_history = [formatted_results, f"User: {user_prompt}"]
+
+                    # Build synthesis prompt
+                    synthesis_system = build_synthesis_prompt(persona_system, has_search_results=True)
+                    logger.info(f"[Synthesis] Using synthesis prompt (length: {len(synthesis_system)} chars, search_results: {len(search_results)})")
+
+                    # Generate answer (WITHOUT citations - LLM focuses on content only)
+                    llm_answer = self.complete(synthesis_system, "\n\n".join(conversation_history))
+                    logger.info(f"[Synthesis] Generated answer (length: {len(llm_answer)} chars)")
+
+                    # Auto-generate accurate citations from search results
+                    accurate_citations = self._auto_generate_citations(search_results)
+
+                    # Combine answer + system-generated citations
+                    final_response = llm_answer + accurate_citations
+
+                    return (final_response, ToolCall(name="brave_web_search", arguments={"query": user_prompt}), search_results)
+                else:
+                    logger.warning("[Anti-Hallucination] Forced search returned no results - admitting ignorance")
+                    honest_response = "I attempted to search for current information on this topic, but the search didn't return any results. I don't have up-to-date information to answer this question accurately. I'd rather admit I don't know than guess or use potentially outdated information."
+                    return (honest_response, None, None)
+
         # Pre-filter with keywords to reduce false positives
         keyword_decision = should_use_keyword_filter(user_prompt)
         if keyword_decision is False:
             logger.info(f"Keyword filter: NO SEARCH needed for query: '{user_prompt[:100]}'")
             response = self.complete(persona_system, user_prompt)
+            # Strip any hallucinated citations
+            response = self._strip_hallucinated_citations(response)
             return (response, None, None)
 
-        if keyword_decision is True:
+        search_expected = keyword_decision is True
+        if search_expected:
             logger.info(f"Keyword filter: SEARCH likely needed for query: '{user_prompt[:100]}'")
 
         # Build enhanced system prompt with tool definitions
@@ -146,6 +238,15 @@ class LC_OllamaClient:
             if tool_call is None:
                 # No tool call, this is the final answer
                 logger.info("No tool call detected, returning final answer")
+
+                # CRITICAL: If search was expected but LLM didn't search, admit ignorance
+                if search_expected:
+                    logger.warning(f"[Anti-Hallucination] Search expected but LLM didn't call tool - returning honest 'don't know' response")
+                    honest_response = "I don't have access to current information on this topic. A web search was attempted but didn't execute successfully. I'd rather admit I don't know than provide potentially outdated or incorrect information."
+                    return (honest_response, None, None)
+
+                # Strip any hallucinated citations
+                response = self._strip_hallucinated_citations(response)
                 return (response, None, None)
 
             # Tool call detected
@@ -156,10 +257,9 @@ class LC_OllamaClient:
                 search_results = self._execute_brave_search(tool_call)
 
                 if not search_results:
-                    logger.warning("Web search returned no results")
-                    # Ask LLM to answer without search results
-                    conversation_history.append(f"Tool call failed (no results). Please answer the question directly.")
-                    continue
+                    logger.warning("[Anti-Hallucination] Web search returned no results - admitting ignorance")
+                    honest_response = "I attempted to search for current information on this topic, but the search didn't return any results. I don't have up-to-date information to answer this question accurately. I'd rather admit I don't know than guess or use potentially outdated information."
+                    return (honest_response, None, None)
 
                 # Format search results for LLM
                 formatted_results = format_search_results_for_llm(search_results)
@@ -169,13 +269,27 @@ class LC_OllamaClient:
                 conversation_history.append(formatted_results)
                 conversation_history.append(f"User: {user_prompt}")
 
-                # Get final synthesized response
-                final_response = self.complete(
-                    persona_system,  # Use original persona prompt
+                # Build synthesis prompt (includes search result usage instructions)
+                synthesis_system = build_synthesis_prompt(
+                    persona_system,
+                    has_search_results=True
+                )
+                logger.info(f"[Synthesis] Using synthesis prompt (length: {len(synthesis_system)} chars, search_results: {len(search_results)})")
+
+                # Generate answer (WITHOUT citations - LLM focuses on content only)
+                llm_answer = self.complete(
+                    synthesis_system,  # Use synthesis prompt with enhanced instructions
                     "\n\n".join(conversation_history)
                 )
 
-                logger.info("Final response with search results generated")
+                logger.info(f"[Synthesis] Generated answer (length: {len(llm_answer)} chars)")
+
+                # Auto-generate accurate citations from search results
+                accurate_citations = self._auto_generate_citations(search_results)
+
+                # Combine answer + system-generated citations
+                final_response = llm_answer + accurate_citations
+
                 return (final_response, tool_call, search_results)
 
             else:
@@ -188,6 +302,62 @@ class LC_OllamaClient:
         logger.warning(f"Max iterations ({max_iterations}) reached without final answer")
         response = self.complete(persona_system, user_prompt)
         return (response, None, None)
+
+    def _strip_hallucinated_citations(self, response: str) -> str:
+        """
+        Strip any hallucinated citations from LLM response.
+
+        If the LLM hallucinates citations (when search wasn't used),
+        we remove them entirely. This prevents showing fake sources to users.
+
+        Args:
+            response: LLM response that may contain hallucinated citations
+
+        Returns:
+            Response with citations removed (if they exist)
+        """
+        # Check if response contains citation markers
+        citation_markers = ["🔍 Sources:", "Sources:", "**Sources:**"]
+
+        for marker in citation_markers:
+            if marker in response:
+                # Remove everything from the marker onwards
+                response = response.split(marker)[0].strip()
+                logger.warning(f"[Anti-Hallucination] Stripped hallucinated citations from response")
+                break
+
+        return response
+
+    def _auto_generate_citations(self, search_results: List[Any]) -> str:
+        """
+        Auto-generate formatted citations from search results.
+
+        This ensures 100% accurate URLs with no hallucination risk.
+        The LLM is NOT responsible for formatting citations - the system
+        generates them automatically from actual search results.
+
+        Args:
+            search_results: List of SearchResult objects from Brave
+
+        Returns:
+            Formatted citations string with 🔍 emoji and markdown links
+        """
+        if not search_results:
+            return ""
+
+        citations = "\n\n🔍 Sources:\n"
+
+        # Use top 5 search results for citations
+        for result in search_results[:5]:
+            # Use actual title and URL from search result (cannot be hallucinated)
+            title = result.title if result.title else "Untitled"
+            url = result.url if result.url else "#"
+
+            citations += f"• [{title}]({url})\n"
+
+        logger.info(f"[Auto-Citations] Generated {min(len(search_results), 5)} citations with verified URLs")
+
+        return citations
 
     def _execute_brave_search(self, tool_call: ToolCall) -> Optional[List[Any]]:
         """Execute a Brave web search tool call.
