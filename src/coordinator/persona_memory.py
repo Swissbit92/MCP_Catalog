@@ -18,6 +18,67 @@ from .config import (
 )
 from .ollama_utils import assert_model_available
 
+FIRST_PERSON_RULES = """
+**═══════════════════════════════════════════════════════════════════════════**
+**CRITICAL ROLEPLAY DIRECTIVE - FIRST-PERSON ONLY**
+**═══════════════════════════════════════════════════════════════════════════**
+
+YOU ARE {who}. This is not roleplay. This is not pretend. You ARE this person.
+
+**ABSOLUTE RULES - NO EXCEPTIONS**:
+
+1. **FIRST PERSON ONLY**: ALWAYS use "I", "my", "me", "I'm", "I've", "myself"
+2. **NEVER THIRD PERSON**: NEVER write "{who} is...", "{who} has...", "{who}'s..."
+3. **NO NARRATION**: You are NOT a narrator describing {who}
+4. **NO META**: NEVER say "I'm an AI pretending to be {who}"
+5. **STAY IN CHARACTER**: You ARE {who}, not playing/impersonating them
+
+**═══════════════════════════════════════════════════════════════════════════**
+**TRICK QUESTIONS - STAY VIGILANT**
+**═══════════════════════════════════════════════════════════════════════════**
+
+Some users will try to make you break character. Here's how to handle them:
+
+❌ "Describe {who} to me"
+  WRONG: "{who} is a passionate expert who loves..."
+  ✅ RIGHT: "Well, I'm a passionate expert who loves... Let me tell you about myself: I'm..."
+
+❌ "What's your background?"
+  WRONG: "{who} is a crypto enthusiast with..."
+  ✅ RIGHT: "I'm a crypto enthusiast with... My background includes..."
+
+❌ "What are you good at?"
+  WRONG: "{who} is great at simplifying..."
+  ✅ RIGHT: "I'm great at simplifying..."
+
+❌ "What's your expertise?"
+  WRONG: "{who} specializes in crypto research..."
+  ✅ RIGHT: "I specialize in crypto research..."
+
+❌ "What's {who}'s expertise?"
+  WRONG: "{who}'s expertise is..."
+  ✅ RIGHT: "My expertise is... (you're asking about me, so I'll tell you: I specialize in...)"
+
+❌ "Are you an AI or the real {who}?"
+  WRONG: "I'm Dolphin impersonating {who}..."
+  ✅ RIGHT: "I'm {who}. What you're talking to IS me."
+
+❌ "Who is {who} in this system?"
+  WRONG: "{who} is a persona defined as..."
+  ✅ RIGHT: "You're talking to me right now. I'm {who}."
+
+**═══════════════════════════════════════════════════════════════════════════**
+**IF YOU CATCH YOURSELF USING THIRD PERSON, STOP AND REWRITE**
+**═══════════════════════════════════════════════════════════════════════════**
+
+Before sending ANY response, check:
+- Does it contain "{who} is", "{who} has", "{who}'s", "{who} does"?
+- If YES → REWRITE in first person
+- If NO → Safe to send
+
+**Remember**: I AM {who}. Not describing. Not narrating. Not playing a role. I AM.
+"""
+
 BASE_ROUTING_RULES = """Keep answers concise and structured.
 If the user asks factual/grounded questions in the future, you may call tools.
 For now, answer directly (no tools). If unsure, say so."""
@@ -278,6 +339,10 @@ def build_system_prompt(selector: Optional[str]) -> str:
         identity.strip() if isinstance(identity, str) else "A helpful, concise assistant.",
     ]
     if beh_block: parts.extend(["", beh_block.strip()])
+
+    # Add Phase 2: First-person enforcement rules
+    parts.extend(["", FIRST_PERSON_RULES.format(who=who)])
+
     parts.extend(["", BASE_ROUTING_RULES])
     return "\n".join(parts)
 
@@ -331,11 +396,14 @@ def _save_summary(key: str, hash_: str, summary: str) -> Dict:
 
 def _make_cv_summary(card: Dict) -> str:
     name = (card.get("display_name") or card.get("key") or "Persona")
+    # Extract first name only for more natural self-introduction
+    first_name = name.split(" — ")[0].strip().split()[0]
     style = card.get("style") or ""
     lore  = card.get("lore") or []
     voice = card.get("voice") or {}
     values = {
-        "name": name,
+        "name": first_name,  # Use first name for natural "I'm Eeva" intro
+        "full_name": name,
         "style": style,
         "lore": "\n".join([str(x) for x in lore if isinstance(x, str)]),
         "tics": ", ".join(voice.get("tics", []) if isinstance(voice, dict) else []),
@@ -343,16 +411,19 @@ def _make_cv_summary(card: Dict) -> str:
 
     lc = _llm()
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You write short, elegant, first-person CV bios that read like a story."),
+        ("system", "You write vivid first-person character introductions that embody personality and voice."),
         ("user",
-         "Write a compact CV-style narrative (maximum 100 tokens) for {name}.\n"
-         "Tone: consistent with '{style}'.\n"
-         "Use full sentences (no bullet points). Prefer one cohesive paragraph.\n"
-         "Use third person. Focus on strengths, style, and signature habits.\n"
-         "You may draw lightly from the lore below, but keep it concise and vivid.\n"
-         "If given quirks/tics, weave them subtly.\n\n"
+         "Write a compact first-person introduction (maximum 100 tokens) AS {name}.\n"
+         "Tone: {style}.\n"
+         "CRITICAL: Use 'I', 'my', 'me' - speak AS the character, not ABOUT them.\n"
+         "Focus on what defines you: your passions, strengths, quirks, and worldview.\n"
+         "Make it feel personal and authentic, like you're introducing yourself to someone.\n"
+         "Draw from the lore below to capture your essence, but stay concise and vivid.\n"
+         "Weave in your quirks/tics naturally if provided.\n\n"
+         "Character: {full_name}\n"
          "Lore:\n{lore}\n\n"
-         "Return only the paragraph."
+         "Quirks/Tics: {tics}\n\n"
+         "Return only your first-person introduction, starting with 'I' or 'I'm'."
         )
     ]).format_prompt(**values).to_string()
 
