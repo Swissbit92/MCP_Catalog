@@ -29,7 +29,15 @@
       "Bash(ls:*)",
       "Bash(del \"C:\\Users\\rzehn\\desktop\\MCP_Catalog\\GEMINI.md\")",
       "Bash(tree:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(iconv:*)",
+      "Bash(export PYTHONIOENCODING=utf-8)",
+      "Bash(uvicorn:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 40 bash:*)",
+      "Bash(xargs kill:*)",
+      "Bash(tasklist:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

@@ -98,6 +98,138 @@ def validate_citations(answer: str, used_search: bool, search_results_count: int
     logger.warning(f"[Citations] ❌ Missing or invalid citations for search query")
     logger.warning(f"[Citations] Details: section={validation['has_citation_section']}, links={validation['has_markdown_links']}, count={validation['citation_count']}")
 
+
+# ----------------- First-Person Post-Processing -----------------
+
+def detect_third_person(answer: str, persona_name: str) -> tuple[bool, list[str]]:
+    """
+    Detect third-person patterns in persona response.
+
+    Args:
+        answer: Persona's response text
+        persona_name: Full persona name (e.g., "Eeva — Bitcoin Expert")
+
+    Returns:
+        Tuple of (has_third_person, violations_list)
+    """
+    first_name = persona_name.split(" — ")[0].strip().split()[0].lower()
+    answer_lower = answer.lower()
+
+    # Check for first-person self-introduction (these are valid)
+    has_first_person_intro = any(pattern in answer_lower for pattern in [
+        f"i'm {first_name},",
+        f"i am {first_name},",
+        f"i'm {first_name} and",
+        f"i am {first_name} and",
+    ])
+
+    # Third-person violation patterns
+    violation_patterns = [
+        f"{first_name} is a ",
+        f"{first_name} is an ",
+        f"{first_name} has ",
+        f"{first_name} was ",
+        f"{first_name} specializes ",
+        f"{first_name} believes ",
+        f"{first_name} works ",
+        f"{first_name}'s ",
+        f"about {first_name}",
+    ]
+
+    # Only flag "{name}, a/an" if NOT part of first-person intro
+    if not has_first_person_intro:
+        violation_patterns.extend([
+            f"{first_name}, a ",
+            f"{first_name}, an ",
+        ])
+
+    # Find violations
+    violations = [pattern for pattern in violation_patterns if pattern in answer_lower]
+
+    return len(violations) > 0, violations
+
+
+def rewrite_to_first_person(answer: str, persona_name: str) -> str:
+    """
+    Use LLM to rewrite third-person response to first-person.
+
+    Args:
+        answer: Original response (in third-person)
+        persona_name: Persona name for context
+
+    Returns:
+        Rewritten response in first-person
+    """
+    first_name = persona_name.split(" — ")[0].strip().split()[0]
+
+    rewrite_prompt = f"""The following response was written in THIRD PERSON but should be in FIRST PERSON.
+
+Original response:
+{answer}
+
+Your task:
+1. Rewrite this response so {first_name} speaks in FIRST PERSON (I, my, me)
+2. Keep the same information and tone
+3. Do NOT add new information
+4. Do NOT use "{first_name} is", "{first_name} has", etc.
+5. Use "I am", "I have", "my", "me" instead
+
+Rewritten first-person response:"""
+
+    try:
+        client = LC_OllamaClient(
+            base=get_ollama_base(),
+            model=get_persona_model(),
+            temperature=0.2  # Lower temperature for more consistent rewrites
+        )
+
+        rewritten = client.complete(
+            system="You are a helpful assistant that rewrites text from third-person to first-person. Follow the instructions exactly.",
+            user_prompt=rewrite_prompt
+        )
+
+        return rewritten.strip()
+
+    except Exception as e:
+        logger.warning(f"[FirstPerson] Failed to rewrite response: {e}")
+        return answer  # Return original on error
+
+
+def post_process_first_person(answer: str, persona_name: str) -> tuple[str, bool]:
+    """
+    Post-process response to enforce first-person voice.
+
+    Detects third-person patterns and rewrites to first-person if needed.
+
+    Args:
+        answer: Persona response
+        persona_name: Full persona name
+
+    Returns:
+        Tuple of (processed_answer, was_rewritten)
+    """
+    has_third_person, violations = detect_third_person(answer, persona_name)
+
+    if not has_third_person:
+        logger.info(f"[FirstPerson] ✅ Response is first-person, no rewrite needed")
+        return answer, False
+
+    # Log violation and rewrite
+    logger.warning(f"[FirstPerson] ⚠️ Third-person detected: {violations[0]}")
+    logger.info(f"[FirstPerson] 🔄 Rewriting to first-person...")
+
+    rewritten = rewrite_to_first_person(answer, persona_name)
+
+    # Verify rewrite worked
+    still_third_person, _ = detect_third_person(rewritten, persona_name)
+
+    if still_third_person:
+        logger.warning(f"[FirstPerson] ❌ Rewrite still contains third-person, using original")
+        return answer, False
+    else:
+        logger.info(f"[FirstPerson] ✅ Successfully rewritten to first-person")
+        return rewritten, True
+
     # Auto-append reminder if citations are completely missing
     if not validation["has_citation_section"]:
         reminder = f"\n\n⚠️ Note: {search_results_count} web source(s) were consulted but citations were not included in the response."
@@ -731,7 +863,12 @@ def chat(body: ChatBody):
             temperature=get_persona_temperature()
         )
         answer = client.complete(system=system, user_prompt=user_compiled)
-        return {"answer": answer, "used_search": False, "metadata": metadata.dict()}
+
+        # Post-process to enforce first-person
+        persona_name = card.get("display_name") or card.get("key") or "Persona"
+        answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+        return {"answer": answer, "used_search": False, "metadata": metadata.dict(), "rewritten": was_rewritten}
 
     # Tools needed - check if MongoDB tools are included
     mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "").startswith("bitcoin_")]
@@ -792,10 +929,15 @@ Please synthesize this data into a natural, conversational response. Include key
 
                 logger.info(f"MongoDB query completed: tool={tool_name}, cache={metadata.cache_status}")
 
+                # Post-process to enforce first-person
+                persona_name = card.get("display_name") or card.get("key") or "Persona"
+                answer, was_rewritten = post_process_first_person(answer, persona_name)
+
                 return {
                     "answer": answer,
                     "used_search": True,
-                    "metadata": metadata.dict()
+                    "metadata": metadata.dict(),
+                    "rewritten": was_rewritten
                 }
         except Exception as e:
             logger.error(f"MongoDB query failed: {e}")
@@ -839,11 +981,16 @@ Please synthesize this data into a natural, conversational response. Include key
             search_results_count=search_count
         )
 
+        # Post-process to enforce first-person
+        persona_name = card.get("display_name") or card.get("key") or "Persona"
+        answer, was_rewritten = post_process_first_person(answer, persona_name)
+
         response = {
             "answer": answer,
             "used_search": tool_call is not None,
             "metadata": metadata.dict(),
-            "citation_valid": has_valid_citations
+            "citation_valid": has_valid_citations,
+            "rewritten": was_rewritten
         }
 
         if search_results:
@@ -886,12 +1033,17 @@ Please synthesize this data into a natural, conversational response. Include key
             search_results_count=search_count
         )
 
+        # Post-process to enforce first-person
+        persona_name = card.get("display_name") or card.get("key") or "Persona"
+        answer, was_rewritten = post_process_first_person(answer, persona_name)
+
         response = {
             "answer": answer,
             "used_search": True,
             "metadata": metadata.dict(),
             "citation_valid": has_valid_citations,
-            "search_results_count": search_count
+            "search_results_count": search_count,
+            "rewritten": was_rewritten
         }
 
         return response
@@ -904,7 +1056,12 @@ Please synthesize this data into a natural, conversational response. Include key
             temperature=get_persona_temperature()
         )
         answer = client.complete(system=system, user_prompt=user_compiled)
-        return {"answer": answer, "used_search": False, "metadata": metadata.dict()}
+
+        # Post-process to enforce first-person
+        persona_name = card.get("display_name") or card.get("key") or "Persona"
+        answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+        return {"answer": answer, "used_search": False, "metadata": metadata.dict(), "rewritten": was_rewritten}
 
 @app.post("/sessions/{session_id}/chat")
 def chat_with_session(session_id: str, body: ChatBody):
@@ -957,7 +1114,12 @@ def greet(body: GreetBody):
         temperature=get_persona_temperature(),
     )
     answer = client.complete(system=system, user_prompt=user_prompt)
-    return {"answer": answer}
+
+    # Post-process to enforce first-person
+    persona_name = card.get("display_name") or card.get("key") or "Persona"
+    answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+    return {"answer": answer, "rewritten": was_rewritten}
 
 @app.post("/sessions/{session_id}/greet")
 def greet_with_session(session_id: str, body: GreetBody):
