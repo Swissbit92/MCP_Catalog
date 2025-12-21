@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-import os, json, hashlib, datetime, time
+import os, json, hashlib, datetime, time, re, logging
 from pathlib import Path
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
@@ -17,6 +17,9 @@ from .config import (
     get_persona_dir, get_ollama_base, get_persona_model, get_persona_temperature
 )
 from .ollama_utils import assert_model_available
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 FIRST_PERSON_RULES = """
 **═══════════════════════════════════════════════════════════════════════════**
@@ -92,10 +95,23 @@ def _llm() -> OllamaLLM:
     return OllamaLLM(base_url=base, model=model, temperature=get_persona_temperature())
 
 def _count_tokens(text: str) -> int:
-    """Count tokens in text using approximation (roughly 4 chars per token for English text)."""
-    # More accurate approximation: ~4.5 chars per token for typical English text
-    # This is a conservative estimate that works well for our use case
-    return max(1, len(text) // 4)
+    """
+    Count tokens in text. Attempts to use tiktoken for accuracy, falls back to approximation.
+    Approximation: ~4 chars per token for English text (conservative estimate).
+    """
+    # Try using tiktoken for better accuracy (optional dependency)
+    try:
+        import tiktoken
+        # Use cl100k_base encoding (GPT-4/ChatGPT tokenizer, good general approximation)
+        enc = tiktoken.get_encoding("cl100k_base")
+        return len(enc.encode(text))
+    except ImportError:
+        # Fallback to character-based approximation
+        # ~4 chars per token is conservative and works well
+        return max(1, len(text) // 4)
+    except Exception:
+        # Any other error, use fallback
+        return max(1, len(text) // 4)
 
 def _truncate_to_tokens(text: str, max_tokens: int) -> str:
     """Truncate text to fit within max_tokens, preserving word boundaries."""
@@ -104,6 +120,15 @@ def _truncate_to_tokens(text: str, max_tokens: int) -> str:
 
     # Binary search to find the right length
     text_words = text.split()
+
+    # Edge case: single word that's too long
+    if len(text_words) == 1:
+        # Truncate the word itself by characters
+        word = text_words[0]
+        # Approximate chars needed: max_tokens * 4
+        max_chars = max_tokens * 4
+        return word[:max(1, max_chars)]
+
     low, high = 0, len(text_words)
 
     while low < high:
@@ -115,11 +140,50 @@ def _truncate_to_tokens(text: str, max_tokens: int) -> str:
             high = mid - 1
 
     result = ' '.join(text_words[:low])
+
+    # Edge case: if no words fit, truncate first word by characters
+    if not result and text_words:
+        word = text_words[0]
+        max_chars = max_tokens * 4
+        result = word[:max(1, max_chars)]
+
     # Ensure we don't exceed the limit
     while _count_tokens(result) > max_tokens and len(result.split()) > 1:
         result = ' '.join(result.split()[:-1])
 
     return result
+
+def _truncate_to_sentence(text: str, max_tokens: int) -> str:
+    """
+    Truncate text to fit within max_tokens, preserving sentence boundaries.
+    Falls back to word-boundary truncation if no complete sentence fits.
+
+    This ensures summaries don't end mid-sentence, improving readability.
+    """
+    # First check if we're within limit
+    if _count_tokens(text) <= max_tokens:
+        return text
+
+    # Find all sentence endings (. ! ? followed by space/EOF)
+    # Using positive lookbehind to keep the punctuation with the sentence
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    # Build up text sentence by sentence until we exceed limit
+    result = ""
+    for sentence in sentences:
+        candidate = (result + " " + sentence).strip() if result else sentence
+        if _count_tokens(candidate) <= max_tokens:
+            result = candidate
+        else:
+            break
+
+    # If we got at least one complete sentence, return it
+    if result and result[-1] in '.!?':
+        return result
+
+    # Fall back to word-boundary truncation (edge case: first sentence too long)
+    logger.warning(f"First sentence exceeds {max_tokens} tokens, using word-boundary truncation")
+    return _truncate_to_tokens(text, max_tokens)
 
 # ---------------- Persona discovery ----------------
 
@@ -413,9 +477,12 @@ def _make_cv_summary(card: Dict) -> str:
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You write vivid first-person character introductions that embody personality and voice."),
         ("user",
-         "Write a compact first-person introduction (maximum 100 tokens) AS {name}.\n"
+         "Write a compact first-person introduction (between 80-120 tokens) AS {name}.\n"
          "Tone: {style}.\n"
-         "CRITICAL: Use 'I', 'my', 'me' - speak AS the character, not ABOUT them.\n"
+         "CRITICAL RULES:\n"
+         "1. Use 'I', 'my', 'me' - speak AS the character, not ABOUT them.\n"
+         "2. Complete all sentences with proper punctuation (. ! ?).\n"
+         "3. Do NOT end mid-thought or mid-sentence.\n"
          "Focus on what defines you: your passions, strengths, quirks, and worldview.\n"
          "Make it feel personal and authentic, like you're introducing yourself to someone.\n"
          "Draw from the lore below to capture your essence, but stay concise and vivid.\n"
@@ -429,9 +496,34 @@ def _make_cv_summary(card: Dict) -> str:
 
     try:
         summary = lc.invoke(prompt).strip()
-        # Enforce 100 token limit
-        if _count_tokens(summary) > 100:
-            summary = _truncate_to_tokens(summary, 100)
+        original_token_count = _count_tokens(summary)
+
+        # Enforce 120 token upper limit (80-120 range)
+        if original_token_count > 120:
+            logger.info(f"Truncating {first_name} summary from {original_token_count} to ≤120 tokens")
+            summary = _truncate_to_sentence(summary, 120)
+
+        # Post-processing validation: ensure sentence completion
+        if summary and summary[-1] not in '.!?':
+            logger.warning(
+                f"Summary for {first_name} does not end with punctuation. "
+                f"Last 50 chars: ...{summary[-50:]}"
+            )
+            # Attempt to fix by re-truncating with sentence awareness
+            summary = _truncate_to_sentence(summary, 120)
+
+            # If still incomplete, add period as last resort
+            if summary and summary[-1] not in '.!?':
+                logger.error(f"Could not complete sentence for {first_name}, adding period")
+                summary = summary.rstrip() + '.'
+
+        final_token_count = _count_tokens(summary)
+        logger.debug(
+            f"Generated summary for {first_name}: "
+            f"{original_token_count}→{final_token_count} tokens, "
+            f"ends with '{summary[-1] if summary else '(empty)'}'"
+        )
+
         return summary
     except ResponseError as e:
         raise RuntimeError(str(e))

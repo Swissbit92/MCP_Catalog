@@ -7,7 +7,6 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import sqlite3
 import os
-import threading
 import time
 
 from fastapi import FastAPI, HTTPException
@@ -33,6 +32,8 @@ from .mcp_client import BraveMCPClient
 from .mongodb_mcp_client import MongoDBMCPClient
 from .cache import get_cache, MongoDBCache
 from .tool_definitions import get_tools_for_persona, classify_query_intent, get_tools_for_query, QueryIntent
+from .repositories.session_repository import SessionRepository
+from .repositories.message_repository import MessageRepository
 
 import logging
 import re
@@ -321,77 +322,65 @@ def _init_mongodb_client():
         _mongodb_client = None
         _mongodb_cache = None
 
-# ----------------- SQLite persistence (tiny DAO) -----------------
+# ----------------- SQLite persistence (Repository Pattern) -----------------
 _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
-_DB_LOCK = threading.Lock()
 
-def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Initialize repositories
+_session_repo = SessionRepository(_DB_PATH)
+_message_repo = MessageRepository(_DB_PATH)
 
 def _init_db():
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
+    """Initialize database tables and perform migrations."""
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+    cur = conn.cursor()
 
-        # Create chat_sessions table (replaces old chats table)
+    # Create chat_sessions table (replaces old chats table)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS chat_sessions (
+        id TEXT PRIMARY KEY,
+        persona_key TEXT NOT NULL,
+        title TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )""")
+
+    # Create messages table linked to sessions
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        latency_ms INTEGER,
+        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+    )""")
+
+    # Migration: If old tables exist, migrate data
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
+    if cur.fetchone():
+        print("Migrating old chat data to new schema...")
+        # Migrate existing chats to sessions
         cur.execute("""
-        CREATE TABLE IF NOT EXISTS chat_sessions (
-            id TEXT PRIMARY KEY,
-            persona_key TEXT NOT NULL,
-            title TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )""")
-
-        # Create messages table linked to sessions
+        INSERT OR IGNORE INTO chat_sessions (id, persona_key, title, created_at, updated_at)
+        SELECT printf('session_%06d', id), persona, title, created_at, updated_at FROM chats
+        """)
+        # Migrate messages
         cur.execute("""
-        CREATE TABLE IF NOT EXISTS messages (
-            id TEXT PRIMARY KEY,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            latency_ms INTEGER,
-            FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
-        )""")
+        INSERT OR IGNORE INTO messages (id, session_id, role, content, timestamp, latency_ms)
+        SELECT printf('msg_%06d', id), printf('session_%06d', chat_id), role, content, ts, latency_ms FROM messages
+        """)
+        print("Migration completed.")
 
-        # Migration: If old tables exist, migrate data
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
-        if cur.fetchone():
-            print("Migrating old chat data to new schema...")
-            # Migrate existing chats to sessions
-            cur.execute("""
-            INSERT OR IGNORE INTO chat_sessions (id, persona_key, title, created_at, updated_at)
-            SELECT printf('session_%06d', id), persona, title, created_at, updated_at FROM chats
-            """)
-            # Migrate messages
-            cur.execute("""
-            INSERT OR IGNORE INTO messages (id, session_id, role, content, timestamp, latency_ms)
-            SELECT printf('msg_%06d', id), printf('session_%06d', chat_id), role, content, ts, latency_ms FROM messages
-            """)
-            print("Migration completed.")
+    # Create indexes for better performance
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON chat_sessions(created_at)")
 
-        # Create indexes for better performance
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON chat_sessions(created_at)")
-
-        c.commit()
-        c.close()
-
-def _now() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
-def _fetchone_dict(cur) -> Optional[Dict[str, Any]]:
-    row = cur.fetchone()
-    if not row:
-        return None
-    return dict(row)
-
-def _fetchall_list(cur) -> List[Dict[str, Any]]:
-    return [dict(r) for r in cur.fetchall()]
+    conn.commit()
+    conn.close()
 
 def _cleanup_orphaned_sessions():
     """
@@ -403,34 +392,20 @@ def _cleanup_orphaned_sessions():
         cards = _load_all_cards_cached()
         current_persona_keys = {card.get("key") for card in cards if card.get("key")}
 
-        with _DB_LOCK:
-            c = _conn()
-            cur = c.cursor()
+        # Find sessions with personas that no longer exist
+        all_sessions = _session_repo.get_all_sessions()
 
-            # Find sessions with personas that no longer exist
-            cur.execute("SELECT id, persona_key FROM chat_sessions")
-            all_sessions = cur.fetchall()
+        orphaned_persona_keys = []
+        for session in all_sessions:
+            persona_key = session["persona_key"]
+            if persona_key not in current_persona_keys:
+                orphaned_persona_keys.append(persona_key)
 
-            orphaned_sessions = []
-            for session in all_sessions:
-                session_id = session["id"]
-                persona_key = session["persona_key"]
-                if persona_key not in current_persona_keys:
-                    orphaned_sessions.append((session_id, persona_key))
-
-            # Delete orphaned sessions (messages will be cascade deleted)
-            if orphaned_sessions:
-                orphaned_ids = [s[0] for s in orphaned_sessions]
-                orphaned_personas = list(set(s[1] for s in orphaned_sessions))  # Unique persona keys
-
-                # Delete sessions (messages will be cascade deleted due to FOREIGN KEY)
-                placeholders = ','.join('?' * len(orphaned_ids))
-                cur.execute(f"DELETE FROM chat_sessions WHERE id IN ({placeholders})", orphaned_ids)
-
-                c.commit()
-                print(f"Cleaned up {len(orphaned_sessions)} orphaned sessions for removed personas: {orphaned_personas}")
-
-            c.close()
+        # Delete orphaned sessions (messages will be cascade deleted)
+        if orphaned_persona_keys:
+            orphaned_personas = list(set(orphaned_persona_keys))  # Unique persona keys
+            deleted_count = _session_repo.delete_sessions_by_persona(orphaned_personas)
+            print(f"Cleaned up {deleted_count} orphaned sessions for removed personas: {orphaned_personas}")
 
     except Exception as e:
         print(f"Warning: Failed to cleanup orphaned sessions: {e}")
@@ -1067,26 +1042,20 @@ Please synthesize this data into a natural, conversational response. Include key
 def chat_with_session(session_id: str, body: ChatBody):
     """Chat with a persona and automatically save to session."""
     # Get session info
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("SELECT persona_key FROM chat_sessions WHERE id = ?", (session_id,))
-        row = cur.fetchone()
-        c.close()
-        if not row:
-            raise HTTPException(status_code=404, detail="Session not found.")
-
-    persona_key = row["persona_key"]
+    persona_key = _session_repo.get_persona_key(session_id)
+    if not persona_key:
+        raise HTTPException(status_code=404, detail="Session not found.")
 
     # Perform chat
     chat_body = ChatBody(persona=persona_key, history=body.history, message=body.message)
     response = chat(chat_body)
 
     # Save user message to session
+    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
     user_msg_body = AppendMessageBody(
         role="user",
         content=body.message,
-        ts=_now()
+        ts=now
     )
     add_message(session_id, user_msg_body)
 
@@ -1094,7 +1063,7 @@ def chat_with_session(session_id: str, body: ChatBody):
     assistant_msg_body = AppendMessageBody(
         role="assistant",
         content=response["answer"],
-        ts=_now()
+        ts=now
     )
     add_message(session_id, assistant_msg_body)
 
@@ -1125,16 +1094,9 @@ def greet(body: GreetBody):
 def greet_with_session(session_id: str, body: GreetBody):
     """Generate a greeting and save it to the session."""
     # Get session info
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("SELECT persona_key FROM chat_sessions WHERE id = ?", (session_id,))
-        row = cur.fetchone()
-        c.close()
-        if not row:
-            raise HTTPException(status_code=404, detail="Session not found.")
-
-    persona_key = row["persona_key"]
+    persona_key = _session_repo.get_persona_key(session_id)
+    if not persona_key:
+        raise HTTPException(status_code=404, detail="Session not found.")
 
     # Generate greeting
     greet_body = GreetBody(persona=persona_key)
@@ -1144,7 +1106,7 @@ def greet_with_session(session_id: str, body: GreetBody):
     greeting_msg_body = AppendMessageBody(
         role="assistant",
         content=response["answer"],
-        ts=_now()
+        ts=datetime.utcnow().isoformat(timespec="seconds") + "Z"
     )
     add_message(session_id, greeting_msg_body)
 
@@ -1191,111 +1153,39 @@ def summary(body: SummaryBody):
 
 import uuid
 
-def _generate_session_id() -> str:
-    return f"session_{uuid.uuid4().hex[:16]}"
-
-def _generate_message_id() -> str:
-    return f"msg_{uuid.uuid4().hex[:16]}"
-
 @app.get("/sessions")
 def list_sessions():
     """List all chat sessions."""
     print("DEBUG: list_sessions called")
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("""
-            SELECT s.id, s.persona_key, s.title, s.created_at, s.updated_at,
-                   COUNT(m.id) as message_count
-            FROM chat_sessions s
-            LEFT JOIN messages m ON s.id = m.session_id
-            GROUP BY s.id
-            ORDER BY s.updated_at DESC, s.created_at DESC
-        """)
-        sessions = []
-        for row in cur.fetchall():
-            sessions.append({
-                "id": row["id"],
-                "persona_key": row["persona_key"],
-                "title": row["title"],
-                "created_at": row["created_at"],
-                "updated_at": row["updated_at"],
-                "message_count": row["message_count"]
-            })
-        c.close()
-    return sessions
+    return _session_repo.get_all_sessions()
 
 @app.post("/sessions")
 def create_session(body: CreateSessionBody):
     """Create a new chat session."""
-    session_id = _generate_session_id()
-    now = _now()
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("""
-            INSERT INTO chat_sessions (id, persona_key, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (session_id, body.persona_key, body.title.strip() or "New Chat", now, now))
-        c.commit()
-        c.close()
+    title = body.title.strip() or "New Chat"
+    session_id = _session_repo.create_session(body.persona_key, title)
+    session = _session_repo.get_session(session_id)
     return {
-        "id": session_id,
-        "persona_key": body.persona_key,
-        "title": body.title,
-        "created_at": now,
-        "updated_at": now,
+        **session,
         "message_count": 0
     }
 
 @app.get("/sessions/{session_id}")
 def get_session(session_id: str):
     """Get a chat session with all its messages."""
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
+    # Get session info
+    session = _session_repo.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
 
-        # Get session info
-        cur.execute("""
-            SELECT s.id, s.persona_key, s.title, s.created_at, s.updated_at,
-                   COUNT(m.id) as message_count
-            FROM chat_sessions s
-            LEFT JOIN messages m ON s.id = m.session_id
-            WHERE s.id = ?
-            GROUP BY s.id
-        """, (session_id,))
-        session_row = cur.fetchone()
-        if not session_row:
-            c.close()
-            raise HTTPException(status_code=404, detail="Session not found.")
-
-        # Get messages
-        cur.execute("""
-            SELECT id, role, content, timestamp, latency_ms
-            FROM messages
-            WHERE session_id = ?
-            ORDER BY timestamp ASC
-        """, (session_id,))
-        messages = []
-        for msg_row in cur.fetchall():
-            messages.append({
-                "id": msg_row["id"],
-                "role": msg_row["role"],
-                "content": msg_row["content"],
-                "timestamp": msg_row["timestamp"],
-                "latency_ms": msg_row["latency_ms"]
-            })
-
-        c.close()
+    # Get messages
+    messages = _message_repo.get_messages_by_session(session_id)
+    message_count = len(messages)
 
     return {
         "session": {
-            "id": session_row["id"],
-            "persona_key": session_row["persona_key"],
-            "title": session_row["title"],
-            "created_at": session_row["created_at"],
-            "updated_at": session_row["updated_at"],
-            "message_count": session_row["message_count"]
+            **session,
+            "message_count": message_count
         },
         "messages": messages
     }
@@ -1303,85 +1193,62 @@ def get_session(session_id: str):
 @app.put("/sessions/{session_id}")
 def update_session(session_id: str, body: UpdateSessionBody):
     """Update a chat session (e.g., rename)."""
+    # Check if session exists
+    if not _session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+
     title = (body.title or "").strip() or "Untitled"
-    now = _now()
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        cur.execute("""
-            UPDATE chat_sessions
-            SET title = ?, updated_at = ?
-            WHERE id = ?
-        """, (title, now, session_id))
-        if cur.rowcount == 0:
-            c.close()
-            raise HTTPException(status_code=404, detail="Session not found.")
-        c.commit()
-        c.close()
-    return {"ok": True, "id": session_id, "title": title, "updated_at": now}
+    _session_repo.update_session_title(session_id, title)
+
+    # Get updated session
+    session = _session_repo.get_session(session_id)
+    return {"ok": True, "id": session_id, "title": session["title"], "updated_at": session["updated_at"]}
 
 @app.delete("/sessions/{session_id}")
 def delete_session(session_id: str):
     """Delete a chat session and all its messages."""
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        # Check if session exists
-        cur.execute("SELECT id FROM chat_sessions WHERE id = ?", (session_id,))
-        if not cur.fetchone():
-            c.close()
-            raise HTTPException(status_code=404, detail="Session not found.")
-        # Delete messages first (cascade should handle this, but being explicit)
-        cur.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
-        # Delete session
-        cur.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
-        c.commit()
-        c.close()
+    # Check if session exists
+    if not _session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    # Delete session (messages will be cascade deleted)
+    _session_repo.delete_session(session_id)
     return {"ok": True}
 
 @app.post("/sessions/{session_id}/messages")
 def add_message(session_id: str, body: AppendMessageBody):
     """Add a message to a chat session."""
-    message_id = _generate_message_id()
-    timestamp = body.ts or _now()
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        # Verify session exists
-        cur.execute("SELECT id FROM chat_sessions WHERE id = ?", (session_id,))
-        if not cur.fetchone():
-            c.close()
-            raise HTTPException(status_code=404, detail="Session not found.")
-        # Insert message
-        cur.execute("""
-            INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (message_id, session_id, body.role, body.content, timestamp, body.latency_ms))
-        # Update session timestamp
-        cur.execute("""
-            UPDATE chat_sessions SET updated_at = ? WHERE id = ?
-        """, (_now(), session_id))
-        c.commit()
-        c.close()
+    # Verify session exists
+    if not _session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    # Insert message
+    message_id = _message_repo.create_message(
+        session_id=session_id,
+        role=body.role,
+        content=body.content,
+        latency_ms=body.latency_ms,
+        timestamp=body.ts
+    )
+
+    # Update session timestamp
+    _session_repo.update_session_timestamp(session_id)
+
     return {"ok": True, "message_id": message_id}
 
 @app.delete("/sessions/{session_id}/messages")
 def clear_session_messages(session_id: str):
     """Clear all messages from a chat session (keep the session)."""
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
-        # Check if session exists
-        cur.execute("SELECT id FROM chat_sessions WHERE id = ?", (session_id,))
-        if not cur.fetchone():
-            c.close()
-            raise HTTPException(status_code=404, detail="Session not found.")
-        # Delete all messages for this session
-        cur.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
-        # Update session updated_at timestamp
-        cur.execute("UPDATE chat_sessions SET updated_at = ? WHERE id = ?", (_now(), session_id))
-        c.commit()
-        c.close()
+    # Check if session exists
+    if not _session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    # Delete all messages for this session
+    _message_repo.delete_messages_by_session(session_id)
+
+    # Update session updated_at timestamp
+    _session_repo.update_session_timestamp(session_id)
+
     return {"ok": True}
 
 @app.get("/sessions/{session_id}/export")
@@ -1396,7 +1263,7 @@ def export_session(session_id: str):
 
     export_data = {
         "version": "1.0",
-        "exported_at": _now(),
+        "exported_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "app_version": "1.0.0",
         "persona": {
             "key": persona_card.get("key"),
@@ -1423,47 +1290,34 @@ def import_session(body: ImportBody):
     if not persona_key or not get_persona_card(persona_key):
         raise HTTPException(status_code=400, detail=f"Persona '{persona_key}' not found.")
 
-    session_id = _generate_session_id() if body.create_new_session else data.session.get("id") if isinstance(data.session, dict) else getattr(data.session, 'id', None)
-    now = _now()
+    # Get session data
+    session_id = None if body.create_new_session else (
+        data.session.get("id") if isinstance(data.session, dict) else getattr(data.session, 'id', None)
+    )
+    session_title = data.session.get("title") if isinstance(data.session, dict) else getattr(data.session, 'title', 'Imported Chat')
+    session_created_at = data.session.get("created_at") if isinstance(data.session, dict) else getattr(data.session, 'created_at', None)
+    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
-    with _DB_LOCK:
-        c = _conn()
-        cur = c.cursor()
+    # Create session
+    created_session_id = _session_repo.create_session(
+        persona_key=persona_key,
+        title=session_title or 'Imported Chat',
+        session_id=session_id,
+        created_at=session_created_at,
+        updated_at=now
+    )
 
-        # Create session
-        session_title = data.session.get("title") if isinstance(data.session, dict) else getattr(data.session, 'title', 'Imported Chat')
-        session_created_at = data.session.get("created_at") if isinstance(data.session, dict) else getattr(data.session, 'created_at', now)
+    # Insert messages
+    for msg in data.messages:
+        _message_repo.create_message(
+            session_id=created_session_id,
+            role=msg.get("role") if isinstance(msg, dict) else getattr(msg, 'role', 'user'),
+            content=msg.get("content") if isinstance(msg, dict) else getattr(msg, 'content', ''),
+            timestamp=msg.get("timestamp") if isinstance(msg, dict) else getattr(msg, 'timestamp', now),
+            latency_ms=msg.get("latency_ms") if isinstance(msg, dict) else getattr(msg, 'latency_ms', None)
+        )
 
-        cur.execute("""
-            INSERT INTO chat_sessions (id, persona_key, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            session_id,
-            persona_key,
-            session_title or 'Imported Chat',
-            session_created_at or now,
-            now
-        ))
-
-        # Insert messages
-        for msg in data.messages:
-            message_id = _generate_message_id()
-            cur.execute("""
-                INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                message_id,
-                session_id,
-                msg.get("role") if isinstance(msg, dict) else getattr(msg, 'role', 'user'),
-                msg.get("content") if isinstance(msg, dict) else getattr(msg, 'content', ''),
-                msg.get("timestamp") if isinstance(msg, dict) else getattr(msg, 'timestamp', now),
-                msg.get("latency_ms") if isinstance(msg, dict) else getattr(msg, 'latency_ms', None)
-            ))
-
-        c.commit()
-        c.close()
-
-    return {"ok": True, "session_id": session_id}
+    return {"ok": True, "session_id": created_session_id}
 
 # ----------------- Optional tiny health check (roadmap "Now") -----------------
 @app.get("/health")
@@ -1471,12 +1325,8 @@ def health():
     try:
         base = get_ollama_base()
         model = get_persona_model()
-        # DB ping
-        with _DB_LOCK:
-            c = _conn()
-            cur = c.cursor()
-            cur.execute("SELECT 1")
-            c.close()
+        # DB ping - just try to fetch sessions
+        _session_repo.get_all_sessions()
         return {"status": "ok", "model": model, "db": "ok"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}

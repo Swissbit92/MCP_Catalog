@@ -37,7 +37,10 @@
       "Bash(timeout 40 bash:*)",
       "Bash(xargs kill:*)",
       "Bash(tasklist:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(sqlite3:*)",
+      "Bash(wc:*)",
+      "Bash(ollama ps:*)"
     ],
     "deny": [],
     "ask": []
