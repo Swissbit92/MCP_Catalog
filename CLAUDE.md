@@ -87,23 +87,44 @@ ollama pull llama3.1:latest
 ## Project Structure
 
 ### Backend (`src/coordinator/`)
-- `server.py` - FastAPI app with CORS, chat endpoints, session management, SQLite persistence
-- `persona_memory.py` - Persona card loading, CV summary generation, prompt building, file locking for summary serialization
-- `memory_manager.py` - MemoryManager for importance scoring, ConversationSummarizer for auto-summarization
+
+**Core Modules:**
+- `server.py` - FastAPI app entry point, CORS middleware, router assembly (~85 lines)
+- `startup.py` - Application initialization, dependency injection, database setup
+- `schemas.py` - Pydantic request/response models for API endpoints
+- `config.py` - Pydantic Settings for centralized, validated configuration (Ollama, Brave, MongoDB)
+
+**Route Handlers (`routes/`):**
+- `chat.py` - Chat endpoints (`/persona/chat`, `/sessions/{id}/chat`, `/persona/greet`)
+- `sessions.py` - Session CRUD (`/sessions`, `/sessions/{id}`, import/export)
+- `personas.py` - Persona endpoints (`/personas`, `/persona/summary`)
+
+**Services (`services/`):**
+- `citation_service.py` - Web search citation validation
+- `first_person_service.py` - First-person voice enforcement for persona responses
+- `mongodb_handlers.py` - MongoDB tool handlers with caching (Bitcoin price, trading data)
+
+**Business Logic:**
+- `persona_memory.py` - Persona card loading, CV summary generation, prompt building
+- `memory_manager.py` - MemoryManager for importance scoring, ConversationSummarizer
 - `llm_client.py` - LangChain Ollama client wrapper with advanced sampling support
+- `tool_definitions.py` - Tool/function definitions for LLM function calling
+
+**Infrastructure:**
 - `ollama_utils.py` - Ollama health checks, model availability assertions
-- `config.py` - Pydantic Settings for centralized, validated configuration
-- `mcp_client.py` - MCP (Model Context Protocol) client for connecting to MCP servers
+- `mcp_client.py` - MCP (Model Context Protocol) client for Brave Search
 - `mongodb_mcp_client.py` - MongoDB MCP client for database operations
-- `tool_definitions.py` - Tool/function definitions for LLM function calling, synthesis prompt building
 - `cache.py` - MongoDB caching layer with TTL support
-- `models/` - Pydantic models for type-safe data structures (Phase 1)
-  - `persona_schema.py` - PersonaCard, VoiceProfile, EmotionalProfile, PsychologicalProfile, ExampleDialogue models
-  - `sampling_presets.py` - SamplingConfig and preset library (creative, balanced, precise, chaotic, deterministic)
-- `repositories/` - Repository pattern for database operations
-  - `session_repository.py` - Chat session CRUD operations
-  - `message_repository.py` - Message persistence and retrieval
-  - `summary_repository.py` - Conversation summary management
+
+**Data Models (`models/`):**
+- `persona_schema.py` - PersonaCard, VoiceProfile, EmotionalProfile, PsychologicalProfile
+- `sampling_presets.py` - SamplingConfig and preset library (creative, balanced, precise, etc.)
+
+**Database Layer (`repositories/`):**
+- `session_repository.py` - Chat session CRUD operations
+- `message_repository.py` - Message persistence and retrieval
+- `summary_repository.py` - Conversation summary management
+- `emotional_state_repository.py` - Emotional state tracking (Phase 2.2)
 
 ### Shared (`src/shared/`)
 - `persona_assets.py` - Shared utilities for persona asset paths and loading
@@ -458,7 +479,7 @@ cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=f
 ```
 
 ### SQLite Concurrency
-- Thread-safe locking via `_DB_LOCK` in `server.py`
+- Thread-safe locking via `_lock` in `repositories/base_repository.py`
 - Connection uses `check_same_thread=False`
 - Foreign key cascade deletes for session cleanup
 
@@ -538,7 +559,45 @@ cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=f
 
 ## Project Hygiene Log
 
-### December 23, 2025 - Hygiene Session #2 (Latest)
+### December 23, 2025 - Modular Refactoring
+
+**server.py: 1,645 → 85 lines** (95% reduction)
+
+**Actions Taken:**
+- Split monolithic `server.py` into modular architecture
+- Created `routes/` directory with `chat.py`, `sessions.py`, `personas.py`
+- Created `services/` directory with `citation_service.py`, `first_person_service.py`, `mongodb_handlers.py`
+- Created `startup.py` for initialization and dependency injection
+- Created `schemas.py` for Pydantic request/response models
+- Removed Context7 configuration (unused scaffolding)
+- Fixed dead code at original server.py:237-243
+
+**New File Structure:**
+```
+src/coordinator/
+├── server.py          (85 lines - entry point only)
+├── startup.py         (252 lines - initialization)
+├── schemas.py         (131 lines - Pydantic models)
+├── config.py          (370 lines - removed Context7)
+├── routes/
+│   ├── chat.py        (534 lines)
+│   ├── sessions.py    (271 lines)
+│   └── personas.py    (57 lines)
+└── services/
+    ├── citation_service.py      (83 lines)
+    ├── first_person_service.py  (141 lines)
+    └── mongodb_handlers.py      (348 lines)
+```
+
+**Improvements:**
+- No file exceeds 534 lines (was 1,645)
+- Clear separation of concerns (routes, services, infrastructure)
+- Dependency injection pattern for testability
+- Service pattern for MongoDB operations
+
+---
+
+### December 23, 2025 - Hygiene Session #2
 
 **Hygiene Score: 4/10 → 9/10** (Major cleanup executed)
 
@@ -595,14 +654,17 @@ verify_model_context.py    → src/coordinator/utils/
 - tests/backend/coordinator/: 11 test files (all properly organized)
 - tests/integration/: 14 test files (all properly organized)
 - tests/exploration/: 7 test files (all properly organized)
-- src/coordinator/utils/: 2 utility scripts (new directory)
+- src/coordinator/routes/: 3 route modules (chat, sessions, personas)
+- src/coordinator/services/: 3 service modules (citations, first-person, mongodb)
+- src/coordinator/utils/: 2 utility scripts
 - AI_documentation/: 22+ docs across 5 categories
 - Root directory: Clean (only run_react.py entry point)
 
 **Code Quality Metrics:**
 - Unused imports: 0
-- Technical debt: 1 TODO (server.py:1055 - MongoDB multi-MCP)
+- Technical debt: 1 TODO (routes/chat.py - MongoDB multi-MCP parallel execution)
 - Code duplication: 0
 - Type hints coverage: 95%+
 - Naming convention violations: 0
 - Root Python files: 1 (run_react.py - correct)
+- Largest backend file: 534 lines (routes/chat.py)
