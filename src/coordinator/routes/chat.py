@@ -47,6 +47,9 @@ def _get_dependencies():
         get_emotional_state_repo,
         get_memory_manager,
         get_conversation_summarizer,
+        get_user_profile_repo,
+        get_episodic_memory_rag,
+        get_fact_extractor,
     )
     return {
         "brave_client": get_brave_client(),
@@ -57,6 +60,9 @@ def _get_dependencies():
         "emotional_state_repo": get_emotional_state_repo(),
         "memory_manager": get_memory_manager(),
         "conversation_summarizer": get_conversation_summarizer(),
+        "user_profile_repo": get_user_profile_repo(),
+        "episodic_memory_rag": get_episodic_memory_rag(),
+        "fact_extractor": get_fact_extractor(),
     }
 
 
@@ -398,11 +404,26 @@ def chat_with_session(session_id: str, body: ChatBody):
     summary_repo = deps["summary_repo"]
     emotional_state_repo = deps["emotional_state_repo"]
     memory_manager = deps["memory_manager"]
+    user_profile_repo = deps["user_profile_repo"]
+    episodic_memory_rag = deps["episodic_memory_rag"]
+    fact_extractor = deps["fact_extractor"]
 
     # Get session info
     persona_key = session_repo.get_persona_key(session_id)
     if not persona_key:
         raise HTTPException(status_code=404, detail="Session not found.")
+
+    # PHASE 3: Get or create user profile for cross-session memory
+    user_id = user_profile_repo.get_session_user(session_id)
+    user_profile = None
+    user_profile_context = ""
+
+    if user_id:
+        user_profile = user_profile_repo.get_profile(user_id)
+        if user_profile:
+            user_profile_context = user_profile.get_context_summary(max_facts=10, max_topics=5)
+            if user_profile_context:
+                logger.info(f"[Phase3] Loaded user profile for {user_id} (cross-session memory)")
 
     # PHASE 2.2: Get emotional state
     emotional_state = emotional_state_repo.get_or_create(session_id)
@@ -415,6 +436,11 @@ def chat_with_session(session_id: str, body: ChatBody):
 
     card = get_persona_card(persona_key)
     system_prompt = build_system_prompt(persona_key)
+
+    # PHASE 3: Inject user profile context (cross-session memory)
+    if user_profile_context:
+        system_prompt = f"{system_prompt}\n\n{user_profile_context}"
+        logger.debug(f"[Phase3] Injected user profile context ({len(user_profile_context)} chars)")
 
     # Inject emotional context
     if emotional_context:
@@ -449,10 +475,48 @@ def chat_with_session(session_id: str, body: ChatBody):
         system_prompt_tokens=system_tokens
     )
 
+    # PHASE 3: Use RAG for semantic memory search
+    rag_relevant_messages = []
+    if episodic_memory_rag and db_messages:
+        try:
+            # Index session if not already indexed
+            if session_id not in episodic_memory_rag.vectorstores:
+                episodic_memory_rag.index_session(session_id, db_messages)
+
+            # Get semantically relevant messages for current query
+            rag_start = time.time()
+            rag_relevant = episodic_memory_rag.get_relevant_context(
+                session_id=session_id,
+                query=body.message,
+                max_messages=5  # Top 5 most relevant
+            )
+            rag_latency = (time.time() - rag_start) * 1000
+
+            if rag_relevant:
+                # Merge RAG results with selected messages (avoid duplicates)
+                selected_indices = {msg.get("index", -1) for msg in selected_messages}
+                for rag_msg in rag_relevant:
+                    if rag_msg.get("index", -2) not in selected_indices:
+                        rag_relevant_messages.append(rag_msg)
+
+                logger.info(
+                    f"[Phase3 RAG] Found {len(rag_relevant)} relevant memories "
+                    f"({len(rag_relevant_messages)} unique) in {rag_latency:.0f}ms"
+                )
+        except Exception as e:
+            logger.warning(f"[Phase3 RAG] Semantic search failed: {e}")
+
+    # Combine selected messages with RAG-enhanced messages
+    all_context_messages = selected_messages.copy()
+    if rag_relevant_messages:
+        all_context_messages.extend(rag_relevant_messages)
+        # Sort by index to maintain chronological order
+        all_context_messages.sort(key=lambda x: x.get("index", 0))
+
     # Convert to ChatTurn format
     history_turns = [
         ChatTurn(role=msg["role"], content=msg["content"])
-        for msg in selected_messages
+        for msg in all_context_messages
     ]
 
     # Prepend summary context
@@ -506,6 +570,74 @@ def chat_with_session(session_id: str, body: ChatBody):
         logger.debug(f"[EmotionalState] Updated: trust={updated_state.trust_level:.2f}, mood={updated_state.current_mood}")
     except Exception as e:
         logger.warning(f"[EmotionalState] Failed to update emotional state: {e}")
+
+    # PHASE 3: Update RAG index and extract/update user profile
+    try:
+        # Update RAG index with new messages
+        if episodic_memory_rag:
+            all_messages_updated = message_repo.get_messages_by_session(session_id)
+            episodic_memory_rag.update_session(
+                session_id=session_id,
+                new_messages=[
+                    {"role": "user", "content": body.message},
+                    {"role": "assistant", "content": response["answer"]}
+                ],
+                full_history=all_messages_updated
+            )
+            logger.debug(f"[Phase3 RAG] Updated vector index for session {session_id}")
+
+        # Extract facts and update user profile (every 10 messages to save compute)
+        if fact_extractor and user_profile_repo and len(db_messages) % 10 == 0:
+            try:
+                # Get updated message list
+                all_messages_updated = message_repo.get_messages_by_session(session_id)
+
+                # Extract facts from recent messages (last 20)
+                recent_messages = all_messages_updated[-20:]
+
+                # Initialize fact extractor with LLM client if needed
+                if fact_extractor is None:
+                    from ..llm_client import LC_OllamaClient
+                    llm_client = LC_OllamaClient(
+                        base=get_ollama_base(),
+                        model=get_persona_model(),
+                        temperature=0.3  # Lower temp for fact extraction
+                    )
+                    from ..fact_extractor import FactExtractor
+                    fact_extractor = FactExtractor(llm_client)
+
+                # Extract facts
+                facts = fact_extractor.extract_facts(recent_messages, persona_key=persona_key)
+
+                # Get or create user profile
+                if not user_id and facts.get("user_name"):
+                    # Try to find existing user by name
+                    user_id = user_profile_repo.get_user_by_name(facts["user_name"])
+
+                if not user_id:
+                    # Create new user profile
+                    import uuid
+                    user_id = f"user_{uuid.uuid4().hex[:8]}"
+                    user_profile = user_profile_repo.create_profile(user_id)
+                    user_profile_repo.link_session_to_user(user_id, session_id)
+                    logger.info(f"[Phase3] Created new user profile: {user_id}")
+                else:
+                    user_profile = user_profile_repo.get_or_create_profile(user_id)
+
+                # Update profile with extracted facts
+                user_profile.update_from_session(facts)
+                user_profile_repo.update_profile(user_profile)
+
+                logger.info(
+                    f"[Phase3] Updated user profile {user_id}: "
+                    f"{fact_extractor.get_extraction_stats(facts)}"
+                )
+
+            except Exception as e:
+                logger.warning(f"[Phase3] Fact extraction/profile update failed: {e}")
+
+    except Exception as e:
+        logger.error(f"[Phase3] Post-conversation updates failed: {e}")
 
     return response
 

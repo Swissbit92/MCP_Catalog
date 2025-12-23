@@ -1,13 +1,16 @@
 """
-Tests for citation validation in server.py
+Tests for citation validation in services/citation_service.py
 
-Run with: python src/coordinator/test_citation_validation.py
+Run with: python tests/backend/coordinator/test_citation_validation.py
 """
 
 import sys
-sys.path.insert(0, 'src/coordinator')
+from pathlib import Path
 
-from server import validate_citations
+# Add src directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
+
+from coordinator.services.citation_service import validate_citations
 
 
 def test_valid_citations_with_emoji():

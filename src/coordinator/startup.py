@@ -33,8 +33,11 @@ from .repositories.session_repository import SessionRepository
 from .repositories.message_repository import MessageRepository
 from .repositories.summary_repository import SummaryRepository
 from .repositories.emotional_state_repository import EmotionalStateRepository
+from .repositories.user_profile_repository import UserProfileRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .services.mongodb_handlers import MongoDBService
+from .memory_rag import EpisodicMemoryRAG
+from .fact_extractor import FactExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +55,15 @@ _session_repo: Optional[SessionRepository] = None
 _message_repo: Optional[MessageRepository] = None
 _summary_repo: Optional[SummaryRepository] = None
 _emotional_state_repo: Optional[EmotionalStateRepository] = None
+_user_profile_repo: Optional[UserProfileRepository] = None
 
-# Memory Management
+# Memory Management (Phase 2)
 _memory_manager: Optional[MemoryManager] = None
 _conversation_summarizer: Optional[ConversationSummarizer] = None
+
+# Phase 3: Advanced AI Memory
+_episodic_memory_rag: Optional[EpisodicMemoryRAG] = None
+_fact_extractor: Optional[FactExtractor] = None
 
 
 # ----------------- Getters -----------------
@@ -108,6 +116,21 @@ def get_memory_manager() -> MemoryManager:
 def get_conversation_summarizer() -> ConversationSummarizer:
     """Get the conversation summarizer."""
     return _conversation_summarizer
+
+
+def get_user_profile_repo() -> UserProfileRepository:
+    """Get the user profile repository."""
+    return _user_profile_repo
+
+
+def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
+    """Get the episodic memory RAG system."""
+    return _episodic_memory_rag
+
+
+def get_fact_extractor() -> Optional[FactExtractor]:
+    """Get the fact extractor."""
+    return _fact_extractor
 
 
 # ----------------- Initialization Functions -----------------
@@ -174,12 +197,14 @@ def init_mongodb_client():
 
 def init_repositories():
     """Initialize database repositories."""
-    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
+    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo, _user_profile_repo
 
     _session_repo = SessionRepository(_DB_PATH)
     _message_repo = MessageRepository(_DB_PATH)
     _summary_repo = SummaryRepository(_DB_PATH)
     _emotional_state_repo = EmotionalStateRepository(_DB_PATH)
+    _user_profile_repo = UserProfileRepository(_DB_PATH)
+    logger.info("Repositories initialized (Phase 1-3)")
 
 
 def init_memory_manager():
@@ -188,6 +213,29 @@ def init_memory_manager():
 
     _memory_manager = MemoryManager(max_tokens=get_model_context_window())
     _conversation_summarizer = ConversationSummarizer()
+    logger.info("Memory manager initialized (Phase 2)")
+
+
+def init_phase3_memory():
+    """Initialize Phase 3 advanced memory systems (RAG + Fact Extraction)."""
+    global _episodic_memory_rag, _fact_extractor
+
+    try:
+        # Initialize RAG memory with embeddings
+        _episodic_memory_rag = EpisodicMemoryRAG(embedding_model="nomic-embed-text:latest")
+        logger.info("Episodic Memory RAG initialized (Phase 3)")
+
+        # Initialize fact extractor
+        # Note: Will need LLM client, initialized later in chat flow
+        # For now, mark as ready for lazy init
+        _fact_extractor = None  # Will be initialized with LLM client on first use
+        logger.info("Fact Extractor ready for initialization (Phase 3)")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize Phase 3 memory systems: {e}")
+        logger.warning("Phase 3 features (RAG, cross-session memory) will be disabled")
+        _episodic_memory_rag = None
+        _fact_extractor = None
 
 
 def init_db():
@@ -260,12 +308,34 @@ def init_db():
         FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
     )""")
 
+    # Create user_profiles table (Phase 3: Cross-session memory)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS user_profiles (
+        user_id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        profile_data TEXT NOT NULL
+    )""")
+
+    # Create user_sessions table (links users to their chat sessions)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS user_sessions (
+        user_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES user_profiles(user_id) ON DELETE CASCADE,
+        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
+        PRIMARY KEY(user_id, session_id)
+    )""")
+
     # Create indexes
     cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON chat_sessions(created_at)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_summaries_session_id ON conversation_summaries(session_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_emotional_states_session ON emotional_states(session_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_user_sessions_session_id ON user_sessions(session_id)")
 
     conn.commit()
     conn.close()
@@ -319,6 +389,16 @@ def initialize_all():
 
     # Initialize memory manager
     init_memory_manager()
+
+    # Initialize Phase 3 advanced memory (RAG + fact extraction)
+    try:
+        init_phase3_memory()
+        if _episodic_memory_rag:
+            print("Phase 3: RAG memory enabled (semantic search)")
+        else:
+            print("Phase 3: RAG memory disabled")
+    except Exception as e:
+        print(f"Phase 3 initialization warning: {e}")
 
     # Initialize Brave MCP
     try:
