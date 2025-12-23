@@ -23,7 +23,7 @@ from .config import (
     get_mongodb_cache_ttl
 )
 from .ollama_utils import assert_model_available
-from .llm_client import LC_OllamaClient
+from .llm_client import LC_OllamaClient, estimate_tokens
 from .persona_memory import (
     build_system_prompt, build_greeting_user_prompt, get_persona_card,
     get_or_build_cv_summary, ensure_all_summaries_serialized, _load_all_cards_cached
@@ -34,6 +34,7 @@ from .cache import get_cache, MongoDBCache
 from .tool_definitions import get_tools_for_persona, classify_query_intent, get_tools_for_query, QueryIntent
 from .repositories.session_repository import SessionRepository
 from .repositories.message_repository import MessageRepository
+from .memory_manager import MemoryManager
 
 import logging
 import re
@@ -328,6 +329,10 @@ _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
 # Initialize repositories
 _session_repo = SessionRepository(_DB_PATH)
 _message_repo = MessageRepository(_DB_PATH)
+
+# Initialize memory manager for intelligent context selection (Phase 2)
+# Context window: 4096 tokens for HammerAI/mythomax-l2:latest
+_memory_manager = MemoryManager(max_tokens=4096)
 
 def _init_db():
     """Initialize database tables and perform migrations."""
@@ -803,13 +808,28 @@ def chat(body: ChatBody):
     system = build_system_prompt(body.persona)
 
     # Build conversation context from history
-    history = body.history[-6:]
+    # Note: history is now loaded from database with smart windowing in chat_with_session()
+    # No longer truncating here - trust the caller's window size
+    history = body.history
     lines = []
     for t in history:
         role = (t.role or "").lower()
-        lines.append(f"[Assistant]\n{t.content}" if role == "assistant" else f"[User]\n{t.content}")
-    lines.append(f"[User]\n{body.message}")
+        # Use standard chat format without confusing markers
+        if role == "assistant":
+            lines.append(f"Assistant: {t.content}")
+        else:
+            lines.append(f"User: {t.content}")
+    lines.append(f"User: {body.message}")
     user_compiled = "\n\n".join(lines)
+
+    # Token budget monitoring with comprehensive stats
+    from .llm_client import log_context_stats
+    token_stats = log_context_stats(
+        system_prompt=system,
+        history=history,
+        query=body.message,
+        model_context_window=4096  # TODO: Get from model config
+    )
 
     # Use intent classification to determine which tools to inject
     intent = classify_query_intent(body.message, persona_rarity)
@@ -1040,14 +1060,45 @@ Please synthesize this data into a natural, conversational response. Include key
 
 @app.post("/sessions/{session_id}/chat")
 def chat_with_session(session_id: str, body: ChatBody):
-    """Chat with a persona and automatically save to session."""
+    """Chat with persona using database-backed conversation history."""
+    print(f"\n!!! ENDPOINT HIT: /sessions/{session_id}/chat !!!\n", flush=True)
     # Get session info
     persona_key = _session_repo.get_persona_key(session_id)
     if not persona_key:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    # Perform chat
-    chat_body = ChatBody(persona=persona_key, history=body.history, message=body.message)
+    # PHASE 2: Intelligent memory selection with importance scoring
+    db_messages = _message_repo.get_messages_by_session(session_id)
+
+    # Build system prompt to calculate token usage
+    card = get_persona_card(persona_key)
+    system_prompt = build_system_prompt(persona_key)
+    system_tokens = estimate_tokens(system_prompt)
+
+    # Use MemoryManager to intelligently select messages within token budget
+    selected_messages = _memory_manager.select_messages(
+        messages=db_messages,
+        token_budget=4096,  # Model context window
+        system_prompt_tokens=system_tokens
+    )
+
+    # Convert selected messages to ChatTurn format
+    history_turns = [
+        ChatTurn(role=msg["role"], content=msg["content"])
+        for msg in selected_messages
+    ]
+
+    logger.info(
+        f"[Memory] Intelligently selected {len(history_turns)}/{len(db_messages)} messages "
+        f"for session {session_id} (system: {system_tokens} tokens)"
+    )
+
+    # Perform chat with FULL database context
+    chat_body = ChatBody(
+        persona=persona_key,
+        history=history_turns,  # Database-backed history
+        message=body.message
+    )
     response = chat(chat_body)
 
     # Save user message to session
@@ -1330,6 +1381,19 @@ def health():
         return {"status": "ok", "model": model, "db": "ok"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+@app.get("/debug/code-version")
+def code_version():
+    """Debug endpoint to verify which code version is running."""
+    import inspect
+    source = inspect.getsource(chat_with_session)
+    has_memory_loading = "db_messages = _message_repo.get_messages_by_session" in source
+    has_debug_print = "ENDPOINT HIT" in source
+    return {
+        "memory_loading_code_present": has_memory_loading,
+        "debug_print_present": has_debug_print,
+        "function_first_line": source.split('\n')[1][:100] if '\n' in source else "unknown"
+    }
 
 # ----------------- Initialize on startup -----------------
 print("Initializing FastAPI server...")

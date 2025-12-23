@@ -40,7 +40,9 @@
       "Bash(xargs:*)",
       "Bash(sqlite3:*)",
       "Bash(wc:*)",
-      "Bash(ollama ps:*)"
+      "Bash(ollama ps:*)",
+      "Bash(timeout:*)",
+      "Bash(dir /b:*)"
     ],
     "deny": [],
     "ask": []

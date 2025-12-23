@@ -23,6 +23,73 @@ from .mcp_client import BraveMCPClient
 
 logger = logging.getLogger(__name__)
 
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count (4 chars ≈ 1 token).
+
+    Args:
+        text: Input text to estimate tokens for
+
+    Returns:
+        Estimated token count
+    """
+    try:
+        import tiktoken
+        enc = tiktoken.get_encoding("cl100k_base")
+        return len(enc.encode(text))
+    except (ImportError, Exception):
+        # Fallback: character-based approximation
+        return max(1, len(text) // 4)
+
+
+def log_context_stats(system_prompt: str, history: List[Any], query: str, model_context_window: int = 4096) -> dict:
+    """Log token usage statistics for monitoring.
+
+    Args:
+        system_prompt: System prompt text
+        history: List of ChatTurn objects
+        query: User query text
+        model_context_window: Model's context window size (default: 4096)
+
+    Returns:
+        Dictionary with token usage statistics
+    """
+    system_tokens = estimate_tokens(system_prompt)
+    history_tokens = sum(estimate_tokens(turn.content) for turn in history)
+    query_tokens = estimate_tokens(query)
+    total_tokens = system_tokens + history_tokens + query_tokens
+
+    stats = {
+        "system_tokens": system_tokens,
+        "history_tokens": history_tokens,
+        "history_messages": len(history),
+        "query_tokens": query_tokens,
+        "total_input_tokens": total_tokens,
+        "estimated_budget_remaining": model_context_window - total_tokens,
+        "budget_usage_percent": round((total_tokens / model_context_window) * 100, 1)
+    }
+
+    # Log with color coding based on usage
+    usage_pct = stats["budget_usage_percent"]
+    if usage_pct > 90:
+        logger.warning(
+            f"[Tokens] ⚠️ HIGH USAGE: {total_tokens}/{model_context_window} tokens ({usage_pct}%) | "
+            f"History: {len(history)} msgs ({history_tokens} tokens) | Remaining: {stats['estimated_budget_remaining']}"
+        )
+    elif usage_pct > 70:
+        logger.info(
+            f"[Tokens] Input: {total_tokens}/{model_context_window} tokens ({usage_pct}%) | "
+            f"History: {len(history)} msgs ({history_tokens} tokens) | Remaining: {stats['estimated_budget_remaining']}"
+        )
+    else:
+        logger.debug(
+            f"[Tokens] Input: {total_tokens}/{model_context_window} tokens ({usage_pct}%) | "
+            f"History: {len(history)} msgs ({history_tokens} tokens)"
+        )
+
+    return stats
+
+
 class LC_OllamaClient:
     """Thin wrapper around LangChain's OllamaLLM using ChatPromptTemplate.
 
