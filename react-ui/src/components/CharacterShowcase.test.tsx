@@ -23,11 +23,11 @@ const mockPersonas = [
     key: 'eeva',
     display_name: 'Eeva — Bitcoin Expert',
     coordinator_label: 'Cryptocurrency Analyst',
-    image: 'images/eeva_card.png',
-    avatar: 'images/eeva_avatar.png',
+    image: 'images/personas/eeva/card.png',
+    avatar: 'images/personas/eeva/avatar.png',
     rarity: 'legendary',
     style: 'nerdy, charming, concise',
-    logo: 'images/eeva_logo.png',
+    logo: 'images/personas/eeva/logo.png',
     emoji: '🧠',
     allowed_mcp: ['chat', 'graphrag'],
     lore: ['Eeva grew up dismantling gadgets...'],
@@ -47,11 +47,11 @@ const mockPersonas = [
     key: 'frieren',
     display_name: 'Frieren — Elf Mage',
     coordinator_label: 'Ancient Magic Scholar',
-    image: 'images/frieren_card.png',
-    avatar: 'images/frieren_avatar.png',
+    image: 'images/personas/frieren/card.png',
+    avatar: 'images/personas/frieren/avatar.png',
     rarity: 'epic',
     style: 'wise, calm, analytical',
-    logo: 'images/frieren_logo.png',
+    logo: 'images/personas/frieren/logo.png',
     emoji: '🧙‍♀️',
     allowed_mcp: ['chat'],
     lore: ['Frieren is an elf mage...'],
@@ -99,7 +99,7 @@ describe('CharacterShowcase', () => {
     await waitFor(() => {
       const image = screen.getByAltText('Eeva — Bitcoin Expert');
       expect(image).toBeInTheDocument();
-      expect(image).toHaveAttribute('src', '/images/eeva_card.png');
+      expect(image).toHaveAttribute('src', '/images/personas/eeva/card.png');
     });
   });
 
@@ -178,7 +178,7 @@ describe('CharacterShowcase', () => {
     await waitFor(() => {
       const image = screen.getByAltText('Eeva — Bitcoin Expert');
       expect(image).toBeInTheDocument();
-      expect(image).toHaveAttribute('src', '/images/eeva_card.png');
+      expect(image).toHaveAttribute('src', '/images/personas/eeva/card.png');
     });
   });
 
@@ -228,7 +228,7 @@ describe('CharacterShowcase', () => {
 
     await waitFor(() => {
       const image = screen.getByAltText('Eeva — Bitcoin Expert');
-      expect(image).toHaveAttribute('src', '/images/eeva_card.png');
+      expect(image).toHaveAttribute('src', '/images/personas/eeva/card.png');
     });
   });
 

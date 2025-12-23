@@ -52,6 +52,15 @@ export interface ResponseMetadata {
   latency_breakdown?: Record<string, number> | null;
 }
 
+// Phase 2.2: Emotional state tracking
+export interface EmotionalState {
+  trust_level: number;    // 0.0 (hostile) to 1.0 (deep trust)
+  rapport: number;        // 0.0 (awkward) to 1.0 (strong connection)
+  current_mood: string;   // neutral, happy, sad, curious, defensive, etc.
+  mood_intensity?: number; // 0.0 (subtle) to 1.0 (intense)
+  last_emotional_event?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -62,6 +71,7 @@ export interface Message {
   search_results_count?: number; // Number of search results returned
   citation_valid?: boolean; // Whether citations were properly included
   metadata?: ResponseMetadata; // Response metadata from backend
+  emotional_state?: EmotionalState; // Phase 2.2: Emotional state after this message
 }
 
 export interface SessionWithMessages {
@@ -238,7 +248,17 @@ export const sendMessageToSession = async (sessionId: string, message: string): 
     search_results_count: data.search_results_count || 0,
     citation_valid: data.citation_valid,
     metadata: data.metadata || null,
+    emotional_state: data.emotional_state || null, // Phase 2.2: Emotional state
   };
+};
+
+// Phase 2.2: Fetch emotional state for a session
+export const getSessionEmotionalState = async (sessionId: string): Promise<EmotionalState> => {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/emotional-state`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch emotional state: ${response.statusText}`);
+  }
+  return response.json();
 };
 
 export const exportSession = async (sessionId: string): Promise<ExportData> => {

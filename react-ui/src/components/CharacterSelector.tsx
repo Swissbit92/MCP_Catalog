@@ -56,7 +56,7 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               onError={(e) => {
                 // Fallback to default image
                 const target = e.target as HTMLImageElement;
-                target.src = '/images/default_avatar.png';
+                target.src = '/images/ui/default_avatar.png';
               }}
             />
 

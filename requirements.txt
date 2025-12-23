@@ -8,6 +8,7 @@ langchain-ollama
 ollama
 pyyaml
 pydantic
+pydantic-settings
 tiktoken
 
 # Note: This project requires Node.js and npm for the React UI

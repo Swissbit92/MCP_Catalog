@@ -3,6 +3,7 @@
 # Uses LangChain's OllamaLLM with ChatPromptTemplate for prompt formatting.
 # Handles Ollama connectivity errors.
 # Enhanced with function calling support for autonomous tool usage.
+# Phase 1.3: Added advanced sampling parameters support.
 
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -20,6 +21,13 @@ from .tool_definitions import (
     ToolCall
 )
 from .mcp_client import BraveMCPClient
+
+# Import sampling presets (Phase 1.3)
+from .models.sampling_presets import (
+    SamplingConfig,
+    get_preset_or_default,
+    get_sampling_for_persona,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +102,7 @@ class LC_OllamaClient:
     """Thin wrapper around LangChain's OllamaLLM using ChatPromptTemplate.
 
     Enhanced with function calling support for autonomous tool usage (e.g., web search).
+    Phase 1.3: Added advanced sampling parameters (repeat_penalty, top_k, top_p, min_p).
     """
 
     def __init__(
@@ -101,19 +110,88 @@ class LC_OllamaClient:
         base: str,
         model: str,
         temperature: float = 0.1,
-        mcp_client: Optional[BraveMCPClient] = None
+        mcp_client: Optional[BraveMCPClient] = None,
+        sampling_config: Optional[SamplingConfig] = None,
+        # Individual sampling params (override sampling_config if provided)
+        repeat_penalty: Optional[float] = None,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
     ):
-        """Initialize the LLM client.
+        """Initialize the LLM client with advanced sampling support.
 
         Args:
             base: Ollama base URL
             model: Model name (e.g., 'dolphin-llama3:8b')
-            temperature: Sampling temperature (0.0-1.0)
+            temperature: Sampling temperature (0.0-2.0)
             mcp_client: Optional Brave MCP client for web search
+            sampling_config: Optional SamplingConfig for preset-based configuration
+            repeat_penalty: Optional repetition penalty (1.0-2.0)
+            top_k: Optional Top-K sampling (0-100)
+            top_p: Optional nucleus sampling threshold (0.0-1.0)
         """
-        self.llm = OllamaLLM(base_url=base, model=model, temperature=temperature)
+        # Build Ollama params
+        ollama_params = {
+            "base_url": base,
+            "model": model,
+            "temperature": temperature,
+        }
+
+        # Apply sampling config if provided
+        if sampling_config:
+            config_params = sampling_config.to_ollama_params()
+            # Temperature from sampling_config unless explicitly overridden
+            if temperature == 0.1:  # default value
+                ollama_params["temperature"] = config_params.get("temperature", 0.1)
+            if "repeat_penalty" in config_params:
+                ollama_params["repeat_penalty"] = config_params["repeat_penalty"]
+            if "top_k" in config_params:
+                ollama_params["top_k"] = config_params["top_k"]
+            if "top_p" in config_params:
+                ollama_params["top_p"] = config_params["top_p"]
+
+        # Individual params override sampling_config
+        if repeat_penalty is not None:
+            ollama_params["repeat_penalty"] = repeat_penalty
+        if top_k is not None:
+            ollama_params["top_k"] = top_k
+        if top_p is not None:
+            ollama_params["top_p"] = top_p
+
+        self.llm = OllamaLLM(**ollama_params)
         self.mcp_client = mcp_client
-        logger.info(f"Initialized LC_OllamaClient with model={model}, temperature={temperature}, tools_enabled={mcp_client is not None}")
+        self.sampling_config = sampling_config
+
+        # Log sampling parameters
+        sampling_info = f"temp={ollama_params['temperature']}"
+        if "repeat_penalty" in ollama_params:
+            sampling_info += f", repeat_penalty={ollama_params['repeat_penalty']}"
+        if "top_k" in ollama_params:
+            sampling_info += f", top_k={ollama_params['top_k']}"
+        if "top_p" in ollama_params:
+            sampling_info += f", top_p={ollama_params['top_p']}"
+
+        preset_name = sampling_config.name if sampling_config else "custom"
+        logger.info(
+            f"Initialized LC_OllamaClient with model={model}, "
+            f"sampling=[{sampling_info}], preset={preset_name}, "
+            f"tools_enabled={mcp_client is not None}"
+        )
+
+    def get_sampling_info(self) -> Dict[str, Any]:
+        """Get current sampling configuration as dict for response metadata."""
+        info = {
+            "temperature": self.llm.temperature,
+            "model": self.llm.model,
+        }
+        if hasattr(self.llm, "repeat_penalty") and self.llm.repeat_penalty:
+            info["repeat_penalty"] = self.llm.repeat_penalty
+        if hasattr(self.llm, "top_k") and self.llm.top_k:
+            info["top_k"] = self.llm.top_k
+        if hasattr(self.llm, "top_p") and self.llm.top_p:
+            info["top_p"] = self.llm.top_p
+        if self.sampling_config:
+            info["preset"] = self.sampling_config.name
+        return info
 
     def _invoke(self, prompt: str) -> str:
         try:

@@ -1,6 +1,7 @@
 # src/coordinator/persona_memory.py
 # Persona memory, prompt construction, and CV-style summary caching.
 # Adds inter-process file locking for serialized summary builds.
+# Enhanced with Pydantic validation (Phase 1 Persona Quality Roadmap).
 
 from __future__ import annotations
 
@@ -17,6 +18,13 @@ from .config import (
     get_persona_dir, get_ollama_base, get_persona_model, get_persona_temperature
 )
 from .ollama_utils import assert_model_available
+
+# Pydantic schema for type-safe persona validation
+from .models.persona_schema import (
+    PersonaCard,
+    validate_persona_file,
+    load_persona_card_lenient
+)
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -197,15 +205,30 @@ def _iter_persona_files() -> List[str]:
     return sorted(files, key=lambda s: os.path.basename(s).lower())
 
 def _load_card_file(path: str) -> Optional[Dict]:
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            card = json.load(f)
-        if "key" not in card or not isinstance(card["key"], str) or not card["key"].strip():
-            stem = os.path.splitext(os.path.basename(path))[0]
-            card["key"] = stem.capitalize()
-        return card
-    except Exception:
+    """Load and validate a persona card from JSON file.
+
+    Uses Pydantic validation in lenient mode (warnings, not failures) for
+    backward compatibility during migration to typed schemas.
+
+    Args:
+        path: Path to persona JSON file
+
+    Returns:
+        Validated persona dict, or None if file cannot be loaded
+    """
+    # Use lenient validation - logs warnings but returns dict for compatibility
+    card = load_persona_card_lenient(path)
+
+    if card is None:
         return None
+
+    # Ensure key exists (backward compatibility)
+    if "key" not in card or not isinstance(card["key"], str) or not card["key"].strip():
+        stem = os.path.splitext(os.path.basename(path))[0]
+        card["key"] = stem.capitalize()
+        logger.debug(f"Auto-generated key '{card['key']}' for persona at {path}")
+
+    return card
 
 @lru_cache(maxsize=1)
 def _load_all_cards_cached() -> List[Dict]:
@@ -384,17 +407,60 @@ def _build_behavior_block(card: Dict) -> str:
         lines = lines[:max_lines] + ["- (truncated)"]
     return "\n".join(lines)
 
+
+def _build_psychological_block(card: Dict) -> str:
+    """Build psychological profile block for system prompt.
+
+    Phase 1.4: Adds psychological depth for realistic persona behavior.
+    """
+    psych = card.get("psychological_profile") or {}
+    if not psych:
+        return ""
+
+    lines: List[str] = ["Psychological Depth:"]
+
+    core_wound = psych.get("core_wound")
+    coping = psych.get("coping_mechanism")
+    defense = psych.get("defense_style")
+    growth = psych.get("growth_edge")
+    contradictions = psych.get("contradiction_pairs", [])
+
+    if core_wound:
+        lines.append(f"- Core vulnerability: {core_wound}")
+    if coping:
+        lines.append(f"- Coping style: {coping}")
+    if defense:
+        lines.append(f"- Defense mechanism: {defense}")
+    if growth:
+        lines.append(f"- Growth edge: {growth}")
+
+    if contradictions and isinstance(contradictions, list):
+        # Only include first 3 contradictions to keep prompt concise
+        lines.append("- Contradictions (embody naturally):")
+        for pair in contradictions[:3]:
+            if isinstance(pair, str) and "|" in pair:
+                lines.append(f"  • {pair}")
+
+    if len(lines) <= 1:
+        return ""
+
+    return "\n".join(lines)
+
+
 @lru_cache(maxsize=32)
 def build_system_prompt(selector: Optional[str]) -> str:
     card = resolve_persona_to_card(selector)
     if not card:
         name = "Persona"; style = "helpful, concise"
-        identity = "A helpful, concise assistant."; beh_block = ""
+        identity = "A helpful, concise assistant."
+        beh_block = ""
+        psych_block = ""
     else:
         name = (card.get("display_name") or card.get("key") or "Persona")
         style = (card.get("style") or "helpful & concise")
         identity = _summarize(name, style, card.get("lore", []))
         beh_block = _build_behavior_block(card)
+        psych_block = _build_psychological_block(card)
 
     who = name.split(" — ")[0].strip()
     parts = [
@@ -403,6 +469,9 @@ def build_system_prompt(selector: Optional[str]) -> str:
         identity.strip() if isinstance(identity, str) else "A helpful, concise assistant.",
     ]
     if beh_block: parts.extend(["", beh_block.strip()])
+
+    # Phase 1.4: Add psychological depth for realistic behavior
+    if psych_block: parts.extend(["", psych_block.strip()])
 
     # Add Phase 2: First-person enforcement rules
     parts.extend(["", FIRST_PERSON_RULES.format(who=who)])

@@ -22,10 +22,11 @@
   "coordinator_label": "Name (Tagline)",
 
   // OPTIONAL images (resolver will fall back to defaults if missing)
-  "image": "images/name_card.png",   // shown on card & Bio
-  "avatar": "images/name_avatar.png",// chat avatar; can be an emoji instead
-  "logo": "images/name_logo.png",    // header/bio logo
-  "bg": "images/name_bg.jpg",        // future: chat background
+  // Images organized in: react-ui/public/images/personas/<name>/
+  "image": "images/personas/name/card.png",   // shown on card & Bio
+  "avatar": "images/personas/name/avatar.png",// chat avatar; can be an emoji instead
+  "logo": "images/personas/name/logo.png",    // header/bio logo
+  "bg": "images/personas/name/bg.jpg",        // future: chat background
 
   // OPTIONAL single-char emoji used as avatar fallback
   "emoji": "🙂",
@@ -108,5 +109,43 @@
     "when_to_ask_user": ["missing constraints", "conflicting goals"],
     "when_to_decline": ["unsafe content"],
     "tool_intent": ["use RAG for factual grounding"]
-  }
+  },
+
+  // ============================================================================
+  // PHASE 1 ADDITIONS (Persona Quality Enhancement)
+  // ============================================================================
+
+  // OPTIONAL — LLM sampling configuration
+  // Presets: "creative", "balanced", "precise", "chaotic", "deterministic"
+  "model_preferences": {
+    "temperature": 0.7,
+    "preset": "balanced"
+  },
+
+  // OPTIONAL — psychological depth for realistic behavior
+  "psychological_profile": {
+    "core_wound": "A fundamental emotional vulnerability that shapes reactions",
+    "coping_mechanism": "How the persona handles stress or discomfort",
+    "defense_style": "Psychological defense mechanisms (intellectualization, humor, etc.)",
+    "growth_edge": "Area where the persona is learning or growing",
+    "contradiction_pairs": [
+      "Strength A | Vulnerability that creates tension",
+      "Trait B | Contradicting trait that adds depth"
+    ]
+  },
+
+  // OPTIONAL — example dialogues to teach LLM correct persona voice (max 20)
+  // More effective than abstract descriptions for voice consistency
+  "example_dialogues": [
+    {
+      "user": "Example user message that triggers specific response",
+      "response": "Example persona response showing voice, mannerisms, and character",
+      "context": "Brief note on what this example demonstrates"
+    },
+    {
+      "user": "Another example prompt",
+      "response": "Another example response showing different emotional range",
+      "context": "What trait or behavior this showcases"
+    }
+  ]
 }

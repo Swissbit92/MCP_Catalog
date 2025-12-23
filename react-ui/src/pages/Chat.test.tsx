@@ -510,7 +510,7 @@ describe('Chat', () => {
   it('applies persona background theming', () => {
     const personaWithBg = {
       ...mockPersonas[0],
-      bg: 'images/eeva_bg.png',
+      bg: 'images/personas/eeva/bg.png',
       rarity: 'legendary',
     };
 
@@ -564,7 +564,7 @@ describe('Chat', () => {
   it('renders persona background image when persona has bg field', () => {
     const personaWithBg = {
       ...mockPersonas[0],
-      bg: 'eeva_bg.png',
+      bg: 'personas/eeva/bg.png',
       rarity: 'legendary',
     };
 
@@ -590,7 +590,7 @@ describe('Chat', () => {
 
     // Check that it has the correct background image URL
     expect(backgroundImageDiv).toHaveStyle({
-      backgroundImage: 'url(/images/eeva_bg.png)'
+      backgroundImage: 'url(/images/personas/eeva/bg.png)'
     });
 
     // Check that it has the correct opacity
