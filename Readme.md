@@ -98,6 +98,16 @@ See Repository Guidelines in `AGENTS.md` for:
 
 See `CHANGELOG.md` for recent updates and project evolution.
 
+### 📋 Development Roadmap
+
+**Future Enhancements**: See [`PERSONA_QUALITY_ROADMAP.md`](PERSONA_QUALITY_ROADMAP.md) for planned improvements:
+- Advanced Pydantic schema validation for type safety
+- Enhanced persona psychological depth and consistency
+- Improved context management and long-term memory
+- Advanced sampling parameters for response quality
+
+**Target**: 25-30% improvement in persona realism and user engagement (80-100 hour implementation plan).
+
 Contributions are welcome. Please read `AGENTS.md` before opening a PR.
 
 ## 📖 Overview

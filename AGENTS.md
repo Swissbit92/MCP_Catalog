@@ -52,3 +52,15 @@ Backend: Python 3.8+, FastAPI, Pydantic, SQLite, Ollama. Frontend: React 19, Typ
 - **UI System**: Gacha-style character selection with classic cards, audio integration, and collection management
 - **Testing**: TypeScript strict mode with comprehensive Jest + React Testing Library coverage
 - **Documentation**: See `AI_documentation/` for historical specs, completion summaries, and feature implementation details
+
+## Implementation Roadmap
+
+**Planned Enhancements**: See [`PERSONA_QUALITY_ROADMAP.md`](PERSONA_QUALITY_ROADMAP.md) for comprehensive enhancement plan including:
+- **Phase 1**: Pydantic schema validation, advanced sampling parameters, psychological profiles (20-25h)
+- **Phase 2**: Deep persona enhancement across all characters, emotional state tracking (25-30h)
+- **Phase 3**: Improved context management, keyword-triggered memories, auto-summarization (20-25h)
+- **Phase 4**: Per-persona model selection, TTS integration, advanced features (15-20h)
+
+**Target Improvements**: 25-30% quality boost in persona consistency, response naturalness, and long-term memory coherence.
+
+**Status**: Planning phase - not yet implemented. Review roadmap for detailed task breakdown, KPIs, testing protocols, and risk mitigation strategies.

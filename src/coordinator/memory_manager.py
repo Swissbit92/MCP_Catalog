@@ -1,0 +1,285 @@
+"""Memory management with importance scoring for intelligent context selection.
+
+This module implements Phase 2 of the Persona Memory Enhancement project:
+- Message importance scoring based on content type, recency, and relevance
+- Intelligent message selection within token budgets
+- Dynamic context window sizing
+"""
+
+from __future__ import annotations
+from typing import List, Dict, Optional, Any
+from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class MessageImportanceScorer:
+    """Score message importance for context selection.
+
+    Uses multiple factors to determine which messages are most important
+    to include in the LLM context:
+    - Personal information (names, preferences, holdings)
+    - User questions (intent signals)
+    - Message length (very short messages less important)
+    - Recency (newer messages weighted higher)
+    - Time-based decay (messages age over days)
+    """
+
+    PERSONAL_INFO_KEYWORDS = [
+        "my name", "i am", "i'm", "i have", "i own", "i like",
+        "i prefer", "i want", "i need", "call me", "i hold",
+        "my portfolio", "i bought", "i sold", "my goal"
+    ]
+
+    QUESTION_KEYWORDS = ["?", "how", "what", "why", "when", "where", "who", "which"]
+
+    def score_message(self, message: dict, position: int, total: int) -> float:
+        """
+        Calculate importance score for a message.
+
+        Args:
+            message: Message dict with role, content, timestamp
+            position: Message position in conversation (0 = oldest)
+            total: Total messages in conversation
+
+        Returns:
+            Importance score (0.0-10.0+, higher = more important)
+        """
+        score = 1.0
+        content_lower = message["content"].lower()
+
+        # 1. Role multiplier (user messages more important for context)
+        if message["role"] == "user":
+            score *= 1.5
+
+        # 2. Personal information boost (HIGHEST PRIORITY)
+        personal_info_found = False
+        for keyword in self.PERSONAL_INFO_KEYWORDS:
+            if keyword in content_lower:
+                score *= 3.0
+                personal_info_found = True
+                logger.debug(f"[Importance] Personal info detected: {message['content'][:50]}...")
+                break
+
+        # 3. Questions boost (user intent signals)
+        if message["role"] == "user":
+            # Check for question marks
+            if "?" in message["content"]:
+                score *= 1.3
+            # Check for question words
+            elif any(kw in content_lower for kw in self.QUESTION_KEYWORDS if kw != "?"):
+                score *= 1.2
+
+        # 4. Length penalty (very short messages less important)
+        msg_length = len(message["content"])
+        if msg_length < 10:
+            score *= 0.5
+        elif msg_length > 200:
+            # Long messages often contain important details
+            score *= 1.2
+
+        # 5. Recency boost (exponential decay)
+        # More recent messages score higher
+        # Position 0 = oldest (score 1.0), Position N = newest (score 3.0)
+        if total > 0:
+            recency_factor = 1.0 + (position / total) * 2.0  # 1.0 to 3.0 range
+            score *= recency_factor
+
+        # 6. Time-based decay (if timestamp available)
+        if "timestamp" in message and message["timestamp"]:
+            try:
+                # Handle both ISO format and Unix timestamps
+                if isinstance(message["timestamp"], str):
+                    msg_time = datetime.fromisoformat(message["timestamp"].replace('Z', '+00:00'))
+                    msg_time = msg_time.replace(tzinfo=None)  # Remove timezone for comparison
+                else:
+                    msg_time = datetime.fromtimestamp(message["timestamp"])
+
+                age_hours = (datetime.utcnow() - msg_time).total_seconds() / 3600
+                # Decay over days: 1.0 at 0 hours, 0.5 at 24 hours, 0.33 at 48 hours
+                time_decay = 1.0 / (1.0 + age_hours / 24)
+                score *= (0.5 + 0.5 * time_decay)  # 0.5-1.0 multiplier
+            except Exception as e:
+                logger.debug(f"[Importance] Could not parse timestamp: {e}")
+
+        return round(score, 2)
+
+
+class MemoryManager:
+    """Manage conversation context with intelligent message selection.
+
+    This manager uses importance scoring to select the most relevant messages
+    within the available token budget, ensuring:
+    - Personal information is always preserved
+    - Recent context is maintained
+    - Important questions/topics are retained
+    - Token budget is never exceeded
+    """
+
+    def __init__(self, max_tokens: int = 4096):
+        """Initialize memory manager.
+
+        Args:
+            max_tokens: Maximum context window for the model (default: 4096)
+        """
+        self.max_tokens = max_tokens
+        self.scorer = MessageImportanceScorer()
+
+    def select_messages(
+        self,
+        messages: List[dict],
+        token_budget: int,
+        system_prompt_tokens: int
+    ) -> List[dict]:
+        """
+        Select most important messages within token budget.
+
+        Strategy:
+        1. Always include first 3 messages (session context/greetings)
+        2. Always include last 10 messages (recent context)
+        3. Fill remaining budget with highest-scoring messages from the middle
+
+        Args:
+            messages: All messages from session (dicts with role, content, timestamp)
+            token_budget: Total token budget for conversation
+            system_prompt_tokens: Tokens used by system prompt
+
+        Returns:
+            Selected messages list (chronologically ordered)
+        """
+        if not messages:
+            return []
+
+        # Calculate available tokens for history
+        available_tokens = token_budget - system_prompt_tokens
+        # Reserve tokens for response generation (~500 tokens)
+        available_tokens -= 500
+
+        logger.debug(f"[MemoryManager] Available tokens for history: {available_tokens}")
+
+        # Score all messages
+        scored_messages = []
+        for i, msg in enumerate(messages):
+            score = self.scorer.score_message(msg, i, len(messages))
+            tokens = self._estimate_tokens(msg["content"])
+            scored_messages.append({
+                "message": msg,
+                "score": score,
+                "tokens": tokens,
+                "index": i
+            })
+
+        # Define must-include indices
+        must_include_indices = set()
+
+        # Always include: first 3 messages (greetings, initial context)
+        must_include_indices.update(range(min(3, len(messages))))
+
+        # Always include: last 10 messages (recent context)
+        must_include_indices.update(range(max(0, len(messages) - 10), len(messages)))
+
+        # Calculate tokens for must-include messages
+        must_include_tokens = sum(
+            sm["tokens"] for sm in scored_messages
+            if sm["index"] in must_include_indices
+        )
+
+        logger.debug(
+            f"[MemoryManager] Must-include: {len(must_include_indices)} messages "
+            f"({must_include_tokens} tokens)"
+        )
+
+        # If must-include messages already exceed budget, prioritize recent messages only
+        if must_include_tokens > available_tokens:
+            logger.warning(
+                f"[MemoryManager] Must-include messages exceed budget! "
+                f"({must_include_tokens} > {available_tokens})"
+            )
+            # Fallback: include only last N messages that fit
+            selected_indices = set()
+            tokens_used = 0
+            for i in range(len(messages) - 1, -1, -1):
+                msg_tokens = scored_messages[i]["tokens"]
+                if tokens_used + msg_tokens <= available_tokens:
+                    selected_indices.add(i)
+                    tokens_used += msg_tokens
+                else:
+                    break
+
+            selected = [
+                scored_messages[i]["message"]
+                for i in sorted(selected_indices)
+            ]
+
+            logger.info(
+                f"[Memory] Selected {len(selected)}/{len(messages)} messages "
+                f"({tokens_used}/{available_tokens} tokens, {tokens_used/available_tokens*100:.1f}% usage) "
+                f"[BUDGET EXCEEDED FALLBACK]"
+            )
+
+            return selected
+
+        # Select additional messages by importance score
+        remaining_budget = available_tokens - must_include_tokens
+        optional_messages = [
+            sm for sm in scored_messages
+            if sm["index"] not in must_include_indices
+        ]
+        # Sort by score descending (highest importance first)
+        optional_messages.sort(key=lambda x: x["score"], reverse=True)
+
+        selected_indices = must_include_indices.copy()
+        tokens_used = must_include_tokens
+
+        # Add high-scoring messages until budget exhausted
+        for sm in optional_messages:
+            if tokens_used + sm["tokens"] <= available_tokens:
+                selected_indices.add(sm["index"])
+                tokens_used += sm["tokens"]
+                logger.debug(
+                    f"[MemoryManager] Added message {sm['index']} "
+                    f"(score: {sm['score']}, tokens: {sm['tokens']})"
+                )
+            else:
+                logger.debug(
+                    f"[MemoryManager] Skipped message {sm['index']} "
+                    f"(would exceed budget: {tokens_used + sm['tokens']} > {available_tokens})"
+                )
+
+        # Return selected messages in chronological order
+        selected = [
+            scored_messages[i]["message"]
+            for i in sorted(selected_indices)
+        ]
+
+        # Log selection summary
+        logger.info(
+            f"[Memory] Selected {len(selected)}/{len(messages)} messages "
+            f"({tokens_used}/{available_tokens} tokens, {tokens_used/available_tokens*100:.1f}% usage)"
+        )
+
+        # Log importance distribution
+        selected_scores = [scored_messages[i]["score"] for i in selected_indices]
+        if selected_scores:
+            logger.debug(
+                f"[MemoryManager] Importance range: "
+                f"{min(selected_scores):.2f} - {max(selected_scores):.2f} "
+                f"(avg: {sum(selected_scores)/len(selected_scores):.2f})"
+            )
+
+        return selected
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Estimate token count for text.
+
+        Uses simple heuristic: 1 token ≈ 4 characters.
+        This matches the estimate_tokens() function in llm_client.py.
+
+        Args:
+            text: Text to estimate tokens for
+
+        Returns:
+            Estimated token count
+        """
+        return max(1, len(text) // 4)
