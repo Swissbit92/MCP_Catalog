@@ -1,0 +1,296 @@
+"""User profile management for cross-session memory.
+
+This module enables personas to remember users across multiple chat sessions,
+creating continuity and deeper relationships over time.
+"""
+
+from __future__ import annotations
+
+import json
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class UserProfile:
+    """Persistent user profile across chat sessions.
+
+    Stores and aggregates user information from multiple conversations,
+    enabling personas to:
+    - Remember the user's name
+    - Recall past discussions and topics
+    - Track preferences and background
+    - Maintain relationship context
+
+    The profile is stored as JSON in the database for flexibility.
+    """
+
+    def __init__(self, user_id: str, profile_data: Optional[Dict[str, Any]] = None):
+        """Initialize user profile.
+
+        Args:
+            user_id: Unique identifier for the user
+            profile_data: Existing profile data (if loading from database)
+        """
+        self.user_id = user_id
+
+        if profile_data:
+            self.data = profile_data
+        else:
+            # Initialize empty profile
+            self.data = {
+                "name": None,
+                "background": [],
+                "preferences": {},
+                "holdings": {},
+                "topics_discussed": {},
+                "facts": [],
+                "personas_met": [],
+                "total_sessions": 0,
+                "total_messages": 0,
+                "first_interaction": None,
+                "last_updated": None
+            }
+
+    @classmethod
+    def from_json(cls, user_id: str, json_str: str) -> UserProfile:
+        """Create profile from JSON string.
+
+        Args:
+            user_id: User identifier
+            json_str: JSON string from database
+
+        Returns:
+            UserProfile instance
+        """
+        try:
+            profile_data = json.loads(json_str)
+            return cls(user_id, profile_data)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse user profile JSON for {user_id}: {e}")
+            return cls(user_id)
+
+    def to_json(self) -> str:
+        """Convert profile to JSON string for storage.
+
+        Returns:
+            JSON string representation
+        """
+        return json.dumps(self.data, indent=2)
+
+    def update_from_session(self, session_summary: Dict[str, Any]) -> None:
+        """Update profile with facts from a chat session.
+
+        Aggregates information learned during a conversation into the
+        persistent user profile.
+
+        Args:
+            session_summary: Dictionary with extracted session facts:
+                - user_name: str
+                - background: List[str]
+                - topics: List[str]
+                - facts: List[str]
+                - preferences: Dict[str, str]
+                - persona_key: str
+                - message_count: int
+        """
+        # Update name (first valid name wins)
+        if session_summary.get("user_name") and not self.data["name"]:
+            self.data["name"] = session_summary["user_name"]
+            logger.info(f"[UserProfile] Learned user name: {self.data['name']}")
+
+        # Add background information (deduplicated)
+        if session_summary.get("background"):
+            existing_background = set(self.data["background"])
+            for item in session_summary["background"]:
+                if item not in existing_background:
+                    self.data["background"].append(item)
+                    logger.debug(f"[UserProfile] Added background: {item[:50]}...")
+
+        # Update topic counts
+        for topic in session_summary.get("topics", []):
+            count = self.data["topics_discussed"].get(topic, 0)
+            self.data["topics_discussed"][topic] = count + 1
+
+        # Add new facts (deduplicated)
+        existing_facts = set(self.data["facts"])
+        for fact in session_summary.get("facts", []):
+            if fact not in existing_facts:
+                self.data["facts"].append(fact)
+                logger.debug(f"[UserProfile] Added fact: {fact[:50]}...")
+
+        # Update preferences
+        if session_summary.get("preferences"):
+            self.data["preferences"].update(session_summary["preferences"])
+
+        # Update holdings (cryptocurrency balances, etc.)
+        if session_summary.get("holdings"):
+            self.data["holdings"].update(session_summary["holdings"])
+
+        # Track personas met
+        persona_key = session_summary.get("persona_key")
+        if persona_key and persona_key not in self.data["personas_met"]:
+            self.data["personas_met"].append(persona_key)
+
+        # Update session statistics
+        self.data["total_sessions"] += 1
+        self.data["total_messages"] += session_summary.get("message_count", 0)
+
+        # Update timestamps
+        if not self.data["first_interaction"]:
+            self.data["first_interaction"] = datetime.utcnow().isoformat()
+
+        self.data["last_updated"] = datetime.utcnow().isoformat()
+
+        logger.info(
+            f"[UserProfile] Updated profile for {self.user_id}: "
+            f"{len(self.data['facts'])} facts, "
+            f"{len(self.data['topics_discussed'])} topics, "
+            f"{self.data['total_sessions']} sessions"
+        )
+
+    def get_context_summary(self, max_facts: int = 10, max_topics: int = 5) -> str:
+        """Generate context summary for system prompt injection.
+
+        Creates a concise summary of what the persona knows about this user
+        from previous interactions.
+
+        Args:
+            max_facts: Maximum facts to include
+            max_topics: Maximum topics to list
+
+        Returns:
+            Formatted context string for system prompt
+        """
+        if not any([self.data["name"], self.data["background"], self.data["facts"]]):
+            return ""
+
+        summary_parts = ["**Your history with this user:**\n"]
+
+        # User's name
+        if self.data["name"]:
+            summary_parts.append(f"- User's name: {self.data['name']}")
+
+        # Relationship context
+        if self.data["total_sessions"] > 0:
+            summary_parts.append(
+                f"- You've chatted {self.data['total_sessions']} times "
+                f"({self.data['total_messages']} messages total)"
+            )
+
+        # Top topics discussed
+        if self.data["topics_discussed"]:
+            top_topics = sorted(
+                self.data["topics_discussed"].items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:max_topics]
+            topics_str = ", ".join([f"{topic} ({count}x)" for topic, count in top_topics])
+            summary_parts.append(f"- Topics discussed: {topics_str}")
+
+        # Background information
+        if self.data["background"]:
+            summary_parts.append("\n**What you know about them:**")
+            for bg_item in self.data["background"][:5]:  # Limit to 5 items
+                summary_parts.append(f"- {bg_item}")
+
+        # Recent facts
+        if self.data["facts"]:
+            summary_parts.append("\n**Key facts to remember:**")
+            recent_facts = self.data["facts"][-max_facts:]  # Most recent facts
+            for fact in recent_facts:
+                summary_parts.append(f"- {fact}")
+
+        # Holdings (cryptocurrency, etc.)
+        if self.data["holdings"]:
+            summary_parts.append("\n**Their holdings:**")
+            for asset, amount in self.data["holdings"].items():
+                summary_parts.append(f"- {asset}: {amount}")
+
+        # Preferences
+        if self.data["preferences"]:
+            summary_parts.append("\n**Preferences:**")
+            for pref_key, pref_value in list(self.data["preferences"].items())[:3]:
+                summary_parts.append(f"- {pref_key}: {pref_value}")
+
+        return "\n".join(summary_parts)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get profile statistics.
+
+        Returns:
+            Dictionary with profile stats for debugging/monitoring
+        """
+        return {
+            "user_id": self.user_id,
+            "name": self.data["name"],
+            "total_sessions": self.data["total_sessions"],
+            "total_messages": self.data["total_messages"],
+            "facts_count": len(self.data["facts"]),
+            "topics_count": len(self.data["topics_discussed"]),
+            "personas_met_count": len(self.data["personas_met"]),
+            "first_interaction": self.data["first_interaction"],
+            "last_updated": self.data["last_updated"]
+        }
+
+    def merge_profile(self, other_profile: UserProfile) -> None:
+        """Merge another profile into this one.
+
+        Useful for consolidating multiple user identities.
+
+        Args:
+            other_profile: Profile to merge from
+        """
+        # Keep the first known name
+        if not self.data["name"] and other_profile.data["name"]:
+            self.data["name"] = other_profile.data["name"]
+
+        # Merge background (deduplicated)
+        existing_bg = set(self.data["background"])
+        for item in other_profile.data["background"]:
+            if item not in existing_bg:
+                self.data["background"].append(item)
+
+        # Merge topics (sum counts)
+        for topic, count in other_profile.data["topics_discussed"].items():
+            self.data["topics_discussed"][topic] = (
+                self.data["topics_discussed"].get(topic, 0) + count
+            )
+
+        # Merge facts (deduplicated)
+        existing_facts = set(self.data["facts"])
+        for fact in other_profile.data["facts"]:
+            if fact not in existing_facts:
+                self.data["facts"].append(fact)
+
+        # Merge preferences (other profile wins on conflicts)
+        self.data["preferences"].update(other_profile.data["preferences"])
+
+        # Merge holdings
+        self.data["holdings"].update(other_profile.data["holdings"])
+
+        # Merge personas met
+        for persona in other_profile.data["personas_met"]:
+            if persona not in self.data["personas_met"]:
+                self.data["personas_met"].append(persona)
+
+        # Update statistics
+        self.data["total_sessions"] += other_profile.data["total_sessions"]
+        self.data["total_messages"] += other_profile.data["total_messages"]
+
+        # Update timestamps
+        if other_profile.data["first_interaction"]:
+            if not self.data["first_interaction"]:
+                self.data["first_interaction"] = other_profile.data["first_interaction"]
+            else:
+                # Keep earliest
+                self.data["first_interaction"] = min(
+                    self.data["first_interaction"],
+                    other_profile.data["first_interaction"]
+                )
+
+        self.data["last_updated"] = datetime.utcnow().isoformat()
+
+        logger.info(f"[UserProfile] Merged profile {other_profile.user_id} into {self.user_id}")

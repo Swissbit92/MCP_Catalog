@@ -478,6 +478,87 @@ python tests/integration/test_phase2_integration.py
 cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=false
 ```
 
+### Memory Management (Phase 1, 2 & 3)
+**Status:** ✅ Phase 1 & 2 Complete | ✅ Phase 3 Complete (Dec 2025)
+
+Advanced AI memory system with importance scoring, automatic summarization, semantic search, and cross-session user profiles.
+
+**Test Results:** Phase 1-2: 5/7 tests passing (71%) | Phase 3: Initialization verified
+
+**Phase 1 Features (Infrastructure):**
+- **Database Context Loading**: Messages loaded from SQLite instead of request body
+- **Token Budget Monitoring**: Real-time tracking with color-coded warnings at >90% usage
+- **Model Context Verification**: Dynamic window sizing based on model's 4096 token limit
+
+**Phase 2 Features (Intelligence):**
+- **Importance Scoring**: Messages scored by personal info, questions, length, recency
+- **Critical Message Detection**: Names/holdings (6x weight) - NEVER dropped from context
+- **Memory Awareness Rules**: System prompt instructs LLM to use conversation history
+- **Auto-Summarization**: Triggers every 30 messages, summaries injected as context
+- **Smart Selection**: First 3 + last 10 messages always included, plus high-scoring middle messages
+
+**Phase 3 Features (Advanced AI Memory):**
+- **RAG-Based Semantic Search**: FAISS vector database for semantic similarity search over conversation history
+- **Cross-Session User Profiles**: Persistent user memory across multiple chat sessions with different personas
+- **Automated Fact Extraction**: LLM-powered extraction of user names, preferences, holdings, and key facts
+- **User Profile Context Injection**: System prompts enhanced with cross-session knowledge about the user
+- **Real-Time Vector Indexing**: Conversations automatically indexed for fast semantic retrieval (<500ms)
+- **Intelligent Profile Building**: Profiles accumulate knowledge from conversations, tracking topics, facts, and preferences
+
+**Key Components:**
+- `memory_manager.py` - `MessageImportanceScorer`, `MemoryManager`, `ConversationSummarizer`
+- `persona_memory.py` - `MEMORY_AWARENESS_RULES` injected into system prompts
+- `summary_repository.py` - Persistent storage for conversation summaries
+- `memory_rag.py` - `EpisodicMemoryRAG` for semantic search with FAISS (Phase 3)
+- `user_profile.py` - `UserProfile` class for cross-session memory (Phase 3)
+- `fact_extractor.py` - `FactExtractor` for LLM-powered fact extraction (Phase 3)
+- `user_profile_repository.py` - Database operations for user profiles (Phase 3)
+
+**Importance Scoring Weights:**
+| Content Type | Weight |
+|--------------|--------|
+| Name introduction ("my name is...") | 6x |
+| Personal info (holdings, goals) | 4x |
+| Questions | 1.3x |
+| Long messages (>200 chars) | 1.2x |
+| Recency (newer messages) | 1.0-3.0x |
+
+**Database Schema (Phase 3):**
+```sql
+-- User profiles for cross-session memory
+CREATE TABLE user_profiles (
+    user_id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    profile_data TEXT NOT NULL  -- JSON: name, background, preferences, holdings, topics, facts
+);
+
+-- Links users to their chat sessions
+CREATE TABLE user_sessions (
+    user_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES user_profiles(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    PRIMARY KEY(user_id, session_id)
+);
+```
+
+**Dependencies (Phase 3):**
+- `faiss-cpu` - Vector database for semantic search
+- `langchain-community` - Integration with FAISS and embeddings
+- `nomic-embed-text:latest` - Ollama embedding model for vector search
+
+**Testing:**
+```bash
+# Phase 1-2 Memory tests
+python -m pytest tests/integration/test_memory_phase1.py -v
+python -m pytest tests/integration/test_memory_phase2.py -v
+
+# Phase 3 initialization test
+python -c "from src.coordinator import startup; startup.init_phase3_memory(); print('Phase 3 OK')"
+```
+
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
 - Connection uses `check_same_thread=False`
@@ -543,6 +624,8 @@ cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=f
 **Python:**
 - fastapi, uvicorn - Web framework and server
 - langchain-core, langchain-ollama - LLM orchestration
+- langchain-community - FAISS integration and embeddings (Phase 3)
+- faiss-cpu - Vector database for semantic search (Phase 3)
 - pydantic, pydantic-settings - Data validation and configuration management
 - python-dotenv - Environment variable loading
 

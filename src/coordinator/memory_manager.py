@@ -30,13 +30,25 @@ class MessageImportanceScorer:
     - Time-based decay (messages age over days)
     """
 
+    # Personal info keywords get HIGHEST priority - NEVER drop these
     PERSONAL_INFO_KEYWORDS = [
         "my name", "i am", "i'm", "i have", "i own", "i like",
         "i prefer", "i want", "i need", "call me", "i hold",
-        "my portfolio", "i bought", "i sold", "my goal"
+        "my portfolio", "i bought", "i sold", "my goal",
+        "my background", "my experience", "i work", "my job",
+        "i live", "i'm from", "my wife", "my husband", "my family",
+        "my btc", "my bitcoin", "my eth", "my crypto"
+    ]
+
+    # Name introduction patterns - get CRITICAL priority
+    NAME_INTRO_PATTERNS = [
+        "my name is", "i'm called", "call me", "name's", "i am "
     ]
 
     QUESTION_KEYWORDS = ["?", "how", "what", "why", "when", "where", "who", "which"]
+
+    # Threshold for "critical" messages that should always be included
+    CRITICAL_SCORE_THRESHOLD = 4.0
 
     def score_message(self, message: dict, position: int, total: int) -> float:
         """
@@ -57,16 +69,25 @@ class MessageImportanceScorer:
         if message["role"] == "user":
             score *= 1.5
 
-        # 2. Personal information boost (HIGHEST PRIORITY)
-        personal_info_found = False
-        for keyword in self.PERSONAL_INFO_KEYWORDS:
-            if keyword in content_lower:
-                score *= 3.0
-                personal_info_found = True
-                logger.debug(f"[Importance] Personal info detected: {message['content'][:50]}...")
+        # 2. CRITICAL: Name introduction detection (HIGHEST PRIORITY - 6x boost)
+        # This ensures user's name is NEVER forgotten
+        name_intro_found = False
+        for pattern in self.NAME_INTRO_PATTERNS:
+            if pattern in content_lower:
+                score *= 6.0  # Extremely high weight for name introductions
+                name_intro_found = True
+                logger.info(f"[Importance] ⭐ NAME INTRO detected: {message['content'][:60]}...")
                 break
 
-        # 3. Questions boost (user intent signals)
+        # 3. Personal information boost (4x if not already boosted by name)
+        if not name_intro_found:
+            for keyword in self.PERSONAL_INFO_KEYWORDS:
+                if keyword in content_lower:
+                    score *= 4.0  # Increased from 3.0
+                    logger.debug(f"[Importance] Personal info detected: {message['content'][:50]}...")
+                    break
+
+        # 4. Questions boost (user intent signals)
         if message["role"] == "user":
             # Check for question marks
             if "?" in message["content"]:
@@ -75,7 +96,7 @@ class MessageImportanceScorer:
             elif any(kw in content_lower for kw in self.QUESTION_KEYWORDS if kw != "?"):
                 score *= 1.2
 
-        # 4. Length penalty (very short messages less important)
+        # 5. Length penalty (very short messages less important)
         msg_length = len(message["content"])
         if msg_length < 10:
             score *= 0.5
@@ -83,14 +104,14 @@ class MessageImportanceScorer:
             # Long messages often contain important details
             score *= 1.2
 
-        # 5. Recency boost (exponential decay)
+        # 6. Recency boost (exponential decay)
         # More recent messages score higher
         # Position 0 = oldest (score 1.0), Position N = newest (score 3.0)
         if total > 0:
             recency_factor = 1.0 + (position / total) * 2.0  # 1.0 to 3.0 range
             score *= recency_factor
 
-        # 6. Time-based decay (if timestamp available)
+        # 7. Time-based decay (if timestamp available)
         if "timestamp" in message and message["timestamp"]:
             try:
                 # Handle both ISO format and Unix timestamps
@@ -108,6 +129,28 @@ class MessageImportanceScorer:
                 logger.debug(f"[Importance] Could not parse timestamp: {e}")
 
         return round(score, 2)
+
+    def is_critical_message(self, message: dict) -> bool:
+        """Check if a message is critical and should ALWAYS be included.
+
+        Critical messages include:
+        - User name introductions
+        - Key personal information (holdings, goals)
+        """
+        content_lower = message["content"].lower()
+
+        # Name introductions are always critical
+        for pattern in self.NAME_INTRO_PATTERNS:
+            if pattern in content_lower:
+                return True
+
+        # Specific holdings/amounts are critical
+        critical_patterns = ["btc", "bitcoin", "eth", "bought", "sold", "hold"]
+        has_number = any(c.isdigit() for c in message["content"])
+        if has_number and any(p in content_lower for p in critical_patterns):
+            return True
+
+        return False
 
 
 class MemoryManager:
@@ -177,6 +220,17 @@ class MemoryManager:
         # Define must-include indices
         must_include_indices = set()
 
+        # CRITICAL: Always include messages with critical personal information
+        # (names, holdings, etc.) - these should NEVER be dropped
+        critical_count = 0
+        for i, msg in enumerate(messages):
+            if self.scorer.is_critical_message(msg):
+                must_include_indices.add(i)
+                critical_count += 1
+
+        if critical_count > 0:
+            logger.info(f"[MemoryManager] Found {critical_count} CRITICAL messages (names, holdings)")
+
         # Always include: first 3 messages (greetings, initial context)
         must_include_indices.update(range(min(3, len(messages))))
 
@@ -194,16 +248,29 @@ class MemoryManager:
             f"({must_include_tokens} tokens)"
         )
 
-        # If must-include messages already exceed budget, prioritize recent messages only
+        # If must-include messages already exceed budget, prioritize critical + recent
         if must_include_tokens > available_tokens:
             logger.warning(
                 f"[MemoryManager] Must-include messages exceed budget! "
                 f"({must_include_tokens} > {available_tokens})"
             )
-            # Fallback: include only last N messages that fit
+            # Fallback: prioritize critical messages first, then recent
             selected_indices = set()
             tokens_used = 0
+
+            # FIRST: Include all critical messages (names, holdings)
+            for i, msg in enumerate(messages):
+                if self.scorer.is_critical_message(msg):
+                    msg_tokens = scored_messages[i]["tokens"]
+                    if tokens_used + msg_tokens <= available_tokens:
+                        selected_indices.add(i)
+                        tokens_used += msg_tokens
+                        logger.debug(f"[MemoryManager] Fallback: added critical msg {i}")
+
+            # THEN: Add recent messages that fit
             for i in range(len(messages) - 1, -1, -1):
+                if i in selected_indices:
+                    continue  # Already included
                 msg_tokens = scored_messages[i]["tokens"]
                 if tokens_used + msg_tokens <= available_tokens:
                     selected_indices.add(i)
@@ -219,7 +286,7 @@ class MemoryManager:
             logger.info(
                 f"[Memory] Selected {len(selected)}/{len(messages)} messages "
                 f"({tokens_used}/{available_tokens} tokens, {tokens_used/available_tokens*100:.1f}% usage) "
-                f"[BUDGET EXCEEDED FALLBACK]"
+                f"[BUDGET EXCEEDED FALLBACK - Critical messages prioritized]"
             )
 
             return selected

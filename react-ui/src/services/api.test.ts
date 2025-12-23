@@ -19,7 +19,6 @@ describe('API Service', () => {
       { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', image: 'images/personas/frieren/card.png' },
       { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', image: 'images/personas/gojo/card.png' },
       { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', image: 'images/personas/hitler/card.png' },
-      { key: 'Itachi', display_name: 'Itachi', style: 'ninja', rarity: 'rare', image: 'images/personas/itachi/card.png' },
     ];
 
     (fetch as jest.Mock).mockImplementationOnce(() =>
@@ -30,14 +29,13 @@ describe('API Service', () => {
     );
 
     const personas = await fetchPersonas();
-    expect(personas.length).toBe(5);
+    expect(personas.length).toBe(4);
     expect(personas[0].key).toBe('Eeva');
     expect(personas[0].display_name).toBe('Eeva — Bitcoin Expect');
     expect(personas[0].rarity).toBe('legendary');
     expect(personas[1].key).toBe('Frieren');
     expect(personas[2].key).toBe('Gojo');
     expect(personas[3].key).toBe('Hitler');
-    expect(personas[4].key).toBe('Itachi');
     expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/personas');
   });
 
@@ -74,7 +72,7 @@ describe('API Service', () => {
   });
 
   it('sendMessage should return AI response', async () => {
-    const mockResponse = { answer: 'Hello from AI' };
+    const mockResponse = { answer: 'Hello from AI', used_search: false, search_results_count: 0 };
     (fetch as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
@@ -87,7 +85,9 @@ describe('API Service', () => {
     const history: ChatTurn[] = [];
     const response = await sendMessage(persona, message, history);
 
-    expect(response).toBe(mockResponse.answer);
+    expect(response.answer).toBe(mockResponse.answer);
+    expect(response.used_search).toBe(false);
+    expect(response.search_results_count).toBe(0);
     expect(fetch).toHaveBeenCalledWith(
       'http://127.0.0.1:8000/persona/chat',
       expect.objectContaining({
