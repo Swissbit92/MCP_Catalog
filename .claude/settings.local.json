@@ -42,7 +42,10 @@
       "Bash(wc:*)",
       "Bash(ollama ps:*)",
       "Bash(timeout:*)",
-      "Bash(dir /b:*)"
+      "Bash(dir /b:*)",
+      "Bash(tee:*)",
+      "Bash(test:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []

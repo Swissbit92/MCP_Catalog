@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 
 from .config import (
-    get_ollama_base, get_persona_model, get_persona_temperature,
+    get_ollama_base, get_persona_model, get_persona_temperature, get_model_context_window,
     is_brave_enabled, get_brave_api_key, get_brave_max_results,
     get_brave_safesearch, get_brave_search_timeout, get_brave_enabled_rarities,
     is_mongodb_enabled, get_mongodb_uri, get_mongodb_timeout,
@@ -34,7 +34,8 @@ from .cache import get_cache, MongoDBCache
 from .tool_definitions import get_tools_for_persona, classify_query_intent, get_tools_for_query, QueryIntent
 from .repositories.session_repository import SessionRepository
 from .repositories.message_repository import MessageRepository
-from .memory_manager import MemoryManager
+from .repositories.summary_repository import SummaryRepository
+from .memory_manager import MemoryManager, ConversationSummarizer
 
 import logging
 import re
@@ -329,10 +330,15 @@ _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
 # Initialize repositories
 _session_repo = SessionRepository(_DB_PATH)
 _message_repo = MessageRepository(_DB_PATH)
+_summary_repo = SummaryRepository(_DB_PATH)
 
 # Initialize memory manager for intelligent context selection (Phase 2)
 # Context window: 4096 tokens for HammerAI/mythomax-l2:latest
 _memory_manager = MemoryManager(max_tokens=4096)
+
+# Initialize conversation summarizer (Phase 2 Task 2.2)
+# LLM client will be set after initialization
+_conversation_summarizer = ConversationSummarizer()
 
 def _init_db():
     """Initialize database tables and perform migrations."""
@@ -363,6 +369,19 @@ def _init_db():
         FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
     )""")
 
+    # Create conversation_summaries table for Phase 2 Task 2.2
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS conversation_summaries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        message_range TEXT NOT NULL,
+        summary_text TEXT NOT NULL,
+        emotional_developments TEXT,
+        topics_discussed TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+    )""")
+
     # Migration: If old tables exist, migrate data
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
     if cur.fetchone():
@@ -383,6 +402,7 @@ def _init_db():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON chat_sessions(created_at)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_summaries_session_id ON conversation_summaries(session_id)")
 
     conn.commit()
     conn.close()
@@ -828,7 +848,7 @@ def chat(body: ChatBody):
         system_prompt=system,
         history=history,
         query=body.message,
-        model_context_window=4096  # TODO: Get from model config
+        model_context_window=get_model_context_window()
     )
 
     # Use intent classification to determine which tools to inject
@@ -1058,6 +1078,80 @@ Please synthesize this data into a natural, conversational response. Include key
 
         return {"answer": answer, "used_search": False, "metadata": metadata.dict(), "rewritten": was_rewritten}
 
+def _check_and_summarize(session_id: str, persona_key: str):
+    """Check if summarization is needed and trigger it if necessary.
+
+    Summarizes every 30 messages to compress old conversation history.
+
+    Args:
+        session_id: Session ID to check
+        persona_key: Persona key for context
+    """
+    try:
+        # Get total message count
+        all_messages = _message_repo.get_messages_by_session(session_id)
+        message_count = len(all_messages)
+
+        # Get summary count
+        summary_count = _summary_repo.count_summaries(session_id)
+
+        # Calculate how many messages have been summarized
+        messages_summarized = summary_count * 30
+
+        # If we have 30+ new messages since last summary, create new summary
+        messages_since_summary = message_count - messages_summarized
+
+        if messages_since_summary >= 30:
+            logger.info(
+                f"[Summarizer] Triggering summarization for session {session_id} "
+                f"({messages_since_summary} new messages)"
+            )
+
+            # Get the 30 messages to summarize
+            start_idx = messages_summarized
+            end_idx = start_idx + 30
+            messages_to_summarize = all_messages[start_idx:end_idx]
+
+            # Set LLM client if not already set
+            if not _conversation_summarizer.llm_client:
+                _conversation_summarizer.set_llm_client(
+                    LC_OllamaClient(
+                        base=get_ollama_base(),
+                        model=get_persona_model(),
+                        temperature=0.3  # Lower temp for factual summarization
+                    )
+                )
+
+            # Generate summary
+            card = get_persona_card(persona_key)
+            persona_name = card.get("display_name", persona_key)
+
+            summary_result = _conversation_summarizer.summarize_segment(
+                messages=messages_to_summarize,
+                max_summary_tokens=200,
+                persona_name=persona_name
+            )
+
+            # Save summary to database
+            message_range = f"{start_idx + 1}-{end_idx}"
+            _summary_repo.create_summary(
+                session_id=session_id,
+                message_range=message_range,
+                summary_text=summary_result["summary_text"],
+                emotional_developments=summary_result["emotional_developments"],
+                topics_discussed=summary_result["topics_discussed"]
+            )
+
+            logger.info(
+                f"[Summarizer] Created summary for messages {message_range} "
+                f"({summary_result['token_count']} tokens)"
+            )
+
+    except Exception as e:
+        # Don't fail the chat request if summarization fails
+        logger.error(f"[Summarizer] Failed to create summary: {e}", exc_info=True)
+
+
 @app.post("/sessions/{session_id}/chat")
 def chat_with_session(session_id: str, body: ChatBody):
     """Chat with persona using database-backed conversation history."""
@@ -1067,15 +1161,41 @@ def chat_with_session(session_id: str, body: ChatBody):
     if not persona_key:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    # PHASE 2: Intelligent memory selection with importance scoring
+    # PHASE 2: Intelligent memory selection with importance scoring + summarization
     db_messages = _message_repo.get_messages_by_session(session_id)
+    summaries = _summary_repo.get_summaries_by_session(session_id)
 
     # Build system prompt to calculate token usage
     card = get_persona_card(persona_key)
     system_prompt = build_system_prompt(persona_key)
     system_tokens = estimate_tokens(system_prompt)
 
+    # If we have summaries, inject them into the context
+    summary_context = ""
+    if summaries:
+        logger.info(f"[Memory] Found {len(summaries)} conversation summaries for session {session_id}")
+
+        # Build summary context (concatenate all summaries)
+        summary_parts = []
+        for summary in summaries:
+            summary_parts.append(f"[Summary of messages {summary['message_range']}]")
+            summary_parts.append(summary['summary_text'])
+            if summary.get('topics_discussed'):
+                summary_parts.append(f"Topics: {summary['topics_discussed']}")
+
+        summary_context = "\n\n".join(summary_parts)
+        summary_tokens = estimate_tokens(summary_context)
+
+        logger.info(
+            f"[Memory] Summaries cover {len(summaries) * 30} messages "
+            f"compressed to {summary_tokens} tokens"
+        )
+
+        # Adjust system_tokens to include summary context
+        system_tokens += summary_tokens
+
     # Use MemoryManager to intelligently select messages within token budget
+    # Note: MemoryManager will select recent messages, summaries cover older ones
     selected_messages = _memory_manager.select_messages(
         messages=db_messages,
         token_budget=4096,  # Model context window
@@ -1088,9 +1208,18 @@ def chat_with_session(session_id: str, body: ChatBody):
         for msg in selected_messages
     ]
 
+    # If we have summaries, prepend a summary context message
+    if summary_context:
+        # Insert summary as a system-like message at the start of history
+        history_turns.insert(0, ChatTurn(
+            role="assistant",
+            content=f"[Context from earlier in our conversation]\n\n{summary_context}"
+        ))
+
     logger.info(
-        f"[Memory] Intelligently selected {len(history_turns)}/{len(db_messages)} messages "
-        f"for session {session_id} (system: {system_tokens} tokens)"
+        f"[Memory] Selected {len(history_turns)}/{len(db_messages)} messages "
+        f"(+{len(summaries)} summaries) for session {session_id} "
+        f"(system: {system_tokens} tokens)"
     )
 
     # Perform chat with FULL database context
@@ -1117,6 +1246,10 @@ def chat_with_session(session_id: str, body: ChatBody):
         ts=now
     )
     add_message(session_id, assistant_msg_body)
+
+    # PHASE 2 Task 2.2: Auto-summarization check
+    # Trigger summarization every 30 messages to compress old conversation
+    _check_and_summarize(session_id, persona_key)
 
     return response
 

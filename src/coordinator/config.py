@@ -34,6 +34,13 @@ def get_persona_temperature() -> float:
     except ValueError:
         return 0.1
 
+def get_model_context_window() -> int:
+    """Get model context window size in tokens (default 4096)."""
+    try:
+        return int(os.getenv("MODEL_CONTEXT_WINDOW", "4096"))
+    except ValueError:
+        return 4096
+
 # Brave MCP Configuration
 def get_brave_api_key() -> str:
     """Get Brave API key (required if Brave MCP is enabled)."""

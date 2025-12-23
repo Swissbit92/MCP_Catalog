@@ -4,12 +4,16 @@ This module implements Phase 2 of the Persona Memory Enhancement project:
 - Message importance scoring based on content type, recency, and relevance
 - Intelligent message selection within token budgets
 - Dynamic context window sizing
+- Conversation summarization for long-term memory compression
 """
 
 from __future__ import annotations
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 from datetime import datetime, timedelta
 import logging
+
+if TYPE_CHECKING:
+    from .llm_client import LC_OllamaClient
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +282,214 @@ class MemoryManager:
 
         Args:
             text: Text to estimate tokens for
+
+        Returns:
+            Estimated token count
+        """
+        return max(1, len(text) // 4)
+
+
+class ConversationSummarizer:
+    """Generate compressed summaries of conversation segments.
+
+    This class handles automatic summarization of long conversations to:
+    - Compress old messages into concise summaries
+    - Preserve key information (names, facts, topics, emotions)
+    - Save token budget for recent context
+    - Enable unlimited conversation length
+    """
+
+    def __init__(self, llm_client: Optional['LC_OllamaClient'] = None):
+        """Initialize conversation summarizer.
+
+        Args:
+            llm_client: LLM client for generating summaries (optional, can be set later)
+        """
+        self.llm_client = llm_client
+
+    def set_llm_client(self, llm_client: 'LC_OllamaClient'):
+        """Set the LLM client for summary generation.
+
+        Args:
+            llm_client: LLM client instance
+        """
+        self.llm_client = llm_client
+
+    def summarize_segment(
+        self,
+        messages: List[dict],
+        max_summary_tokens: int = 200,
+        persona_name: str = "Assistant"
+    ) -> Dict[str, Any]:
+        """Summarize a segment of conversation.
+
+        Args:
+            messages: Messages to summarize (dicts with role, content)
+            max_summary_tokens: Maximum tokens for summary (default: 200)
+            persona_name: Name of the persona for context
+
+        Returns:
+            Dictionary with:
+            - summary_text: Compressed summary string
+            - emotional_developments: Key emotional moments
+            - topics_discussed: List of topics covered
+            - token_count: Estimated tokens in summary
+        """
+        if not self.llm_client:
+            logger.warning("[Summarizer] No LLM client available, skipping summarization")
+            return {
+                "summary_text": "[Summary unavailable - no LLM client]",
+                "emotional_developments": "",
+                "topics_discussed": "",
+                "token_count": 0
+            }
+
+        if not messages:
+            return {
+                "summary_text": "",
+                "emotional_developments": "",
+                "topics_discussed": "",
+                "token_count": 0
+            }
+
+        # Format messages for summarization
+        conversation_text = self._format_messages(messages, max_length=3000)
+
+        # Build summarization prompt
+        prompt = f"""Summarize this conversation segment in ≤{max_summary_tokens} tokens.
+
+Focus on:
+1. User's name, background, goals, preferences (if mentioned)
+2. Key facts shared by both parties
+3. Important decisions or conclusions
+4. Emotional developments in the relationship
+5. Topics discussed
+
+Conversation between User and {persona_name}:
+{conversation_text}
+
+Provide a concise summary in this format:
+
+**Summary:**
+[2-3 sentences capturing key points]
+
+**User Info:**
+[Name, important details about the user - if mentioned]
+
+**Topics:**
+[Comma-separated list of topics discussed]
+
+**Emotional Tone:**
+[Brief note on relationship development or emotional moments]
+
+Be concise and factual. Prioritize names, numbers, and specific facts."""
+
+        system_prompt = "You create ultra-concise conversation summaries that preserve key information."
+
+        try:
+            # Generate summary using LLM
+            logger.info(f"[Summarizer] Generating summary for {len(messages)} messages...")
+            summary = self.llm_client._invoke(
+                prompt=f"System: {system_prompt}\n\nUser: {prompt}"
+            )
+
+            # Parse summary into components
+            parsed = self._parse_summary(summary)
+            token_count = self._estimate_tokens(summary)
+
+            logger.info(
+                f"[Summarizer] Compressed {len(messages)} messages "
+                f"({self._estimate_tokens(conversation_text)} tokens) "
+                f"into {token_count} token summary"
+            )
+
+            return {
+                "summary_text": summary.strip(),
+                "emotional_developments": parsed.get("emotional_tone", ""),
+                "topics_discussed": parsed.get("topics", ""),
+                "token_count": token_count
+            }
+
+        except Exception as e:
+            logger.error(f"[Summarizer] Failed to generate summary: {e}")
+            return {
+                "summary_text": f"[Summary generation failed: {str(e)}]",
+                "emotional_developments": "",
+                "topics_discussed": "",
+                "token_count": 0
+            }
+
+    def _format_messages(self, messages: List[dict], max_length: int = 3000) -> str:
+        """Format messages for summarization.
+
+        Args:
+            messages: List of message dicts
+            max_length: Maximum character length (default: 3000)
+
+        Returns:
+            Formatted conversation text
+        """
+        lines = []
+        total_chars = 0
+
+        for msg in messages:
+            role = msg["role"].capitalize()
+            content = msg["content"]
+
+            # Truncate very long messages
+            if len(content) > 500:
+                content = content[:500] + "..."
+
+            line = f"{role}: {content}"
+
+            # Check if adding this line would exceed max_length
+            if total_chars + len(line) > max_length:
+                lines.append("... [conversation truncated for summarization]")
+                break
+
+            lines.append(line)
+            total_chars += len(line)
+
+        return "\n".join(lines)
+
+    def _parse_summary(self, summary: str) -> Dict[str, str]:
+        """Parse structured summary into components.
+
+        Args:
+            summary: Raw summary text from LLM
+
+        Returns:
+            Dictionary with parsed components
+        """
+        # Simple parsing - extract sections if present
+        result = {
+            "summary": summary,
+            "user_info": "",
+            "topics": "",
+            "emotional_tone": ""
+        }
+
+        # Try to extract topics (look for comma-separated list)
+        if "**Topics:**" in summary:
+            parts = summary.split("**Topics:**")
+            if len(parts) > 1:
+                topics_section = parts[1].split("**")[0].strip()
+                result["topics"] = topics_section
+
+        # Try to extract emotional tone
+        if "**Emotional Tone:**" in summary or "**Emotional" in summary:
+            parts = summary.split("**Emotional")
+            if len(parts) > 1:
+                emotional_section = parts[1].split("**")[0].replace("Tone:**", "").strip()
+                result["emotional_tone"] = emotional_section
+
+        return result
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Estimate token count for text.
+
+        Args:
+            text: Text to estimate
 
         Returns:
             Estimated token count
