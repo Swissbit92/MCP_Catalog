@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { ChatSession, SessionWithMessages, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, clearSessionMessages as clearSessionMessagesApi } from '../services/api';
 import { Message } from '../components/MessageBubble';
+import { predictWebSearch, formatPredictionLog } from '../utils/searchHeuristics';
 
 interface Persona {
   key: string;
@@ -52,6 +53,8 @@ interface PersonaContextType {
   retryMessage: (messageId: string) => Promise<void>;
   exportCurrentSession: () => Promise<string>;
   importSessionData: (exportData: any) => Promise<ChatSession>;
+  // Search status
+  isSearching: boolean;
   // Collection management
   collectedPersonas: Set<string>;
   addToCollection: (personaKey: string) => void;
@@ -70,6 +73,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
 
   // Collection management
   const [collectedPersonas, setCollectedPersonas] = useState<Set<string>>(() => {
@@ -168,7 +172,17 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Only update UI messages if this is for the current session
     const shouldUpdateUI = !sessionId || targetSessionId === currentSession?.id;
 
-    console.log('Sending message to session:', targetSessionId, 'Message:', message, 'Retry count:', retryCount);
+    // Predict if web search will be used (client-side heuristic)
+    const prediction = predictWebSearch(message, selectedPersona?.rarity);
+    console.log(formatPredictionLog(prediction, message));
+
+    console.log('[PersonaContext] Sending message:', {
+      sessionId: targetSessionId,
+      message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+      retryCount,
+      predictedSearch: prediction.willSearch,
+      confidence: prediction.confidence
+    });
 
     // Record start time for latency tracking
     const startTime = Date.now();
@@ -182,6 +196,16 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
         status: 'sending',
       };
       setMessages(prev => [...prev, userMessage]);
+
+      // Use heuristic to decide which indicator to show
+      // Only set isSearching=true if we predict a web search will happen
+      if (prediction.willSearch && prediction.confidence === 'high') {
+        console.log('[PersonaContext] 🔍 Showing SearchIndicator (high confidence prediction)');
+        setIsSearching(true);
+      } else {
+        console.log('[PersonaContext] ⌨️ Showing TypingIndicator (no search predicted)');
+        setIsSearching(false);
+      }
     }
 
     try {
@@ -198,9 +222,21 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
         status: 'delivered',
       };
 
-      console.log('Received assistant message with latency:', latency, 'ms');
+      // Log prediction accuracy
+      const predictionCorrect = prediction.willSearch === assistantMessage.used_search;
+      console.log('[PersonaContext] Response received:', {
+        latency_ms: latency,
+        used_search: assistantMessage.used_search,
+        search_results_count: assistantMessage.search_results_count,
+        predicted_search: prediction.willSearch,
+        prediction_correct: predictionCorrect ? '✅' : '❌',
+        prediction_confidence: prediction.confidence
+      });
 
       if (shouldUpdateUI) {
+        // Stop search indicator (response received)
+        setIsSearching(false);
+
         // Update the user message status to sent
         setMessages(prev => prev.map(msg =>
           msg.id.startsWith('user-') && msg.content === message && msg.status === 'sending'
@@ -216,9 +252,12 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       return assistantMessageWithMetadata;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[PersonaContext] Error sending message:', error);
 
       if (shouldUpdateUI) {
+        // Stop search indicator on error
+        setIsSearching(false);
+
         // Update the user message status to failed
         setMessages(prev => prev.map(msg =>
           msg.id.startsWith('user-') && msg.content === message && msg.status === 'sending'
@@ -363,6 +402,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       retryMessage,
       exportCurrentSession,
       importSessionData,
+      isSearching,
       collectedPersonas,
       addToCollection,
       isCollected,

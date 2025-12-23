@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
+import { SearchIndicator } from '../components/SearchIndicator';
 import SessionList from '../components/SessionList';
 import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
@@ -84,7 +85,7 @@ const Chat: React.FC = () => {
   const [touchEndX, setTouchEndX] = useState<number>(0);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions } = usePersona();
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
@@ -95,9 +96,9 @@ const Chat: React.FC = () => {
           key: p.key,
           display_name: p.display_name || p.key,
           style: p.style,
-          image: p.image.replace('ui/images/', ''),
-          avatar: p.avatar ? p.avatar.replace('ui/images/', '') : undefined,
-          bg: p.bg ? p.bg.replace('ui/images/', '') : undefined,
+          image: p.image.replace('images/', ''),
+          avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
+          bg: p.bg ? p.bg.replace('images/', '') : undefined,
           rarity: p.rarity,
           coordinator_label: p.coordinator_label,
           voice: p.voice,
@@ -302,7 +303,7 @@ const Chat: React.FC = () => {
   };
 
   // Get persona background and color scheme
-  const personaBackground = selectedPersona?.bg ? `/images/${selectedPersona.bg.replace('ui/images/', '')}` : null;
+  const personaBackground = selectedPersona?.bg ? `/images/${selectedPersona.bg.replace('images/', '')}` : null;
   const colorScheme = getPersonaColorScheme(selectedPersona?.rarity);
 
   return (
@@ -444,7 +445,17 @@ const Chat: React.FC = () => {
               />
             ))
           )}
-          {loading && !initializingSession && <TypingIndicator />}
+          <AnimatePresence mode="wait">
+            {isSearching && !initializingSession && (
+              <SearchIndicator
+                personaName={selectedPersona?.display_name}
+                rarity={selectedPersona?.rarity}
+              />
+            )}
+            {!isSearching && loading && !initializingSession && (
+              <TypingIndicator />
+            )}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
 

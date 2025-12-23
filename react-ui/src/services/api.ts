@@ -43,12 +43,25 @@ export interface ChatSession {
   message_count: number;
 }
 
+// Response metadata for MCP data sources
+export interface ResponseMetadata {
+  source_type: 'llm' | 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp';
+  tools_used: string[];
+  cache_status?: 'hit' | 'miss' | null;
+  data_timestamp?: string | null;
+  latency_breakdown?: Record<string, number> | null;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   latency_ms?: number;
+  used_search?: boolean; // Whether web search was used for this message
+  search_results_count?: number; // Number of search results returned
+  citation_valid?: boolean; // Whether citations were properly included
+  metadata?: ResponseMetadata; // Response metadata from backend
 }
 
 export interface SessionWithMessages {
@@ -108,7 +121,13 @@ export const sendMessage = async (persona: string, message: string, history: Cha
   }
 
   const data = await response.json();
-  return data.answer;
+  return {
+    answer: data.answer,
+    used_search: data.used_search || false,
+    search_results_count: data.search_results_count || 0,
+    citation_valid: data.citation_valid,
+    metadata: data.metadata || null,
+  };
 };
 
 export const getPersonaGreeting = async (persona: string) => {
@@ -215,6 +234,10 @@ export const sendMessageToSession = async (sessionId: string, message: string): 
     role: 'assistant',
     content: data.answer,
     timestamp: new Date(),
+    used_search: data.used_search || false,
+    search_results_count: data.search_results_count || 0,
+    citation_valid: data.citation_valid,
+    metadata: data.metadata || null,
   };
 };
 

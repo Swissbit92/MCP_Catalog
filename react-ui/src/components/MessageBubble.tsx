@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Search, AlertTriangle } from 'lucide-react';
 import { Avatar2D } from './Avatar2D';
 import { RichContent } from './RichContent';
+import { SourceIndicator } from './SourceIndicator';
 import { Message as ApiMessage } from '../services/api';
 
 export interface Message extends ApiMessage {
@@ -20,6 +22,44 @@ interface MessageBubbleProps {
   personaName?: string;
 }
 
+interface ParsedContent {
+  mainContent: string;
+  citationSection: string | null;
+  hasCitations: boolean;
+}
+
+/**
+ * Parse message content to extract citation section
+ */
+function parseMessageContent(content: string): ParsedContent {
+  // Look for citation markers (with or without emoji)
+  const citationMarkers = [
+    /🔍\s*\*\*Sources:\*\*/i,
+    /🔍\s*Sources:/i,
+    /\*\*Sources:\*\*/i,
+    /\nSources:\n/i
+  ];
+
+  for (const marker of citationMarkers) {
+    const match = content.search(marker);
+    if (match !== -1) {
+      const mainContent = content.substring(0, match).trim();
+      const citationSection = content.substring(match).trim();
+      return {
+        mainContent,
+        citationSection,
+        hasCitations: true
+      };
+    }
+  }
+
+  return {
+    mainContent: content,
+    citationSection: null,
+    hasCitations: false
+  };
+}
+
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   message,
   personaAvatar,
@@ -30,6 +70,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   personaName,
 }) => {
   const isUser = message.role === 'user';
+
+  // Parse content to extract citations
+  const parsed = React.useMemo(() => parseMessageContent(message.content), [message.content]);
 
 
 
@@ -82,7 +125,48 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               </div>
             </div>
           )}
-          <RichContent content={message.content} />
+
+          {/* Main content */}
+          <RichContent content={parsed.mainContent} />
+
+          {/* Citation section - styled differently */}
+          {parsed.hasCitations && parsed.citationSection && (
+            <div className="mt-4 pt-3 border-t border-gray-300/50">
+              <RichContent content={parsed.citationSection} className="text-sm text-gray-700" />
+            </div>
+          )}
+
+          {/* Citation warning - if web search was used but citations are missing/invalid */}
+          {!isUser && message.used_search && !parsed.hasCitations && message.citation_valid === false && (
+            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-yellow-200 bg-yellow-50 px-3 py-2 rounded-lg">
+              <AlertTriangle size={14} className="text-yellow-600 flex-shrink-0" />
+              <span className="text-xs text-yellow-800">
+                ⚠️ This response used web search but citations were not included
+              </span>
+            </div>
+          )}
+
+          {/* Search badge - shows if web search was used */}
+          {!isUser && message.used_search && (
+            <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-gray-200/50">
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full">
+                <Search size={12} className="text-blue-600" />
+                <span className="text-xs font-medium text-blue-700">
+                  Web-enhanced answer
+                </span>
+              </div>
+              {message.search_results_count && message.search_results_count > 0 && (
+                <span className="text-xs text-gray-500">
+                  ({message.search_results_count} source{message.search_results_count > 1 ? 's' : ''})
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Source indicator - shows data source and cache status */}
+          {!isUser && message.metadata && (
+            <SourceIndicator metadata={message.metadata} />
+          )}
         </motion.div>
 
         {/* Timestamp, Latency, and Status */}

@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 DEFAULTS = {
-    "image": "ui/images/default_card.png",
-    "avatar": "ui/images/default_avatar.png",
-    "logo": "ui/images/default_logo.png",
-    "bg": "ui/images/default_bg.jpg",
+    "image": "images/default_card.png",
+    "avatar": "images/default_avatar.png",
+    "logo": "images/default_logo.png",
+    "bg": "images/default_bg.jpg",
 }
 
 def _is_url(val: str) -> bool:
@@ -19,21 +19,23 @@ def _exists_local(path_or_rel: str) -> bool:
     p = Path(path_or_rel)
     if p.is_file():
         return True
-    # Try relative to project root /ui for convenience
-    if not path_or_rel.startswith("ui/"):
-        alt = Path("ui") / path_or_rel
-        return alt.is_file()
+    # Try React public images directory
+    if path_or_rel.startswith("images/"):
+        react_path = Path("react-ui/public") / path_or_rel
+        if react_path.is_file():
+            return True
     return False
 
 def _normalize_local(path_or_rel: str) -> str:
-    """Ensure we return a usable local path (prefer under ui/ if present)."""
+    """Ensure we return a usable local path (prefer React public images)."""
     p = Path(path_or_rel)
     if p.is_file():
         return str(p.as_posix())
-    if not path_or_rel.startswith("ui/"):
-        alt = Path("ui") / path_or_rel
-        if alt.is_file():
-            return str(alt.as_posix())
+    # Check React public images directory
+    if path_or_rel.startswith("images/"):
+        react_path = Path("react-ui/public") / path_or_rel
+        if react_path.is_file():
+            return str(react_path.as_posix())
     return path_or_rel  # may be bad; caller/UI can handle gracefully
 
 def resolve_asset(
