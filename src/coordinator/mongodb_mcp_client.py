@@ -488,12 +488,24 @@ class MongoDBMCPClient:
                 # Extract JSON from within these tags
                 if "<untrusted-user-data-" in text:
                     # Find the JSON between the tags
-                    # Use backreference to match the same UUID in opening and closing tags
+                    # The warning message mentions the tags before the actual data, so we need
+                    # to find the match that contains actual JSON (starts with [ or {)
                     import re
-                    pattern = r'<untrusted-user-data-([^>]+)>(.*?)</untrusted-user-data-\1>'
+                    pattern = r'<untrusted-user-data-([^>]+)>\n([\[\{].*?)\n</untrusted-user-data-\1>'
                     match = re.search(pattern, text, re.DOTALL)
                     if match:
                         text = match.group(2).strip()  # group(2) because group(1) is the UUID
+                    else:
+                        # Fallback: try to find any JSON array or object in the text
+                        json_pattern = r'\[[\s\S]*?\]|\{[\s\S]*?\}'
+                        json_matches = re.findall(json_pattern, text)
+                        for potential_json in json_matches:
+                            try:
+                                json.loads(potential_json)
+                                text = potential_json
+                                break
+                            except json.JSONDecodeError:
+                                continue
 
                 try:
                     if text.startswith("{") or text.startswith("["):

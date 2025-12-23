@@ -57,6 +57,9 @@ python tests/backend/coordinator/test_tool_calling.py
 python tests/backend/coordinator/test_citation_validation.py
 python tests/backend/coordinator/test_synthesis_prompt.py
 python tests/backend/coordinator/test_summarization.py
+python tests/backend/coordinator/test_persona_schema.py      # Phase 1: Pydantic validation
+python tests/backend/coordinator/test_mongodb_integration.py # MongoDB MCP tests
+python tests/backend/coordinator/test_repositories.py        # Repository pattern tests
 
 # Integration tests
 python tests/integration/test_brave_mcp_connectivity.py
@@ -64,6 +67,9 @@ python tests/integration/test_intent_classification.py
 python tests/integration/test_mvp2_integration.py
 python tests/integration/test_synthesis_integration.py
 python tests/integration/test_long_conversation.py
+python tests/integration/test_phase2_integration.py          # Phase 2: Emotional state
+python tests/integration/test_memory_phase1.py               # Memory management Phase 1
+python tests/integration/test_memory_phase2.py               # Memory management Phase 2
 
 # Note: Python tests are standalone scripts, not pytest-based
 ```
@@ -84,13 +90,16 @@ ollama pull llama3.1:latest
 - `server.py` - FastAPI app with CORS, chat endpoints, session management, SQLite persistence
 - `persona_memory.py` - Persona card loading, CV summary generation, prompt building, file locking for summary serialization
 - `memory_manager.py` - MemoryManager for importance scoring, ConversationSummarizer for auto-summarization
-- `llm_client.py` - LangChain Ollama client wrapper
+- `llm_client.py` - LangChain Ollama client wrapper with advanced sampling support
 - `ollama_utils.py` - Ollama health checks, model availability assertions
-- `config.py` - Environment variable helpers for Ollama base, model, temperature, persona dir
+- `config.py` - Pydantic Settings for centralized, validated configuration
 - `mcp_client.py` - MCP (Model Context Protocol) client for connecting to MCP servers
 - `mongodb_mcp_client.py` - MongoDB MCP client for database operations
 - `tool_definitions.py` - Tool/function definitions for LLM function calling, synthesis prompt building
 - `cache.py` - MongoDB caching layer with TTL support
+- `models/` - Pydantic models for type-safe data structures (Phase 1)
+  - `persona_schema.py` - PersonaCard, VoiceProfile, EmotionalProfile, PsychologicalProfile, ExampleDialogue models
+  - `sampling_presets.py` - SamplingConfig and preset library (creative, balanced, precise, chaotic, deterministic)
 - `repositories/` - Repository pattern for database operations
   - `session_repository.py` - Chat session CRUD operations
   - `message_repository.py` - Message persistence and retrieval
@@ -113,8 +122,14 @@ Each persona is a JSON file defining:
 - `do`/`dont` lists, `behavior` traits, `emotional_profile`
 - `expertise` (strong/familiar/avoid topics)
 - `image`, `avatar`, `logo`, `bg` paths for UI assets
+- **Phase 1 additions:**
+  - `model_preferences` - Per-persona sampling config (temperature, preset)
+  - `psychological_profile` - Deep characterization (core_wound, coping_mechanism, defense_style, growth_edge, contradiction_pairs)
+  - `example_dialogues` - User/response pairs to teach LLM correct persona voice (max 20)
 
 **Summary caching**: `personas/_summaries/` contains auto-generated CV-style persona summaries used in system prompts.
+
+**Schema validation**: All persona JSON files are validated against Pydantic schema on load (`src/coordinator/models/persona_schema.py`).
 
 ### Database Schema (`chats.db`)
 - `chat_sessions`: session_id, persona_key, title, created_at, updated_at
@@ -131,9 +146,14 @@ Each persona is a JSON file defining:
 ### Adding a New Persona
 1. Copy `personas/template.jsonc` to `personas/[name].json`
 2. Fill in persona details (key, display_name, rarity, lore, voice, behavior, expertise)
-3. Add persona images to `react-ui/public/images/` with paths like `"image": "images/[name]_card.png"`
-4. Persona auto-discovered on next backend/frontend load - no restart needed
-5. Summary auto-generated on first access via `persona_memory.py`
+3. Create image folder `react-ui/public/images/personas/[name]/` with:
+   - `card.png` - Main character card image
+   - `avatar.png` - Chat avatar
+   - `logo.png` - Header/bio logo
+   - `bg.png` or `bg.jpg` - Optional chat background
+4. Set paths in JSON: `"image": "images/personas/[name]/card.png"`, etc.
+5. Persona auto-discovered on next backend/frontend load - no restart needed
+6. Summary auto-generated on first access via `persona_memory.py`
 
 ### Removing a Persona
 1. Delete JSON file from `personas/`
@@ -304,13 +324,138 @@ cd react-ui && npm test -- searchHeuristics --watchAll=false
 - `[Tools]` - Tools injected for this request
 - `[Brave]` - Workflow status, timing, results count
 - `[Citations]` - Validation results (✅/❌)
-- `[Synthesis]` - Synthesis prompt usage, length, answer generation (NEW)
+- `[Synthesis]` - Synthesis prompt usage, length, answer generation
+
+### MongoDB MCP Integration (Trading Data)
+**Status:** ✅ Fully implemented and tested (Dec 2025)
+
+Epic and Legendary personas can query real-time Bitcoin price and trading data from MongoDB Atlas.
+
+**Features:**
+- **Real-Time Data:** Live Bitcoin prices with 35+ technical indicators (RSI, MACD, Bollinger Bands, EMAs)
+- **Historical Data:** Price history from 2016-07-18 to present (daily) and last 6 months (hourly)
+- **Trading Stats:** DCA purchase history, total BTC acquired, average prices
+- **Smart Caching:** TTL-based cache (60s for current price, 3600s for historical)
+- **Rarity-Based Access:** Only Epic and Legendary personas can query MongoDB
+
+**Configuration:**
+```bash
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/btc_data
+MONGODB_TIMEOUT=30                       # Query timeout in seconds
+MONGODB_MAX_RESPONSE_BYTES=100000        # Max response size
+MONGODB_ENABLED_RARITIES=epic,legendary  # Which rarities can query
+```
+
+**Available Tools (4 semantic tools):**
+| Tool | Description |
+|------|-------------|
+| `bitcoin_current_price` | Latest price with RSI, MACD, Bollinger Bands, EMAs |
+| `bitcoin_historical_prices` | Historical OHLCV data with date range filtering |
+| `bitcoin_trading_summary` | DCA statistics: total BTC, spend, fees, avg price |
+| `bitcoin_technical_analysis` | Multi-timeframe analysis with trend/momentum signals |
+
+**Example Query Flow:**
+1. User: "What is the current Bitcoin price?"
+2. Backend classifies intent → `mongodb`
+3. Tools injected: `['bitcoin_current_price', ...]`
+4. MongoDB queried via Docker MCP container
+5. LLM synthesizes response: "Bitcoin is $87,855.80 with RSI 42.04..."
+6. Frontend displays with 🗄️ MongoDB badge
+
+**Response Metadata:**
+```json
+{
+  "source_type": "mongodb_mcp",
+  "tools_used": ["bitcoin_current_price"],
+  "cache_status": "hit",
+  "data_timestamp": "2025-12-23T11:00:00Z"
+}
+```
+
+**Testing:**
+```bash
+# End-to-end test (requires backend + Docker)
+python tests/exploration/test_mongodb_phase4.py
+
+# Unit tests
+python tests/backend/coordinator/test_mongodb_integration.py
+```
+
+**Logging:**
+- `[Intent]` - Query classification (mongodb/brave/llm)
+- `[Tools]` - Tools injected for MongoDB queries
+- `Cache HIT/MISS` - Cache status with age in seconds
+- `MongoDB query completed` - Tool used and cache status
 
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
 - CV summary auto-generated and cached in `personas/_summaries/` for token efficiency
 - File locking ensures serialized summary builds across processes
 - Token truncation applied if lore exceeds limits
+- **Phase 1**: Psychological profile integrated into system prompt for realistic behavior
+
+### Persona Quality Enhancement (Phase 1 & 2)
+**Status:** ✅ Phase 1 & 2 Complete (Dec 2025)
+
+Type-safe persona system with advanced characterization and emotional tracking.
+
+**Phase 1 Features:**
+- **Pydantic Schema Validation**: All persona JSON validated on load with clear error messages
+- **Centralized Configuration**: `config.py` uses `pydantic-settings` for validated env vars
+- **Advanced Sampling**: Per-persona LLM sampling (temperature, top_k, top_p, repeat_penalty)
+- **Sampling Presets**: Named presets (creative, balanced, precise, chaotic, deterministic)
+- **Psychological Profiles**: Deep characterization with core_wound, coping_mechanism, defense_style, contradiction_pairs
+- **Example Dialogues**: User/response pairs to teach correct persona voice
+
+**Phase 2 Features:**
+- **Emotional State Tracking**: Per-session trust_level, rapport, current_mood tracking
+- **Dynamic Context Injection**: Emotional state injected into system prompts
+- **Heuristic Emotion Detection**: Automatic mood updates from user sentiment signals
+- **All Personas Enhanced**: 6/6 personas have psychological profiles + 50 total example dialogues
+- **UI Integration**: Emotional state resets when clearing messages, deletes with session
+
+**Emotional State Lifecycle:**
+| UI Action | Emotional State |
+|-----------|-----------------|
+| Delete session | Deleted (DB cascade) |
+| Clear messages | Reset to defaults |
+| New message | Updated dynamically |
+
+**Emotional State API:**
+```bash
+# Get emotional state for a session
+GET /sessions/{session_id}/emotional-state
+
+# Response includes emotional_state in chat responses
+POST /sessions/{session_id}/chat
+# Returns: { "answer": "...", "emotional_state": { "trust_level": 0.52, ... } }
+
+# Clear messages also resets emotional state
+DELETE /sessions/{session_id}/messages
+# Resets: trust_level=0.5, rapport=0.5, current_mood="neutral"
+```
+
+**Sampling Presets:**
+```python
+# Available presets (src/coordinator/models/sampling_presets.py)
+"creative"      # temp=1.2, high creativity for roleplay
+"balanced"      # temp=0.9, general conversation
+"precise"       # temp=0.5, factual answers
+"chaotic"       # temp=1.5, maximum unpredictability
+"deterministic" # temp=0.1, reproducible outputs
+```
+
+**Testing:**
+```bash
+# Phase 1: Schema validation (16 tests)
+python tests/backend/coordinator/test_persona_schema.py
+
+# Phase 2: Integration tests with KPIs (6 tests)
+python tests/integration/test_phase2_integration.py
+
+# Phase 2: UI tests (14 tests)
+cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=false
+```
 
 ### SQLite Concurrency
 - Thread-safe locking via `_DB_LOCK` in `server.py`
@@ -377,7 +522,7 @@ cd react-ui && npm test -- searchHeuristics --watchAll=false
 **Python:**
 - fastapi, uvicorn - Web framework and server
 - langchain-core, langchain-ollama - LLM orchestration
-- pydantic - Data validation
+- pydantic, pydantic-settings - Data validation and configuration management
 - python-dotenv - Environment variable loading
 
 **React:**
@@ -393,63 +538,71 @@ cd react-ui && npm test -- searchHeuristics --watchAll=false
 
 ## Project Hygiene Log
 
-### December 23, 2025 - Hygiene Session Summary
+### December 23, 2025 - Hygiene Session #2 (Latest)
+
+**Hygiene Score: 4/10 → 9/10** (Major cleanup executed)
+
+**Actions Taken:**
+- Moved: 6 test files from root → tests/integration/
+- Moved: 1 test file (test_repositories.py) → tests/backend/coordinator/
+- Moved: 3 exploration scripts → tests/exploration/
+- Created: src/coordinator/utils/ directory
+- Moved: 2 utility scripts (regenerate_summaries.py, verify_model_context.py) → src/coordinator/utils/
+- Deleted: debug_history.py (obsolete debugging script)
+- Staged: 9 untracked files (new models, tests, documentation)
+- Updated: CLAUDE.md testing section with 5 missing test files
+
+**File Moves Executed:**
+```
+test_memory_phase1.py      → tests/integration/
+test_memory_phase2.py      → tests/integration/
+test_phase1_memory.py      → tests/integration/
+test_api_direct.py         → tests/integration/
+test_history_loading.py    → tests/integration/
+quick_memory_test.py       → tests/integration/
+test_repositories.py       → tests/backend/coordinator/
+check_db.py                → tests/exploration/
+check_import.py            → tests/exploration/
+explore_mongodb_direct.py  → tests/exploration/
+regenerate_summaries.py    → src/coordinator/utils/
+verify_model_context.py    → src/coordinator/utils/
+```
+
+**New Files Staged:**
+- src/coordinator/models/ (Pydantic schemas for Phase 1)
+- src/coordinator/repositories/emotional_state_repository.py
+- tests/backend/coordinator/test_persona_schema.py
+- tests/integration/test_phase2_integration.py
+- AI_documentation/01_implementation_history/PERSONA_QUALITY_PHASE1_COMPLETION.md
+- AI_documentation/01_implementation_history/PERSONA_QUALITY_PHASE2_COMPLETION.md
+- react-ui/public/images/personas/ (reorganized persona images)
+- react-ui/public/images/ui/ (reorganized UI assets)
+- react-ui/src/__tests__/phase2PersonaQuality.test.tsx
+
+---
+
+### December 23, 2025 - Hygiene Session #1
 
 **Actions Taken:**
 - Moved: 7 documentation files to AI_documentation/01_implementation_history/
-- Moved: 2 test files to tests/ subdirectories (test_summarization.py, test_long_conversation.py)
+- Moved: 2 test files to tests/ subdirectories
 - Created: AI_documentation/05_roadmaps/ for roadmap documentation
-- Audited: summary_repository.py (10/10 code quality, production-ready)
-- Scanned: Entire codebase for technical debt (2 non-critical TODOs found)
+- Audited: summary_repository.py (10/10 code quality)
 
-**Updated Paths:**
-- PHASE2_TASK2_COMPLETION.md → AI_documentation/01_implementation_history/
-- CONSOLIDATION_COMPLETE.md → AI_documentation/01_implementation_history/
-- DOCUMENTATION_AUDIT.md → AI_documentation/01_implementation_history/
-- PERSONA_SUMMARY_IMPROVEMENTS.md → AI_documentation/01_implementation_history/
-- PHASE1_COMPLETION_SUMMARY.md → AI_documentation/01_implementation_history/
-- PHASE2_TASK1_COMPLETION.md → AI_documentation/01_implementation_history/
-- SUMMARIZATION_TEST_RESULTS.md → AI_documentation/01_implementation_history/
-- PERSONA_QUALITY_ROADMAP.md → AI_documentation/05_roadmaps/
-- PERSONA_MEMORY_ROADMAP.md → AI_documentation/05_roadmaps/
-- tests/backend/coordinator/test_summarization.py → NEWLY CREATED
-- tests/integration/test_long_conversation.py → NEWLY CREATED
+---
 
-**Outstanding Hygiene Items (Requires User Action):**
-
-9 test files still misplaced and need to be moved:
-
-```bash
-# Root-level test files → tests/integration/
-git mv test_synthesis_integration.py tests/integration/
-git mv test_single_query.py tests/integration/
-git mv test_response_debug.py tests/integration/
-git mv test_first_person_integration.py tests/integration/
-
-# Backend test files in src/coordinator/ → tests/backend/coordinator/
-git mv test_citations_standalone.py tests/backend/coordinator/
-git mv src/coordinator/test_citation_validation.py tests/backend/coordinator/
-git mv src/coordinator/test_synthesis_prompt.py tests/backend/coordinator/
-git mv src/coordinator/test_first_person_cv.py tests/backend/coordinator/
-git mv src/coordinator/test_persona_truncation.py tests/backend/coordinator/
-```
+**Current Project Map Status:**
+- tests/backend/coordinator/: 11 test files (all properly organized)
+- tests/integration/: 14 test files (all properly organized)
+- tests/exploration/: 7 test files (all properly organized)
+- src/coordinator/utils/: 2 utility scripts (new directory)
+- AI_documentation/: 22+ docs across 5 categories
+- Root directory: Clean (only run_react.py entry point)
 
 **Code Quality Metrics:**
 - Unused imports: 0
-- Technical debt: 2 TODOs (non-critical)
-- Code duplication: 1 instance (validate_citations in test_citations_standalone.py - recommend consolidation)
+- Technical debt: 1 TODO (server.py:1055 - MongoDB multi-MCP)
+- Code duplication: 0
 - Type hints coverage: 95%+
 - Naming convention violations: 0
-
-**Project Map Status:**
-- tests/backend/coordinator/: 10 test files (6 properly organized, 4 need moving)
-- tests/integration/: 7 test files (3 properly organized, 4 need moving)
-- tests/exploration/: 4 test files (all properly organized)
-- AI_documentation/: 20+ docs across 5 categories (all properly archived)
-- src/coordinator/repositories/: 3 repository files (all production-ready)
-
-**Recommendations:**
-1. Execute the 9 git mv commands listed above to complete test organization
-2. Consolidate duplicate validate_citations code in test_citations_standalone.py
-3. Extract hardcoded model_context_window=4096 to config.py
-4. Move MongoDB TODO comment to GitHub Issues or roadmap
+- Root Python files: 1 (run_react.py - correct)

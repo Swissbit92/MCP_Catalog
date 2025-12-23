@@ -61,11 +61,11 @@ const CharacterShowcase: React.FC = () => {
             key: 'eeva',
             display_name: 'Eeva — Bitcoin Expert',
             coordinator_label: 'Cryptocurrency Analyst',
-            image: 'ui/images/eeva_card.png',
-            avatar: 'ui/images/eeva_avatar.png',
+            image: 'personas/eeva/card.png',
+            avatar: 'personas/eeva/avatar.png',
             rarity: 'legendary',
             style: 'nerdy, charming, concise',
-            logo: 'ui/images/eeva_logo.png',
+            logo: 'personas/eeva/logo.png',
             emoji: '🧠',
             allowed_mcp: ['chat', 'graphrag'],
             lore: ['Eeva grew up dismantling gadgets...'],
@@ -166,6 +166,10 @@ const CharacterShowcase: React.FC = () => {
 
   // Convert API image paths to React app paths
   const getImagePath = (apiPath: string) => {
+    // Handle both old format (ui/images/) and new format (images/personas/)
+    if (apiPath.startsWith('images/')) {
+      return '/' + apiPath;
+    }
     return apiPath.replace('ui/images/', '/images/');
   };
 
@@ -313,7 +317,7 @@ const CharacterShowcase: React.FC = () => {
                 className="w-full h-auto max-h-96 object-contain rounded-lg"
                 onError={(e) => {
                   console.error('Character image failed to load:', e.currentTarget.src);
-                  e.currentTarget.src = '/images/eeva_card.png'; // Fallback
+                  e.currentTarget.src = '/images/ui/default_avatar.png'; // Fallback
                 }}
               />
             </motion.div>

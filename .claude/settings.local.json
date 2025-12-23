@@ -45,7 +45,14 @@
       "Bash(dir /b:*)",
       "Bash(tee:*)",
       "Bash(test:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(docker exec:*)",
+      "Bash(dir:*)",
+      "Bash(for f in src/coordinator/*.py)",
+      "Bash(do wc -l \"$f\")",
+      "Bash(for f in src/coordinator/repositories/*.py)",
+      "Bash(sort:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
