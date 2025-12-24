@@ -48,6 +48,12 @@ class MessageImportanceScorer:
     QUESTION_KEYWORDS = ["?", "how", "what", "why", "when", "where", "who", "which"]
 
     # Threshold for "critical" messages that should always be included
+    # Value: 4.0 (calibrated to scoring weights below)
+    # - Name introductions score 6.0 → always critical
+    # - Personal info (holdings, goals) score 4.0+ → critical
+    # - Regular messages score 1.5-2.0 → can be dropped if needed
+    # This ensures user names and key personal info are NEVER forgotten.
+    # DO NOT change unless you understand the scoring algorithm impact.
     CRITICAL_SCORE_THRESHOLD = 4.0
 
     def score_message(self, message: dict, position: int, total: int) -> float:

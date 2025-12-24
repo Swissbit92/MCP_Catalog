@@ -116,8 +116,8 @@ class EpisodicMemoryRAG:
         self,
         session_id: str,
         query: str,
-        k: int = 10,
-        min_relevance: float = 0.5
+        k: int = 10,  # Default: 10 (balanced recall vs precision)
+        min_relevance: float = 0.5  # Default: 0.5 (middle-ground threshold)
     ) -> List[Tuple[Dict[str, Any], float]]:
         """Search conversation memory semantically.
 
@@ -127,8 +127,14 @@ class EpisodicMemoryRAG:
         Args:
             session_id: Chat session ID
             query: Search query (typically the user's current message)
-            k: Number of results to return
-            min_relevance: Minimum relevance score (0-1, lower = more strict)
+            k: Number of results to return (default: 10)
+               - Higher k = more context but may include less relevant messages
+               - Lower k = focused context but may miss relevant info
+               - 10 is a balanced default for most conversations
+            min_relevance: Minimum relevance score (0-1, default: 0.5)
+               - Higher threshold (0.7+) = stricter matching, fewer false positives
+               - Lower threshold (0.3-) = looser matching, better recall
+               - 0.5 is middle ground between precision and recall
 
         Returns:
             List of (message_dict, relevance_score) tuples, sorted by relevance

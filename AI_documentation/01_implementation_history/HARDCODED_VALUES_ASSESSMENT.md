@@ -532,3 +532,100 @@ The temperature overrides enable:
 - Deterministic testing (set all to 0.1)
 - More creative summaries (increase to 0.5)
 - Consistent fact extraction (keep at 0.3)
+
+---
+
+## Final Decision: Phase 1 Complete, Phase 2 Skipped
+
+**Date:** December 24, 2025
+**Status:** ✅ Phase 1 Implemented | ❌ Phase 2 Skipped
+
+### Phase 1 Implementation Results
+
+**All 6 critical values successfully externalized:**
+1. ✅ `MEMORY_EMBEDDING_MODEL` - Enables testing with different models
+2. ✅ `MEMORY_SUMMARIZATION_INTERVAL` - Fast intervals for dev, slower for prod
+3. ✅ `MEMORY_FACT_EXTRACTION_INTERVAL` - Configurable user profile building
+4. ✅ `OLLAMA_TEMP_REWRITE` - Tunable rewrite consistency
+5. ✅ `OLLAMA_TEMP_SUMMARIZATION` - Adjustable summary creativity
+6. ✅ `OLLAMA_TEMP_FACT_EXTRACTION` - Configurable fact extraction precision
+
+**Commit:** `525ebdd0` - "Externalize Phase 1 critical configuration values to .env"
+
+### Phase 2 Decision: SKIPPED
+
+**Reasons for skipping Phase 2:**
+
+1. **No Proven User Need**
+   - Phase 1 solved real problems (testing, experimentation, different models)
+   - Phase 2 would solve hypothetical problems (no one asked for RSI tuning)
+
+2. **Algorithm Tuning Knobs, Not User Configuration**
+   - RSI 70/30 is industry standard (every TA book, TradingView, Investopedia)
+   - RAG k=10, min_relevance=0.5 are well-tuned defaults
+   - Critical threshold 4.0 is carefully calibrated to scoring weights
+
+3. **Risk of Misconfiguration**
+   - Users don't understand what `MEMORY_RAG_SEARCH_K=15` means
+   - No clear way to know if `MONGODB_RSI_OVERBOUGHT=65` is better than `70`
+   - Wrong values could degrade system quality without obvious errors
+
+4. **YAGNI Principle**
+   - "You Aren't Gonna Need It" - don't add features speculatively
+   - If users request these, we can add them later
+   - Better to have focused, well-documented defaults than config sprawl
+
+5. **Complexity Without Value**
+   - Phase 1: 6 vars = solves 3+ real use cases
+   - Phase 2: 5 vars = solves 0 proven use cases
+   - More config = more complexity = harder to understand
+
+### Better Approach: Document the Defaults
+
+Instead of externalizing everything, we documented WHY defaults are what they are:
+
+**RSI Thresholds (70/30):**
+- Industry standard used by TradingView, Investopedia, technical analysts worldwide
+- 70+ = overbought (potential reversal down)
+- 30- = oversold (potential reversal up)
+- Changing these requires deep TA knowledge and custom trading strategy
+
+**RAG Parameters (k=10, min_relevance=0.5):**
+- k=10 balances recall (finding relevant messages) vs precision (avoiding noise)
+- min_relevance=0.5 is middle ground between strict matching and loose retrieval
+- Tuning requires understanding semantic similarity scores and vector search
+
+**Critical Message Threshold (4.0):**
+- Name introductions score 6.0 → always critical
+- Personal info (holdings) scores 4.0+ → critical
+- Regular messages score 1.5-2.0 → can be dropped if needed
+- Threshold 4.0 ensures names and key info never forgotten
+
+### What Phase 2 Items Remain Hardcoded
+
+These values remain hardcoded and are considered **final, well-tuned constants:**
+
+| Item | Value | Location | Rationale |
+|------|-------|----------|-----------|
+| RSI Overbought | 70 | mongodb_handlers.py | Industry standard |
+| RSI Oversold | 30 | mongodb_handlers.py | Industry standard |
+| RAG Search K | 10 | memory_rag.py | Balanced default |
+| RAG Min Relevance | 0.5 | memory_rag.py | Middle-ground threshold |
+| Critical Threshold | 4.0 | memory_manager.py | Calibrated to scoring weights |
+| Importance Weights | 6.0/4.0/1.5 | memory_manager.py | Carefully tuned for memory quality |
+
+### When to Revisit Phase 2
+
+Implement Phase 2 ONLY if:
+- ✅ Users explicitly request ability to tune these values
+- ✅ There's a proven use case (e.g., "our trading bot uses 80/20 RSI")
+- ✅ Users understand what they're tuning and why
+- ✅ We have metrics to validate if changes improve or degrade quality
+
+### Conclusion
+
+**Phase 1 was the right scope.** It solved real problems without adding unnecessary complexity.
+
+The remaining hardcoded values are **well-chosen algorithm constants**, not configuration parameters. They should stay in code where they're documented and visible, not hidden in `.env` files where users might change them without understanding the impact.
+
+**Status:** Configuration externalization work is **COMPLETE** at Phase 1.
