@@ -185,6 +185,27 @@ const CharacterShowcase: React.FC = () => {
 
   return (
     <div className="relative w-full">
+      {/* Navigation Arrows - Outside Panel */}
+      <button
+        onClick={handlePrev}
+        disabled={isTransitioning}
+        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+      >
+        ‹
+      </button>
+      <button
+        onClick={handleNext}
+        disabled={isTransitioning}
+        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+      >
+        ›
+      </button>
+
+      {/* Character Counter - Always visible, no fade animation */}
+      <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm z-20">
+        {currentIndex + 1} / {personas.length}
+      </div>
+
       {/* Main Overlay Panel - Always Visible */}
       <motion.div
         key={currentPersona.key} // Re-animate when character changes
@@ -204,27 +225,6 @@ const CharacterShowcase: React.FC = () => {
               backgroundSize: '50px 50px',
             }}
           />
-
-        {/* Navigation Arrows - Outside Panel */}
-        <button
-          onClick={handlePrev}
-          disabled={isTransitioning}
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          ‹
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={isTransitioning}
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          ›
-        </button>
-
-        {/* Character Counter */}
-        <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm z-10">
-          {currentIndex + 1} / {personas.length}
-        </div>
 
         <div className="flex min-h-[600px]">
           {/* Information Section - Left Side */}

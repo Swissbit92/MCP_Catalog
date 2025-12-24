@@ -8,8 +8,9 @@ if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add project root to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
 
 print("="*60)
 print("Phase 3 Component Test (No Server Required)")
@@ -18,10 +19,10 @@ print("="*60)
 # Test 1: Import all Phase 3 modules
 print("\nTest 1: Importing Phase 3 modules...")
 try:
-    from coordinator.memory_rag import EpisodicMemoryRAG
-    from coordinator.user_profile import UserProfile
-    from coordinator.fact_extractor import FactExtractor
-    from coordinator.repositories.user_profile_repository import UserProfileRepository
+    from src.coordinator.memory_rag import EpisodicMemoryRAG
+    from src.coordinator.user_profile import UserProfile
+    from src.coordinator.fact_extractor import FactExtractor
+    from src.coordinator.repositories.user_profile_repository import UserProfileRepository
     print("[PASS] All Phase 3 modules imported successfully")
 except ImportError as e:
     print(f"[FAIL] Import failed: {e}")
@@ -100,7 +101,7 @@ except Exception as e:
 # Test 5: Verify initialization
 print("\nTest 5: Testing startup initialization...")
 try:
-    from coordinator import startup
+    from src.coordinator import startup
 
     # Initialize database
     startup.init_db()
