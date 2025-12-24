@@ -587,7 +587,7 @@ def chat_with_session(session_id: str, body: ChatBody):
             logger.debug(f"[Phase3 RAG] Updated vector index for session {session_id}")
 
         # Extract facts and update user profile (every 10 messages to save compute)
-        if fact_extractor and user_profile_repo and len(db_messages) % 10 == 0:
+        if user_profile_repo and len(db_messages) % 10 == 0:
             try:
                 # Get updated message list
                 all_messages_updated = message_repo.get_messages_by_session(session_id)
