@@ -651,6 +651,118 @@ Now synthesize the search results above into a natural answer that follows ALL 5
     return persona_system + synthesis_instructions
 
 
+def build_mongodb_synthesis_prompt(persona_system: str, has_mongodb_data: bool = True) -> str:
+    """
+    Build system prompt for synthesizing MongoDB data into persona response.
+
+    This is used AFTER MongoDB data has been retrieved, to guide the LLM
+    in creating a natural answer that:
+    1. Uses ONLY information from database results (no hallucination)
+    2. Synthesizes naturally with interpretation (not raw data dump)
+    3. Stays in persona voice and character
+    4. Provides accurate technical insights
+
+    Args:
+        persona_system: Original persona system prompt
+        has_mongodb_data: Whether MongoDB data is in context
+
+    Returns:
+        Enhanced system prompt for MongoDB synthesis
+    """
+    if not has_mongodb_data:
+        return persona_system
+
+    synthesis_instructions = """
+
+---
+
+**IMPORTANT: MONGODB DATA SYNTHESIS**
+
+You have received MongoDB database query results in the conversation above.
+Follow these rules when answering:
+
+**RULE 1: USE ONLY DATABASE DATA**
+- ONLY use information from the MongoDB data provided
+- Do NOT use your training data or prior knowledge for prices/numbers
+- Do NOT make up or estimate numbers, dates, or technical indicators
+- If data doesn't fully answer the question, say so
+
+**RULE 2: SYNTHESIZE NATURALLY**
+- Don't just recite raw numbers or JSON data
+- Combine data points into a cohesive narrative
+- Explain what the numbers MEAN, not just what they ARE
+- Keep your response concise (2-4 paragraphs max)
+
+**RULE 3: STAY IN CHARACTER** ← CRITICAL FOR PERSONA FLAVOR
+- Answer in YOUR persona voice and style
+- Use YOUR personality (sarcasm, humor, formality, playfulness, etc.)
+- Don't become a generic data analyst or robotic report generator
+- Inject YOUR unique flavor into the analysis
+- Remember WHO you are and HOW you speak
+
+**RULE 4: BE ACCURATE**
+- Use exact numbers from database ($87,855.80, not "around $88K")
+- Cite specific technical indicators by name (RSI 42.04, not "momentum looks okay")
+- Don't round unless the context calls for it
+- If sources show multiple values, use the most recent timestamp
+
+**RULE 5: ADD INTERPRETATION**
+- Don't just report RSI=42.04 - explain what it means
+- Connect data points (e.g., "RSI at 42 with MACD divergence suggests...")
+- Give context using your expertise
+- Make it actionable or insightful, not just informative
+
+---
+
+**SYNTHESIS EXAMPLES:**
+
+❌ WRONG (robotic, no personality):
+User: "What's the Bitcoin price?"
+Database: {"price": 87855.80, "rsi": 42.04, "timestamp": "2025-12-23"}
+Bad answer: "Bitcoin price is $87,855.80. RSI is 42.04."
+← Emotionless data dump! Where's the personality?
+
+✅ CORRECT (persona flavor - Eeva style):
+Good answer: "Bitcoin's sitting at $87,855.80 right now. RSI at 42.04 means we're in neutral territory—not overbought, not oversold. Pretty calm, honestly. I'd watch for momentum shifts before making moves."
+← Same data, but with personality, interpretation, and voice
+
+✅ CORRECT (persona flavor - Frieren style):
+Good answer: "The current price stands at $87,855.80. The RSI reading of 42.04 indicates neutral momentum—neither extreme greed nor fear dominates the market at this moment. A measured observation period would be prudent."
+← Formal, contemplative, analytical - matches Frieren's character
+
+---
+
+❌ WRONG (using training data instead of database):
+User: "What's Bitcoin's RSI?"
+Database: {"rsi": 42.04, "timestamp": "2025-12-23T11:00:00Z"}
+Bad answer: "RSI is typically around 50-70 for Bitcoin."
+← Hallucinating generic knowledge instead of using actual data!
+
+✅ CORRECT (using database data):
+Good answer: "RSI is at 42.04 as of today. That's below the 50 midpoint, suggesting neutral-to-bearish momentum. Not screaming 'buy' but not alarming either."
+← Uses exact database data with persona interpretation
+
+---
+
+❌ WRONG (raw JSON dump):
+User: "Tell me about Bitcoin's technical indicators"
+Database: {"rsi": 42.04, "macd_line": -245.67, "bb_high": 89234.12, "bb_low": 85123.45}
+Bad answer: "RSI: 42.04, MACD: -245.67, BB High: 89234.12, BB Low: 85123.45"
+← Just listing numbers! No synthesis, no interpretation, no personality
+
+✅ CORRECT (natural synthesis with persona):
+Good answer: "Looking at the technicals: RSI's at 42 (neutral), MACD's negative at -245 (bearish momentum), and price is bouncing between $85K-$89K Bollinger Bands. The divergence between neutral RSI and bearish MACD? That's the market being indecisive. Could break either way."
+← Synthesizes data into narrative with interpretation and personality
+
+---
+
+Now synthesize the MongoDB data above into a natural answer that follows ALL 5 rules.
+Use YOUR voice. Make it sound like YOU, not a database query tool or financial report.
+"""
+
+    return persona_system + synthesis_instructions
+
+
 def should_use_keyword_filter(query: str) -> Optional[bool]:
     """
     Quick keyword-based filter to prevent obvious false positives.

@@ -6,7 +6,8 @@ interface PersonaJson {
   display_name: string;
   coordinator_label: string;
   rarity: string;
-  image_path?: string;
+  image?: string;
+  avatar?: string;
 }
 
 interface CharacterSelectorProps {
@@ -22,13 +23,18 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onCharacterSelect,
   isTransitioning = false
 }) => {
+  // Convert API image paths to React app paths
+  const getImagePath = (apiPath: string) => {
+    if (!apiPath) return '/images/ui/default_avatar.png';
+    // Handle both old format (ui/images/) and new format (images/personas/)
+    if (apiPath.startsWith('images/')) {
+      return '/' + apiPath;
+    }
+    return apiPath.replace('ui/images/', '/images/');
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5, duration: 0.4 }}
-      className="w-full max-w-4xl mx-auto mt-8"
-    >
+    <div className="w-full max-w-4xl mx-auto mt-8">
       {/* Thumbnail Grid */}
       <div className="flex justify-center gap-3 md:gap-4 overflow-x-auto pb-4 px-4 scrollbar-hide">
         {personas.map((persona, index) => (
@@ -50,7 +56,7 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           >
             {/* Character Image */}
             <img
-              src={`/images/${persona.image_path || `${persona.key}_card.png`}`}
+              src={getImagePath(persona.avatar || persona.image || '')}
               alt={persona.display_name}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -80,13 +86,13 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         ))}
       </div>
 
-      {/* Character Counter */}
+      {/* Character Counter - Always visible, no fade animation */}
       <div className="text-center mt-4">
         <span className="text-slate-400 text-sm">
           {currentIndex + 1} of {personas.length}
         </span>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

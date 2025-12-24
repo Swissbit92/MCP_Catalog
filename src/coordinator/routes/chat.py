@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import re
 import time
-import json
 import logging
 from datetime import datetime
 from typing import Optional
@@ -29,8 +27,8 @@ from ..tool_definitions import (
     classify_query_intent,
     get_tools_for_query,
 )
-from ..services.citation_service import validate_citations
 from ..services.first_person_service import post_process_first_person
+from ..services.query_handler_service import QueryHandlerService
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -138,22 +136,41 @@ def chat(body: ChatBody):
     mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "").startswith("bitcoin_")]
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
 
+    # Create query handler service
+    query_handler = QueryHandlerService(
+        brave_client=deps["brave_client"],
+        mongodb_service=deps["mongodb_service"]
+    )
+
     if mongodb_tools and not brave_tools:
         # MongoDB-only query
-        return _handle_mongodb_query(
-            body, system, user_compiled, mongodb_tools, metadata, persona_name, deps
+        return query_handler.handle_mongodb_query(
+            message=body.message,
+            system_prompt=system,
+            user_compiled=user_compiled,
+            mongodb_tools=mongodb_tools,
+            metadata=metadata,
+            persona_name=persona_name
         )
 
     elif brave_tools and not mongodb_tools:
         # Brave-only query
-        return _handle_brave_query(
-            body, system, user_compiled, brave_tools, tools, metadata, persona_name, deps
+        return query_handler.handle_brave_query(
+            system_prompt=system,
+            user_compiled=user_compiled,
+            tools=tools,
+            metadata=metadata,
+            persona_name=persona_name
         )
 
     elif brave_tools and mongodb_tools:
         # Multi-MCP query
-        return _handle_multi_mcp_query(
-            body, system, user_compiled, brave_tools, mongodb_tools, metadata, persona_name, deps
+        return query_handler.handle_multi_mcp_query(
+            system_prompt=system,
+            user_compiled=user_compiled,
+            brave_tools=brave_tools,
+            metadata=metadata,
+            persona_name=persona_name
         )
 
     else:
@@ -166,173 +183,6 @@ def chat(body: ChatBody):
         answer = client.complete(system=system, user_prompt=user_compiled)
         answer, was_rewritten = post_process_first_person(answer, persona_name)
         return {"answer": answer, "used_search": False, "metadata": metadata.model_dump(), "rewritten": was_rewritten}
-
-
-def _handle_mongodb_query(body, system, user_compiled, mongodb_tools, metadata, persona_name, deps):
-    """Handle MongoDB-only query."""
-    mongodb_service = deps["mongodb_service"]
-
-    logger.info("MongoDB-only query detected, using direct handlers")
-    tool_name = mongodb_tools[0]["function"]["name"]
-    logger.info(f"Using MongoDB tool: {tool_name}")
-
-    try:
-        mongodb_result = None
-        if tool_name == "bitcoin_current_price":
-            mongodb_result = mongodb_service.handle_bitcoin_current_price(reason="User query about current price")
-        elif tool_name == "bitcoin_historical_prices":
-            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', body.message)
-            start_date = date_match.group(1) if date_match else "2025-12-01"
-            mongodb_result = mongodb_service.handle_bitcoin_historical_prices(
-                reason="User query about historical data", start_date=start_date
-            )
-        elif tool_name == "bitcoin_trading_summary":
-            mongodb_result = mongodb_service.handle_bitcoin_trading_summary(reason="User query about trading stats")
-        elif tool_name == "bitcoin_technical_analysis":
-            mongodb_result = mongodb_service.handle_bitcoin_technical_analysis(reason="User query about technical analysis")
-
-        if mongodb_result:
-            formatted_data = json.dumps(mongodb_result, indent=2)
-
-            client = LC_OllamaClient(
-                base=get_ollama_base(),
-                model=get_persona_model(),
-                temperature=get_persona_temperature()
-            )
-
-            synthesis_prompt = f"""{user_compiled}
-
-[MongoDB Data Retrieved]
-{formatted_data}
-
-Please synthesize this data into a natural, conversational response. Include key technical insights and interpretations."""
-
-            answer = client.complete(system=system, user_prompt=synthesis_prompt)
-
-            metadata.source_type = "mongodb_mcp"
-            metadata.tools_used = [tool_name]
-            metadata.cache_status = mongodb_result.get("cache_status", "miss")
-            metadata.data_timestamp = mongodb_result.get("timestamp", "")
-
-            logger.info(f"MongoDB query completed: tool={tool_name}, cache={metadata.cache_status}")
-
-            answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-            return {
-                "answer": answer,
-                "used_search": True,
-                "metadata": metadata.model_dump(),
-                "rewritten": was_rewritten
-            }
-    except Exception as e:
-        logger.error(f"MongoDB query failed: {e}")
-
-    # Fallback to regular LLM response
-    client = LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
-        temperature=get_persona_temperature()
-    )
-    answer = client.complete(system=system, user_prompt=user_compiled)
-    return {"answer": answer, "used_search": False, "metadata": metadata.model_dump()}
-
-
-def _handle_brave_query(body, system, user_compiled, brave_tools, tools, metadata, persona_name, deps):
-    """Handle Brave-only query."""
-    brave_client = deps["brave_client"]
-
-    logger.info("[Brave] Starting Brave-only query workflow")
-    start_time = time.time()
-
-    client = LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
-        temperature=get_persona_temperature(),
-        mcp_client=brave_client
-    )
-
-    answer, tool_call, search_results = client.complete_with_tools(
-        persona_system=system,
-        user_prompt=user_compiled,
-        tools=tools
-    )
-
-    elapsed = time.time() - start_time
-
-    metadata.source_type = "brave_mcp"
-    metadata.tools_used = ["brave_web_search"] if tool_call else []
-
-    # Validate citations
-    search_count = len(search_results) if search_results else 0
-    answer, has_valid_citations, citation_details = validate_citations(
-        answer=answer,
-        used_search=tool_call is not None,
-        search_results_count=search_count
-    )
-
-    answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-    response = {
-        "answer": answer,
-        "used_search": tool_call is not None,
-        "metadata": metadata.model_dump(),
-        "citation_valid": has_valid_citations,
-        "rewritten": was_rewritten
-    }
-
-    if search_results:
-        response["search_results_count"] = len(search_results)
-        logger.info(
-            f"[Brave] ✅ Workflow completed: used_search={tool_call is not None}, "
-            f"results_count={len(search_results)}, citations_valid={has_valid_citations}, "
-            f"total_time={elapsed:.2f}s"
-        )
-    else:
-        logger.info(f"[Brave] ✅ Workflow completed: used_search=False, total_time={elapsed:.2f}s (LLM answered directly)")
-
-    return response
-
-
-def _handle_multi_mcp_query(body, system, user_compiled, brave_tools, mongodb_tools, metadata, persona_name, deps):
-    """Handle Multi-MCP query (Brave + MongoDB)."""
-    brave_client = deps["brave_client"]
-
-    logger.info("Multi-MCP query detected (Brave + MongoDB)")
-
-    client = LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
-        temperature=get_persona_temperature(),
-        mcp_client=brave_client
-    )
-
-    answer, tool_call, search_results = client.complete_with_tools(
-        persona_system=system,
-        user_prompt=user_compiled,
-        tools=brave_tools
-    )
-
-    metadata.source_type = "multi_mcp"
-    metadata.tools_used = ["brave_web_search"]
-
-    # Validate citations
-    search_count = len(search_results) if search_results else 0
-    answer, has_valid_citations, citation_details = validate_citations(
-        answer=answer,
-        used_search=True,
-        search_results_count=search_count
-    )
-
-    answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-    return {
-        "answer": answer,
-        "used_search": True,
-        "metadata": metadata.model_dump(),
-        "citation_valid": has_valid_citations,
-        "search_results_count": search_count,
-        "rewritten": was_rewritten
-    }
 
 
 def _check_and_summarize(session_id: str, persona_key: str, deps: dict):

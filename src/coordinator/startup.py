@@ -283,7 +283,7 @@ def init_db():
     # Migration: If old tables exist, migrate data
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
     if cur.fetchone():
-        print("Migrating old chat data to new schema...")
+        logger.info("Migrating old chat data to new schema...")
         cur.execute("""
         INSERT OR IGNORE INTO chat_sessions (id, persona_key, title, created_at, updated_at)
         SELECT printf('session_%06d', id), persona, title, created_at, updated_at FROM chats
@@ -292,7 +292,7 @@ def init_db():
         INSERT OR IGNORE INTO messages (id, session_id, role, content, timestamp, latency_ms)
         SELECT printf('msg_%06d', id), printf('session_%06d', chat_id), role, content, ts, latency_ms FROM messages
         """)
-        print("Migration completed.")
+        logger.info("Migration completed.")
 
     # Create emotional_states table
     cur.execute("""
@@ -358,30 +358,30 @@ def cleanup_orphaned_sessions():
         if orphaned_persona_keys:
             orphaned_personas = list(set(orphaned_persona_keys))
             deleted_count = _session_repo.delete_sessions_by_persona(orphaned_personas)
-            print(f"Cleaned up {deleted_count} orphaned sessions for removed personas: {orphaned_personas}")
+            logger.info(f"Cleaned up {deleted_count} orphaned sessions for removed personas: {orphaned_personas}")
 
     except Exception as e:
-        print(f"Warning: Failed to cleanup orphaned sessions: {e}")
+        logger.warning(f"Failed to cleanup orphaned sessions: {e}")
 
 
 def initialize_all():
     """Run all initialization routines."""
-    print("Initializing FastAPI server...")
+    logger.info("Initializing FastAPI server...")
 
     # Check Ollama
     try:
         assert_model_available(get_ollama_base(), get_persona_model())
-        print("Model check passed.")
+        logger.info("Model check passed.")
     except Exception as e:
-        print(f"Model check failed: {e}")
+        logger.error(f"Model check failed: {e}")
         raise
 
     # Initialize database
     try:
         init_db()
-        print("Database initialized.")
+        logger.info("Database initialized.")
     except Exception as e:
-        print(f"Database init failed: {e}")
+        logger.error(f"Database init failed: {e}")
         raise
 
     # Initialize repositories
@@ -394,39 +394,39 @@ def initialize_all():
     try:
         init_phase3_memory()
         if _episodic_memory_rag:
-            print("Phase 3: RAG memory enabled (semantic search)")
+            logger.info("Phase 3: RAG memory enabled (semantic search)")
         else:
-            print("Phase 3: RAG memory disabled")
+            logger.info("Phase 3: RAG memory disabled")
     except Exception as e:
-        print(f"Phase 3 initialization warning: {e}")
+        logger.warning(f"Phase 3 initialization warning: {e}")
 
     # Initialize Brave MCP
     try:
         init_brave_client()
         if _brave_client:
             enabled_rarities = get_brave_enabled_rarities()
-            print(f"Brave MCP enabled for rarities: {', '.join(enabled_rarities)}")
+            logger.info(f"Brave MCP enabled for rarities: {', '.join(enabled_rarities)}")
         else:
-            print("Brave MCP disabled (web search not available)")
+            logger.info("Brave MCP disabled (web search not available)")
     except Exception as e:
-        print(f"Brave MCP initialization warning: {e}")
+        logger.warning(f"Brave MCP initialization warning: {e}")
 
     # Initialize MongoDB MCP
     try:
         init_mongodb_client()
         if _mongodb_client:
             enabled_rarities = get_mongodb_enabled_rarities()
-            print(f"MongoDB MCP enabled for rarities: {', '.join(enabled_rarities)}")
+            logger.info(f"MongoDB MCP enabled for rarities: {', '.join(enabled_rarities)}")
         else:
-            print("MongoDB MCP disabled (no URI or feature flag off)")
+            logger.info("MongoDB MCP disabled (no URI or feature flag off)")
     except Exception as e:
-        print(f"MongoDB MCP initialization warning: {e}")
+        logger.warning(f"MongoDB MCP initialization warning: {e}")
 
     # Refresh persona summaries
     try:
         result = ensure_all_summaries_serialized(timeout_sec=0.01, poll_sec=0.01)
-        print(f"Summaries check completed: {result}")
+        logger.info(f"Summaries check completed: {result}")
     except Exception as e:
-        print(f"Summary check failed: {e}")
+        logger.warning(f"Summary check failed: {e}")
 
-    print("FastAPI server initialization complete.")
+    logger.info("FastAPI server initialization complete.")
