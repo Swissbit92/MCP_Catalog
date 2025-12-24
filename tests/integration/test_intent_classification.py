@@ -16,7 +16,7 @@ from datetime import datetime
 from collections import defaultdict
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from coordinator.tool_definitions import classify_query_intent, QueryIntent, get_tools_for_query
 
