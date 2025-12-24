@@ -41,7 +41,25 @@ cd react-ui && npm run start:dev
 cd react-ui && npm run build
 ```
 
-### Testing
+### CI/CD (Automated Testing)
+
+**New to CI/CD?** See `.github/CICD_GETTING_STARTED.md` for a beginner-friendly introduction.
+
+The project has **automated testing** via GitHub Actions that runs on every push:
+- ✅ Backend tests (10 test files, ~360 test cases)
+- ✅ Frontend tests (Jest with coverage reporting)
+- ✅ Production build verification
+- ✅ Code quality checks (syntax, naming, TODOs)
+- ✅ Security scanning (npm audit, secret detection)
+
+**Typical run time:** ~5 minutes (5 jobs in parallel)
+**View results:** GitHub → Actions tab → See workflow runs
+
+**Technical reference:** `.github/CICD_DOCUMENTATION.md`
+
+---
+
+### Testing (Manual/Local)
 ```bash
 # React tests (full suite)
 cd react-ui && npm test
@@ -769,15 +787,25 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 
 **Active Documentation (Root Directory):**
 - `README.md` - User-facing setup guide, features, architecture diagram
+- `NEXT_STEPS.md` - Current project status, decision points, roadmap
 - `ASSESSMENT.md` - Comprehensive codebase quality assessment and scoring (Dec 2025)
 - `AGENTS.md` - AI coding guidelines, tech stack, build commands, code style
 - `CHANGELOG.md` - Version history, feature additions, security fixes
 - `PHASE3_FINAL_RESULTS.md` - Phase 3 live test results and validation (Dec 2025)
 - `PHASE3_LIVE_TEST_ANALYSIS.md` - Bug discovery and analysis (Dec 2025)
 
+**CI/CD Documentation (.github/):**
+- `CICD_GETTING_STARTED.md` - Beginner-friendly CI/CD introduction (what, why, how)
+- `CICD_DOCUMENTATION.md` - Technical reference for CI/CD pipeline configuration
+
 **Historical Documentation (Archive):**
 - `AI_documentation/` - Historical specs, completion summaries, feature implementation details
   - `01_implementation_history/` - MVP and phase completion summaries
+    - `ARCHITECTURE_IMPROVEMENTS_SUMMARY.md` - Complete refactoring summary (Dec 2025)
+    - `ASYNC_CONVERSION_PLAN.md` - 8-phase async implementation strategy
+    - `CRITICAL_ISSUES_FIXED.md` - Master summary of all fixes (Dec 2025)
+    - `MONGODB_REFACTORING_COMPLETE.md` - MongoDB MCP client refactoring
+    - `HEADER_MODULAR_REFACTORING.md` - React Header component split
     - `PHASE3_ADVANCED_MEMORY_COMPLETION.md` - Phase 3 implementation summary
     - `PHASE3_TEST_RESULTS.md` - Component-level test validation
   - `02_ux_design_specs/` - UX design roadmaps (Home, Chat, Character pages, Gacha)
