@@ -1,8 +1,21 @@
 # CI/CD Pipeline Documentation
 
+**For beginners:** See [CICD_GETTING_STARTED.md](CICD_GETTING_STARTED.md) for a friendly introduction to CI/CD concepts.
+
+**This document:** Technical reference for the CI/CD pipeline configuration and maintenance.
+
+---
+
 ## Overview
 
 This repository uses GitHub Actions for continuous integration and deployment. The pipeline automatically runs tests, builds the application, and performs code quality checks on every push and pull request.
+
+**Quick stats:**
+- **5 automated jobs** run in parallel
+- **~5 minutes** per push (typical)
+- **Free** (public repository)
+- **360+ tests** executed automatically
+- **68%+ code coverage** tracked
 
 ## Workflows
 
