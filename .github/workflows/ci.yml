@@ -63,9 +63,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: react-ui/package-lock.json
 
+      - name: Debug - Check versions and package files
+        working-directory: react-ui
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "TypeScript in package.json:"
+          grep "typescript" package.json || echo "Not found"
+          echo "Package-lock.json hash:"
+          sha256sum package-lock.json || shasum -a 256 package-lock.json
+
       - name: Install frontend dependencies
         working-directory: react-ui
-        run: npm ci
+        run: npm ci --verbose
 
       - name: Run frontend tests
         working-directory: react-ui
@@ -94,9 +104,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: react-ui/package-lock.json
 
+      - name: Debug - Check versions and package files
+        working-directory: react-ui
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "TypeScript in package.json:"
+          grep "typescript" package.json || echo "Not found"
+          echo "Package-lock.json hash:"
+          sha256sum package-lock.json || shasum -a 256 package-lock.json
+
       - name: Install frontend dependencies
         working-directory: react-ui
-        run: npm ci
+        run: npm ci --verbose
 
       - name: Build frontend
         working-directory: react-ui
