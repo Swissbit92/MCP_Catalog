@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 
-from ..config import get_ollama_base, get_persona_model
+from ..config import get_ollama_base, get_persona_model, get_temp_rewrite
 from ..llm_client import LC_OllamaClient
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ Rewritten first-person response:"""
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
-            temperature=0.2  # Lower temperature for more consistent rewrites
+            temperature=get_temp_rewrite()
         )
 
         rewritten = client.complete(

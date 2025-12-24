@@ -209,11 +209,30 @@ COORD_URL=http://127.0.0.1:8000        # Backend URL for frontend
 PERSONA_DIR=personas                   # Persona JSON directory
 ```
 
-Optional:
+Optional - Basic:
 - `REACT_PORT=3000` - React dev server port (default: 3000)
 - `DEFAULT_PERSONA` - Preselect persona on load
 - `APP_LOGO_PATH`, `USER_AVATAR` - UI branding paths
 - `COORDINATOR_DB_PATH` - Custom SQLite path (default: `chats.db`)
+
+Optional - Memory & RAG (Phase 3):
+- `MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest` - Ollama embedding model for semantic search
+- `MEMORY_SUMMARIZATION_INTERVAL=30` - Messages before triggering auto-summarization
+- `MEMORY_FACT_EXTRACTION_INTERVAL=10` - Messages before fact extraction for user profiles
+
+Optional - LLM Temperature Overrides:
+- `OLLAMA_TEMP_REWRITE=0.2` - Temperature for first-person voice rewrites
+- `OLLAMA_TEMP_SUMMARIZATION=0.3` - Temperature for conversation summarization
+- `OLLAMA_TEMP_FACT_EXTRACTION=0.3` - Temperature for fact extraction
+
+Optional - MongoDB (Phase 3):
+- `MONGODB_URI` - MongoDB connection URI
+- `MONGODB_ENABLED=false` - Enable MongoDB integration
+- `MONGODB_ENABLED_RARITIES=epic,legendary` - Rarities with MongoDB access
+- `MONGODB_CACHE_CURRENT_PRICE=60` - Cache TTL for current price (seconds)
+- `MONGODB_CACHE_TECHNICAL=60` - Cache TTL for technical analysis (seconds)
+- `MONGODB_CACHE_HISTORICAL=3600` - Cache TTL for historical data (seconds)
+- `MONGODB_CACHE_TRADING=300` - Cache TTL for trading stats (seconds)
 
 ## Code Style
 
@@ -789,6 +808,50 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 ---
 
 ## Project Hygiene Log
+
+### December 24, 2025 - Phase 1 Configuration Externalization
+
+**Status:** ✅ COMPLETE
+
+**Problem:** Critical hardcoded values (embedding model, intervals, temperatures) made the system difficult to configure and tune.
+
+**Solution:** Externalized 7 critical configuration values to `.env` and `config.py` with Pydantic validation.
+
+**Changes Made:**
+```
+src/coordinator/
+├── config.py                      (+83 lines)
+│   ├── MemorySettings class       (embedding model, intervals)
+│   ├── OllamaSettings enhancements (temperature overrides)
+│   └── Accessor functions         (6 new functions)
+├── memory_rag.py                  (+3 lines)
+├── startup.py                     (+1 line)
+├── routes/chat.py                 (+8 lines, imports + usage)
+└── services/
+    └── first_person_service.py    (+1 line)
+
+Root:
+├── .env.example                   (+57 lines - new sections)
+└── CLAUDE.md                      (+24 lines - documentation)
+```
+
+**Externalized Values:**
+1. **Embedding Model** - `MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest`
+2. **Summarization Interval** - `MEMORY_SUMMARIZATION_INTERVAL=30`
+3. **Fact Extraction Interval** - `MEMORY_FACT_EXTRACTION_INTERVAL=10`
+4. **Rewrite Temperature** - `OLLAMA_TEMP_REWRITE=0.2`
+5. **Summarization Temperature** - `OLLAMA_TEMP_SUMMARIZATION=0.3`
+6. **Fact Extraction Temperature** - `OLLAMA_TEMP_FACT_EXTRACTION=0.3`
+
+**Benefits:**
+- Users can test with different embedding models without code changes
+- Environment-specific tuning (dev: fast intervals, prod: slower)
+- Deterministic testing (set all temps to 0.1)
+- A/B testing of memory parameters
+
+**Backward Compatibility:** ✅ All defaults match previous hardcoded values
+
+---
 
 ### December 24, 2025 - MongoDB Persona Flavor Enhancement
 

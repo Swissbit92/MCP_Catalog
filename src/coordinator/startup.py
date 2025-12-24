@@ -221,8 +221,8 @@ def init_phase3_memory():
     global _episodic_memory_rag, _fact_extractor
 
     try:
-        # Initialize RAG memory with embeddings
-        _episodic_memory_rag = EpisodicMemoryRAG(embedding_model="nomic-embed-text:latest")
+        # Initialize RAG memory with embeddings (uses config default)
+        _episodic_memory_rag = EpisodicMemoryRAG()
         logger.info("Episodic Memory RAG initialized (Phase 3)")
 
         # Initialize fact extractor

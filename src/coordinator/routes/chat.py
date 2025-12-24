@@ -16,6 +16,10 @@ from ..config import (
     get_persona_model,
     get_persona_temperature,
     get_model_context_window,
+    get_summarization_interval,
+    get_fact_extraction_interval,
+    get_temp_summarization,
+    get_temp_fact_extraction,
 )
 from ..llm_client import LC_OllamaClient, estimate_tokens, log_context_stats
 from ..persona_memory import (
@@ -195,17 +199,18 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
         all_messages = message_repo.get_messages_by_session(session_id)
         message_count = len(all_messages)
         summary_count = summary_repo.count_summaries(session_id)
-        messages_summarized = summary_count * 30
+        interval = get_summarization_interval()
+        messages_summarized = summary_count * interval
         messages_since_summary = message_count - messages_summarized
 
-        if messages_since_summary >= 30:
+        if messages_since_summary >= interval:
             logger.info(
                 f"[Summarizer] Triggering summarization for session {session_id} "
-                f"({messages_since_summary} new messages)"
+                f"({messages_since_summary} new messages, interval={interval})"
             )
 
             start_idx = messages_summarized
-            end_idx = start_idx + 30
+            end_idx = start_idx + interval
             messages_to_summarize = all_messages[start_idx:end_idx]
 
             # Set LLM client if not already set
@@ -214,7 +219,7 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
                     LC_OllamaClient(
                         base=get_ollama_base(),
                         model=get_persona_model(),
-                        temperature=0.3
+                        temperature=get_temp_summarization()
                     )
                 )
 
@@ -436,8 +441,9 @@ def chat_with_session(session_id: str, body: ChatBody):
             )
             logger.debug(f"[Phase3 RAG] Updated vector index for session {session_id}")
 
-        # Extract facts and update user profile (every 10 messages to save compute)
-        if user_profile_repo and len(db_messages) % 10 == 0:
+        # Extract facts and update user profile (configurable interval to save compute)
+        fact_interval = get_fact_extraction_interval()
+        if user_profile_repo and len(db_messages) % fact_interval == 0:
             try:
                 # Get updated message list
                 all_messages_updated = message_repo.get_messages_by_session(session_id)
@@ -451,7 +457,7 @@ def chat_with_session(session_id: str, body: ChatBody):
                     llm_client = LC_OllamaClient(
                         base=get_ollama_base(),
                         model=get_persona_model(),
-                        temperature=0.3  # Lower temp for fact extraction
+                        temperature=get_temp_fact_extraction()
                     )
                     from ..fact_extractor import FactExtractor
                     fact_extractor = FactExtractor(llm_client)
