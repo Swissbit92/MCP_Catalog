@@ -192,10 +192,15 @@ export const getSessionWithMessages = async (sessionId: string): Promise<Session
     throw new Error(`Failed to fetch session: ${response.statusText}`);
   }
   const data = await response.json();
-  // Convert timestamp strings to Date objects
+  // Convert timestamp strings to Date objects and source_type to metadata
   data.messages = data.messages.map((msg: any) => ({
     ...msg,
     timestamp: new Date(msg.timestamp),
+    // Convert source_type from database to metadata format for UI
+    metadata: msg.source_type ? {
+      source_type: msg.source_type,
+      tools_used: [],
+    } : undefined,
   }));
   return data;
 };

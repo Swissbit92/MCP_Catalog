@@ -15,7 +15,8 @@ class MessageRepository(BaseRepository):
         role: str,
         content: str,
         latency_ms: Optional[int] = None,
-        timestamp: Optional[str] = None
+        timestamp: Optional[str] = None,
+        source_type: str = "llm"
     ) -> str:
         """
         Create a new message in a session.
@@ -26,6 +27,7 @@ class MessageRepository(BaseRepository):
             content: Message content
             latency_ms: Optional latency in milliseconds
             timestamp: Optional timestamp (defaults to current time if not provided)
+            source_type: Source type (llm, brave_mcp, mongodb_mcp, multi_mcp)
 
         Returns:
             Message ID
@@ -34,10 +36,10 @@ class MessageRepository(BaseRepository):
         ts = timestamp or self._now()
 
         query = """
-            INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms, source_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        self._execute(query, (message_id, session_id, role, content, ts, latency_ms))
+        self._execute(query, (message_id, session_id, role, content, ts, latency_ms, source_type))
 
         return message_id
 

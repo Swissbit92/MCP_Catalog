@@ -223,6 +223,34 @@ class LC_OllamaClient:
         rendered = template.format_prompt(system=system, user=user_prompt).to_string()
         return self._invoke(rendered)
 
+    def _extract_latest_user_message(self, conversation: str) -> str:
+        """
+        Extract the latest user message from a conversation history.
+
+        The conversation format is:
+            User: <message 1>
+
+            Assistant: <response 1>
+
+            User: <message 2>
+
+        Args:
+            conversation: Full conversation history
+
+        Returns:
+            Latest user message only
+        """
+        # Split by lines and find the last "User: " message
+        lines = conversation.split("\n")
+        for i in range(len(lines) - 1, -1, -1):
+            line = lines[i].strip()
+            if line.startswith("User: "):
+                return line[6:].strip()  # Remove "User: " prefix
+
+        # Fallback: return entire conversation if no "User: " prefix found
+        logger.warning("[Query Extraction] Could not extract latest user message, using full conversation")
+        return conversation
+
     def _should_force_search(self, query: str) -> bool:
         """
         Determine if we should force search execution (bypass LLM decision).
@@ -310,10 +338,14 @@ class LC_OllamaClient:
             # Check if brave_web_search tool is available
             brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
             if brave_tool and self.mcp_client:
+                # Extract just the latest user message for search query
+                search_query = self._extract_latest_user_message(user_prompt)
+                logger.info(f"[Force Search] Extracted search query: '{search_query[:100]}'")
+
                 # Force execute search
                 search_results = self._execute_brave_search(ToolCall(
                     name="brave_web_search",
-                    arguments={"query": user_prompt, "reason": "Forced search for price/current data query"}
+                    arguments={"query": search_query, "reason": "Forced search for price/current data query"}
                 ))
 
                 if search_results:
@@ -335,7 +367,7 @@ class LC_OllamaClient:
                     # Combine answer + system-generated citations
                     final_response = llm_answer + accurate_citations
 
-                    return (final_response, ToolCall(name="brave_web_search", arguments={"query": user_prompt}), search_results)
+                    return (final_response, ToolCall(name="brave_web_search", arguments={"query": search_query}), search_results)
                 else:
                     logger.warning("[Anti-Hallucination] Forced search returned no results - admitting ignorance")
                     honest_response = "I attempted to search for current information on this topic, but the search didn't return any results. I don't have up-to-date information to answer this question accurately. I'd rather admit I don't know than guess or use potentially outdated information."

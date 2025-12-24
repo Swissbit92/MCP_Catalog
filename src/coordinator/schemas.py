@@ -69,6 +69,7 @@ class AppendMessageBody(BaseModel):
     content: str
     ts: Optional[str] = None
     latency_ms: Optional[int] = None
+    source_type: str = "llm"
 
 
 class MessageModel(BaseModel):
@@ -78,6 +79,7 @@ class MessageModel(BaseModel):
     content: str
     timestamp: str
     latency_ms: Optional[int] = None
+    source_type: str = "llm"
 
 
 class SessionModel(BaseModel):
