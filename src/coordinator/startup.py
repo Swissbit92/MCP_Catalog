@@ -264,6 +264,7 @@ def init_db():
         content TEXT NOT NULL,
         timestamp TEXT NOT NULL,
         latency_ms INTEGER,
+        source_type TEXT DEFAULT 'llm',
         FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
     )""")
 
@@ -327,6 +328,14 @@ def init_db():
         FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
         PRIMARY KEY(user_id, session_id)
     )""")
+
+    # Migration: Add source_type column to messages table if it doesn't exist
+    cur.execute("PRAGMA table_info(messages)")
+    columns = [row[1] for row in cur.fetchall()]
+    if 'source_type' not in columns:
+        logger.info("Adding source_type column to messages table...")
+        cur.execute("ALTER TABLE messages ADD COLUMN source_type TEXT DEFAULT 'llm'")
+        logger.info("source_type column added successfully")
 
     # Create indexes
     cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")

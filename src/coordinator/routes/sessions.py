@@ -121,7 +121,8 @@ def add_message(session_id: str, body: AppendMessageBody):
         role=body.role,
         content=body.content,
         latency_ms=body.latency_ms,
-        timestamp=body.ts
+        timestamp=body.ts,
+        source_type=body.source_type
     )
 
     # Update session timestamp
@@ -217,7 +218,8 @@ def import_session(body: ImportBody):
             role=msg.get("role") if isinstance(msg, dict) else getattr(msg, 'role', 'user'),
             content=msg.get("content") if isinstance(msg, dict) else getattr(msg, 'content', ''),
             timestamp=msg.get("timestamp") if isinstance(msg, dict) else getattr(msg, 'timestamp', now),
-            latency_ms=msg.get("latency_ms") if isinstance(msg, dict) else getattr(msg, 'latency_ms', None)
+            latency_ms=msg.get("latency_ms") if isinstance(msg, dict) else getattr(msg, 'latency_ms', None),
+            source_type=msg.get("source_type") if isinstance(msg, dict) else getattr(msg, 'source_type', 'llm')
         )
 
     return {"ok": True, "session_id": created_session_id}

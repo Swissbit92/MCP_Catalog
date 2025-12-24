@@ -401,10 +401,15 @@ def chat_with_session(session_id: str, body: ChatBody):
     # Import add_message from sessions route
     from .sessions import add_message
 
-    user_msg_body = AppendMessageBody(role="user", content=body.message, ts=now)
+    user_msg_body = AppendMessageBody(role="user", content=body.message, ts=now, source_type="llm")
     add_message(session_id, user_msg_body)
 
-    assistant_msg_body = AppendMessageBody(role="assistant", content=response["answer"], ts=now)
+    # Extract source_type from response metadata
+    source_type = "llm"
+    if "metadata" in response and response["metadata"]:
+        source_type = response["metadata"].get("source_type", "llm")
+
+    assistant_msg_body = AppendMessageBody(role="assistant", content=response["answer"], ts=now, source_type=source_type)
     add_message(session_id, assistant_msg_body)
 
     # Auto-summarization check
