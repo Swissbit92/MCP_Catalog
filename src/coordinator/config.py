@@ -50,6 +50,29 @@ class OllamaSettings(BaseSettings):
         alias="MODEL_CONTEXT_WINDOW"
     )
 
+    # Operation-specific temperature overrides
+    temp_rewrite: float = Field(
+        default=0.2,
+        ge=0.0,
+        le=1.0,
+        description="Temperature for first-person rewrites",
+        alias="OLLAMA_TEMP_REWRITE"
+    )
+    temp_summarization: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Temperature for conversation summarization",
+        alias="OLLAMA_TEMP_SUMMARIZATION"
+    )
+    temp_fact_extraction: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Temperature for fact extraction",
+        alias="OLLAMA_TEMP_FACT_EXTRACTION"
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
@@ -112,6 +135,37 @@ class BraveSettings(BaseSettings):
             logger.warning(f"Invalid BRAVE_SAFESEARCH '{v}', defaulting to 'moderate'")
             return "moderate"
         return v.lower()
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class MemorySettings(BaseSettings):
+    """Memory and RAG configuration (Phase 3)."""
+
+    embedding_model: str = Field(
+        default="nomic-embed-text:latest",
+        description="Ollama embedding model for RAG semantic search",
+        alias="MEMORY_EMBEDDING_MODEL"
+    )
+    summarization_interval: int = Field(
+        default=30,
+        ge=5,
+        le=100,
+        description="Number of messages before triggering auto-summarization",
+        alias="MEMORY_SUMMARIZATION_INTERVAL"
+    )
+    fact_extraction_interval: int = Field(
+        default=10,
+        ge=5,
+        le=50,
+        description="Number of messages before triggering fact extraction",
+        alias="MEMORY_FACT_EXTRACTION_INTERVAL"
+    )
 
     model_config = {
         "env_file": ".env",
@@ -243,6 +297,7 @@ class CoordinatorSettings(BaseSettings):
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     brave: BraveSettings = Field(default_factory=BraveSettings)
     mongodb: MongoDBSettings = Field(default_factory=MongoDBSettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
 
     model_config = {
         "env_file": ".env",
@@ -368,3 +423,35 @@ def is_mongodb_enabled() -> bool:
 def get_mongodb_cache_ttl(tool_name: str) -> int:
     """Get cache TTL for a specific MongoDB tool."""
     return settings.mongodb.get_cache_ttl(tool_name)
+
+
+# Memory & RAG Configuration
+def get_embedding_model() -> str:
+    """Get Ollama embedding model for RAG semantic search."""
+    return settings.memory.embedding_model
+
+
+def get_summarization_interval() -> int:
+    """Get number of messages before triggering auto-summarization."""
+    return settings.memory.summarization_interval
+
+
+def get_fact_extraction_interval() -> int:
+    """Get number of messages before triggering fact extraction."""
+    return settings.memory.fact_extraction_interval
+
+
+# Ollama Temperature Overrides
+def get_temp_rewrite() -> float:
+    """Get temperature for first-person rewrites."""
+    return settings.ollama.temp_rewrite
+
+
+def get_temp_summarization() -> float:
+    """Get temperature for conversation summarization."""
+    return settings.ollama.temp_summarization
+
+
+def get_temp_fact_extraction() -> float:
+    """Get temperature for fact extraction."""
+    return settings.ollama.temp_fact_extraction

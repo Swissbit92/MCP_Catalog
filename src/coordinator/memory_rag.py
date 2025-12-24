@@ -35,12 +35,15 @@ class EpisodicMemoryRAG:
     - Automatic GPU detection (CPU fallback)
     """
 
-    def __init__(self, embedding_model: str = "nomic-embed-text:latest"):
+    def __init__(self, embedding_model: Optional[str] = None):
         """Initialize the RAG memory system.
 
         Args:
-            embedding_model: Ollama model for embeddings (default: nomic-embed-text)
+            embedding_model: Ollama model for embeddings (default: from config)
         """
+        from .config import get_embedding_model
+        if embedding_model is None:
+            embedding_model = get_embedding_model()
         self.embeddings = OllamaEmbeddings(model=embedding_model)
         self.vectorstores: Dict[str, FAISS] = {}  # session_id -> FAISS instance
         self.use_gpu = faiss.get_num_gpus() > 0
