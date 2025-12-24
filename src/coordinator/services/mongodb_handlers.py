@@ -91,6 +91,11 @@ class MongoDBService:
                     indicators_data[ind] = latest[ind]
 
             # Add signal interpretations
+            # RSI thresholds: 70/30 (industry standard)
+            # 70+ = Overbought (potential reversal down)
+            # 30- = Oversold (potential reversal up)
+            # Used by TradingView, Investopedia, and technical analysts worldwide.
+            # DO NOT change unless implementing custom trading strategy.
             rsi = latest.get("RSI", 0)
             rsi_signal = (
                 "Overbought" if rsi > 70
@@ -291,6 +296,7 @@ class MongoDBService:
 
             trend = "bullish" if price > ema_20 > ema_50 else "bearish"
 
+            # RSI 70/30 thresholds (industry standard)
             rsi = latest.get("RSI", 0)
             rsi_signal = "overbought" if rsi > 70 else "oversold" if rsi < 30 else "neutral"
 

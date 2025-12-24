@@ -851,6 +851,10 @@ Root:
 
 **Backward Compatibility:** ✅ All defaults match previous hardcoded values
 
+**Phase 2 Decision:** ❌ Skipped - Remaining hardcoded values (RSI thresholds, RAG parameters, importance weights) are well-tuned algorithm constants, not user configuration. See HARDCODED_VALUES_ASSESSMENT.md for detailed rationale.
+
+**Status:** Configuration externalization work is **COMPLETE** at Phase 1.
+
 ---
 
 ### December 24, 2025 - MongoDB Persona Flavor Enhancement
