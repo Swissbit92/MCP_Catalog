@@ -15,10 +15,11 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
-from coordinator.persona_memory import _count_tokens, _truncate_to_tokens, _truncate_to_sentence
+from src.coordinator.persona_memory import _count_tokens, _truncate_to_tokens, _truncate_to_sentence
 
 
 def test_count_tokens_basic():
