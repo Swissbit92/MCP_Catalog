@@ -160,6 +160,7 @@ const CharacterShowcase: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTransitioning, personas.length]);
 
   // Navigation handlers - panel is always visible
