@@ -123,37 +123,16 @@ The project has **automated testing** via GitHub Actions that runs on every push
 
 ### Testing (Manual/Local)
 ```bash
-# React tests (full suite)
+# React tests
 cd react-ui && npm test
-
-# Single test pattern
 cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 
-# Python backend tests (organized in tests/ directory)
-# Backend unit tests
-python tests/backend/coordinator/test_server.py
-python tests/backend/coordinator/test_mcp_client.py
-python tests/backend/coordinator/test_tool_calling.py
-python tests/backend/coordinator/test_citation_validation.py
-python tests/backend/coordinator/test_synthesis_prompt.py
-python tests/backend/coordinator/test_summarization.py
-python tests/backend/coordinator/test_persona_schema.py      # Phase 1: Pydantic validation
-python tests/backend/coordinator/test_mongodb_integration.py # MongoDB MCP tests
-python tests/backend/coordinator/test_mongodb_persona_flavor.py # MongoDB synthesis prompt validation
-python tests/backend/coordinator/test_repositories.py        # Repository pattern tests
-
-# Integration tests
-python tests/integration/test_brave_mcp_connectivity.py
-python tests/integration/test_intent_classification.py
-python tests/integration/test_mvp2_integration.py
-python tests/integration/test_synthesis_integration.py
-python tests/integration/test_long_conversation.py
-python tests/integration/test_phase2_integration.py          # Phase 2: Emotional state
-python tests/integration/test_memory_phase1.py               # Memory management Phase 1
-python tests/integration/test_memory_phase2.py               # Memory management Phase 2
-python tests/integration/test_mongodb_eeva_flavor.py         # MongoDB persona flavor E2E test
-
-# Note: Python tests are standalone scripts, not pytest-based
+# Python tests (standalone scripts in tests/ directory)
+# Backend: test_server.py, test_mcp_client.py, test_tool_calling.py, test_citation_validation.py
+# Backend: test_synthesis_prompt.py, test_summarization.py, test_persona_schema.py, test_repositories.py
+# Integration: test_brave_mcp_connectivity.py, test_intent_classification.py, test_synthesis_integration.py
+# Integration: test_phase2_integration.py, test_memory_phase1.py, test_memory_phase2.py
+# MongoDB: test_mongodb_integration.py, test_mongodb_persona_flavor.py, test_mongodb_eeva_flavor.py
 ```
 
 ### Ollama Setup
@@ -400,55 +379,17 @@ Users simply ask questions requiring current info. Personas automatically search
 7. Frontend renders answer with citation section styled separately
 
 **Synthesis Prompt (Anti-Hallucination):**
-The system uses a dedicated synthesis prompt (`build_synthesis_prompt()` in `tool_definitions.py`) when generating answers from web search results. This prevents three critical issues:
+Uses `build_synthesis_prompt()` to prevent hallucinations, ensure natural synthesis, and enforce citation formatting.
 
-1. **Hallucination Prevention:** Explicitly instructs LLM to "ONLY use information from web search results" and "Do NOT use training data"
-   - Example: Prevents using outdated $1,850 Ethereum price from training data when search returns $3,245
+**5 Core Rules:**
+1. USE ONLY SEARCH RESULTS - No training data/estimates
+2. SYNTHESIZE NATURALLY - Combine sources coherently
+3. STAY IN CHARACTER - Maintain persona voice
+4. BE ACCURATE - Exact numbers/dates from search
+5. MANDATORY CITATIONS - Bullet points with 🔍 emoji + markdown links
 
-2. **Natural Synthesis:** Instructs LLM to combine information from multiple sources into cohesive answer
-   - Prevents raw dumps of search result titles
-
-3. **Citation Formatting:** Enforces bullet point format with specific examples
-   - Prevents inline citations `[Source](url)[Source](url)`
-
-**Synthesis Rules (5 Core Rules):**
-- **RULE 1: USE ONLY SEARCH RESULTS** - No training data, no estimates
-- **RULE 2: SYNTHESIZE NATURALLY** - Combine sources, don't list
-- **RULE 3: STAY IN CHARACTER** - Maintain persona voice
-- **RULE 4: BE ACCURATE** - Exact numbers, dates, facts from search
-- **RULE 5: MANDATORY CITATIONS** - Bullet points with emoji + markdown links
-
-**Implementation:** `src/coordinator/llm_client.py` line 173-187 builds synthesis prompt before final response generation.
-
-**Testing:**
-```bash
-# Backend synthesis prompt tests (10 unit tests)
-python src/coordinator/test_synthesis_prompt.py
-
-# Backend integration tests (3 end-to-end tests)
-# Requires backend running on port 8000
-python test_synthesis_integration.py
-
-# Backend citation validation
-python -c "from server import validate_citations; ..."
-
-# Frontend SearchIndicator tests
-cd react-ui && npm test -- SearchIndicator --watchAll=false
-
-# Frontend citation rendering tests
-cd react-ui && npm test -- MessageBubble.citations --watchAll=false
-
-# Search heuristics tests
-cd react-ui && npm test -- searchHeuristics --watchAll=false
-```
-
-**Logging:**
-- `[Chat]` - Request received with query preview
-- `[Intent]` - Query classification result
-- `[Tools]` - Tools injected for this request
-- `[Brave]` - Workflow status, timing, results count
-- `[Citations]` - Validation results (✅/❌)
-- `[Synthesis]` - Synthesis prompt usage, length, answer generation
+**Implementation:** `src/coordinator/llm_client.py` line 173-187
+**Tests:** `test_synthesis_prompt.py`, `test_synthesis_integration.py`, frontend tests (SearchIndicator, MessageBubble.citations, searchHeuristics)
 
 ### MongoDB MCP Integration (Trading Data)
 **Status:** ✅ Fully implemented and tested (Dec 2025)
@@ -513,52 +454,17 @@ python tests/backend/coordinator/test_mongodb_integration.py
 - `[MongoDB Synthesis]` - Synthesis prompt usage and length
 
 **Synthesis Prompt (Persona Flavor Enhancement):**
-The system uses a dedicated synthesis prompt (`build_mongodb_synthesis_prompt()` in `tool_definitions.py`) when generating answers from MongoDB data. This ensures responses maintain persona flavor and aren't emotionless data dumps.
+Uses `build_mongodb_synthesis_prompt()` to ensure responses maintain persona flavor instead of emotionless data dumps.
 
-**Problem Solved:**
-Without synthesis guidance, LLM treats database queries as technical tasks and ignores persona traits, resulting in robotic responses like "Bitcoin price is $87,855.80. RSI is 42.04." The synthesis prompt explicitly reminds the LLM to stay in character.
+**5 Core Rules:**
+1. USE ONLY DATABASE DATA - No training data estimates
+2. SYNTHESIZE NATURALLY - Narrative not JSON dump
+3. STAY IN CHARACTER - Maintain persona voice
+4. BE ACCURATE - Exact numbers ($87,855.80 not "around $88K")
+5. ADD INTERPRETATION - Explain indicators, connect data points
 
-**Synthesis Rules (5 Core Rules):**
-- **RULE 1: USE ONLY DATABASE DATA** - No training data, no estimates for numbers
-- **RULE 2: SYNTHESIZE NATURALLY** - Combine data points into narrative, not raw JSON dump
-- **RULE 3: STAY IN CHARACTER** - Maintain persona voice, personality, and style
-- **RULE 4: BE ACCURATE** - Use exact numbers from database ($87,855.80, not "around $88K")
-- **RULE 5: ADD INTERPRETATION** - Explain what indicators mean, connect data points
-
-**Implementation:** `src/coordinator/services/query_handler_service.py` builds MongoDB synthesis prompt before response generation.
-
-**Examples:**
-
-Before fix (emotionless):
-```
-User: "What's the Bitcoin price?"
-Response: "Bitcoin price is $87,855.80. RSI is 42.04."
-```
-
-After fix (Eeva - sarcastic, sharp):
-```
-User: "What's the Bitcoin price?"
-Response: "Bitcoin's sitting at $87,855.80 right now. RSI at 42.04 means we're in
-neutral territory—not overbought, not oversold. Pretty calm, honestly. I'd watch
-for momentum shifts before making moves."
-```
-
-After fix (Frieren - formal, contemplative):
-```
-User: "What's the Bitcoin price?"
-Response: "The current price stands at $87,855.80. The RSI reading of 42.04 indicates
-neutral momentum—neither extreme greed nor fear dominates the market at this moment.
-A measured observation period would be prudent."
-```
-
-**Testing:**
-```bash
-# Synthesis prompt validation test
-python tests/backend/coordinator/test_mongodb_persona_flavor.py
-
-# End-to-end persona flavor test with Eeva
-python tests/integration/test_mongodb_eeva_flavor.py
-```
+**Implementation:** `src/coordinator/services/query_handler_service.py`
+**Tests:** `test_mongodb_persona_flavor.py`, `test_mongodb_eeva_flavor.py`
 
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
@@ -594,41 +500,11 @@ Type-safe persona system with advanced characterization and emotional tracking.
 | Clear messages | Reset to defaults |
 | New message | Updated dynamically |
 
-**Emotional State API:**
-```bash
-# Get emotional state for a session
-GET /sessions/{session_id}/emotional-state
+**Emotional State API:** `GET /sessions/{id}/emotional-state`, `POST /sessions/{id}/chat` (returns state), `DELETE /sessions/{id}/messages` (resets to defaults)
 
-# Response includes emotional_state in chat responses
-POST /sessions/{session_id}/chat
-# Returns: { "answer": "...", "emotional_state": { "trust_level": 0.52, ... } }
+**Sampling Presets:** creative (1.2), balanced (0.9), precise (0.5), chaotic (1.5), deterministic (0.1)
 
-# Clear messages also resets emotional state
-DELETE /sessions/{session_id}/messages
-# Resets: trust_level=0.5, rapport=0.5, current_mood="neutral"
-```
-
-**Sampling Presets:**
-```python
-# Available presets (src/coordinator/models/sampling_presets.py)
-"creative"      # temp=1.2, high creativity for roleplay
-"balanced"      # temp=0.9, general conversation
-"precise"       # temp=0.5, factual answers
-"chaotic"       # temp=1.5, maximum unpredictability
-"deterministic" # temp=0.1, reproducible outputs
-```
-
-**Testing:**
-```bash
-# Phase 1: Schema validation (16 tests)
-python tests/backend/coordinator/test_persona_schema.py
-
-# Phase 2: Integration tests with KPIs (6 tests)
-python tests/integration/test_phase2_integration.py
-
-# Phase 2: UI tests (14 tests)
-cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=false
-```
+**Testing:** `test_persona_schema.py` (16), `test_phase2_integration.py` (6), frontend `phase2PersonaQuality` tests (14)
 
 ### Memory Management (Phase 1, 2 & 3)
 **Status:** ✅ Phase 1 & 2 Complete | ✅ Phase 3 Complete & Production-Ready (Dec 23, 2025)
@@ -655,23 +531,12 @@ Advanced AI memory system with importance scoring, automatic summarization, sema
 - **Smart Selection**: First 3 + last 10 messages always included, plus high-scoring middle messages
 
 **Phase 3 Features (Advanced AI Memory - PRODUCTION READY):**
-- **RAG-Based Semantic Search**: FAISS vector database for semantic similarity search over conversation history
-- **Cross-Session User Profiles**: Persistent user memory across multiple chat sessions with different personas
-- **Automated Fact Extraction**: LLM-powered extraction of user names, preferences, holdings, and key facts
-  - Triggers automatically at message 10, 20, 30, etc. (every 10 messages)
-  - Extracts: name, background, topics, facts, preferences, holdings
-  - Creates user profiles without manual input
-- **User Profile Context Injection**: System prompts enhanced with cross-session knowledge about the user
-  - Personas greet returning users by name
-  - Remember past discussions, holdings, preferences
-  - Context persists across all chat sessions
-- **Real-Time Vector Indexing**: Conversations automatically indexed for fast semantic retrieval
-  - Incremental indexing after each message
-  - FAISS CPU backend (GPU support optional)
-- **Intelligent Profile Building**: Profiles accumulate knowledge from conversations
-  - Tracks topics discussed, facts learned, holdings mentioned
-  - Deduplicates information automatically
-  - JSON storage allows schema evolution
+- **RAG-Based Semantic Search**: FAISS vector database for semantic similarity over conversation history
+- **Cross-Session User Profiles**: Persistent memory across sessions with different personas
+- **Automated Fact Extraction**: LLM-powered extraction at every 10 messages (name, preferences, holdings, facts)
+- **User Profile Context**: Personas greet returning users by name, remember past discussions/holdings
+- **Real-Time Vector Indexing**: Incremental FAISS indexing after each message (CPU backend, GPU optional)
+- **Intelligent Profile Building**: Accumulates knowledge, deduplicates info, JSON storage for schema evolution
 
 **Key Components:**
 - `memory_manager.py` - `MessageImportanceScorer`, `MemoryManager`, `ConversationSummarizer`
@@ -718,40 +583,9 @@ CREATE TABLE user_sessions (
 - `nomic-embed-text:latest` - Ollama embedding model for vector search
 
 **Phase 3 Production Usage:**
+Automatic workflow: User chats naturally → Profile created at 10 messages → Subsequent sessions remember user (no config needed)
 
-How it works automatically:
-1. User starts chatting naturally
-2. After 10 messages, profile automatically created
-3. Subsequent sessions with same/different personas remember user
-4. No configuration or user action required
-
-Example user profile created:
-```json
-{
-  "name": "Sarah",
-  "holdings": {"BTC": "1.2", "ETH": "5"},
-  "facts": ["Investing since 2021", "Uses Ledger wallet"],
-  "topics_discussed": {"Bitcoin": 3, "Wallets": 2},
-  "total_sessions": 2,
-  "total_messages": 20
-}
-```
-
-**Testing:**
-```bash
-# Phase 1-2 Memory tests
-python -m pytest tests/integration/test_memory_phase1.py -v
-python -m pytest tests/integration/test_memory_phase2.py -v
-
-# Phase 3 component tests
-python test_phase3_simple.py
-
-# Phase 3 live conversation test
-python test_phase3_live.py
-
-# Quick database check
-python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor(); cur.execute('SELECT COUNT(*) FROM user_profiles'); print(f'User profiles: {cur.fetchone()[0]}'); conn.close()"
-```
+**Testing:** `test_memory_phase1.py`, `test_memory_phase2.py`, `test_phase3_simple.py`, `test_phase3_live.py`
 
 **Important Note (Dec 23, 2025):**
 A critical bug fix was applied to enable fact extraction. If using code before this date, apply this fix to `src/coordinator/routes/chat.py` line 590:
@@ -813,40 +647,10 @@ This single-line change enables all Phase 3 features.
 
 ### Phase 3 Memory Issues
 
-**User profiles not being created:**
-- Verify 10+ messages sent in a session (triggers at 10, 20, 30...)
-- Check database: `SELECT COUNT(*) FROM user_profiles;`
-- Look for `[Phase3]` in backend logs
-- Ensure bug fix applied (see Phase 3 section above)
-
-**Cross-session memory not working:**
-- User profiles must exist first (see above)
-- Check `user_sessions` table for profile-session links
-- Verify profile has correct name extracted
-- Note: Without authentication, each new session may create new profile
-
-**RAG search returning no results:**
-- Expected behavior - relevance threshold may be strict (0.5)
-- Phase 2 importance scoring handles most recall
-- Check logs for `[RAG] Indexed N messages`
-- Tuning: Lower threshold in `memory_rag.py` if needed
-
-**FAISS/embedding errors:**
-- Ensure `nomic-embed-text:latest` pulled: `ollama pull nomic-embed-text`
-- Check FAISS installed: `pip install faiss-cpu langchain-community`
-- Deprecation warnings are non-blocking (still works)
-
-**Checking Phase 3 status:**
-```bash
-# Check if profiles exist
-python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor(); cur.execute('SELECT user_id, profile_data FROM user_profiles'); import json; [print(f'{row[0]}: {json.loads(row[1]).get(\"name\")}') for row in cur.fetchall()]; conn.close()"
-
-# Check backend logs for Phase 3 activity
-grep -i "phase3\|rag\|profile" logs/*.log
-
-# Verify tables exist
-python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor(); cur.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); print([row[0] for row in cur.fetchall()]); conn.close()"
-```
+**Profiles not created:** Verify 10+ messages sent, check `SELECT COUNT(*) FROM user_profiles;`, look for `[Phase3]` logs, ensure bug fix applied
+**Cross-session memory failing:** Profiles must exist first, check `user_sessions` table links, verify name extraction
+**RAG no results:** Expected (threshold 0.5), Phase 2 importance scoring handles most recall, tune `memory_rag.py` if needed
+**FAISS errors:** Pull `nomic-embed-text:latest`, install `faiss-cpu langchain-community`, deprecation warnings are non-blocking
 
 ## Additional Documentation
 
@@ -868,33 +672,12 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 - `CICD_DOCUMENTATION.md` - Technical reference for CI/CD pipeline configuration
 
 **Historical Documentation (Archive):**
-- `AI_documentation/` - Historical specs, completion summaries, feature implementation details
-  - `01_implementation_history/` - MVP and phase completion summaries
-    - `ARCHITECTURE_IMPROVEMENTS_SUMMARY.md` - Complete refactoring summary (Dec 2025)
-    - `ASYNC_CONVERSION_PLAN.md` - 8-phase async implementation strategy
-    - `CRITICAL_ISSUES_FIXED.md` - Master summary of all fixes (Dec 2025)
-    - `MONGODB_REFACTORING_COMPLETE.md` - MongoDB MCP client refactoring
-    - `HEADER_MODULAR_REFACTORING.md` - React Header component split
-    - `HEADER_REFACTORING_SUMMARY.md` - React Header refactoring details
-    - `HEADER_COMPONENT_DIAGRAM.md` - React Header component architecture
-    - `PHASE3_ADVANCED_MEMORY_COMPLETION.md` - Phase 3 implementation summary
-    - `PHASE3_TEST_RESULTS.md` - Component-level test validation
-    - `PHASE3_FINAL_RESULTS.md` - Phase 3 live test results and validation
-    - `PHASE3_LIVE_TEST_ANALYSIS.md` - Bug discovery and analysis
-    - `CONVERSATIONAL_AI_STATUS.md` - Conversational AI roadmap status
-    - `CURRENT_STATUS_AND_NEXT_STEPS.md` - Overall project status (Dec 25)
-    - `PROJECT_STATUS_COMPLETE.md` - Project milestone summary
-    - `MEMORY_CONFIG_VERIFICATION.md` - Memory system config verification
-    - `MODEL_SWITCH_VALIDATION_RESULTS.md` - Model validation results
-    - `BUGFIX_BRAVE_AND_TAGS.md` - Critical bug fix log
-    - `MSG_TAG_ANALYSIS_RECOMMENDATION.md` - Message tag analysis
-  - `02_ux_design_specs/` - UX design roadmaps (Home, Chat, Character pages, Gacha)
-  - `03_feature_specs/` - Feature specs (Brave MCP, MongoDB MCP, model recommendations)
-  - `04_deprecated/` - Obsolete docs kept for reference (React migration complete)
-  - `05_roadmaps/` - Feature roadmaps (persona quality, memory management)
-    - `PERSONA_MEMORY_ROADMAP.md` - 3-phase memory enhancement roadmap
-    - `PHASE1_IMPLEMENTATION_PLAN.md` - Docker-first migration implementation guide
-    - `PHASE2_MODEL_COMPARISON_RECOMMENDATION.md` - Model selection analysis
+- `AI_documentation/` - Historical specs, completion summaries, feature details
+  - `01_implementation_history/` - Phase completions, refactoring summaries, bug fixes
+  - `02_ux_design_specs/` - UX design roadmaps
+  - `03_feature_specs/` - Brave/MongoDB MCP specs, model recommendations
+  - `04_deprecated/` - Obsolete docs (React migration complete)
+  - `05_roadmaps/` - Persona quality, memory management roadmaps
 
 ## Dependencies
 
