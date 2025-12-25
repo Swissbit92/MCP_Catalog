@@ -18,7 +18,7 @@ function Write-ErrorMsg { Write-Host "[ERROR] $args" -ForegroundColor Red }
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "           🐳 AI Companion - Docker Setup" -ForegroundColor Cyan
+Write-Host "           AI Companion - Docker Setup" -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -39,17 +39,17 @@ if (-not (Test-Path "docker-compose.yml")) {
     exit 1
 }
 
-# Step 1: Start Docker containers
-Write-Info "Starting Docker containers..."
-Write-Host "       This will download images (~2GB) on first run" -ForegroundColor Gray
+# Step 1: Start Ollama first (backend needs models before it can start)
+Write-Info "Starting Ollama container first..."
+Write-Host "       This will download Ollama image (~2GB) on first run" -ForegroundColor Gray
 Write-Host ""
-docker-compose --env-file .env.docker up -d
+docker-compose --env-file .env.docker up -d ollama
 
 if ($LASTEXITCODE -ne 0) {
-    Write-ErrorMsg "Failed to start containers. Check the error above."
+    Write-ErrorMsg "Failed to start Ollama container. Check the error above."
     exit 1
 }
-Write-Success "Containers started"
+Write-Success "Ollama container started"
 Write-Host ""
 
 # Step 2: Wait for Ollama to be ready
@@ -113,7 +113,19 @@ if ($embedProcess.ExitCode -ne 0) {
 }
 Write-Host ""
 
-# Step 5: Verify all services are running
+# Step 5: Start backend and frontend (now that models are ready)
+Write-Info "Starting backend and frontend containers..."
+Write-Host ""
+docker-compose --env-file .env.docker up -d
+
+if ($LASTEXITCODE -ne 0) {
+    Write-ErrorMsg "Failed to start remaining containers. Check the error above."
+    exit 1
+}
+Write-Success "All containers started"
+Write-Host ""
+
+# Step 6: Verify all services are running
 Write-Info "Verifying services..."
 Start-Sleep -Seconds 3
 
@@ -161,21 +173,21 @@ Write-Host ""
 # Final message
 if ($servicesOk) {
     Write-Host "================================================================" -ForegroundColor Green
-    Write-Host "                   ✅ Setup complete!" -ForegroundColor Green
+    Write-Host "                   Setup complete!" -ForegroundColor Green
     Write-Host "================================================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "🌐 Your AI Companion is ready at:" -ForegroundColor Cyan
+    Write-Host "Your AI Companion is ready at:" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "   Frontend:  http://localhost:3000" -ForegroundColor White
     Write-Host "   Backend:   http://localhost:8000" -ForegroundColor White
     Write-Host "   API Docs:  http://localhost:8000/docs" -ForegroundColor White
     Write-Host ""
-    Write-Host "📝 Next steps:" -ForegroundColor Cyan
+    Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "   1. Open http://localhost:3000 in your browser" -ForegroundColor Gray
     Write-Host "   2. Pull a character from the gacha" -ForegroundColor Gray
     Write-Host "   3. Start chatting with your AI personas!" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "💡 Useful commands:" -ForegroundColor Cyan
+    Write-Host "Useful commands:" -ForegroundColor Cyan
     Write-Host "   View logs:     docker-compose logs -f" -ForegroundColor Gray
     Write-Host "   Stop services: docker-compose down" -ForegroundColor Gray
     Write-Host "   Restart:       docker-compose restart" -ForegroundColor Gray
@@ -185,7 +197,7 @@ if ($servicesOk) {
     Start-Process "http://localhost:3000"
 } else {
     Write-Host "================================================================" -ForegroundColor Yellow
-    Write-Host "           ⚠️  Setup completed with warnings" -ForegroundColor Yellow
+    Write-Host "           Setup completed with warnings" -ForegroundColor Yellow
     Write-Host "================================================================" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Some services may still be starting up. Wait 30 seconds and try:" -ForegroundColor Gray
