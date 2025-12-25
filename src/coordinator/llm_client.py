@@ -3,6 +3,7 @@
 # Uses LangChain's OllamaLLM with ChatPromptTemplate for prompt formatting.
 # Handles Ollama connectivity errors.
 # Enhanced with function calling support for autonomous tool usage.
+# Phase 1.3: Added advanced sampling parameters support.
 
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -20,6 +21,13 @@ from .tool_definitions import (
     ToolCall
 )
 from .mcp_client import BraveMCPClient
+
+# Import sampling presets (Phase 1.3)
+from .models.sampling_presets import (
+    SamplingConfig,
+    get_preset_or_default,
+    get_sampling_for_persona,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +102,7 @@ class LC_OllamaClient:
     """Thin wrapper around LangChain's OllamaLLM using ChatPromptTemplate.
 
     Enhanced with function calling support for autonomous tool usage (e.g., web search).
+    Phase 1.3: Added advanced sampling parameters (repeat_penalty, top_k, top_p, min_p).
     """
 
     def __init__(
@@ -101,19 +110,88 @@ class LC_OllamaClient:
         base: str,
         model: str,
         temperature: float = 0.1,
-        mcp_client: Optional[BraveMCPClient] = None
+        mcp_client: Optional[BraveMCPClient] = None,
+        sampling_config: Optional[SamplingConfig] = None,
+        # Individual sampling params (override sampling_config if provided)
+        repeat_penalty: Optional[float] = None,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
     ):
-        """Initialize the LLM client.
+        """Initialize the LLM client with advanced sampling support.
 
         Args:
             base: Ollama base URL
             model: Model name (e.g., 'dolphin-llama3:8b')
-            temperature: Sampling temperature (0.0-1.0)
+            temperature: Sampling temperature (0.0-2.0)
             mcp_client: Optional Brave MCP client for web search
+            sampling_config: Optional SamplingConfig for preset-based configuration
+            repeat_penalty: Optional repetition penalty (1.0-2.0)
+            top_k: Optional Top-K sampling (0-100)
+            top_p: Optional nucleus sampling threshold (0.0-1.0)
         """
-        self.llm = OllamaLLM(base_url=base, model=model, temperature=temperature)
+        # Build Ollama params
+        ollama_params = {
+            "base_url": base,
+            "model": model,
+            "temperature": temperature,
+        }
+
+        # Apply sampling config if provided
+        if sampling_config:
+            config_params = sampling_config.to_ollama_params()
+            # Temperature from sampling_config unless explicitly overridden
+            if temperature == 0.1:  # default value
+                ollama_params["temperature"] = config_params.get("temperature", 0.1)
+            if "repeat_penalty" in config_params:
+                ollama_params["repeat_penalty"] = config_params["repeat_penalty"]
+            if "top_k" in config_params:
+                ollama_params["top_k"] = config_params["top_k"]
+            if "top_p" in config_params:
+                ollama_params["top_p"] = config_params["top_p"]
+
+        # Individual params override sampling_config
+        if repeat_penalty is not None:
+            ollama_params["repeat_penalty"] = repeat_penalty
+        if top_k is not None:
+            ollama_params["top_k"] = top_k
+        if top_p is not None:
+            ollama_params["top_p"] = top_p
+
+        self.llm = OllamaLLM(**ollama_params)
         self.mcp_client = mcp_client
-        logger.info(f"Initialized LC_OllamaClient with model={model}, temperature={temperature}, tools_enabled={mcp_client is not None}")
+        self.sampling_config = sampling_config
+
+        # Log sampling parameters
+        sampling_info = f"temp={ollama_params['temperature']}"
+        if "repeat_penalty" in ollama_params:
+            sampling_info += f", repeat_penalty={ollama_params['repeat_penalty']}"
+        if "top_k" in ollama_params:
+            sampling_info += f", top_k={ollama_params['top_k']}"
+        if "top_p" in ollama_params:
+            sampling_info += f", top_p={ollama_params['top_p']}"
+
+        preset_name = sampling_config.name if sampling_config else "custom"
+        logger.info(
+            f"Initialized LC_OllamaClient with model={model}, "
+            f"sampling=[{sampling_info}], preset={preset_name}, "
+            f"tools_enabled={mcp_client is not None}"
+        )
+
+    def get_sampling_info(self) -> Dict[str, Any]:
+        """Get current sampling configuration as dict for response metadata."""
+        info = {
+            "temperature": self.llm.temperature,
+            "model": self.llm.model,
+        }
+        if hasattr(self.llm, "repeat_penalty") and self.llm.repeat_penalty:
+            info["repeat_penalty"] = self.llm.repeat_penalty
+        if hasattr(self.llm, "top_k") and self.llm.top_k:
+            info["top_k"] = self.llm.top_k
+        if hasattr(self.llm, "top_p") and self.llm.top_p:
+            info["top_p"] = self.llm.top_p
+        if self.sampling_config:
+            info["preset"] = self.sampling_config.name
+        return info
 
     def _invoke(self, prompt: str) -> str:
         try:
@@ -144,6 +222,34 @@ class LC_OllamaClient:
         ])
         rendered = template.format_prompt(system=system, user=user_prompt).to_string()
         return self._invoke(rendered)
+
+    def _extract_latest_user_message(self, conversation: str) -> str:
+        """
+        Extract the latest user message from a conversation history.
+
+        The conversation format is:
+            User: <message 1>
+
+            Assistant: <response 1>
+
+            User: <message 2>
+
+        Args:
+            conversation: Full conversation history
+
+        Returns:
+            Latest user message only
+        """
+        # Split by lines and find the last "User: " message
+        lines = conversation.split("\n")
+        for i in range(len(lines) - 1, -1, -1):
+            line = lines[i].strip()
+            if line.startswith("User: "):
+                return line[6:].strip()  # Remove "User: " prefix
+
+        # Fallback: return entire conversation if no "User: " prefix found
+        logger.warning("[Query Extraction] Could not extract latest user message, using full conversation")
+        return conversation
 
     def _should_force_search(self, query: str) -> bool:
         """
@@ -232,10 +338,14 @@ class LC_OllamaClient:
             # Check if brave_web_search tool is available
             brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
             if brave_tool and self.mcp_client:
+                # Extract just the latest user message for search query
+                search_query = self._extract_latest_user_message(user_prompt)
+                logger.info(f"[Force Search] Extracted search query: '{search_query[:100]}'")
+
                 # Force execute search
                 search_results = self._execute_brave_search(ToolCall(
                     name="brave_web_search",
-                    arguments={"query": user_prompt, "reason": "Forced search for price/current data query"}
+                    arguments={"query": search_query, "reason": "Forced search for price/current data query"}
                 ))
 
                 if search_results:
@@ -257,7 +367,7 @@ class LC_OllamaClient:
                     # Combine answer + system-generated citations
                     final_response = llm_answer + accurate_citations
 
-                    return (final_response, ToolCall(name="brave_web_search", arguments={"query": user_prompt}), search_results)
+                    return (final_response, ToolCall(name="brave_web_search", arguments={"query": search_query}), search_results)
                 else:
                     logger.warning("[Anti-Hallucination] Forced search returned no results - admitting ignorance")
                     honest_response = "I attempted to search for current information on this topic, but the search didn't return any results. I don't have up-to-date information to answer this question accurately. I'd rather admit I don't know than guess or use potentially outdated information."

@@ -136,7 +136,7 @@ describe('CharacterSelector', () => {
     fireEvent.error(images[0]);
 
     // Should fallback to default image
-    expect(images[0]).toHaveAttribute('src', '/images/default_avatar.png');
+    expect(images[0]).toHaveAttribute('src', '/images/ui/default_avatar.png');
   });
 
   it('applies responsive sizing classes', () => {

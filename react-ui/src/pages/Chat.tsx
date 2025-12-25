@@ -437,7 +437,7 @@ const Chat: React.FC = () => {
                 key={msg.id}
                 message={msg}
                 personaAvatar={selectedPersona.avatar ? `/images/${selectedPersona.avatar}` : `/images/${selectedPersona.image}`}
-                userAvatar="/images/user_avatar.png"
+                userAvatar="/images/ui/user_avatar.png"
                 showTimestamp={true}
                 onRetry={handleRetryMessage}
                 personaRarity={selectedPersona.rarity}

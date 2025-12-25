@@ -61,11 +61,11 @@ const CharacterShowcase: React.FC = () => {
             key: 'eeva',
             display_name: 'Eeva — Bitcoin Expert',
             coordinator_label: 'Cryptocurrency Analyst',
-            image: 'ui/images/eeva_card.png',
-            avatar: 'ui/images/eeva_avatar.png',
+            image: 'personas/eeva/card.png',
+            avatar: 'personas/eeva/avatar.png',
             rarity: 'legendary',
             style: 'nerdy, charming, concise',
-            logo: 'ui/images/eeva_logo.png',
+            logo: 'personas/eeva/logo.png',
             emoji: '🧠',
             allowed_mcp: ['chat', 'graphrag'],
             lore: ['Eeva grew up dismantling gadgets...'],
@@ -160,12 +160,17 @@ const CharacterShowcase: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTransitioning, personas.length]);
 
   // Navigation handlers - panel is always visible
 
   // Convert API image paths to React app paths
   const getImagePath = (apiPath: string) => {
+    // Handle both old format (ui/images/) and new format (images/personas/)
+    if (apiPath.startsWith('images/')) {
+      return '/' + apiPath;
+    }
     return apiPath.replace('ui/images/', '/images/');
   };
 
@@ -181,6 +186,27 @@ const CharacterShowcase: React.FC = () => {
 
   return (
     <div className="relative w-full">
+      {/* Navigation Arrows - Outside Panel */}
+      <button
+        onClick={handlePrev}
+        disabled={isTransitioning}
+        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+      >
+        ‹
+      </button>
+      <button
+        onClick={handleNext}
+        disabled={isTransitioning}
+        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+      >
+        ›
+      </button>
+
+      {/* Character Counter - Always visible, no fade animation */}
+      <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm z-20">
+        {currentIndex + 1} / {personas.length}
+      </div>
+
       {/* Main Overlay Panel - Always Visible */}
       <motion.div
         key={currentPersona.key} // Re-animate when character changes
@@ -200,27 +226,6 @@ const CharacterShowcase: React.FC = () => {
               backgroundSize: '50px 50px',
             }}
           />
-
-        {/* Navigation Arrows - Outside Panel */}
-        <button
-          onClick={handlePrev}
-          disabled={isTransitioning}
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          ‹
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={isTransitioning}
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          ›
-        </button>
-
-        {/* Character Counter */}
-        <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm z-10">
-          {currentIndex + 1} / {personas.length}
-        </div>
 
         <div className="flex min-h-[600px]">
           {/* Information Section - Left Side */}
@@ -313,7 +318,7 @@ const CharacterShowcase: React.FC = () => {
                 className="w-full h-auto max-h-96 object-contain rounded-lg"
                 onError={(e) => {
                   console.error('Character image failed to load:', e.currentTarget.src);
-                  e.currentTarget.src = '/images/eeva_card.png'; // Fallback
+                  e.currentTarget.src = '/images/ui/default_avatar.png'; // Fallback
                 }}
               />
             </motion.div>

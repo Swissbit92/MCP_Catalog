@@ -1,14 +1,28 @@
 # requirements.txt
-fastapi
-uvicorn[standard]
-requests
-python-dotenv
-langchain-core
-langchain-ollama
-ollama
-pyyaml
-pydantic
-tiktoken
+# Core Framework
+fastapi==0.124.4
+uvicorn[standard]==0.38.0
+
+# HTTP & Utilities
+requests==2.32.5
+python-dotenv==1.2.1
+PyYAML==6.0.3
+
+# LangChain & LLM Integration
+langchain-core==1.2.1
+langchain-ollama==1.0.1
+langchain-community==0.4.1
+ollama==0.6.1
+
+# Data Validation
+pydantic==2.12.3
+pydantic-settings==2.12.0
+
+# Tokenization & Embeddings
+tiktoken==0.12.0
+
+# Phase 3: RAG & Vector Search
+faiss-cpu==1.13.1
 
 # Note: This project requires Node.js and npm for the React UI
 # Install Node.js from: https://nodejs.org/
