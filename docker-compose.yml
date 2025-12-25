@@ -1,0 +1,136 @@
+version: '3.8'
+
+# =============================================================================
+# MCP Coordinator - SQLite Edition (Optimized for Local Personal Use)
+# =============================================================================
+# This setup uses SQLite for simplicity and performance in single-user scenarios.
+# All data persists in ./data/ directory on your host machine.
+#
+# For production/multi-user deployments, see PRODUCTION_READINESS_PLAN.md
+# =============================================================================
+
+services:
+  # Ollama LLM server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-companion-brain
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    # Uncomment for GPU support (NVIDIA only)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Backend FastAPI server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-companion-api
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      # Ollama configuration
+      OLLAMA_BASE: http://ollama:11434
+      PERSONA_MODEL: ${PERSONA_MODEL:-dolphin-llama3:8b}
+      PERSONA_TEMPERATURE: ${PERSONA_TEMPERATURE:-0.9}
+
+      # Server configuration
+      COORD_PORT: 8000
+      COORD_URL: http://backend:8000
+      PERSONA_DIR: personas
+
+      # Database (SQLite - stored in ./data/ on host)
+      COORDINATOR_DB_PATH: /app/data/chats.db
+
+      # Brave MCP (optional - requires API key)
+      BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      BRAVE_ENABLED_RARITIES: ${BRAVE_ENABLED_RARITIES:-rare,epic,legendary}
+      BRAVE_MAX_RESULTS: ${BRAVE_MAX_RESULTS:-5}
+
+      # MongoDB MCP (optional - requires connection URI)
+      MONGODB_URI: ${MONGODB_URI:-}
+      MONGODB_ENABLED: ${MONGODB_ENABLED:-false}
+
+      # Memory & RAG settings
+      MEMORY_EMBEDDING_MODEL: ${MEMORY_EMBEDDING_MODEL:-nomic-embed-text:latest}
+      MEMORY_SUMMARIZATION_INTERVAL: ${MEMORY_SUMMARIZATION_INTERVAL:-30}
+      MEMORY_FACT_EXTRACTION_INTERVAL: ${MEMORY_FACT_EXTRACTION_INTERVAL:-10}
+    volumes:
+      # SQLite database - persists all chat data
+      # Location: ./data/chats.db on your host machine
+      - ./data:/app/data
+
+      # Persona CV summaries cache - auto-generated
+      - ./personas/_summaries:/app/personas/_summaries
+
+      # Application logs (optional)
+      - ./logs:/app/logs
+
+      # Persona definitions (read-only)
+      - ./personas:/app/personas:ro
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Frontend React app
+  frontend:
+    build:
+      context: ./react-ui
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:8000
+    container_name: ai-companion-web
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+volumes:
+  # Ollama models storage (can be large - 4-10GB per model)
+  # Persists across container restarts
+  ollama_models:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge

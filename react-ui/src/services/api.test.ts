@@ -251,9 +251,11 @@ describe('API Service', () => {
       });
     });
 
-    it('sendMessageToSession should return assistant message', async () => {
+    it('sendMessageToSession should return ChatApiResponse', async () => {
       const mockApiResponse = {
         answer: 'Hello from AI',
+        message_flow: 'single',
+        message_count: 1,
       };
 
       (fetch as jest.Mock).mockImplementationOnce(() =>
@@ -263,11 +265,10 @@ describe('API Service', () => {
         })
       );
 
-      const message = await sendMessageToSession('1', 'Hello');
-      expect(message.content).toBe('Hello from AI');
-      expect(message.role).toBe('assistant');
-      expect(message.timestamp).toBeInstanceOf(Date);
-      expect(message.id).toMatch(/^assistant-\d+$/);
+      const response = await sendMessageToSession('1', 'Hello');
+      expect(response.answer).toBe('Hello from AI');
+      expect(response.message_flow).toBe('single');
+      expect(response.message_count).toBe(1);
       expect(fetch).toHaveBeenCalledWith(
         'http://127.0.0.1:8000/sessions/1/chat',
         expect.objectContaining({

@@ -1,17 +1,19 @@
 # 🧠 MCP Coordinator - Persona Chat Interface
 
 > **Local Persona-Driven Chat Interface for GraphRAG & MCP Servers**
-> _Private • Local-First • React + FastAPI Coordinator_
+> _Private • Local-First • Docker-Ready • React + FastAPI Coordinator_
 
 <div align="center">
 
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker)](https://docker.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
-[![React](https://img.shields.io/badge/React-18+-61dafb.svg)](https://reactjs.org)
+[![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://reactjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)](https://fastapi.tiangolo.com)
 [![Ollama](https://img.shields.io/badge/Ollama-Latest-orange.svg)](https://ollama.ai)
+[![SQLite](https://img.shields.io/badge/SQLite-3-003B57.svg?logo=sqlite)](https://sqlite.org)
 
-**🚀 One-Command Setup • 🎭 Multiple Personas • 💬 Persistent Chat**
-[Quick Start](#-quick-start) • [Installation](#-installation) • [Usage](#-usage)
+**🐳 Docker Quick Start (Recommended) • 🎭 Multiple Personas • 💬 Persistent Chat**
+[Docker Setup](#-quick-start-docker) • [Local Setup](#-alternative-local-development-setup) • [Usage](#-usage)
 
 </div>
 
@@ -21,10 +23,11 @@
 
 - [✨ Features](#-features)
 - [🔧 System Requirements](#-system-requirements)
-- [⚡ Quick Start](#-quick-start)
-- [🧩 Installation](#-installation)
+- [⚡ Quick Start (Docker)](#-quick-start-docker)
+- [🧩 Alternative: Local Development Setup](#-alternative-local-development-setup)
 - [🚀 Usage](#-usage)
 - [🎭 Managing Personas](#-managing-personas)
+- [📚 Documentation](#-documentation)
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
 
@@ -51,48 +54,168 @@
 
 ## 🔧 System Requirements
 
+### Docker Setup (Recommended)
+
 | Component | Requirement | Installation |
 |-----------|-------------|--------------|
-| **OS** | Windows 10/11 or macOS 13+ | - |
+| **OS** | Windows 10/11, macOS 13+, or Linux | - |
+| **Docker Desktop** | v24.0+ with Docker Compose v2.0+ | [docker.com](https://docker.com) |
+| **Disk Space** | 15GB free (for images + models) | - |
+| **RAM** | 8GB minimum, 16GB recommended | For running Ollama LLM |
+| **GPU** | NVIDIA RTX (optional) | For CUDA acceleration |
+
+### Local Development Setup
+
+| Component | Requirement | Installation |
+|-----------|-------------|--------------|
 | **Python** | 3.11 or higher | [python.org](https://python.org) |
 | **Node.js** | v16+ with npm | [nodejs.org](https://nodejs.org) |
 | **Ollama** | Latest version | [ollama.ai](https://ollama.ai) |
 | **GPU** | NVIDIA RTX 30/40 series (optional) | For CUDA acceleration |
-| **VRAM** | ≥ 12 GB (recommended) | For optimal performance |
+| **VRAM** | ≥ 8 GB (recommended) | For optimal performance |
 
-## ⚡ Quick Start
+---
 
-> **Prerequisites**: Python 3.11+, Node.js 16+, and Ollama installed
+## ⚡ Quick Start (Docker)
+
+> **🐳 Recommended**: Docker provides the easiest setup with all dependencies containerized.
+
+**Prerequisites**: [Docker Desktop](https://docker.com) installed and running
+
+### One-Command Setup (Easiest)
 
 ```bash
-# 1. Clone and setup
+# 1. Clone the repository
 git clone https://github.com/Swissbit92/MCP_Catalog.git
 cd MCP_Catalog
-./setup.sh  # Linux/macOS (includes npm install)
-# or
-setup.bat   # Windows (includes npm install)
 
-# 2. Configure environment
-cp .env.example .env  # Edit with your settings
+# 2. Run the setup script
+# Windows (PowerShell):
+.\setup-docker.ps1
 
-# 3. Start Ollama and pull model
-ollama serve &  # In background
-ollama pull llama3.1:latest
+# Windows (Command Prompt):
+setup-docker.bat
 
-# 4. Launch the app
-python run_react.py
+# Linux/Mac:
+chmod +x setup-docker.sh
+./setup-docker.sh
 ```
 
-**🎉 That's it!** Your app will be running at `http://localhost:3000`
+**🎉 That's it!** The script will:
+- ✅ Start all Docker containers
+- ✅ Download the 9GB AI model (with progress bar)
+- ✅ Download the embedding model (for memory features)
+- ✅ Verify everything is running
+- ✅ Open your browser automatically
 
-> **Note**: The setup script automatically installs both Python and React dependencies. If you prefer manual setup, run `pip install -r requirements.txt && cd react-ui && npm install`.
+**App will be ready at:** `http://localhost:3000`
+
+---
+
+### Manual Setup (Alternative)
+
+If you prefer to run commands manually:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Swissbit92/MCP_Catalog.git
+cd MCP_Catalog
+
+# 2. Start all services (downloads ~2GB of images on first run)
+docker-compose --env-file .env.docker up -d
+
+# 3. Pull LLM model (~9GB download, takes 5-10 minutes)
+docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+
+# 4. Pull embedding model (optional, for Phase 3 memory)
+docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
+
+# 5. Open your browser
+start http://localhost:3000  # Windows
+open http://localhost:3000   # Mac/Linux
+```
+
+**🎉 Done!** Your app is running at `http://localhost:3000`
+
+### Quick Commands
+
+```bash
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Restart a service
+docker-compose restart backend
+
+# Backup your database
+# Windows: Copy-Item data\chats.db data\chats.db.backup
+# Linux/Mac: cp data/chats.db data/chats.db.backup
+```
+
+### Validation (Optional)
+
+Test your Docker setup:
+
+```bash
+# Windows
+.\test_docker_setup.ps1
+
+# Linux/Mac
+chmod +x test_docker_setup.sh
+./test_docker_setup.sh
+```
+
+**📖 Detailed Guide**: See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for full documentation, troubleshooting, and advanced configuration.
+
+---
+
+---
+
+## 📚 Documentation
+
+### Docker Deployment
+
+| Document | Description |
+|----------|-------------|
+| **[DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)** | Complete Docker setup guide with troubleshooting |
+| **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** | Technical decision record for SQLite architecture |
+| **[.env.docker](.env.docker)** | Environment configuration template |
+| **[test_docker_setup.ps1](test_docker_setup.ps1)** | Windows validation script |
+| **[test_docker_setup.sh](test_docker_setup.sh)** | Linux/Mac validation script |
+
+### Development & Architecture
+
+| Document | Description |
+|----------|-------------|
+| **[CLAUDE.md](CLAUDE.md)** | Developer guide, project structure, testing |
+| **[AGENTS.md](AGENTS.md)** | Repository guidelines, coding style, setup commands |
+| **[ASSESSMENT.md](ASSESSMENT.md)** | Codebase quality assessment (Dec 2025) |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history and feature additions |
+
+### Production & Scaling
+
+| Document | Description |
+|----------|-------------|
+| **[PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md)** | 3-phase migration plan for PostgreSQL/K8s (future) |
+| **[PHASE1_IMPLEMENTATION_PLAN.md](PHASE1_IMPLEMENTATION_PLAN.md)** | Detailed PostgreSQL migration guide (if needed) |
+
+### Feature Documentation
+
+| Document | Description |
+|----------|-------------|
+| **AI_documentation/** | Historical specs, implementation summaries, feature docs |
+| **PERSONA_MEMORY_ROADMAP.md** | 3-phase memory enhancement roadmap |
+
+---
 
 ## 🤝 Contributing
 
-See Repository Guidelines in `AGENTS.md` for:
+See Repository Guidelines in `AGENTS.md` and `CLAUDE.md` for:
 
 - Project structure overview and entrypoints
-- Setup and run commands (Python, FastAPI, React)
+- Setup and run commands (Python, FastAPI, React, Docker)
 - Coding style and test conventions
 - Commit/PR expectations and environment variables
 
@@ -195,7 +318,9 @@ The chat interface is responsive, centered, and styled like a modern messaging a
 
 ---
 
-## 🧩 Installation
+## 🧩 Alternative: Local Development Setup
+
+> **Note**: Docker setup (above) is recommended for most users. Use local setup if you need to modify code or prefer running services directly.
 
 ### 📥 Step 1: Clone the Repository
 
@@ -219,15 +344,20 @@ setup.bat
 
 #### **Option B: Manual Setup**
 
-Create venv env 'MCP_Catalog'
-
 ```bash
-# Python dependencies
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
+
+# Install Python dependencies
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
-# React dependencies
-cd react-ui 
+# Install React dependencies
+cd react-ui
 npm install
 cd ..
 ```
@@ -248,8 +378,13 @@ ollama serve
 #### **Pull Required Model**
 
 ```bash
-# Pull the Llama 3.1 model (required for chat)
-ollama pull llama3.1:latest
+# Pull the model specified in your .env file
+# Default: nchapman/gemma-2-9b-it-abliterated:9b (uncensored, great for personas)
+ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+
+# Alternative models:
+# ollama pull dolphin-llama3:8b      # Smaller, faster (4.7GB)
+# ollama pull llama3.1:latest        # More formal, censored (4.7GB)
 ```
 
 ### ⚙️ Step 4: Configure Environment
@@ -257,25 +392,77 @@ ollama pull llama3.1:latest
 Create a `.env` file in the root directory:
 
 ```bash
-# Copy and edit this configuration
+# Ollama configuration
+OLLAMA_BASE=http://127.0.0.1:11434
+PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b
+PERSONA_TEMPERATURE=0.9
+
+# Server configuration
 COORD_PORT=8000
 COORD_URL=http://127.0.0.1:8000
-OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=llama3.1:latest
 PERSONA_DIR=personas
+
+# Database (SQLite)
+COORDINATOR_DB_PATH=chats.db
+
+# Optional: Brave Search API
+BRAVE_API_KEY=
+BRAVE_ENABLED_RARITIES=rare,epic,legendary
+
+# Optional: MongoDB MCP
+MONGODB_URI=
+MONGODB_ENABLED=false
+
+# Optional: Memory & RAG
+MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest
+MEMORY_SUMMARIZATION_INTERVAL=30
+MEMORY_FACT_EXTRACTION_INTERVAL=10
 ```
 
-**Environment Variables:**
+**Key Environment Variables:**
 
-- `COORD_PORT`: Port for the FastAPI backend (default: 8000)
 - `OLLAMA_BASE`: Ollama API endpoint (default: http://127.0.0.1:11434)
-- `PERSONA_MODEL`: LLM model to use (default: llama3.1:latest)
+- `PERSONA_MODEL`: LLM model to use (default: nchapman/gemma-2-9b-it-abliterated:9b)
+- `PERSONA_TEMPERATURE`: LLM creativity (0.0-1.5, default: 0.9)
+- `COORDINATOR_DB_PATH`: SQLite database location (default: chats.db)
 
 ---
 
 ## 🚀 Usage
 
-### ▶️ Starting the Application
+### Docker Usage
+
+**Start the application:**
+```bash
+docker-compose --env-file .env.docker up -d
+```
+
+**Access the application:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+**View logs:**
+```bash
+docker-compose logs -f backend  # Backend logs
+docker-compose logs -f          # All services
+```
+
+**Stop the application:**
+```bash
+docker-compose down
+```
+
+**Backup your data:**
+```bash
+# Windows
+Copy-Item data\chats.db backups\chats.db.$(Get-Date -Format 'yyyyMMdd')
+
+# Linux/Mac
+cp data/chats.db backups/chats.db.$(date +%Y%m%d)
+```
+
+### Local Development Usage
 
 #### **Option A: Unified Startup (Recommended)**
 
@@ -295,7 +482,7 @@ python run.py
 cd react-ui && npm start
 ```
 
-### 🛑 Stopping the Application
+#### **Stopping the Application**
 
 Press `Ctrl+C` in the terminal running `python run_react.py` to stop both services gracefully.
 
@@ -381,29 +568,45 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 
 ---
 
-## **The run_react.py script will:**
-
-- Check that Node.js and npm are installed
-- Launch the FastAPI Coordinator (backend) on port 8000
-- Launch the React UI (frontend) on port 3000
-- Verify the local Ollama model is available
-- Handle graceful shutdown of both services
-
 ---
 
-## 🛡️ Security
+## 🛡️ Security & Privacy
 
+### Docker Deployment
+- **Container Isolation**: Services run in isolated containers with minimal attack surface
+- **Non-Root User**: Backend container runs as non-root user for security
+- **Local Network**: Services communicate via private Docker network
+- **Volume Security**: Data persists in host-mounted volumes you control
+- **No External Dependencies**: All processing happens locally (except optional web search)
+
+### General Security
 - **Dependency Audits**: Regular npm audit checks with minimal vulnerabilities (2 moderate issues in dev dependencies only)
-- **Local-First Security**: All AI processing and data storage happens locally - no external API calls or data transmission
+- **Local-First Architecture**: All AI processing and data storage happens locally
+- **No Data Transmission**: Conversations never leave your device (unless you use optional Brave/MongoDB features)
 - **Package Overrides**: Security fixes applied via package.json overrides for transitive dependency vulnerabilities
 - **Production Ready**: Optimized build with no security issues affecting production runtime
 
+---
+
 ## ⚠️ Important Notes
 
+### Docker Setup
+- **Data Persistence**: All data stored in `./data/` directory on your machine
+- **First Launch**: Docker image download and model pull takes 10-20 minutes initially
+- **Resource Usage**: Ollama LLM requires ~4-8GB RAM when running
+- **Disk Space**: LLM models are 4-10GB each, plan accordingly
+- **Backups**: Simply copy `data/chats.db` file to backup your conversations
+
+### Local Development Setup
 - **Local AI Only**: All conversations run locally via Ollama - no data leaves your device
-- **GPU Recommended**: For best performance, use a GPU with ≥12GB VRAM
+- **GPU Recommended**: For best performance, use a GPU with ≥8GB VRAM
 - **First Launch**: Initial model loading may take a few minutes
+- **SQLite Database**: All data stored in `chats.db` file in project root
+
+### General
+- **Privacy First**: Your conversations are 100% private and local
 - **Experimental**: This is a prototype - use responsibly
+- **Optional Features**: Web search (Brave) and MongoDB features require external APIs
 
 ---
 

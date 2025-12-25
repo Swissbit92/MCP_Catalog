@@ -9,36 +9,45 @@ import { usePersona } from '../context/PersonaContext';
 import { Menu, X } from 'lucide-react';
 
 // Floating particles component for glassmorphism effect
-const FloatingParticles: React.FC = () => {
-  const particles = Array.from({ length: 8 }, (_, i) => i); // Fewer particles for chat
+const FloatingParticles: React.FC = React.memo(() => {
+  const particles = React.useMemo(() => {
+    return Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      xOffset: Math.random() * 10 - 5,
+      duration: 3 + Math.random() * 2,
+      delay: Math.random() * 2,
+    }));
+  }, []); // Empty dependency array ensures particles are generated only once
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {particles.map((particle) => (
         <motion.div
-          key={particle}
+          key={particle.id}
           className="absolute w-1.5 h-1.5 bg-white/30 rounded-full shadow-sm"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${particle.left}%`,
+            top: `${particle.top}%`,
           }}
           animate={{
             y: [0, -20, 0],
-            x: [0, Math.random() * 10 - 5, 0],
+            x: [0, particle.xOffset, 0],
             opacity: [0.2, 0.6, 0.2],
             scale: [0.6, 1.0, 0.6],
           }}
           transition={{
-            duration: 3 + Math.random() * 2,
+            duration: particle.duration,
             repeat: Infinity,
-            delay: Math.random() * 2,
+            delay: particle.delay,
             ease: "easeInOut",
           }}
         />
       ))}
     </div>
   );
-};
+});
 
 // Persona color schemes based on rarity (matching character cards)
 const getPersonaColorScheme = (rarity?: string) => {

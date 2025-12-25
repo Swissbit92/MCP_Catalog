@@ -15,7 +15,69 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 
 ## Development Commands
 
-### Setup
+### Docker Deployment (Recommended)
+
+**🐳 Docker is the recommended setup method** for local development and testing. See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for full guide.
+
+**One-Command Setup (Easiest):**
+```bash
+# Windows PowerShell
+.\setup-docker.ps1
+
+# Windows Command Prompt
+setup-docker.bat
+
+# Linux/Mac
+./setup-docker.sh
+```
+
+**Manual Setup (Alternative):**
+```bash
+# Start services
+docker-compose --env-file .env.docker up -d
+
+# Pull AI models
+docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
+```
+
+**Access:**
+```bash
+# Frontend: http://localhost:3000
+# Backend: http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
+**Common Commands:**
+```bash
+docker-compose logs -f backend    # View backend logs
+docker-compose logs -f            # View all logs
+docker-compose restart backend    # Restart backend
+docker-compose down               # Stop all services
+
+# Backup database
+# Windows: Copy-Item data\chats.db backups\chats.db.backup
+# Linux/Mac: cp data/chats.db backups/chats.db.backup
+```
+
+**Docker Stack:**
+- 3 services: ai-companion-brain (Ollama LLM), ai-companion-api (FastAPI), ai-companion-web (React/Nginx)
+- SQLite database: `./data/chats.db` (persists on host)
+- Persona summaries: `./personas/_summaries/` (persists on host)
+- Ollama models: Docker volume (9GB for gemma-2-9b)
+
+**Documentation:**
+- **[DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)** - Complete setup guide
+- **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** - Technical decision record
+- **[.env.docker](.env.docker)** - Configuration template
+
+---
+
+### Local Development Setup
+
+For code modification and development (alternative to Docker):
+
+**Setup:**
 ```bash
 # Automated setup (installs Python + React dependencies)
 ./setup.sh          # Linux/macOS
@@ -26,7 +88,7 @@ pip install -r requirements.txt
 cd react-ui && npm install
 ```
 
-### Running the Application
+**Running the Application:**
 ```bash
 # Unified startup (recommended) - starts both backend + frontend
 python run_react.py
@@ -99,9 +161,11 @@ python tests/integration/test_mongodb_eeva_flavor.py         # MongoDB persona f
 # Start Ollama service
 ollama serve
 
-# Pull required model
-ollama pull llama3.1:latest
-# or whatever model is specified in PERSONA_MODEL env var
+# Pull required model (from your .env PERSONA_MODEL)
+ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+
+# For Phase 3 RAG memory (if needed)
+ollama pull nomic-embed-text:latest
 ```
 
 ## Project Structure
@@ -219,12 +283,12 @@ Each persona is a JSON file defining:
 
 Required in `.env` at project root (no .env.example exists - create from scratch):
 ```bash
-OLLAMA_BASE=http://127.0.0.1:11434     # Ollama API endpoint
-PERSONA_MODEL=llama3.1:latest          # LLM model to use
-PERSONA_TEMPERATURE=0.1                # LLM sampling temperature
-COORD_PORT=8000                        # Backend port
-COORD_URL=http://127.0.0.1:8000        # Backend URL for frontend
-PERSONA_DIR=personas                   # Persona JSON directory
+OLLAMA_BASE=http://127.0.0.1:11434                     # Ollama API endpoint
+PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b   # LLM model (uncensored, great for personas)
+PERSONA_TEMPERATURE=0.9                                # LLM sampling temperature (balanced creativity)
+COORD_PORT=8000                                        # Backend port
+COORD_URL=http://127.0.0.1:8000                        # Backend URL for frontend
+PERSONA_DIR=personas                                   # Persona JSON directory
 ```
 
 Optional - Basic:
@@ -729,8 +793,9 @@ This single-line change enables all Phase 3 features.
 
 ### Backend won't start
 - Verify Ollama is running: `ollama serve`
-- Check model is pulled: `ollama list` / `ollama pull llama3.1:latest`
+- Check model is pulled: `ollama list` / `ollama pull nchapman/gemma-2-9b-it-abliterated:9b`
 - Confirm `.env` has required vars: `OLLAMA_BASE`, `PERSONA_MODEL`
+- Verify model matches .env: Default uses `nchapman/gemma-2-9b-it-abliterated:9b` @ temp `0.9`
 
 ### Frontend build errors
 - Clear node_modules: `cd react-ui && rm -rf node_modules && npm install`
@@ -791,8 +856,12 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 - `ASSESSMENT.md` - Comprehensive codebase quality assessment and scoring (Dec 2025)
 - `AGENTS.md` - AI coding guidelines, tech stack, build commands, code style
 - `CHANGELOG.md` - Version history, feature additions, security fixes
-- `PHASE3_FINAL_RESULTS.md` - Phase 3 live test results and validation (Dec 2025)
-- `PHASE3_LIVE_TEST_ANALYSIS.md` - Bug discovery and analysis (Dec 2025)
+- `PRODUCTION_READINESS_PLAN.md` - Kubernetes production readiness assessment & 3-phase migration plan (Dec 2025)
+- `DOCKER_QUICKSTART.md` - Docker deployment guide (recommended setup method)
+- `DOCKER_README_UPDATE_SUMMARY.md` - Docker implementation log
+- `DOCKER_SQLITE_OPTIMIZATION_SUMMARY.md` - SQLite technical decision
+- `SQLITE_ARCHITECTURE.md` - Database architecture technical decision record
+- `UI_MULTI_MESSAGE_TEST_GUIDE.md` - Frontend testing guide
 
 **CI/CD Documentation (.github/):**
 - `CICD_GETTING_STARTED.md` - Beginner-friendly CI/CD introduction (what, why, how)
@@ -806,13 +875,26 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
     - `CRITICAL_ISSUES_FIXED.md` - Master summary of all fixes (Dec 2025)
     - `MONGODB_REFACTORING_COMPLETE.md` - MongoDB MCP client refactoring
     - `HEADER_MODULAR_REFACTORING.md` - React Header component split
+    - `HEADER_REFACTORING_SUMMARY.md` - React Header refactoring details
+    - `HEADER_COMPONENT_DIAGRAM.md` - React Header component architecture
     - `PHASE3_ADVANCED_MEMORY_COMPLETION.md` - Phase 3 implementation summary
     - `PHASE3_TEST_RESULTS.md` - Component-level test validation
+    - `PHASE3_FINAL_RESULTS.md` - Phase 3 live test results and validation
+    - `PHASE3_LIVE_TEST_ANALYSIS.md` - Bug discovery and analysis
+    - `CONVERSATIONAL_AI_STATUS.md` - Conversational AI roadmap status
+    - `CURRENT_STATUS_AND_NEXT_STEPS.md` - Overall project status (Dec 25)
+    - `PROJECT_STATUS_COMPLETE.md` - Project milestone summary
+    - `MEMORY_CONFIG_VERIFICATION.md` - Memory system config verification
+    - `MODEL_SWITCH_VALIDATION_RESULTS.md` - Model validation results
+    - `BUGFIX_BRAVE_AND_TAGS.md` - Critical bug fix log
+    - `MSG_TAG_ANALYSIS_RECOMMENDATION.md` - Message tag analysis
   - `02_ux_design_specs/` - UX design roadmaps (Home, Chat, Character pages, Gacha)
   - `03_feature_specs/` - Feature specs (Brave MCP, MongoDB MCP, model recommendations)
   - `04_deprecated/` - Obsolete docs kept for reference (React migration complete)
   - `05_roadmaps/` - Feature roadmaps (persona quality, memory management)
     - `PERSONA_MEMORY_ROADMAP.md` - 3-phase memory enhancement roadmap
+    - `PHASE1_IMPLEMENTATION_PLAN.md` - Docker-first migration implementation guide
+    - `PHASE2_MODEL_COMPARISON_RECOMMENDATION.md` - Model selection analysis
 
 ## Dependencies
 
@@ -837,9 +919,10 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 
 ## Project Hygiene
 
-**Current Status:** ✅ Hygiene Score 10/10 (Perfect cleanliness)
+**Current Status:** ✅ Hygiene Score 10/10 (Perfect cleanliness - Restored)
 
 **Recent Improvements:**
+- **Dec 25, 2025:** Hygiene Session #4 (8 test files moved, 9 docs archived, venv cleaned, chats.db untracked)
 - **Dec 24, 2025:** Phase 1 Configuration Externalization (7 values → `.env`)
 - **Dec 24, 2025:** MongoDB Persona Flavor Enhancement (synthesis prompt fix)
 - **Dec 24, 2025:** Hygiene Session #3 (4 files moved, 11 archived, zero issues)
@@ -857,10 +940,10 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 
 **Project Organization:**
 - `tests/backend/coordinator/`: 12 test files
-- `tests/integration/`: 18 test files
-- `tests/exploration/`: 7 test files
+- `tests/integration/`: 23 test files (+5 from root)
+- `tests/exploration/`: 10 test files (+3 from root)
 - `src/coordinator/routes/`: 3 route modules
 - `src/coordinator/services/`: 3 service modules
-- `AI_documentation/`: 22+ docs across 5 categories
+- `AI_documentation/`: 31+ docs across 5 categories (+9 from root)
 
 **Full History:** See `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md` for complete hygiene session details, refactoring summaries, and architectural improvements.
