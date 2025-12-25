@@ -50,6 +50,9 @@ export interface ResponseMetadata {
   cache_status?: 'hit' | 'miss' | null;
   data_timestamp?: string | null;
   latency_breakdown?: Record<string, number> | null;
+  // PHASE 2: Multi-message response fields
+  is_multi_message?: boolean;
+  message_count?: number;
 }
 
 // Phase 2.2: Emotional state tracking
@@ -228,7 +231,19 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
   }
 };
 
-export const sendMessageToSession = async (sessionId: string, message: string): Promise<Message> => {
+// Phase 2: Extended response type for multi-message
+export interface ChatApiResponse {
+  answer: string | string[]; // Single string or array of strings
+  message_flow: 'single' | 'multi';
+  message_count: number;
+  used_search?: boolean;
+  search_results_count?: number;
+  citation_valid?: boolean;
+  metadata?: ResponseMetadata | null;
+  emotional_state?: EmotionalState | null;
+}
+
+export const sendMessageToSession = async (sessionId: string, message: string): Promise<ChatApiResponse> => {
   const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/chat`, {
     method: 'POST',
     headers: {
@@ -243,17 +258,16 @@ export const sendMessageToSession = async (sessionId: string, message: string): 
     throw new Error(`Chat API Error: ${response.status} ${response.statusText} - ${errorText}`);
   }
   const data = await response.json();
-  // Convert API response to Message object
+  // Return full API response (Phase 2: includes multi-message fields)
   return {
-    id: `assistant-${Date.now()}`,
-    role: 'assistant',
-    content: data.answer,
-    timestamp: new Date(),
+    answer: data.answer,
+    message_flow: data.message_flow || 'single',
+    message_count: data.message_count || 1,
     used_search: data.used_search || false,
     search_results_count: data.search_results_count || 0,
     citation_valid: data.citation_valid,
     metadata: data.metadata || null,
-    emotional_state: data.emotional_state || null, // Phase 2.2: Emotional state
+    emotional_state: data.emotional_state || null,
   };
 };
 

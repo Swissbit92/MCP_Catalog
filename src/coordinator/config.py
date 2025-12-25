@@ -31,8 +31,8 @@ class OllamaSettings(BaseSettings):
         alias="OLLAMA_BASE"
     )
     model: str = Field(
-        default="llama3.1:latest",
-        description="Default model for persona responses",
+        default="mistral:latest",
+        description="Default model for persona responses (fallback if PERSONA_MODEL not set)",
         alias="PERSONA_MODEL"
     )
     temperature: float = Field(

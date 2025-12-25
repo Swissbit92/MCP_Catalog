@@ -1,0 +1,196 @@
+{
+  "model": "nchapman",
+  "scenarios": [
+    {
+      "scenario": "Beginner Question",
+      "analysis": {
+        "is_multi": true,
+        "message_count": 3,
+        "has_questions": true,
+        "avg_length": 95.0,
+        "total_length": 285,
+        "personality_score": 0,
+        "expectations_met": [
+          [
+            "multi-message",
+            true
+          ],
+          [
+            "questions",
+            true
+          ],
+          [
+            "concise",
+            true
+          ]
+        ],
+        "response_text": [
+          "Ah, a fresh face! Welcome to the world of Bitcoin.  So you want to know about the fundamentals?",
+          "It's like digital gold—scarce, independent of governments, and gaining popularity.",
+          "But instead of being mined from the earth, it's \"mined\" by powerful computers solving complex math problems."
+        ]
+      },
+      "response": {
+        "answer": [
+          "Ah, a fresh face! Welcome to the world of Bitcoin.  So you want to know about the fundamentals?",
+          "It's like digital gold—scarce, independent of governments, and gaining popularity.",
+          "But instead of being mined from the earth, it's \"mined\" by powerful computers solving complex math problems."
+        ],
+        "message_flow": "multi",
+        "message_count": 3,
+        "used_search": false,
+        "metadata": {
+          "source_type": "llm",
+          "tools_used": [],
+          "cache_status": null,
+          "data_timestamp": null,
+          "latency_breakdown": null,
+          "is_multi_message": true,
+          "message_count": 3
+        },
+        "rewritten": false,
+        "emotional_state": {
+          "trust_level": 0.5,
+          "rapport": 0.51,
+          "current_mood": "neutral"
+        }
+      }
+    },
+    {
+      "scenario": "Technical Question",
+      "analysis": {
+        "is_multi": true,
+        "message_count": 3,
+        "has_questions": false,
+        "avg_length": 79.66666666666667,
+        "total_length": 239,
+        "personality_score": 0,
+        "expectations_met": [],
+        "response_text": [
+          "That's a great question!",
+          "Bitcoin's halving event, where the block reward for miners is cut in half, is designed to create scarcity.",
+          "The theory is that this reduced supply, coupled with continued demand, can lead to price increases over time."
+        ]
+      },
+      "response": {
+        "answer": [
+          "That's a great question!",
+          "Bitcoin's halving event, where the block reward for miners is cut in half, is designed to create scarcity.",
+          "The theory is that this reduced supply, coupled with continued demand, can lead to price increases over time."
+        ],
+        "message_flow": "multi",
+        "message_count": 3,
+        "used_search": false,
+        "metadata": {
+          "source_type": "llm",
+          "tools_used": [],
+          "cache_status": null,
+          "data_timestamp": null,
+          "latency_breakdown": null,
+          "is_multi_message": true,
+          "message_count": 3
+        },
+        "rewritten": false,
+        "emotional_state": {
+          "trust_level": 0.5,
+          "rapport": 0.51,
+          "current_mood": "curious"
+        }
+      }
+    },
+    {
+      "scenario": "Emotional Context",
+      "analysis": {
+        "is_multi": false,
+        "message_count": 1,
+        "has_questions": true,
+        "avg_length": 540,
+        "total_length": 540,
+        "personality_score": 0,
+        "expectations_met": [],
+        "response_text": [
+          "That's understandable, it can be disheartening when investments don't go as planned.  The market can feel overwhelming at times. \n\nRight now, Bitcoin is trading around $88,155.  Its RSI is sitting at 59.58, indicating a neutral-to-bullish trend. The MACD, however, shows a bullish crossover which suggests positive momentum.  It's important to remember that even established assets like Bitcoin experience fluctuations.\n\nThe key is to have a long-term perspective and not let short-term dips discourage you. What's your investment strategy?"
+        ]
+      },
+      "response": {
+        "answer": "That's understandable, it can be disheartening when investments don't go as planned.  The market can feel overwhelming at times. \n\nRight now, Bitcoin is trading around $88,155.  Its RSI is sitting at 59.58, indicating a neutral-to-bullish trend. The MACD, however, shows a bullish crossover which suggests positive momentum.  It's important to remember that even established assets like Bitcoin experience fluctuations.\n\nThe key is to have a long-term perspective and not let short-term dips discourage you. What's your investment strategy?",
+        "used_search": true,
+        "metadata": {
+          "source_type": "mongodb_mcp",
+          "tools_used": [
+            "bitcoin_current_price"
+          ],
+          "cache_status": "miss",
+          "data_timestamp": {
+            "$date": "2025-12-25T19:00:00Z"
+          },
+          "latency_breakdown": null,
+          "is_multi_message": false,
+          "message_count": 1
+        },
+        "rewritten": false,
+        "emotional_state": {
+          "trust_level": 0.5,
+          "rapport": 0.51,
+          "current_mood": "vulnerable"
+        }
+      }
+    },
+    {
+      "scenario": "Follow-up Question",
+      "analysis": {
+        "is_multi": true,
+        "message_count": 3,
+        "has_questions": true,
+        "avg_length": 98.66666666666667,
+        "total_length": 296,
+        "personality_score": 0,
+        "expectations_met": [
+          [
+            "questions",
+            true
+          ],
+          [
+            "concise",
+            true
+          ]
+        ],
+        "response_text": [
+          "Mining, huh?",
+          "Imagine a giant puzzle everyone's trying to solve.  You find the right piece, you get rewarded with Bitcoin.",
+          "Technically, it's validating transactions and adding them to the blockchain—but that's where the fun part comes in! Think of it like keeping the Bitcoin world running smoothly."
+        ]
+      },
+      "response": {
+        "answer": [
+          "Mining, huh?",
+          "Imagine a giant puzzle everyone's trying to solve.  You find the right piece, you get rewarded with Bitcoin.",
+          "Technically, it's validating transactions and adding them to the blockchain—but that's where the fun part comes in! Think of it like keeping the Bitcoin world running smoothly."
+        ],
+        "message_flow": "multi",
+        "message_count": 3,
+        "used_search": false,
+        "metadata": {
+          "source_type": "llm",
+          "tools_used": [],
+          "cache_status": null,
+          "data_timestamp": null,
+          "latency_breakdown": null,
+          "is_multi_message": true,
+          "message_count": 3
+        },
+        "rewritten": false,
+        "emotional_state": {
+          "trust_level": 0.5,
+          "rapport": 0.51,
+          "current_mood": "curious"
+        }
+      }
+    }
+  ],
+  "summary": {
+    "multi_message_count": 3,
+    "question_count": 3,
+    "avg_total_length": 340.0
+  }
+}

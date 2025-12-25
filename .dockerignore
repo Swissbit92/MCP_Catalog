@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.log
+.pytest_cache/
+
+# Virtual environments
+bin/
+include/
+Include/
+lib/
+lib64/
+Scripts/
+pyvenv.cfg
+
+# Databases (will be mounted as volumes)
+*.db
+chats.db
+data/
+
+# Node.js (for backend Dockerfile - frontend has its own)
+node_modules/
+react-ui/
+
+# Build artifacts
+react-ui/build/
+
+# Git
+.git/
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation (not needed in container)
+*.md
+docs/
+AI_documentation/
+
+# Test files
+tests/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.bak
+*.tmp
