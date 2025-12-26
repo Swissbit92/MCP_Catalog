@@ -28,6 +28,106 @@
 
 ---
 
+## 🎨 Deferred: Code-Level Branding Harmonization
+
+**Last Updated:** December 26, 2025
+**Status:** Phase 1 Complete (User-Facing Text) | Phase 2-3 Deferred
+
+### Phase 1: User-Facing Text Updates ✅ COMPLETE (Dec 26, 2025)
+
+**Updated Files:**
+- `README.md` - Title, descriptions, feature tables ("AI Companions" branding)
+- `react-ui/src/pages/Home.tsx` - Page titles and subtitles
+- `react-ui/src/components/header/HeaderNavigation.tsx` - Header branding ("AI Companions", "Agents")
+- `react-ui/src/components/header/MobileMenu.tsx` - Mobile navigation labels
+- `react-ui/src/pages/CharacterCardV2Showcase.tsx` - Description updates
+
+**Changes:**
+- "Persona Chat" → "AI Companions" (user-facing)
+- "Characters" → "Agents" (navigation labels only)
+- Gacha card terminology preserved ("Classic Character Cards" is correct)
+
+---
+
+### Phase 2: Route Harmonization ⏳ DEFERRED
+
+**Why Deferred:**
+- URL changes break bookmarks and external links
+- Browser history disruption for existing users
+- No SEO benefit for local-first app
+- High refactoring effort for minimal UX improvement
+
+**Future Implementation (Optional):**
+
+1. **Add Route Aliases** (Low Risk)
+   ```tsx
+   // App.tsx - Support both URLs
+   <Route path="/select" element={<CharacterCardV2Showcase />} />
+   <Route path="/agents" element={<CharacterCardV2Showcase />} />  // New alias
+   ```
+
+2. **Update Internal Links**
+   - Navigation components use `/agents` going forward
+   - Keep `/select` working for backward compatibility
+
+3. **Deprecation Timeline**
+   - Month 1-3: Both routes active
+   - Month 4-6: Redirect `/select` → `/agents` with notice
+   - Month 6+: Full migration (optional)
+
+**Decision Point:** Evaluate after 3-6 months of user feedback
+
+---
+
+### Phase 3: Component Naming Harmonization ⏳ DEFERRED
+
+**Why Deferred:**
+- "Character Card" is correct terminology for gacha mechanics
+- 71+ import statements across 20 files (massive refactoring)
+- High risk of introducing bugs in test files and mocks
+- Type definitions cascade to interfaces, props, and context
+- No user-facing benefit (internal code structure only)
+
+**Files Affected (If Attempted):**
+- `CharacterCard.tsx` → `CompanionCard.tsx`? (Not recommended)
+- `CharacterCardV2.tsx` → Keep as-is (gacha authenticity)
+- `CharacterSelector.tsx` → `AgentSelector.tsx`? (Low priority)
+- `CharacterShowcase.tsx` → `CompanionShowcase.tsx`? (Low priority)
+- `CharacterCollection.tsx` → Keep as-is (gacha collection system)
+
+**Recommendation:**
+- **Keep "Character" terminology** for gacha/card components
+- Only rename if future features require it (e.g., non-card agent views)
+- Focus on user-facing language, not internal code structure
+
+**Decision Point:** Revisit only if user confusion occurs (unlikely)
+
+---
+
+### Summary
+
+**What Changed (Phase 1):**
+- ✅ All user-facing text uses "AI Companions" branding
+- ✅ Navigation labels updated to "Agents"
+- ✅ Gacha card terminology preserved for authenticity
+
+**What's Deferred (Phase 2-3):**
+- ⏳ Route URL changes (`/select` → `/agents`)
+- ⏳ Component file naming (`CharacterCard` → keep as-is)
+- ⏳ TypeScript interface renaming (not needed)
+
+**Risk Assessment:**
+- Phase 1: ✅ LOW RISK (text only, no breaking changes)
+- Phase 2: ⚠️ MEDIUM RISK (bookmarks, requires testing)
+- Phase 3: 🔴 HIGH RISK (71+ files, cascading changes, low benefit)
+
+**Next Steps:**
+1. Monitor user feedback for 3-6 months
+2. Evaluate if route aliases are needed
+3. Only proceed with Phase 2-3 if user confusion occurs
+
+---
+
 ## Quick Reference
 
 **✅ Completed:**
@@ -37,6 +137,7 @@
 - Production code cleanup (print statements, test fixes)
 - **Conversational AI Phases 1-2** (multi-message responses, curiosity prompts)
 - **Model selection & validation** (nchapman production-ready)
+- **Branding update Phase 1** (user-facing text → "AI Companions")
 
 **⏳ Ready to Implement:**
 - Conversational AI Phases 3-4 (14-20 hours, cross-session memory)

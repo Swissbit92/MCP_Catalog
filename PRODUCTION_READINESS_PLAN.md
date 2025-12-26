@@ -1414,7 +1414,7 @@ spec:
 # helm/mcp-coordinator/Chart.yaml
 apiVersion: v2
 name: mcp-coordinator
-description: AI Persona Chat Coordinator with GraphRAG & MCP
+description: AI Companion Coordinator with GraphRAG & MCP
 type: application
 version: 1.0.0
 appVersion: "1.0.0"

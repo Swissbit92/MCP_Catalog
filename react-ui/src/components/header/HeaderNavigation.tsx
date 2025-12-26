@@ -100,7 +100,7 @@ export const HeaderBranding: React.FC<HeaderBrandingProps> = ({ itemVariants }) 
               filter: "drop-shadow(0 0 8px rgba(255, 215, 0, 0.3))"
             }}
           >
-            Persona Chat
+            AI Companions
           </motion.h1>
           <motion.p
             className="text-xs text-slate-400 leading-tight"
@@ -118,7 +118,7 @@ export const HeaderBranding: React.FC<HeaderBrandingProps> = ({ itemVariants }) 
               ease: "easeInOut"
             }}
           >
-            Gacha Style
+            Intelligent Agents
           </motion.p>
         </div>
       </motion.div>
@@ -139,7 +139,7 @@ export const DesktopNavigation: React.FC<DesktopNavigationProps> = ({
 
   const navItems = [
     { to: '/', label: 'Home', color: 'yellow' },
-    { to: '/select', label: 'Characters', color: 'purple' },
+    { to: '/select', label: 'Agents', color: 'purple' },
     { to: '/chat', label: 'Chat', color: 'cyan' }
   ];
 

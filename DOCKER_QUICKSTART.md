@@ -660,4 +660,4 @@ Response → Includes 🔍 Sources section
 
 ---
 
-Enjoy your AI persona chat app! 🎭🤖
+Enjoy your AI companion app! 🤖✨
