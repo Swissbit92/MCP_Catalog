@@ -112,8 +112,19 @@ User Query: {user_compiled}"""
 
                 answer, was_rewritten = post_process_first_person(answer, persona_name)
 
+                # Import message processing functions
+                from .message_processing_service import force_multi_message_split, parse_multi_message_response
+
+                # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
+                answer = force_multi_message_split(answer, "")
+
+                # PHASE 2: Parse for multi-message format
+                messages, flow_type = parse_multi_message_response(answer)
+
                 return {
-                    "answer": answer,
+                    "answer": messages if flow_type == 'multi' else messages[0],
+                    "message_flow": flow_type,
+                    "message_count": len(messages),
                     "used_search": True,
                     "metadata": metadata.model_dump(),
                     "rewritten": was_rewritten
@@ -129,8 +140,20 @@ User Query: {user_compiled}"""
         )
         answer = client.complete(system=system_prompt, user_prompt=user_compiled)
         answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+        # Import message processing functions
+        from .message_processing_service import force_multi_message_split, parse_multi_message_response
+
+        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
+        answer = force_multi_message_split(answer, "")
+
+        # PHASE 2: Parse for multi-message format
+        messages, flow_type = parse_multi_message_response(answer)
+
         return {
-            "answer": answer,
+            "answer": messages if flow_type == 'multi' else messages[0],
+            "message_flow": flow_type,
+            "message_count": len(messages),
             "used_search": False,
             "metadata": metadata.model_dump(),
             "rewritten": was_rewritten
@@ -187,8 +210,19 @@ User Query: {user_compiled}"""
 
         answer, was_rewritten = post_process_first_person(answer, persona_name)
 
+        # Import message processing functions
+        from .message_processing_service import force_multi_message_split, parse_multi_message_response
+
+        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
+        answer = force_multi_message_split(answer, "")  # Empty query since we don't have it here
+
+        # PHASE 2: Parse for multi-message format
+        messages, flow_type = parse_multi_message_response(answer)
+
         response = {
-            "answer": answer,
+            "answer": messages if flow_type == 'multi' else messages[0],
+            "message_flow": flow_type,
+            "message_count": len(messages),
             "used_search": tool_call is not None,
             "metadata": metadata.model_dump(),
             "citation_valid": has_valid_citations,
@@ -255,8 +289,19 @@ User Query: {user_compiled}"""
 
         answer, was_rewritten = post_process_first_person(answer, persona_name)
 
+        # Import message processing functions
+        from .message_processing_service import force_multi_message_split, parse_multi_message_response
+
+        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
+        answer = force_multi_message_split(answer, "")
+
+        # PHASE 2: Parse for multi-message format
+        messages, flow_type = parse_multi_message_response(answer)
+
         return {
-            "answer": answer,
+            "answer": messages if flow_type == 'multi' else messages[0],
+            "message_flow": flow_type,
+            "message_count": len(messages),
             "used_search": True,
             "metadata": metadata.model_dump(),
             "citation_valid": has_valid_citations,

@@ -9,7 +9,7 @@ import { usePersona } from '../context/PersonaContext';
 import { Menu, X } from 'lucide-react';
 
 // Floating particles component for glassmorphism effect
-const FloatingParticles: React.FC = React.memo(() => {
+const FloatingParticles: React.FC<{ isActive: boolean }> = React.memo(({ isActive }) => {
   const particles = React.useMemo(() => {
     return Array.from({ length: 8 }, (_, i) => ({
       id: i,
@@ -21,6 +21,7 @@ const FloatingParticles: React.FC = React.memo(() => {
     }));
   }, []); // Empty dependency array ensures particles are generated only once
 
+  // Only animate when active (typing, searching, or loading)
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {particles.map((particle) => (
@@ -31,15 +32,18 @@ const FloatingParticles: React.FC = React.memo(() => {
             left: `${particle.left}%`,
             top: `${particle.top}%`,
           }}
-          animate={{
+          animate={isActive ? {
             y: [0, -20, 0],
             x: [0, particle.xOffset, 0],
             opacity: [0.2, 0.6, 0.2],
             scale: [0.6, 1.0, 0.6],
+          } : {
+            opacity: 0.1,
+            scale: 0.6,
           }}
           transition={{
             duration: particle.duration,
-            repeat: Infinity,
+            repeat: isActive ? Infinity : 0,
             delay: particle.delay,
             ease: "easeInOut",
           }}
@@ -324,8 +328,8 @@ const Chat: React.FC = () => {
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-800/70 to-slate-900/70 backdrop-blur-lg"></div>
       <div className="absolute inset-0 bg-gradient-to-r from-slate-900/50 via-slate-800/50 to-slate-900/50 backdrop-blur-md"></div>
 
-      {/* Floating particles */}
-      <FloatingParticles />
+      {/* Floating particles - only animate when there's activity */}
+      <FloatingParticles isActive={loading || isSearching || input.length > 0} />
 
     {/* Subtle character background for gacha style */}
     {personaBackground && (
