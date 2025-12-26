@@ -1,6 +1,6 @@
-# 🧠 MCP Coordinator - Persona Chat Interface
+# 🧠 MCP Coordinator - AI Companion Interface
 
-> **Local Persona-Driven AI Chat with Advanced Memory & Live Data**
+> **Local AI Companion Chat with Advanced Memory & Live Data**
 > _Private • Local-First • Docker-Ready • React + FastAPI Coordinator_
 
 <div align="center">
@@ -12,7 +12,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Latest-orange.svg)](https://ollama.ai)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57.svg?logo=sqlite)](https://sqlite.org)
 
-**🐳 Docker Quick Start (Recommended) • 🎭 Multiple Personas • 💬 Persistent Chat**
+**🐳 Docker Quick Start (Recommended) • 🤖 Multiple AI Companions • 💬 Persistent Chat**
 [What Can This Do?](#-what-can-this-do) • [Docker Setup](#-quick-start-docker) • [Local Setup](#-alternative-local-development-setup)
 
 </div>
@@ -40,11 +40,11 @@
 
 ## 🚀 What Can This Do?
 
-**5-Second Pitch:** Local AI chatbot with personality-driven conversations, web search, trading data, and advanced memory - all running on your machine.
+**5-Second Pitch:** Local AI companions with personality-driven conversations, web search, trading data, and advanced memory - all running on your machine.
 
 ### Key Capabilities
 
-- 🎭 **4 Distinct Personas** with psychological depth and emotional tracking
+- 🤖 **4 AI Companions** with psychological depth and emotional tracking
 - 💬 **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
 - 🧠 **Advanced Memory System** - remembers you across sessions, extracts facts automatically
 - 🔍 **Web Search with Citations** - personas autonomously search Brave API with mandatory sources
@@ -55,10 +55,10 @@
 
 ### Who Is This For?
 
-- **Developers** wanting a local ChatGPT alternative with customizable personalities
+- **Developers** wanting a local ChatGPT alternative with customizable AI companions
 - **Crypto Enthusiasts** needing a research assistant with live Bitcoin data
 - **Privacy-Conscious Users** who want full control over their AI conversations
-- **AI Experimenters** interested in persona-driven conversational AI with advanced memory
+- **AI Experimenters** interested in companion-driven conversational AI with advanced memory
 
 ---
 
@@ -70,7 +70,7 @@
 |---------|----------------|------------|-----------|-----|-----------|---------|
 | **100% Local & Private** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ Cloud |
 | **Multi-Message Conversations** | ✅ 2-4 msgs | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Dynamic Persona System** | ✅ 4 personas | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Dynamic AI Companion System** | ✅ 4 companions | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Advanced Memory (RAG)** | ✅ FAISS + profiles | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Emotional Tracking** | ✅ Trust/rapport | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Psychological Depth** | ✅ Core wound/defense | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -87,7 +87,7 @@
 ### 🎯 What Makes MCP Coordinator Unique?
 
 1. **Natural Conversations** - Multi-message responses (2-4 messages with staggered rendering) simulate texting a real person, not a chatbot
-2. **Persona-Driven AI** - Deep psychological profiles with emotional tracking create genuinely different characters
+2. **AI Companion System** - Deep psychological profiles with emotional tracking create genuinely different companions
 3. **Advanced Memory** - Only solution with RAG semantic search + automatic user profile building across sessions
 4. **Live Data Integration** - Real-time Bitcoin prices and technical indicators via MongoDB MCP
 5. **Transparent Data Sources** - Mandatory citations for web search, visible source tags (pure LLM/Brave/MongoDB) on every message
@@ -97,7 +97,7 @@
 
 **Choose MCP Coordinator if you want:**
 - Conversations that feel like texting a friend, not querying a database
-- Personas that remember you across sessions and adapt their responses
+- AI companions that remember you across sessions and adapt their responses
 - Live crypto/trading data integrated naturally into conversations
 - Complete transparency about where answers come from
 - A fun, engaging way to interact with local AI
@@ -116,7 +116,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🎭 **Dynamic Personas** | Chat with Eeva, Frieren, Gojo, Hitler - each with unique personality, expertise, and voice |
+| 🤖 **Dynamic AI Companions** | Chat with Eeva, Frieren, Gojo, Hitler - each with unique personality, expertise, and voice |
 | 🧠 **Advanced Memory System** | Multi-phase memory with importance scoring, auto-summarization, RAG semantic search, and cross-session user profiles |
 | 💬 **Multi-Message Conversations** | Natural conversational flow with 2-4 messages per response, staggered rendering (1.2s delays) |
 | 🎨 **Psychological Depth** | Each persona has core_wound, defense_style, growth_edge, contradiction_pairs for realistic behavior |
@@ -470,40 +470,40 @@ MEMORY_FACT_EXTRACTION_INTERVAL=10
 
 ---
 
-## 🎭 Available Personas
+## 🤖 Available AI Companions
 
 **Current Roster (December 2025):**
 
-| Persona | Style | Rarity | Special Access |
+| Companion | Style | Rarity | Special Access |
 |---------|-------|--------|----------------|
 | **Eeva** | Nerdy, charming, concise | Legendary | Brave + MongoDB |
 | **Frieren** | Wise, analytical, methodical | Legendary | Brave + MongoDB |
 | **Gojo** | Confident, powerful, playful | Legendary | Brave + MongoDB |
 | **Hitler** | Authoritative, ideological | Legendary | Brave + MongoDB |
 
-### Persona Features
+### Companion Features
 
-- **Psychological Profiles**: Each persona has core_wound, defense_style, growth_edge, contradiction_pairs
-- **Emotional Tracking**: Personas track trust_level, rapport, current_mood per session
-- **Example Dialogues**: 50 training examples (10-15 per persona) teach correct voice
-- **Custom Sampling**: Per-persona temperature and sampling presets (creative, balanced, precise)
-- **Special Access**: All current personas are Legendary with full Brave + MongoDB access
+- **Psychological Profiles**: Each companion has core_wound, defense_style, growth_edge, contradiction_pairs
+- **Emotional Tracking**: Companions track trust_level, rapport, current_mood per session
+- **Example Dialogues**: 50 training examples (10-15 per companion) teach correct voice
+- **Custom Sampling**: Per-companion temperature and sampling presets (creative, balanced, precise)
+- **Special Access**: All current companions are Legendary with full Brave + MongoDB access
 
-### Managing Personas
+### Managing AI Companions
 
-#### ➕ Adding a New Persona
+#### ➕ Adding a New Companion
 
 1. **Create persona file**: Copy `personas/template.jsonc` to `personas/[name].json`
 2. **Configure persona**: Edit the JSON with character details (see template for schema)
 3. **Add images**: Place card, avatar, logo, and background images in `react-ui/public/images/personas/[name]/`
 4. **Auto-discovery**: Persona appears automatically without restart
 
-#### 🗑️ Removing a Persona
+#### 🗑️ Removing a Companion
 
 1. **Delete persona file**: Remove JSON from `personas/` directory
 2. **Automatic cleanup**: Sessions, chats, and collections auto-cleanup on next load
 
-#### 🔄 Modifying a Persona
+#### 🔄 Modifying a Companion
 
 1. **Edit persona file**: Update JSON with new details
 2. **Auto-update**: Summary regenerates on next access, UI updates immediately
@@ -574,24 +574,24 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 
 #### **Home Page (`/`)**
 
-- 🎲 **Try Your Luck**: Navigate to Gacha Pull for character pulls
-- 📚 **Browse All Characters**: View all available personas
+- 🎲 **Try Your Luck**: Navigate to Gacha Pull for companion pulls
+- 📚 **Browse All Agents**: View all available AI companions
 - 🎨 **Sophisticated UI**: Glassmorphism effects, animated particles
 
-#### **Character Selection (`/select`)**
+#### **Agent Selection (`/select`)**
 
 - 🎴 **Card Gallery**: Browse with search and rarity filtering
 - 🎲 **Gacha Pull**: 1x/5x/10x pulls with audio and particle effects
-- 📚 **My Collection**: View collected characters with stats
+- 📚 **My Collection**: View collected companions with stats
 - 📊 **Pull History**: Track pulling statistics
-- 🎯 **Choose Characters**: Click "Choose" to jump to chat
+- 🎯 **Choose Agents**: Click "Choose" to jump to chat
 
 #### **Chat Interface (`/chat`)**
 
-- 💬 **Start Conversations**: Chat with selected persona
+- 💬 **Start Conversations**: Chat with selected AI companion
 - 🔄 **Switch Sessions**: Use sidebar to change chats
 - 💾 **Export Chats**: Save conversations as JSON
-- 🎨 **Rarity Theming**: Persona-specific colors and backgrounds
+- 🎨 **Rarity Theming**: Companion-specific colors and backgrounds
 - 📋 **Copy Functionality**: Copy JSON/code blocks with one click
 
 ---
