@@ -122,7 +122,9 @@ def add_message(session_id: str, body: AppendMessageBody):
         content=body.content,
         latency_ms=body.latency_ms,
         timestamp=body.ts,
-        source_type=body.source_type
+        source_type=body.source_type,
+        multi_message_id=body.multi_message_id,
+        multi_message_index=body.multi_message_index
     )
 
     # Update session timestamp

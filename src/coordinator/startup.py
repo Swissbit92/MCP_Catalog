@@ -337,6 +337,15 @@ def init_db():
         cur.execute("ALTER TABLE messages ADD COLUMN source_type TEXT DEFAULT 'llm'")
         logger.info("source_type column added successfully")
 
+    # Migration: Add multi-message support fields
+    cur.execute("PRAGMA table_info(messages)")
+    columns = [row[1] for row in cur.fetchall()]
+    if 'multi_message_id' not in columns:
+        logger.info("Adding multi-message support columns to messages table...")
+        cur.execute("ALTER TABLE messages ADD COLUMN multi_message_id TEXT")
+        cur.execute("ALTER TABLE messages ADD COLUMN multi_message_index INTEGER")
+        logger.info("Multi-message columns added successfully")
+
     # Create indexes
     cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")

@@ -604,26 +604,50 @@ def chat_with_session(session_id: str, body: ChatBody):
         source_type = response["metadata"].get("source_type", "llm")
 
     # Handle multi-message responses (Phase 2)
-    # Convert list to string for database storage, but preserve in response for frontend
+    # Store each message as a separate database entry with multi_message_id linking
     answer_for_db = response["answer"]
-    if isinstance(answer_for_db, list):
-        # Join messages with double newline for database storage
-        answer_for_db = "\n\n".join(answer_for_db)
-        logger.debug(f"[Phase2] Storing multi-message response ({len(response['answer'])} messages) as single DB entry")
+    if isinstance(answer_for_db, list) and len(answer_for_db) > 1:
+        # Multi-message response - store each message separately
+        import uuid
+        multi_msg_id = str(uuid.uuid4())
+        logger.debug(f"[Phase2] Storing {len(answer_for_db)} multi-messages separately with ID {multi_msg_id}")
 
-    assistant_msg_body = AppendMessageBody(role="assistant", content=answer_for_db, ts=now, source_type=source_type)
-    add_message(session_id, assistant_msg_body)
+        for idx, msg_content in enumerate(answer_for_db):
+            assistant_msg_body = AppendMessageBody(
+                role="assistant",
+                content=msg_content,
+                ts=now,
+                source_type=source_type,
+                latency_ms=response.get("latency") if idx == 0 else None,  # Only first message gets latency
+                multi_message_id=multi_msg_id,
+                multi_message_index=idx
+            )
+            add_message(session_id, assistant_msg_body)
+    else:
+        # Single message (or single-item list)
+        content = answer_for_db[0] if isinstance(answer_for_db, list) else answer_for_db
+        assistant_msg_body = AppendMessageBody(
+            role="assistant",
+            content=content,
+            ts=now,
+            source_type=source_type,
+            latency_ms=response.get("latency")
+        )
+        add_message(session_id, assistant_msg_body)
+
+    # For emotional state analysis, use all messages joined
+    answer_for_emotional_state = "\\n\\n".join(answer_for_db) if isinstance(answer_for_db, list) else answer_for_db
 
     # Auto-summarization check
     _check_and_summarize(session_id, persona_key, deps)
 
     # Update emotional state
     try:
-        # Use database version (string) for emotional state analysis
+        # Use joined version for emotional state analysis
         updated_state = emotional_state_repo.update_from_interaction(
             session_id=session_id,
             user_message=body.message,
-            assistant_response=answer_for_db
+            assistant_response=answer_for_emotional_state
         )
         response["emotional_state"] = {
             "trust_level": updated_state.trust_level,
