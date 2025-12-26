@@ -70,6 +70,8 @@ class AppendMessageBody(BaseModel):
     ts: Optional[str] = None
     latency_ms: Optional[int] = None
     source_type: str = "llm"
+    multi_message_id: Optional[str] = None
+    multi_message_index: Optional[int] = None
 
 
 class MessageModel(BaseModel):

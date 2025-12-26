@@ -16,7 +16,9 @@ class MessageRepository(BaseRepository):
         content: str,
         latency_ms: Optional[int] = None,
         timestamp: Optional[str] = None,
-        source_type: str = "llm"
+        source_type: str = "llm",
+        multi_message_id: Optional[str] = None,
+        multi_message_index: Optional[int] = None
     ) -> str:
         """
         Create a new message in a session.
@@ -28,6 +30,8 @@ class MessageRepository(BaseRepository):
             latency_ms: Optional latency in milliseconds
             timestamp: Optional timestamp (defaults to current time if not provided)
             source_type: Source type (llm, brave_mcp, mongodb_mcp, multi_mcp)
+            multi_message_id: Optional ID linking related multi-messages together
+            multi_message_index: Optional index for multi-message ordering (0-based)
 
         Returns:
             Message ID
@@ -36,10 +40,10 @@ class MessageRepository(BaseRepository):
         ts = timestamp or self._now()
 
         query = """
-            INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms, source_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (id, session_id, role, content, timestamp, latency_ms, source_type, multi_message_id, multi_message_index)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        self._execute(query, (message_id, session_id, role, content, ts, latency_ms, source_type))
+        self._execute(query, (message_id, session_id, role, content, ts, latency_ms, source_type, multi_message_id, multi_message_index))
 
         return message_id
 
