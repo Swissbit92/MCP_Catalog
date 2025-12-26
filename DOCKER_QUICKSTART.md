@@ -49,8 +49,9 @@ nano .env.docker
 
 **Optional customizations**:
 - `BRAVE_API_KEY` - Add API key to enable web search (get free key at https://brave.com/search/api/)
-- `PERSONA_MODEL` - Change LLM model (default: `dolphin-llama3:8b`)
+- `PERSONA_MODEL` - Change LLM model (default: `nchapman/gemma-2-9b-it-abliterated:9b`)
 - `PERSONA_TEMPERATURE` - Adjust creativity (default: `0.9`)
+- `MONGODB_URI` - Add MongoDB connection for trading data features
 
 ---
 
@@ -69,16 +70,16 @@ docker-compose ps
 
 Expected output:
 ```
-NAME           IMAGE                    STATUS
-mcp_backend    mcp_catalog-backend     Up (healthy)
-mcp_frontend   mcp_catalog-frontend    Up (healthy)
-mcp_ollama     ollama/ollama:latest    Up (healthy)
+NAME                IMAGE                       STATUS
+ai-companion-brain  ollama/ollama:latest       Up (healthy)
+ai-companion-api    mcp_catalog-backend        Up (healthy)
+ai-companion-web    mcp_catalog-frontend       Up (healthy)
 ```
 
 **What's running:**
-- `mcp_ollama` - Local LLM server (Ollama)
-- `mcp_backend` - FastAPI coordinator (Python)
-- `mcp_frontend` - React UI (served by Nginx)
+- `ai-companion-brain` - Local LLM server (Ollama with GPU support)
+- `ai-companion-api` - FastAPI coordinator (Python)
+- `ai-companion-web` - React UI (served by Nginx)
 
 **Data locations:**
 - SQLite database: `./data/chats.db` (persists on your machine)
@@ -90,26 +91,30 @@ mcp_ollama     ollama/ollama:latest    Up (healthy)
 ### Step 3: Pull LLM Model
 
 ```bash
-# Pull the Dolphin Llama 3 model (4.7GB download - takes 5-10 minutes)
-docker exec -it mcp_ollama ollama pull dolphin-llama3:8b
+# Pull the default model (9GB download - takes 10-15 minutes)
+docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
 
-# Verify model is ready
-docker exec -it mcp_ollama ollama list
+# Optional: Pull embedding model for Phase 3 memory features
+docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
+
+# Verify models are ready
+docker exec -it ai-companion-brain ollama list
 ```
 
 Expected output:
 ```
-NAME                  SIZE
-dolphin-llama3:8b    4.7 GB
+NAME                                         SIZE
+nchapman/gemma-2-9b-it-abliterated:9b       9.0 GB
+nomic-embed-text:latest                      274 MB
 ```
 
 **Alternative models** (if you prefer):
 ```bash
 # General purpose (censored, more formal)
-docker exec -it mcp_ollama ollama pull llama3.1:latest
+docker exec -it ai-companion-brain ollama pull llama3.1:latest
 
 # Smaller/faster (3.8GB)
-docker exec -it mcp_ollama ollama pull mistral:latest
+docker exec -it ai-companion-brain ollama pull mistral:latest
 ```
 
 ---
@@ -309,10 +314,10 @@ lsof -ti:3000 | xargs kill -9
 **Solution**:
 ```bash
 # Pull the model
-docker exec -it mcp_ollama ollama pull llama3.1:latest
+docker exec -it ai-companion-brain ollama pull llama3.1:latest
 
 # Verify
-docker exec -it mcp_ollama ollama list
+docker exec -it ai-companion-brain ollama list
 ```
 
 ---
@@ -328,7 +333,7 @@ docker-compose logs backend
 
 # Common causes:
 # 1. Ollama not ready - wait 1-2 minutes
-# 2. Model not pulled - run: docker exec -it mcp_ollama ollama pull llama3.1:latest
+# 2. Model not pulled - run: docker exec -it ai-companion-brain ollama pull llama3.1:latest
 # 3. Database error - check ./data/ directory exists
 
 # Restart backend
@@ -367,7 +372,7 @@ docker-compose restart backend
 **Solutions**:
 ```bash
 # Option 1: Use a smaller model
-docker exec -it mcp_ollama ollama pull llama3.1:8b  # Smaller 8B version
+docker exec -it ai-companion-brain ollama pull llama3.1:8b  # Smaller 8B version
 # Then update .env.docker: PERSONA_MODEL=llama3.1:8b
 
 # Option 2: Enable GPU (NVIDIA only)
@@ -440,7 +445,7 @@ If you have an NVIDIA GPU and want faster LLM responses:
 # See available models: https://ollama.com/library
 
 # Example: Pull Mistral 7B
-docker exec -it mcp_ollama ollama pull mistral:latest
+docker exec -it ai-companion-brain ollama pull mistral:latest
 
 # Update .env.docker
 PERSONA_MODEL=mistral:latest
@@ -452,14 +457,14 @@ docker-compose restart backend
 ### List All Downloaded Models
 
 ```bash
-docker exec -it mcp_ollama ollama list
+docker exec -it ai-companion-brain ollama list
 ```
 
 ### Remove Old Models
 
 ```bash
 # Remove a model to free space
-docker exec -it mcp_ollama ollama rm llama3.1:latest
+docker exec -it ai-companion-brain ollama rm llama3.1:latest
 ```
 
 ---
