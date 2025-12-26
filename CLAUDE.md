@@ -702,9 +702,10 @@ This single-line change enables all Phase 3 features.
 
 ## Project Hygiene
 
-**Current Status:** ✅ Hygiene Score 10/10 (Perfect cleanliness - Dec 26, 2025)
+**Current Status:** ✅ Hygiene Score 9.5/10 (Excellent - Dec 26, 2025)
 
 **Recent Improvements:**
+- **Dec 26, 2025:** Hygiene Session #6 (2 junk files deleted, 44+ cache files cleaned, 5 docs moved to AI_documentation/)
 - **Dec 26, 2025:** Hygiene Session #5 (6 logs deleted, 7 docs archived, 2 test artifacts removed)
 - **Dec 25, 2025:** Hygiene Session #4 (8 test files moved, 9 docs archived, venv cleaned, chats.db untracked)
 - **Dec 24, 2025:** Phase 1 Configuration Externalization (7 values → `.env`)
@@ -722,7 +723,7 @@ This single-line change enables all Phase 3 features.
 - Technical debt: **1 TODO** (performance optimization note)
 - Type hints coverage: **95%+**
 - Root Python files: **1** (run_react.py only)
-- Largest backend file: **534 lines** (routes/chat.py)
+- Largest backend file: **759 lines** (routes/chat.py)
 
 **Project Organization:**
 - `tests/backend/coordinator/`: 12 test files
@@ -730,6 +731,15 @@ This single-line change enables all Phase 3 features.
 - `tests/exploration/`: 10 test files (+3 from root)
 - `src/coordinator/routes/`: 3 route modules
 - `src/coordinator/services/`: 3 service modules
-- `AI_documentation/`: 38+ docs across 5 categories (+16 from root)
+- `AI_documentation/`: 43+ docs across 5 categories (+5 moved in Session #6)
+
+**Markdown File Policy:**
+Root directory markdown files are limited to essential user-facing documentation:
+- `README.md` - GitHub landing page (user entry point)
+- `CLAUDE.md` - Agent instructions (must remain in root)
+- `DOCKER_QUICKSTART.md` - Primary setup guide (quick access)
+- `NEXT_STEPS.md` - Active development roadmap
+- `CHANGELOG.md` - Version history (standard location)
+- All other `.md` files → `AI_documentation/` subdirectories
 
 **Full History:** See `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md` for complete hygiene session details, refactoring summaries, and architectural improvements.
