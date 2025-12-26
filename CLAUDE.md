@@ -318,6 +318,292 @@ Optional - MongoDB (Phase 3):
 - Use `--watchAll=false` for CI
 - Python: Limited test coverage currently, mock Ollama for critical paths
 
+### UX & Design Guidelines
+
+**Status:** UX Improvement Initiative launched Dec 26, 2025
+**Current UX Score:** 7.2/10 → Target 9.5/10
+**Plan:** `UX_IMPROVEMENT_PLAN.md` (comprehensive 200+ page implementation guide)
+
+#### Design System
+
+**Typography (NEW - Phase 1):**
+```css
+/* Font families */
+--font-display: 'Orbitron', sans-serif;     /* Headings, character names */
+--font-body: 'Poppins', sans-serif;          /* UI text, messages */
+--font-mono: 'Space Mono', monospace;        /* Technical stats, latency */
+
+/* Type scale */
+--text-xs: 0.75rem;     /* 12px - metadata */
+--text-sm: 0.875rem;    /* 14px - secondary text */
+--text-base: 1rem;      /* 16px - body text */
+--text-xl: 1.25rem;     /* 20px - h3 */
+--text-2xl: 1.5rem;     /* 24px - h2 */
+--text-4xl: 2.25rem;    /* 36px - h1, hero */
+```
+
+**Color System (Deep Space Aesthetic - Phase 1):**
+```css
+/* Core backgrounds */
+--bg-space-dark: #0a0e27;
+--bg-space-mid: #1a1625;
+--bg-space-light: #0f0d1f;
+
+/* Nebula accents */
+--nebula-blue: rgba(59, 130, 246, 0.12);
+--nebula-purple: rgba(139, 92, 246, 0.08);
+--nebula-cyan: rgba(34, 211, 238, 0.06);
+
+/* Rarity colors (overlay, not base) */
+--legendary: #FFD700;
+--epic: #DA70D6;
+--rare: #00BFFF;
+--common: #C0C0C0;
+
+/* Accent colors */
+--accent-primary: #4F46E5;   /* Indigo */
+--accent-secondary: #EC4899;  /* Pink */
+```
+
+**Animation System (Phase 2):**
+```typescript
+// react-ui/src/utils/animations.ts
+export const ANIMATION_DURATIONS = {
+  instant: 0.1,     // Tooltips, micro-interactions
+  fast: 0.2,        // Button hovers, toggles
+  normal: 0.3,      // Default transitions
+  slow: 0.5,        // Modals, page changes
+  dramatic: 0.8,    // Gacha pulls, reveals
+  epic: 1.2,        // Legendary character reveals
+};
+
+export const SPRING_CONFIGS = {
+  snappy: { stiffness: 400, damping: 25 },   // Buttons, cards
+  smooth: { stiffness: 300, damping: 30 },   // Default
+  bouncy: { stiffness: 200, damping: 15 },   // Celebrations
+};
+```
+
+**Spacing System:**
+```css
+--space-1: 0.25rem;   /* 4px */
+--space-2: 0.5rem;    /* 8px */
+--space-4: 1rem;      /* 16px */
+--space-6: 1.5rem;    /* 24px */
+--space-8: 2rem;      /* 32px */
+--space-12: 3rem;     /* 48px */
+```
+
+#### Accessibility Requirements
+
+**WCAG AA Compliance (Phase 1):**
+- Minimum 4.5:1 color contrast for body text
+- Minimum 3:1 color contrast for large text (18px+)
+- All interactive elements keyboard accessible
+- Focus indicators: 3px solid outline with 2px offset
+- Screen reader labels (`aria-label`, `sr-only` class)
+- Skip to main content link
+- Proper heading hierarchy (h1 → h2 → h3)
+
+**Keyboard Navigation (Phase 1):**
+- Tab/Shift+Tab cycles through interactive elements
+- Enter/Space activates buttons and links
+- Esc closes modals and dropdowns
+- Arrow keys navigate lists (where applicable)
+- Focus trap in modals (focus stays within modal)
+
+**Screen Reader Support:**
+```tsx
+{/* Screen reader only text */}
+<span className="sr-only">Response time: </span>
+
+{/* Accessible button labels */}
+<button aria-label="Select Eeva, legendary rarity character">
+  Select
+</button>
+
+{/* Live regions for dynamic content */}
+<div role="status" aria-live="polite">
+  {isSearching && "Searching the web..."}
+</div>
+```
+
+**CSS for Screen Readers:**
+```css
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+```
+
+#### Component Patterns
+
+**Button Hierarchy (Phase 2):**
+```tsx
+{/* Primary CTA - Largest, solid gradient */}
+<button className="px-10 py-5 text-xl font-display uppercase
+                   bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400
+                   shadow-2xl shadow-yellow-400/50 rounded-2xl">
+  Primary Action
+</button>
+
+{/* Secondary CTA - Outlined style */}
+<button className="px-6 py-3 text-base font-body
+                   border-2 border-yellow-400/50 text-yellow-400
+                   hover:bg-yellow-400/10 rounded-xl">
+  Secondary Action
+</button>
+
+{/* Tertiary - Text link */}
+<a className="text-gray-400 hover:text-white underline">
+  Tertiary Action →
+</a>
+```
+
+**Animation Usage (Phase 2):**
+```tsx
+import { SPRING_CONFIGS, ANIMATION_DURATIONS } from '../utils/animations';
+
+{/* Snappy button animation */}
+<motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+  transition={SPRING_CONFIGS.snappy}
+>
+
+{/* Smooth page transition */}
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={SPRING_CONFIGS.smooth}
+>
+
+{/* Use will-change only when animating */}
+<motion.div
+  style={{ willChange: isAnimating ? 'transform, opacity' : 'auto' }}
+>
+```
+
+**Performance Optimization (Phase 2):**
+```tsx
+{/* Reduce concurrent animations */}
+<FloatingParticles isActive={loading && !isSidebarOpen && !isSearching} />
+
+{/* Memoize expensive components */}
+const FloatingParticles = React.memo(({ isActive }) => {
+  const particles = React.useMemo(() => {
+    return Array.from({ length: 8 }, createParticle);
+  }, []); // Generate once
+
+  return (/* ... */);
+});
+
+{/* Respect reduced motion preference */}
+import { conditionalAnimation } from '../utils/animations';
+
+animate={conditionalAnimation(
+  { scale: 1.2, rotate: 360 },  // Full animation
+  { scale: 1.0, rotate: 0 }     // Static fallback
+)}
+```
+
+#### Search Features (Phase 2)
+
+**Session Search Pattern:**
+```tsx
+{/* In SessionList.tsx */}
+const [searchQuery, setSearchQuery] = useState('');
+
+const filteredSessions = useMemo(() => {
+  if (!searchQuery.trim()) return sessions;
+  const query = searchQuery.toLowerCase();
+  return sessions.filter(s =>
+    s.title.toLowerCase().includes(query) ||
+    persona?.display_name.toLowerCase().includes(query)
+  );
+}, [sessions, searchQuery]);
+
+<input
+  type="search"
+  placeholder="Search conversations..."
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  aria-label="Search conversations"
+/>
+```
+
+**Message Search Pattern (Phase 2):**
+```tsx
+{/* In Chat.tsx */}
+const [messageSearchQuery, setMessageSearchQuery] = useState('');
+const [searchResults, setSearchResults] = useState<number[]>([]);
+
+{/* Highlight matching messages */}
+<div className={searchResults.includes(idx) ? 'ring-2 ring-blue-200' : ''}>
+  <MessageBubble message={msg} />
+</div>
+```
+
+#### Visual Hierarchy
+
+**Depth Layers (Z-Index Scale):**
+```css
+--z-background: -1;     /* Backgrounds, decorative elements */
+--z-base: 0;            /* Default layer */
+--z-elevated: 10;       /* Cards, panels */
+--z-dropdown: 20;       /* Dropdowns, tooltips */
+--z-modal: 30;          /* Modals, overlays */
+--z-header: 40;         /* Fixed header */
+--z-toast: 50;          /* Notifications */
+```
+
+**Visual Weight:**
+1. **Primary Actions:** Large buttons, solid gradients, strong shadows
+2. **Secondary Actions:** Medium buttons, outlined style, subtle hover
+3. **Tertiary Actions:** Text links, icon buttons, minimal styling
+4. **Decorative Elements:** Low opacity, blur, background layer
+
+#### Implementation Checklist
+
+**Before Modifying Frontend:**
+- [ ] Check `UX_IMPROVEMENT_PLAN.md` for detailed implementation guide
+- [ ] Use design system values (CSS variables, animation constants)
+- [ ] Test keyboard navigation (Tab, Enter, Esc)
+- [ ] Verify color contrast (4.5:1 minimum for body text)
+- [ ] Add screen reader labels where needed
+- [ ] Respect `prefers-reduced-motion`
+
+**Common Violations to Avoid:**
+- ❌ Using system fonts (Arial, Roboto) instead of design system fonts
+- ❌ Generic slate gradients instead of deep space aesthetic
+- ❌ `<div>` for clickable elements instead of `<button>`
+- ❌ Text colors below 4.5:1 contrast ratio
+- ❌ Missing `aria-label` on icon buttons
+- ❌ Animations without `will-change` management
+- ❌ Concurrent animations causing performance issues
+
+**Testing Requirements:**
+```bash
+# Accessibility audit
+npm run test -- --testNamePattern="accessibility"
+
+# Lighthouse CI (target: 95+ accessibility score)
+npm run lighthouse
+
+# Manual keyboard test
+# 1. Unplug mouse
+# 2. Tab through all interactive elements
+# 3. Enter/Space activates buttons
+# 4. Esc closes modals
+```
+
 ## Important Implementation Details
 
 ### MCP (Model Context Protocol) Integration
