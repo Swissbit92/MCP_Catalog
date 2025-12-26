@@ -51,6 +51,12 @@ react-ui/build/
 Thumbs.db
 *.bak
 
+# Windows null device bugs (Git Bash creates actual files)
+NUL
+nul
+null
+NULL
+
 # Persona summaries cache
 personas/_summaries/.lock
 personas/gwen_alt.json
