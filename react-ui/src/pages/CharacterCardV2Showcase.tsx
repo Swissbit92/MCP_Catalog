@@ -119,8 +119,8 @@ const CharacterCardV2Showcase: React.FC = () => {
             Classic Character Cards
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Experience the timeless gacha-style character cards with classic foil effects,
-            elegant rarity theming, and smooth animations that started it all.
+            Experience the timeless gacha-style character cards featuring your AI companions.
+            Classic foil effects, elegant rarity theming, and smooth animations that started it all.
           </p>
 
           {/* Tab Navigation */}
