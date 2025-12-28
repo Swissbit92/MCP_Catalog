@@ -175,8 +175,10 @@ ollama pull nomic-embed-text:latest
 
 **Infrastructure:**
 - `ollama_utils.py` - Ollama health checks, model availability assertions
-- `mcp_client.py` - MCP (Model Context Protocol) client for Brave Search
-- `mongodb_mcp_client.py` - MongoDB MCP client for database operations
+- `mcp_client_stdio.py` - Ephemeral STDIO MCP client for Brave Search (official pattern)
+- `mcp_client_exec.py` - Legacy exec-based MCP client (deprecated, use STDIO)
+- `mcp_client_http.py` - Legacy HTTP-based MCP client (deprecated, use STDIO)
+- `mongodb_mcp_client.py` - MongoDB MCP client for database operations (to be migrated to STDIO)
 - `cache.py` - MongoDB caching layer with TTL support
 
 **Data Models (`models/`):**
@@ -286,6 +288,14 @@ Optional - LLM Temperature Overrides:
 - `OLLAMA_TEMP_SUMMARIZATION=0.3` - Temperature for conversation summarization
 - `OLLAMA_TEMP_FACT_EXTRACTION=0.3` - Temperature for fact extraction
 
+Optional - Brave MCP (Ephemeral STDIO Pattern):
+- `BRAVE_API_KEY` - Brave Search API key (required for web search)
+- `BRAVE_MCP_IMAGE=docker.io/mcp/brave-search` - Docker image for Brave MCP server
+- `BRAVE_MAX_RESULTS=5` - Maximum search results to return
+- `BRAVE_ENABLED_RARITIES=rare,epic,legendary` - Persona rarities with search access
+- `BRAVE_SEARCH_TIMEOUT=30` - Container spawn timeout in seconds
+- `BRAVE_SAFESEARCH=moderate` - Safe search filter (off/moderate/strict)
+
 Optional - MongoDB (Phase 3):
 - `MONGODB_URI` - MongoDB connection URI
 - `MONGODB_ENABLED=false` - Enable MongoDB integration
@@ -387,40 +397,52 @@ Optional - MongoDB (Phase 3):
 ## Important Implementation Details
 
 ### MCP (Model Context Protocol) Integration
-**Status:** ✅ Ephemeral STDIO Pattern (Dec 2025)
+**Status:** ✅ Two Proven Patterns (Dec 2025)
 
-MCP servers run as **ephemeral Docker containers** using the official pattern from Brave's implementation.
+MCP servers run as **Docker containers** using STDIO transport. We support two patterns based on MCP server behavior.
 
 **Architecture Overview:**
 ```
 Backend Container (mounts /var/run/docker.sock)
     │
     ├─> spawns: docker run -i --rm docker.io/mcp/brave-search
-    │   (lives 2-3 seconds, processes request via STDIN/STDOUT, dies)
+    │   (ephemeral: lives 2-3 seconds, processes request via STDIN/STDOUT, dies)
     │
     ├─> spawns: docker run -i --rm docker.io/mcp/mongodb
-    │   (separate image, same pattern)
+    │   (long-running: stays alive for multiple requests)
     │
     └─> spawns: docker run -i --rm docker.io/mcp/[any-mcp-server]
         (universal pattern for all MCP servers)
 ```
 
+**Two Patterns:**
+
+1. **Ephemeral STDIO (Brave Search):**
+   - Spawns `docker run -i --rm` per request
+   - Container lives 2-3 seconds
+   - Dies automatically after response
+   - Perfect for stateless operations
+
+2. **Long-Running STDIO (MongoDB):**
+   - Spawns container once
+   - Stays alive for multiple requests
+   - Must be manually terminated when done
+   - Better for stateful operations
+
 **Key Characteristics:**
-- **Ephemeral Containers**: Each request spawns `docker run -i --rm` with the MCP image
 - **STDIO Transport**: Communication via stdin/stdout pipes using JSON-RPC 2.0 protocol
-- **Stateless**: Containers process one request and die automatically (no long-running services)
-- **Isolated**: Each MCP server is a separate Docker image with complete isolation
+- **Container Isolation**: Each MCP server is a separate Docker image with complete isolation
 - **Scalable**: Universal pattern works for ANY MCP server (Brave, MongoDB, Neo4j, Google Calendar, etc.)
-- **Container Orchestration**: Backend mounts Docker socket to spawn ephemeral containers
+- **Container Orchestration**: Backend mounts Docker socket to spawn containers on-demand
 
 **Implementation:**
 - `mcp_client_stdio.py` - Ephemeral STDIO client for Brave Search (reference implementation)
-- `mongodb_mcp_client.py` - MongoDB MCP client (HTTP transport, to be migrated)
+- `mongodb/` - Long-running STDIO client for MongoDB (reference implementation)
 - `tool_definitions.py` - Tool/function definitions for LLM function calling
 - `startup.py` - MCP client initialization and dependency injection
 
 **Docker Socket Mounting:**
-Backend container requires Docker socket access to spawn ephemeral MCP containers:
+Backend container requires Docker socket access to spawn MCP containers:
 ```yaml
 backend:
   volumes:
@@ -428,20 +450,87 @@ backend:
 ```
 This is the standard pattern for container orchestration (used by CI/CD runners like GitHub Actions).
 
-### Brave MCP Integration (Web Search)
-**Status:** ✅ Fully implemented (MVP 2-4 complete)
+**Adding New MCP Servers:**
+See **[docs/ADDING_MCP_SERVERS.md](docs/ADDING_MCP_SERVERS.md)** for comprehensive guide on:
+- Choosing the right pattern (ephemeral vs long-running)
+- Step-by-step implementation instructions
+- Testing and troubleshooting
+- Rarity-based feature gating
+- Best practices and examples
 
-Rare+ personas perform autonomous web searches with mandatory citations.
+### Rarity-Based Feature Gating
+
+**MCP access is controlled by persona rarity**, not per-persona configuration. This provides clear feature tiers while keeping configuration simple.
+
+**Feature Matrix:**
+
+| Rarity | MCP Access | Features |
+|--------|------------|----------|
+| **Common** | None | Pure LLM responses only |
+| **Rare** | Brave Search | Web search with mandatory citations |
+| **Epic** | Brave Search + MongoDB | Web search + Bitcoin trading data access |
+| **Legendary** | Brave Search + MongoDB | All MCP features (future: GraphRAG, etc.) |
+
+**Configuration (.env):**
+```bash
+BRAVE_ENABLED_RARITIES=rare,epic,legendary   # Rarities with Brave Search access
+MONGODB_ENABLED_RARITIES=epic,legendary      # Rarities with MongoDB access
+```
+
+**How it Works:**
+1. Backend reads persona `rarity` from JSON (e.g., `"rarity": "epic"`)
+2. Intent classifier checks rarity against `.env` config (`intent_classifier.py:55-56`)
+3. Tools are dynamically injected based on rarity tier
+4. Frontend shows rarity-based UI badges and styling
+
+**Temperature Override:**
+Personas can override the global temperature via `model_preferences`:
+```json
+{
+  "model_preferences": {
+    "temperature": 0.7
+  }
+}
+```
+Fallback to global `.env` setting: `PERSONA_TEMPERATURE=0.9`
+
+**Why Not Per-Persona MCP Control?**
+- Simplifies configuration (one place: `.env`)
+- Aligns with gacha tier system (rarity = feature tier)
+- Environment-driven (easy to change for dev/prod)
+- Reduces JSON bloat and validation overhead
+
+**Changing Rarity:**
+Update `rarity` in persona JSON:
+- Frontend updates instantly (card styling, UI badges)
+- Backend respects new rarity on next request
+- MCP access automatically adjusts based on new tier
+
+### Brave MCP Integration (Web Search)
+**Status:** ✅ Fully implemented with ephemeral STDIO pattern (Dec 2025)
+
+Rare+ personas perform autonomous web searches with mandatory citations using ephemeral Docker containers.
+
+**Architecture:**
+- **Transport**: STDIO with ephemeral containers (`docker run -i --rm docker.io/mcp/brave-search`)
+- **Client**: `mcp_client_stdio.py` - BraveMCPClientStdio class
+- **Container Lifecycle**: Spawned on-demand, processes request via stdin/stdout, dies after response
+- **Typical Duration**: 2-3 seconds per search request
 
 **Key Features:**
 - Autonomous search/answer decision-making with 85-90% UI prediction accuracy
 - Mandatory citation format: `🔍 Sources:\n• [Title - Source](url)`
 - Backend validation, rarity-based access (Rare/Epic/Legendary only)
+- Stateless architecture with no long-running MCP service
 
-**Config:** `BRAVE_API_KEY`, `BRAVE_MAX_RESULTS=5`, `BRAVE_ENABLED_RARITIES=rare,epic,legendary`
-**Persona:** `"allowed_mcp": ["brave_search"]` in JSON
+**Config:**
+- `BRAVE_API_KEY` - Brave Search API key (required)
+- `BRAVE_MCP_IMAGE=docker.io/mcp/brave-search` - Docker image for MCP server
+- `BRAVE_MAX_RESULTS=5` - Maximum search results
+- `BRAVE_ENABLED_RARITIES=rare,epic,legendary` - Rarities with search access (see Rarity-Based Feature Gating)
+- `BRAVE_SEARCH_TIMEOUT=30` - Container timeout in seconds
 
-**Flow:** User query → Frontend predicts → Backend classifies → LLM searches → Synthesizes with citations → Validates → Renders
+**Flow:** User query → Frontend predicts → Backend classifies → Spawns ephemeral container → LLM searches → Synthesizes with citations → Container dies → Validates → Renders
 
 **Synthesis Rules (Anti-Hallucination):**
 1. USE ONLY SEARCH RESULTS (no training data)
@@ -450,14 +539,17 @@ Rare+ personas perform autonomous web searches with mandatory citations.
 4. BE ACCURATE (exact numbers/dates)
 5. MANDATORY CITATIONS (🔍 emoji + markdown links)
 
-**Impl:** `llm_client.py:173-187` | **Tests:** `test_synthesis_*.py`, frontend citation tests
+**Impl:** `mcp_client_stdio.py:55-314`, `llm_client.py:173-187` | **Tests:** `test_synthesis_*.py`, frontend citation tests
 
 ### MongoDB MCP Integration (Trading Data)
 **Status:** ✅ Fully implemented (Dec 2025)
 
 Epic/Legendary personas query Bitcoin data from MongoDB Atlas with 4 tools: `bitcoin_current_price` (RSI, MACD, Bollinger Bands, EMAs), `bitcoin_historical_prices` (OHLCV 2016-present), `bitcoin_trading_summary` (DCA stats), `bitcoin_technical_analysis` (multi-timeframe signals).
 
-**Config:** `MONGODB_URI`, `MONGODB_TIMEOUT=30`, `MONGODB_ENABLED_RARITIES=epic,legendary`
+**Config:**
+- `MONGODB_URI` - MongoDB Atlas connection string
+- `MONGODB_TIMEOUT=30` - Operation timeout
+- `MONGODB_ENABLED_RARITIES=epic,legendary` - Rarities with MongoDB access (see Rarity-Based Feature Gating)
 **Caching:** 60s (current), 3600s (historical), per-tool TTL
 
 **Flow:** User query → Backend classifies (`mongodb` intent) → Tools injected → MCP container query → LLM synthesizes → Frontend renders with 🗄️ badge
@@ -586,6 +678,29 @@ Advanced AI memory with importance scoring, auto-summarization, semantic search 
 **Cross-session memory failing:** Profiles must exist first, check `user_sessions` table links, verify name extraction
 **RAG no results:** Expected (threshold 0.5), Phase 2 importance scoring handles most recall, tune `memory_rag.py` if needed
 **FAISS errors:** Pull `nomic-embed-text:latest`, install `faiss-cpu langchain-community`, deprecation warnings are non-blocking
+
+### MCP (Ephemeral Container) Issues
+
+**Container spawn fails:**
+- Verify Docker socket mounted: `docker exec ai-companion-api ls -l /var/run/docker.sock`
+- Check Docker accessible from backend: `docker exec ai-companion-api docker version`
+- Ensure MCP image exists: `docker pull docker.io/mcp/brave-search`
+- Check API key set: `docker exec ai-companion-api env | grep BRAVE_API_KEY`
+
+**Search returns no results:**
+- Verify Brave API key is valid (test at api.search.brave.com)
+- Check container logs: `docker logs ai-companion-api | grep -i brave`
+- Test direct spawn: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"brave_web_search","arguments":{"query":"test","count":1}}}' | docker run -i --rm -e BRAVE_API_KEY=xxx docker.io/mcp/brave-search`
+
+**Timeout errors:**
+- Increase `BRAVE_SEARCH_TIMEOUT` (default: 30s)
+- Check network connectivity from backend container
+- Verify Docker daemon responding: `docker ps`
+
+**Permission denied on Docker socket:**
+- Ensure socket permissions: `ls -l /var/run/docker.sock` (should be srw-rw----)
+- Backend user must have Docker group access
+- On Windows: Verify Docker Desktop "Expose daemon on tcp://localhost:2375" is disabled (use socket instead)
 
 ## Additional Documentation
 

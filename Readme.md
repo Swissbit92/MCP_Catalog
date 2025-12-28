@@ -468,6 +468,21 @@ MEMORY_FACT_EXTRACTION_INTERVAL=10
 - **FAISS**: Vector database for semantic memory search (Phase 3)
 - **Ollama**: Local LLM server with nchapman model + nomic embeddings
 
+### MCP Server Integration
+
+The MCP Coordinator uses two proven patterns for integrating external data sources:
+
+- **Ephemeral STDIO (Brave Search)**: Spawns containers per request, dies after response (2-3 seconds)
+- **Long-Running STDIO (MongoDB)**: Single container stays alive for multiple requests
+
+Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin/stdout pipes).
+
+**Want to add your own MCP server?** See **[docs/ADDING_MCP_SERVERS.md](docs/ADDING_MCP_SERVERS.md)** for:
+- Choosing the right pattern for your use case
+- Step-by-step implementation guide with examples
+- Testing, troubleshooting, and best practices
+- Rarity-based feature gating configuration
+
 ---
 
 ## 🤖 Available AI Companions
@@ -669,6 +684,7 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 | **[AGENTS.md](AGENTS.md)** | Repository guidelines, coding style, setup commands |
 | **[ASSESSMENT.md](ASSESSMENT.md)** | Codebase quality assessment (Dec 2025) |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and feature additions |
+| **[docs/ADDING_MCP_SERVERS.md](docs/ADDING_MCP_SERVERS.md)** | Guide for integrating new MCP servers (ephemeral & long-running patterns) |
 
 ### Production & Scaling
 
