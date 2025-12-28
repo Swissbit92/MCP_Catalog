@@ -1,8 +1,63 @@
 # Next Steps - MCP Coordinator Development Roadmap
 
-**Last Updated:** December 25, 2025
-**Current Status:** 8/10 Critical Issues Resolved (80% Complete)
+**Last Updated:** December 28, 2025
+**Current Status:** 7/10 Critical Issues Resolved (70% Complete) - **MCP INFRASTRUCTURE BROKEN**
 **Architecture Score:** 75/100 (was 59/100, +27% improvement)
+
+---
+
+## 🚨 **CRITICAL: MCP Infrastructure Refactoring** (Dec 28, 2025)
+
+**Status:** 🔄 **IN PROGRESS** (Phase 1 of 3)
+**Priority:** ⚠️ **URGENT** - All MCP features non-functional
+**Effort:** 3.5 hours total (1.5h + 1.5h + 0.5h)
+**Documentation:** `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md`
+
+### Problem
+
+**ALL MCP servers are completely broken in Docker deployment:**
+- ❌ Brave Search: Weather queries fail → "I don't have current information"
+- ❌ MongoDB: Bitcoin price queries hallucinate data → "$87,855" (from training data, not real)
+- ❌ Root Cause: Docker-in-Docker subprocess failures (`docker run` inside container)
+
+**Evidence from Production Logs:**
+```
+ERROR: Docker command not found - is Docker installed?
+ERROR: Failed to initialize MongoDB MCP client
+ERROR: Brave search failed: Docker not found
+```
+
+### Solution
+
+**Migrate from stdio (subprocess) to HTTP transport (Docker Compose services):**
+
+**Phase 1: Brave MCP Migration** (1.5 hours) - 🔄 **IN PROGRESS**
+- [ ] Add `brave-mcp` service to docker-compose.yml
+- [ ] Refactor `BraveMCPClient` to use HTTP requests
+- [ ] Test: Weather query returns real data with citations
+
+**Phase 2: MongoDB MCP Migration** (1.5 hours) - ⏳ Pending
+- [ ] Add `mongodb-mcp` service to docker-compose.yml
+- [ ] Refactor `MongoDBMCPClient` to use HTTP requests
+- [ ] Test: Bitcoin price returns real data (not hallucinated)
+
+**Phase 3: Documentation** (30 minutes) - ⏳ Pending
+- [ ] Create `docs/ADDING_MCP_SERVERS.md` template
+- [ ] Update CLAUDE.md with HTTP architecture
+- [ ] Document Neo4j/Google Calendar examples
+
+**Why This Approach:**
+- ✅ No Docker-in-Docker security risks
+- ✅ MCP spec-compliant (Streamable HTTP 2025 standard)
+- ✅ Scalable: Add new MCP servers in 20 minutes
+- ✅ Production-ready: Can deploy to Kubernetes
+
+**Impact After Fix:**
+- ✅ Weather searches work (Brave API integration functional)
+- ✅ Bitcoin prices accurate (MongoDB real-time data)
+- ✅ Future MCPs easy to add (Neo4j, Google Calendar, etc.)
+
+**Next Update:** After Phase 1 completion (ETA: +1.5 hours)
 
 ---
 

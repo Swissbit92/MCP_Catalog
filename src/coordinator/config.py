@@ -455,3 +455,35 @@ def get_temp_summarization() -> float:
 def get_temp_fact_extraction() -> float:
     """Get temperature for fact extraction."""
     return settings.ollama.temp_fact_extraction
+
+
+def get_persona_temperature_override(persona_card: dict) -> float:
+    """Get persona-specific temperature or fallback to global default.
+
+    Args:
+        persona_card: Persona dictionary from JSON (must contain model_preferences)
+
+    Returns:
+        Per-persona temperature if defined, otherwise global PERSONA_TEMPERATURE
+
+    Example:
+        >>> card = {"model_preferences": {"temperature": 0.7}}
+        >>> get_persona_temperature_override(card)
+        0.7
+        >>> get_persona_temperature_override({})  # Uses global default
+        0.9
+    """
+    model_prefs = persona_card.get("model_preferences", {})
+    if isinstance(model_prefs, dict) and "temperature" in model_prefs:
+        temp = model_prefs["temperature"]
+        # Validate it's a reasonable number
+        if isinstance(temp, (int, float)) and 0.0 <= temp <= 2.0:
+            return float(temp)
+        else:
+            logger.warning(
+                f"Invalid temperature in persona model_preferences: {temp}. "
+                f"Using global default {settings.ollama.temperature}"
+            )
+
+    # Fallback to global setting
+    return settings.ollama.temperature
