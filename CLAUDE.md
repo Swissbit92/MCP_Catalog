@@ -543,6 +543,14 @@ Rare+ personas perform autonomous web searches with mandatory citations using ep
 4. BE ACCURATE (exact numbers/dates)
 5. MANDATORY CITATIONS (🔍 emoji + markdown links)
 
+**Citation Deduplication (Dec 28, 2025):**
+Hybrid defense-in-depth approach prevents duplicate citation blocks:
+- **Primary Defense**: Backend strips LLM-generated citations before appending verified citations (`llm_client.py:365-379, 475-489`)
+- **Secondary Defense**: Enhanced synthesis prompt with explicit "NO CITATIONS" instruction (`synthesis_prompts.py:170-186`)
+- **Monitoring**: Logs LLM citation violations for continuous improvement (`[Anti-Hallucination] LLM ignored citation instruction`)
+- **Result**: Single clean citation block with 5 verified URLs, no duplicates
+- **Best Practice**: Aligned with 2025 RAG deduplication standards (Perplexity-style)
+
 **Impl:** `mcp_client_stdio.py:55-314`, `llm_client.py:173-187` | **Tests:** `test_synthesis_*.py`, frontend citation tests
 
 ### MongoDB MCP Integration (Trading Data)
@@ -816,6 +824,41 @@ Backend architecture improvements focused on eliminating code duplication, extra
 - Ensure socket permissions: `ls -l /var/run/docker.sock` (should be srw-rw----)
 - Backend user must have Docker group access
 - On Windows: Verify Docker Desktop "Expose daemon on tcp://localhost:2375" is disabled (use socket instead)
+
+### Docker Networking Issues
+
+**Symptoms:**
+- Error: "network f708feda4bed... not found"
+- Containers fail to start with networking errors
+- "Cannot start Docker Compose application" in Docker Desktop
+
+**Cause:** Orphaned network references from improper shutdown or Docker daemon restart.
+
+**Automated Fix (Recommended):**
+```powershell
+# PowerShell (full diagnostics)
+.\fix-docker-network.ps1          # Quick fix (recommended)
+.\fix-docker-network.ps1 -Nuclear # Full rebuild
+.\fix-docker-network.ps1 -Verify  # Check status only
+
+# Windows batch (simple fix)
+.\fix-docker-network.bat
+```
+
+**Manual Fix:**
+```powershell
+# 1. Stop and clean
+docker-compose down
+docker network prune -f
+
+# 2. Restart
+docker-compose --env-file .env.docker up -d
+
+# 3. Verify
+docker-compose ps
+```
+
+**Prevention:** Always use `docker-compose down` instead of manually stopping containers in Docker Desktop.
 
 ## Additional Documentation
 

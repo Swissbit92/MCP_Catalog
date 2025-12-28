@@ -167,10 +167,22 @@ Follow these rules when answering:
 - If sources disagree, mention the discrepancy or use the most recent
 - Don't round numbers unless the source does (e.g., "$91,735.99" not "around $91K")
 
-**RULE 5: FOCUS ON ANSWER QUALITY**
+**RULE 5: FOCUS ON ANSWER QUALITY - NO CITATIONS**
 
-Citations will be automatically added by the system from search results.
-Do NOT include citations in your response.
+CRITICAL: DO NOT include ANY citations, sources, or reference lists in your response.
+The system will automatically append verified citations from search results.
+
+Examples of what NOT to include:
+❌ "🔍 Sources:"
+❌ "[Title](url)"
+❌ "[Title - Source](url)"
+❌ "According to [Source]..."
+❌ "**Sources:**"
+❌ Any URL or web link
+
+If you include citations, they will be REMOVED and replaced with system-verified ones.
+Just provide the answer content - nothing more.
+
 Focus entirely on providing an accurate, natural answer in your persona voice.
 
 ---
