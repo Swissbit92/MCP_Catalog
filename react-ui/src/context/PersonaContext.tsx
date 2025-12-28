@@ -53,8 +53,9 @@ interface PersonaContextType {
   retryMessage: (messageId: string) => Promise<void>;
   exportCurrentSession: () => Promise<string>;
   importSessionData: (exportData: any) => Promise<ChatSession>;
-  // Search status
+  // Tool status
   isSearching: boolean;
+  toolType: 'brave' | 'mongodb' | 'none';
   // Collection management
   collectedPersonas: Set<string>;
   addToCollection: (personaKey: string) => void;
@@ -74,6 +75,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [toolType, setToolType] = useState<'brave' | 'mongodb' | 'none'>('none');
 
   // Collection management
   const [collectedPersonas, setCollectedPersonas] = useState<Set<string>>(() => {
@@ -198,13 +200,16 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       setMessages(prev => [...prev, userMessage]);
 
       // Use heuristic to decide which indicator to show
-      // Only set isSearching=true if we predict a web search will happen
-      if (prediction.willSearch && prediction.confidence === 'high') {
-        console.log('[PersonaContext] 🔍 Showing SearchIndicator (high confidence prediction)');
+      // Show ToolIndicator for brave/mongodb, TypingIndicator otherwise
+      if ((prediction.toolType === 'brave' || prediction.toolType === 'mongodb') && prediction.confidence === 'high') {
+        const toolName = prediction.toolType === 'brave' ? 'Web Search' : 'MongoDB';
+        console.log(`[PersonaContext] 🔧 Showing ToolIndicator (${toolName}, high confidence prediction)`);
         setIsSearching(true);
+        setToolType(prediction.toolType);
       } else {
-        console.log('[PersonaContext] ⌨️ Showing TypingIndicator (no search predicted)');
+        console.log('[PersonaContext] ⌨️ Showing TypingIndicator (no tool predicted)');
         setIsSearching(false);
+        setToolType('none');
       }
     }
 
@@ -240,8 +245,9 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (apiResponse.message_flow === 'multi' && Array.isArray(apiResponse.answer)) {
           console.log('[PersonaContext] Phase 2: Rendering multi-message response with staggering');
 
-          // Stop search indicator before first message
+          // Stop tool indicator before first message
           setIsSearching(false);
+          setToolType('none');
 
           // Add messages one by one with staggered delays
           for (let i = 0; i < apiResponse.answer.length; i++) {
@@ -250,6 +256,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
             // Show typing indicator before each message (except the first)
             if (i > 0) {
               setIsSearching(false);
+              setToolType('none');
               // Small delay before showing typing indicator
               await new Promise(resolve => setTimeout(resolve, 300));
               // Show typing indicator via loading state (we don't have a separate multi-message typing state)
@@ -301,6 +308,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
         } else {
           // Single message (existing behavior)
           setIsSearching(false);
+          setToolType('none');
 
           const assistantMessageWithMetadata: Message = {
             id: `assistant-${Date.now()}`,
@@ -338,8 +346,9 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.error('[PersonaContext] Error sending message:', error);
 
       if (shouldUpdateUI) {
-        // Stop search indicator on error
+        // Stop tool indicator on error
         setIsSearching(false);
+        setToolType('none');
 
         // Update the user message status to failed
         setMessages(prev => prev.map(msg =>
@@ -486,6 +495,7 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
       exportCurrentSession,
       importSessionData,
       isSearching,
+      toolType,
       collectedPersonas,
       addToCollection,
       isCollected,

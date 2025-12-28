@@ -73,6 +73,7 @@ export interface SearchPrediction {
   confidence: 'high' | 'medium' | 'low';
   reason: string;
   keywords_matched: string[];
+  toolType: 'brave' | 'mongodb' | 'none';
 }
 
 /**
@@ -120,7 +121,8 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
       willSearch: false,
       confidence: 'high',
       reason: 'MongoDB query detected (will use database, not web search)',
-      keywords_matched: matchedMongoKeywords
+      keywords_matched: matchedMongoKeywords,
+      toolType: 'mongodb'
     };
   }
 
@@ -133,7 +135,8 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
         willSearch: false,
         confidence: 'high',
         reason: 'Persona does not have web search access',
-        keywords_matched: []
+        keywords_matched: [],
+        toolType: 'none'
       };
     }
 
@@ -141,7 +144,8 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
       willSearch: true,
       confidence: 'high',
       reason: `Search keywords detected: ${matchedSearchKeywords.slice(0, 3).join(', ')}`,
-      keywords_matched: matchedSearchKeywords
+      keywords_matched: matchedSearchKeywords,
+      toolType: 'brave'
     };
   }
 
@@ -151,7 +155,8 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
       willSearch: false,
       confidence: 'high',
       reason: `Educational/math query: ${matchedNoSearchKeywords[0]}`,
-      keywords_matched: matchedNoSearchKeywords
+      keywords_matched: matchedNoSearchKeywords,
+      toolType: 'none'
     };
   }
 
@@ -162,7 +167,8 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
       willSearch: false,
       confidence: 'high',
       reason: 'Simple math calculation detected',
-      keywords_matched: []
+      keywords_matched: [],
+      toolType: 'none'
     };
   }
 
@@ -171,7 +177,8 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
     willSearch: false,
     confidence: 'low',
     reason: 'No clear indicators, defaulting to typing indicator',
-    keywords_matched: []
+    keywords_matched: [],
+    toolType: 'none'
   };
 }
 

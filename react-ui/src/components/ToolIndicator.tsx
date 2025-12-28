@@ -1,12 +1,37 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, Database, Brain } from 'lucide-react';
 
-interface SearchIndicatorProps {
+export type ToolType = 'brave' | 'mongodb' | 'generic';
+
+interface ToolIndicatorProps {
+  toolType: ToolType;
   personaName?: string;
   rarity?: string;
   className?: string;
 }
+
+// Tool-specific configuration
+const getToolConfig = (toolType: ToolType) => {
+  switch (toolType) {
+    case 'brave':
+      return {
+        icon: Search,
+        text: 'searching the web',
+      };
+    case 'mongodb':
+      return {
+        icon: Database,
+        text: 'analyzing Bitcoin data',
+      };
+    case 'generic':
+    default:
+      return {
+        icon: Brain,
+        text: 'processing your request',
+      };
+  }
+};
 
 // Rarity-based color schemes (matching persona colors)
 const getRarityColors = (rarity?: string) => {
@@ -42,12 +67,15 @@ const getRarityColors = (rarity?: string) => {
   }
 };
 
-export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
+export const ToolIndicator: React.FC<ToolIndicatorProps> = ({
+  toolType,
   personaName = 'Assistant',
   rarity = 'common',
   className = ''
 }) => {
   const colors = getRarityColors(rarity);
+  const config = getToolConfig(toolType);
+  const IconComponent = config.icon;
 
   return (
     <motion.div
@@ -60,7 +88,7 @@ export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
         borderImage: `linear-gradient(135deg, var(--tw-gradient-stops)) 1`,
       }}
     >
-      {/* Animated search icon */}
+      {/* Animated icon */}
       <motion.div
         className={`${colors.icon}`}
         animate={{
@@ -72,7 +100,7 @@ export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
           ease: 'linear',
         }}
       >
-        <Search size={20} />
+        <IconComponent size={20} />
       </motion.div>
 
       {/* Animated dots */}
@@ -117,9 +145,9 @@ export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
         />
       </div>
 
-      {/* Text with persona name */}
+      {/* Text with persona name and tool-specific action */}
       <span className={`text-sm font-semibold ${colors.text}`}>
-        {personaName} is searching the web...
+        {personaName} is {config.text}...
       </span>
     </motion.div>
   );

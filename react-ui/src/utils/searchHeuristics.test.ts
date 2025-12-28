@@ -85,7 +85,8 @@ describe('formatPredictionLog', () => {
       willSearch: true,
       confidence: 'high' as const,
       reason: 'Search keywords detected',
-      keywords_matched: ['latest', 'news']
+      keywords_matched: ['latest', 'news'],
+      toolType: 'brave' as const
     };
 
     const log = formatPredictionLog(prediction, 'What is the latest news?');
