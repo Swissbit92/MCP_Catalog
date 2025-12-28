@@ -340,9 +340,9 @@ Optional - MongoDB (Phase 3):
 
 #### Design System
 
-**Typography (✅ Implemented Dec 28, 2025):**
-- **Display/Headings:** Orbitron (700, 900 weights) - Use `font-display` class or CSS var `--font-display`
-- **Body Text:** Poppins (400, 600, 700 weights) - Use `font-body` class or CSS var `--font-body`
+**Typography (✅ Updated Dec 28, 2025 - Premium Feel):**
+- **Display/Headings:** Outfit (500, 700, 900 weights) - Modern geometric sans-serif, premium aesthetic - Use `font-display` class or CSS var `--font-display`
+- **Body Text:** Manrope (400, 600, 700 weights) - Semi-rounded, designed for UI/UX, excellent readability - Use `font-body` class or CSS var `--font-body`
 - **Monospace/Technical:** Space Mono (400, 700 weights) - Use `font-mono` class or CSS var `--font-mono`
 - **Type Scale:** 0.75rem to 3rem (CSS vars: `--text-xs` through `--text-5xl`)
 - **Implementation:** Fonts loaded via Google Fonts CDN in `react-ui/public/index.html`
@@ -375,7 +375,7 @@ Optional - MongoDB (Phase 3):
 - Verify 4.5:1 contrast, add `aria-label` where needed
 
 **Violations to Avoid:**
-- ❌ System fonts (MUST use Orbitron for headings, Poppins for body, Space Mono for mono)
+- ❌ System fonts (MUST use Outfit for headings, Manrope for body, Space Mono for mono)
 - ❌ `<div>` for clickable elements (MUST use `<button>` or semantic HTML)
 - ❌ Low contrast ratios (<4.5:1 for body text, <3:1 for large text)
 - ❌ Animations without `will-change` management or `prefers-reduced-motion` support

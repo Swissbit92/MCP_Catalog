@@ -6,8 +6,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Orbitron', 'sans-serif'],
-        body: ['Poppins', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
+        body: ['Manrope', 'sans-serif'],
         mono: ['Space Mono', 'monospace'],
       },
     },
