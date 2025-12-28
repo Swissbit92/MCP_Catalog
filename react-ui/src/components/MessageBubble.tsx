@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Search, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Avatar2D } from './Avatar2D';
 import { RichContent } from './RichContent';
 import { SourceIndicator } from './SourceIndicator';
@@ -143,23 +143,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               <span className="text-xs text-yellow-800">
                 ⚠️ This response used web search but citations were not included
               </span>
-            </div>
-          )}
-
-          {/* Search badge - shows if web search was used */}
-          {!isUser && message.used_search && (
-            <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-gray-200/50">
-              <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full">
-                <Search size={12} className="text-blue-600" />
-                <span className="text-xs font-medium text-blue-700">
-                  Web-enhanced answer
-                </span>
-              </div>
-              {message.search_results_count && message.search_results_count > 0 && (
-                <span className="text-xs text-gray-500">
-                  ({message.search_results_count} source{message.search_results_count > 1 ? 's' : ''})
-                </span>
-              )}
             </div>
           )}
 
