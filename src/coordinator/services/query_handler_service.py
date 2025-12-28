@@ -13,14 +13,17 @@ from ..schemas import ResponseMetadata
 from ..config import get_ollama_base, get_persona_model, get_persona_temperature, get_persona_temperature_override
 from ..llm_client import LC_OllamaClient
 from ..tool_definitions import build_mongodb_synthesis_prompt
-from .citation_service import validate_citations
+from .citation_service import CitationService, validate_citations
 from .first_person_service import post_process_first_person
 
 logger = logging.getLogger(__name__)
 
 
 class QueryHandlerService:
-    """Service for handling MCP-based queries (MongoDB, Brave Search, Multi-MCP)."""
+    """Service for handling MCP-based queries (MongoDB, Brave Search, Multi-MCP).
+
+    Phase 2 Core Refactoring: Extracted shared finalization logic to reduce duplication.
+    """
 
     def __init__(self, brave_client: Any = None, mongodb_service: Any = None):
         """Initialize query handler service.
@@ -31,6 +34,61 @@ class QueryHandlerService:
         """
         self.brave_client = brave_client
         self.mongodb_service = mongodb_service
+
+    def _finalize_response(
+        self,
+        answer: str,
+        persona_name: str,
+        metadata: ResponseMetadata,
+        used_search: bool = False,
+        citation_valid: Optional[bool] = None,
+        search_results_count: Optional[int] = None
+    ) -> dict:
+        """Finalize response with common post-processing.
+
+        Shared finalization logic extracted from all query handlers (Phase 2 DRY).
+        Applies: first-person rewrite, multi-message splitting, response formatting.
+
+        Args:
+            answer: Raw LLM answer
+            persona_name: Display name of persona
+            metadata: Response metadata object
+            used_search: Whether search was used
+            citation_valid: Optional citation validation result
+            search_results_count: Optional search results count
+
+        Returns:
+            Standardized response dict
+        """
+        # Apply first-person voice enforcement
+        answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+        # Import message processing functions
+        from .message_processing_service import force_multi_message_split, parse_multi_message_response
+
+        # Force-split into multi-message if LLM didn't use <msg> tags
+        answer = force_multi_message_split(answer, "")
+
+        # Parse for multi-message format
+        messages, flow_type = parse_multi_message_response(answer)
+
+        # Build response dict
+        response = {
+            "answer": messages if flow_type == 'multi' else messages[0],
+            "message_flow": flow_type,
+            "message_count": len(messages),
+            "used_search": used_search,
+            "metadata": metadata.model_dump(),
+            "rewritten": was_rewritten
+        }
+
+        # Add optional fields
+        if citation_valid is not None:
+            response["citation_valid"] = citation_valid
+        if search_results_count is not None:
+            response["search_results_count"] = search_results_count
+
+        return response
 
     def handle_mongodb_query(
         self,
@@ -111,25 +169,13 @@ User Query: {user_compiled}"""
 
                 logger.info(f"MongoDB query completed: tool={tool_name}, cache={metadata.cache_status}")
 
-                answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-                # Import message processing functions
-                from .message_processing_service import force_multi_message_split, parse_multi_message_response
-
-                # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-                answer = force_multi_message_split(answer, "")
-
-                # PHASE 2: Parse for multi-message format
-                messages, flow_type = parse_multi_message_response(answer)
-
-                return {
-                    "answer": messages if flow_type == 'multi' else messages[0],
-                    "message_flow": flow_type,
-                    "message_count": len(messages),
-                    "used_search": True,
-                    "metadata": metadata.model_dump(),
-                    "rewritten": was_rewritten
-                }
+                # Use shared finalization logic (Phase 2 DRY)
+                return self._finalize_response(
+                    answer=answer,
+                    persona_name=persona_name,
+                    metadata=metadata,
+                    used_search=True
+                )
         except Exception as e:
             logger.error(f"MongoDB query failed: {e}")
 
@@ -140,25 +186,14 @@ User Query: {user_compiled}"""
             temperature=get_persona_temperature_override(persona_card)
         )
         answer = client.complete(system=system_prompt, user_prompt=user_compiled)
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
 
-        # Import message processing functions
-        from .message_processing_service import force_multi_message_split, parse_multi_message_response
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, "")
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-
-        return {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": False,
-            "metadata": metadata.model_dump(),
-            "rewritten": was_rewritten
-        }
+        # Use shared finalization logic (Phase 2 DRY)
+        return self._finalize_response(
+            answer=answer,
+            persona_name=persona_name,
+            metadata=metadata,
+            used_search=False
+        )
 
     def handle_brave_query(
         self,
@@ -210,29 +245,18 @@ User Query: {user_compiled}"""
             search_results_count=search_count
         )
 
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
+        # Use shared finalization logic (Phase 2 DRY)
+        response = self._finalize_response(
+            answer=answer,
+            persona_name=persona_name,
+            metadata=metadata,
+            used_search=tool_call is not None,
+            citation_valid=has_valid_citations,
+            search_results_count=search_count if search_results else None
+        )
 
-        # Import message processing functions
-        from .message_processing_service import force_multi_message_split, parse_multi_message_response
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, "")  # Empty query since we don't have it here
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-
-        response = {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": tool_call is not None,
-            "metadata": metadata.model_dump(),
-            "citation_valid": has_valid_citations,
-            "rewritten": was_rewritten
-        }
-
+        # Log completion
         if search_results:
-            response["search_results_count"] = len(search_results)
             logger.info(
                 f"[Brave] ✅ Workflow completed: used_search={tool_call is not None}, "
                 f"results_count={len(search_results)}, citations_valid={has_valid_citations}, "
@@ -290,24 +314,12 @@ User Query: {user_compiled}"""
             search_results_count=search_count
         )
 
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-        # Import message processing functions
-        from .message_processing_service import force_multi_message_split, parse_multi_message_response
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, "")
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-
-        return {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": True,
-            "metadata": metadata.model_dump(),
-            "citation_valid": has_valid_citations,
-            "search_results_count": search_count,
-            "rewritten": was_rewritten
-        }
+        # Use shared finalization logic (Phase 2 DRY)
+        return self._finalize_response(
+            answer=answer,
+            persona_name=persona_name,
+            metadata=metadata,
+            used_search=True,
+            citation_valid=has_valid_citations,
+            search_results_count=search_count
+        )
