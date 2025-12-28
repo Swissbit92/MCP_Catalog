@@ -85,7 +85,7 @@ class CitationService:
         return response
 
     @staticmethod
-    def validate_citations(text: str, expected_urls: List[str]) -> bool:
+    def validate_citation_urls(text: str, expected_urls: List[str]) -> bool:
         """Validate that citations in text match expected URLs.
 
         Args:
@@ -105,3 +105,53 @@ class CitationService:
                 return False
 
         return True
+
+
+def validate_citations(answer: str, used_search: bool, search_results_count: int) -> tuple[str, bool, dict]:
+    """Validate and process citations in answer based on search usage.
+
+    Args:
+        answer: The LLM-generated answer
+        used_search: Whether web search was used
+        search_results_count: Number of search results returned
+
+    Returns:
+        Tuple of (processed_answer, has_valid_citations, citation_details)
+    """
+    citation_markers = ["🔍 Sources:", "Sources:", "**Sources:**"]
+    has_citations = any(marker in answer for marker in citation_markers)
+
+    if used_search:
+        # Search was used - citations should be present
+        if has_citations:
+            logger.info(f"[Citation Validation] Citations present (search used, {search_results_count} results)")
+            return answer, True, {
+                "has_citations": True,
+                "search_results_count": search_results_count,
+                "status": "valid"
+            }
+        else:
+            logger.warning(f"[Citation Validation] Missing citations despite search ({search_results_count} results)")
+            return answer, False, {
+                "has_citations": False,
+                "search_results_count": search_results_count,
+                "status": "missing"
+            }
+    else:
+        # Search was NOT used
+        if has_citations:
+            # Strip hallucinated citations
+            logger.warning(f"[Citation Validation] Removing hallucinated citations (no search)")
+            answer = CitationService.strip_hallucinated_citations(answer)
+            return answer, False, {
+                "has_citations": False,
+                "search_results_count": 0,
+                "status": "hallucinated_removed"
+            }
+        else:
+            # No citations, as expected
+            return answer, True, {
+                "has_citations": False,
+                "search_results_count": 0,
+                "status": "valid_no_search"
+            }
