@@ -22,7 +22,7 @@ from coordinator.tool_definitions import (
     ToolCall
 )
 from coordinator.llm_client import LC_OllamaClient
-from coordinator.mcp_client import SearchResult
+from coordinator.models.mcp_models import SearchResult
 
 
 class TestKeywordFiltering(unittest.TestCase):

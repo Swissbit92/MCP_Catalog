@@ -25,7 +25,7 @@ from .config import (
     get_model_context_window,
 )
 from .ollama_utils import assert_model_available
-from .mcp_client import BraveMCPClient
+from .mcp_client_stdio import BraveMCPClientStdio
 from .mongodb_mcp_client import MongoDBMCPClient
 from .cache import get_cache, MongoDBCache
 from .persona_memory import _load_all_cards_cached, ensure_all_summaries_serialized
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 _DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
 
 # MCP Clients
-_brave_client: Optional[BraveMCPClient] = None
+_brave_client: Optional[BraveMCPClientStdio] = None
 _mongodb_client: Optional[MongoDBMCPClient] = None
 _mongodb_cache: Optional[MongoDBCache] = None
 _mongodb_service: Optional[MongoDBService] = None
@@ -68,8 +68,8 @@ _fact_extractor: Optional[FactExtractor] = None
 
 # ----------------- Getters -----------------
 
-def get_brave_client() -> Optional[BraveMCPClient]:
-    """Get the global Brave MCP client instance."""
+def get_brave_client() -> Optional[BraveMCPClientStdio]:
+    """Get the global Brave MCP client instance (STDIO ephemeral containers)."""
     return _brave_client
 
 
@@ -149,13 +149,14 @@ def init_brave_client():
         safesearch = get_brave_safesearch()
         timeout = get_brave_search_timeout()
 
-        _brave_client = BraveMCPClient(
+        _brave_client = BraveMCPClientStdio(
+            image=os.getenv("BRAVE_MCP_IMAGE", "docker.io/mcp/brave-search"),
             api_key=api_key,
             max_results=max_results,
             safesearch=safesearch,
             timeout=timeout
         )
-        logger.info(f"Brave MCP client initialized (max_results={max_results}, timeout={timeout}s)")
+        logger.info(f"Brave MCP STDIO client initialized (image={_brave_client.image}, max_results={max_results}, timeout={timeout}s)")
     except Exception as e:
         logger.error(f"Failed to initialize Brave MCP client: {e}")
         _brave_client = None
