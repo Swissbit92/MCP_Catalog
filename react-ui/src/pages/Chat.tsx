@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble';
 import { TypingIndicator } from '../components/TypingIndicator';
-import { SearchIndicator } from '../components/SearchIndicator';
+import { ToolIndicator } from '../components/ToolIndicator';
 import SessionList from '../components/SessionList';
 import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
@@ -98,7 +98,7 @@ const Chat: React.FC = () => {
   const [touchEndX, setTouchEndX] = useState<number>(0);
   const initializingRef = useRef<string | null>(null); // Track which persona we're initializing for
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching } = usePersona();
+  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching, toolType } = usePersona();
 
   useEffect(() => {
     const loadPersonas = async () => {
@@ -459,8 +459,9 @@ const Chat: React.FC = () => {
             ))
           )}
           <AnimatePresence mode="wait">
-            {isSearching && !initializingSession && (
-              <SearchIndicator
+            {isSearching && !initializingSession && toolType !== 'none' && (
+              <ToolIndicator
+                toolType={toolType}
                 personaName={selectedPersona?.display_name}
                 rarity={selectedPersona?.rarity}
               />
