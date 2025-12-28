@@ -6,105 +6,148 @@ interface RichContentProps {
   className?: string;
 }
 
-// Helper function to convert markdown links and plain URLs to clickable links
-const renderTextWithLinks = (text: string) => {
+// Helper function to parse and render markdown formatting
+const parseMarkdown = (text: string): React.ReactNode[] => {
   const parts: React.ReactNode[] = [];
-
-  // Regex pattern for markdown links
-  const markdownLinkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
-
-  // First, find all markdown links
-  let match;
-  const markdownLinks: Array<{ start: number; end: number; text: string; url: string }> = [];
-
-  while ((match = markdownLinkPattern.exec(text)) !== null) {
-    markdownLinks.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      text: match[1],
-      url: match[2]
-    });
-  }
-
-  // Process text in chunks
-  let currentIndex = 0;
   let key = 0;
 
-  for (const link of markdownLinks) {
-    // Add text before the link
-    if (currentIndex < link.start) {
-      const beforeText = text.substring(currentIndex, link.start);
-      // Check for plain URLs in the before text
-      const beforeParts = renderPlainUrls(beforeText, key);
-      parts.push(...beforeParts);
-      key += beforeParts.length;
+  // Split by lines to handle bullet points
+  const lines = text.split('\n');
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check if line is a bullet point (starts with * or •)
+    const bulletMatch = line.match(/^(\s*)[*•]\s+(.+)$/);
+    
+    if (bulletMatch) {
+      const indent = bulletMatch[1];
+      const content = bulletMatch[2];
+      parts.push(
+        <div key={key++} className={`flex items-start gap-2 ${indent ? 'ml-4' : ''}`}>
+          <span className="text-gray-500 select-none">•</span>
+          <span>{parseInlineMarkdown(content, key)}</span>
+        </div>
+      );
+    } else {
+      // Regular line - parse inline markdown
+      const parsed = parseInlineMarkdown(line, key);
+      parts.push(
+        <React.Fragment key={key++}>
+          {parsed}
+          {i < lines.length - 1 && <br />}
+        </React.Fragment>
+      );
     }
-
-    // Add the markdown link
-    parts.push(
-      <a
-        key={key++}
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
-      >
-        {link.text}
-        <ExternalLink size={12} className="inline" />
-      </a>
-    );
-
-    currentIndex = link.end;
+    
+    key += 100; // Increment key to avoid conflicts
   }
-
-  // Add remaining text
-  if (currentIndex < text.length) {
-    const remainingText = text.substring(currentIndex);
-    const remainingParts = renderPlainUrls(remainingText, key);
-    parts.push(...remainingParts);
-  }
-
+  
   return parts;
 };
 
-// Helper to render plain URLs as clickable links
-const renderPlainUrls = (text: string, startKey: number) => {
-  const parts: React.ReactNode[] = [];
-  const urlPattern = /(https?:\/\/[^\s<>"']+)/g;
-
-  let lastIndex = 0;
-  let match;
+// Helper to parse inline markdown (bold, italic, links, URLs)
+const parseInlineMarkdown = (text: string, startKey: number): React.ReactNode[] => {
   let key = startKey;
-
-  while ((match = urlPattern.exec(text)) !== null) {
-    // Add text before URL
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
+  
+  // Process bold first (**text**) - greedy to handle multiple on same line
+  const boldParts: React.ReactNode[] = [];
+  text.split(/(\*\*[^*]+\*\*)/).forEach((segment, i) => {
+    if (i % 2 === 0) {
+      // Not a bold match - will process for italic/links later
+      boldParts.push(segment);
+    } else {
+      // Bold match - strip ** and wrap in <strong>
+      const content = segment.slice(2, -2);
+      boldParts.push(<strong key={`bold-${key++}`} className="font-bold">{content}</strong>);
     }
-
-    // Add clickable URL
-    parts.push(
-      <a
-        key={key++}
-        href={match[1]}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 break-all"
-      >
-        {match[1]}
-        <ExternalLink size={12} className="inline" />
-      </a>
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : [text];
+  });
+  
+  // Process italic (*text*) - process each part from bold
+  const italicParts: React.ReactNode[] = [];
+  boldParts.forEach((part) => {
+    if (typeof part === 'string') {
+      part.split(/(\*[^*]+\*)/).forEach((segment, i) => {
+        if (i % 2 === 0) {
+          // Not an italic match - will process for links later
+          italicParts.push(segment);
+        } else {
+          // Italic match - strip * and wrap in <em>
+          const content = segment.slice(1, -1);
+          italicParts.push(<em key={`italic-${key++}`} className="italic">{content}</em>);
+        }
+      });
+    } else {
+      // Already a React node (bold), keep as-is
+      italicParts.push(part);
+    }
+  });
+  
+  // Process markdown links ([text](url))
+  const linkParts: React.ReactNode[] = [];
+  italicParts.forEach((part) => {
+    if (typeof part === 'string') {
+      const segments = part.split(/(\[([^\]]+)\]\(([^)]+)\))/);
+      for (let i = 0; i < segments.length; i++) {
+        if (i % 4 === 0 && segments[i]) {
+          // Not a link match - will process for URLs later
+          linkParts.push(segments[i]);
+        } else if (i % 4 === 2) {
+          // Link text
+          const linkText = segments[i];
+          const linkUrl = segments[i + 1];
+          linkParts.push(
+            <a
+              key={`link-${key++}`}
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+            >
+              {linkText}
+              <ExternalLink size={12} className="inline" />
+            </a>
+          );
+        }
+      }
+    } else {
+      // Already a React node, keep as-is
+      linkParts.push(part);
+    }
+  });
+  
+  // Process plain URLs
+  const finalParts: React.ReactNode[] = [];
+  linkParts.forEach((part) => {
+    if (typeof part === 'string') {
+      const segments = part.split(/(https?:\/\/[^\s<>"']+)/);
+      segments.forEach((segment, i) => {
+        if (i % 2 === 0) {
+          // Not a URL, add as text
+          if (segment) finalParts.push(segment);
+        } else {
+          // URL match
+          finalParts.push(
+            <a
+              key={`url-${key++}`}
+              href={segment}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 break-all"
+            >
+              {segment}
+              <ExternalLink size={12} className="inline" />
+            </a>
+          );
+        }
+      });
+    } else {
+      // Already a React node, keep as-is
+      finalParts.push(part);
+    }
+  });
+  
+  return finalParts.length > 0 ? finalParts : [text];
 };
 
 export const RichContent: React.FC<RichContentProps> = ({ content, className = '' }) => {
@@ -205,10 +248,10 @@ export const RichContent: React.FC<RichContentProps> = ({ content, className = '
     );
   }
 
-  // Regular text content with links
+  // Regular text content with markdown formatting
   return (
-    <div className={`text-sm leading-relaxed whitespace-pre-wrap ${className}`}>
-      {renderTextWithLinks(content)}
+    <div className={`text-sm leading-relaxed ${className}`}>
+      {parseMarkdown(content)}
     </div>
   );
 };
