@@ -362,6 +362,16 @@ class LC_OllamaClient:
                     llm_answer = self.complete(synthesis_system, "\n\n".join(conversation_history))
                     logger.info(f"[Synthesis] Generated answer (length: {len(llm_answer)} chars)")
 
+                    # Check if LLM included citations (for monitoring)
+                    had_citations = any(marker in llm_answer for marker in ["🔍 Sources:", "Sources:", "**Sources:**"])
+
+                    # Strip any LLM-generated citations (anti-hallucination defense)
+                    llm_answer = self._strip_hallucinated_citations(llm_answer)
+
+                    # Log violation for monitoring
+                    if had_citations:
+                        logger.warning(f"[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
+
                     # Auto-generate accurate citations from search results
                     accurate_citations = self._auto_generate_citations(search_results)
 
@@ -461,6 +471,16 @@ class LC_OllamaClient:
                 )
 
                 logger.info(f"[Synthesis] Generated answer (length: {len(llm_answer)} chars)")
+
+                # Check if LLM included citations (for monitoring)
+                had_citations = any(marker in llm_answer for marker in ["🔍 Sources:", "Sources:", "**Sources:**"])
+
+                # Strip any LLM-generated citations (anti-hallucination defense)
+                llm_answer = self._strip_hallucinated_citations(llm_answer)
+
+                # Log violation for monitoring
+                if had_citations:
+                    logger.warning(f"[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
 
                 # Auto-generate accurate citations from search results
                 accurate_citations = self._auto_generate_citations(search_results)
