@@ -12,14 +12,16 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from coordinator.mcp_client import (
-    BraveMCPClient,
+from coordinator.mcp_client_stdio import (
+    BraveMCPClientStdio as BraveMCPClient,
+    get_brave_client_stdio as get_brave_client
+)
+from coordinator.models.mcp_models import (
     SearchResult,
     MCPError,
     MCPConnectionError,
     MCPTimeoutError,
     MCPResponseError,
-    get_brave_client
 )
 
 

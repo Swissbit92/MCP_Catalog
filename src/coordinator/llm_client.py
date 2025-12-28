@@ -20,7 +20,8 @@ from .tool_definitions import (
     should_use_keyword_filter,
     ToolCall
 )
-from .mcp_client import BraveMCPClient
+from .mcp_client_stdio import BraveMCPClientStdio
+from .models.mcp_models import SearchResult
 
 # Import sampling presets (Phase 1.3)
 from .models.sampling_presets import (
@@ -110,7 +111,7 @@ class LC_OllamaClient:
         base: str,
         model: str,
         temperature: float = 0.1,
-        mcp_client: Optional[BraveMCPClient] = None,
+        mcp_client: Optional[BraveMCPClientStdio] = None,
         sampling_config: Optional[SamplingConfig] = None,
         # Individual sampling params (override sampling_config if provided)
         repeat_penalty: Optional[float] = None,

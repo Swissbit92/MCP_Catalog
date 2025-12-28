@@ -28,6 +28,14 @@ from .sampling_presets import (
     list_presets,
 )
 
+from .mcp_models import (
+    SearchResult,
+    MCPError,
+    MCPConnectionError,
+    MCPTimeoutError,
+    MCPResponseError,
+)
+
 __all__ = [
     # Persona schema
     "Rarity",
@@ -52,4 +60,10 @@ __all__ = [
     "build_sampling_config",
     "get_sampling_for_persona",
     "list_presets",
+    # MCP models
+    "SearchResult",
+    "MCPError",
+    "MCPConnectionError",
+    "MCPTimeoutError",
+    "MCPResponseError",
 ]

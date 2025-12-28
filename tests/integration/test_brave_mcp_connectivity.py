@@ -17,7 +17,8 @@ except ImportError:
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from coordinator.mcp_client import get_brave_client, MCPError
+from coordinator.mcp_client_stdio import get_brave_client_stdio as get_brave_client
+from coordinator.models.mcp_models import MCPError
 
 # Configure logging
 logging.basicConfig(
