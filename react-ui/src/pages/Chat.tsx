@@ -434,43 +434,51 @@ const Chat: React.FC = () => {
         </div>
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-3 md:space-y-4 min-h-0">
-          {messages.length === 0 && currentSession && !initializingSession ? (
-            <div className="text-center text-gray-500 mt-8">
-              Start a conversation with {selectedPersona.display_name}!
-            </div>
-          ) : messages.length === 0 && initializingSession ? (
-            <div className="text-center text-gray-500 mt-8">
-              <TypingIndicator />
-              <p className="mt-2">Loading {selectedPersona.display_name}...</p>
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                personaAvatar={selectedPersona.avatar ? `/images/${selectedPersona.avatar}` : `/images/${selectedPersona.image}`}
-                userAvatar="/images/ui/user_avatar.png"
-                showTimestamp={true}
-                onRetry={handleRetryMessage}
-                personaRarity={selectedPersona.rarity}
-                personaName={selectedPersona.display_name}
-              />
-            ))
-          )}
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 min-h-0 relative">
+          <div className="space-y-3 md:space-y-4 pb-20">
+            {messages.length === 0 && currentSession && !initializingSession ? (
+              <div className="text-center text-gray-500 mt-8">
+                Start a conversation with {selectedPersona.display_name}!
+              </div>
+            ) : messages.length === 0 && initializingSession ? (
+              <div className="text-center text-gray-500 mt-8">
+                <TypingIndicator />
+                <p className="mt-2">Loading {selectedPersona.display_name}...</p>
+              </div>
+            ) : (
+              messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  personaAvatar={selectedPersona.avatar ? `/images/${selectedPersona.avatar}` : `/images/${selectedPersona.image}`}
+                  userAvatar="/images/ui/user_avatar.png"
+                  showTimestamp={true}
+                  onRetry={handleRetryMessage}
+                  personaRarity={selectedPersona.rarity}
+                  personaName={selectedPersona.display_name}
+                />
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Fixed indicator layer - positioned absolutely to prevent layout shifts */}
           <AnimatePresence mode="wait">
             {isSearching && !initializingSession && toolType !== 'none' && (
-              <ToolIndicator
-                toolType={toolType}
-                personaName={selectedPersona?.display_name}
-                rarity={selectedPersona?.rarity}
-              />
+              <div className="absolute bottom-4 left-4">
+                <ToolIndicator
+                  toolType={toolType}
+                  personaName={selectedPersona?.display_name}
+                  rarity={selectedPersona?.rarity}
+                />
+              </div>
             )}
             {!isSearching && loading && !initializingSession && (
-              <TypingIndicator />
+              <div className="absolute bottom-4 left-4">
+                <TypingIndicator />
+              </div>
             )}
           </AnimatePresence>
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
