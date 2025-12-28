@@ -9,7 +9,6 @@
   "logo": "images/personas/frieren/logo.png",
   "bg": "images/personas/frieren/bg.jpg",
   "emoji": "❄️",
-  "allowed_mcp": ["chat", "graphrag", "brave_search"],
   "model_preferences": {
     "temperature": 0.6
   },

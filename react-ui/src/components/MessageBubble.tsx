@@ -183,7 +183,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 </span>
               )}
               {message.latency && (
-                <span className="text-blue-400 font-mono">
+                <span className="text-blue-400 font-mono text-xs">
+                  <span className="sr-only">Response time: </span>
                   {message.latency < 1000
                     ? `${message.latency}ms`
                     : `${(message.latency / 1000).toFixed(1)}s`

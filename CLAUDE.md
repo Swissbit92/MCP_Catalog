@@ -320,437 +320,156 @@ Optional - MongoDB (Phase 3):
 
 ### UX & Design Guidelines
 
-**Status:** UX Improvement Initiative launched Dec 26, 2025
-**Current UX Score:** 7.2/10 → Target 9.5/10
-**Plan:** `UX_IMPROVEMENT_PLAN.md` (comprehensive 200+ page implementation guide)
+**Status:** UX Improvement Initiative (Dec 26-28, 2025) | Phase 1.1 Complete ✅
+**Full Spec:** `UX_IMPROVEMENT_PLAN.md` (200+ pages)
+**Implementation:** `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
 
 #### Design System
 
-**Typography (NEW - Phase 1):**
-```css
-/* Font families */
---font-display: 'Orbitron', sans-serif;     /* Headings, character names */
---font-body: 'Poppins', sans-serif;          /* UI text, messages */
---font-mono: 'Space Mono', monospace;        /* Technical stats, latency */
+**Typography (✅ Implemented Dec 28, 2025):**
+- **Display/Headings:** Orbitron (700, 900 weights) - Use `font-display` class or CSS var `--font-display`
+- **Body Text:** Poppins (400, 600, 700 weights) - Use `font-body` class or CSS var `--font-body`
+- **Monospace/Technical:** Space Mono (400, 700 weights) - Use `font-mono` class or CSS var `--font-mono`
+- **Type Scale:** 0.75rem to 3rem (CSS vars: `--text-xs` through `--text-5xl`)
+- **Implementation:** Fonts loaded via Google Fonts CDN in `react-ui/public/index.html`
+- **Usage:** Tailwind classes (`font-display`, `font-body`, `font-mono`) or CSS variables
 
-/* Type scale */
---text-xs: 0.75rem;     /* 12px - metadata */
---text-sm: 0.875rem;    /* 14px - secondary text */
---text-base: 1rem;      /* 16px - body text */
---text-xl: 1.25rem;     /* 20px - h3 */
---text-2xl: 1.5rem;     /* 24px - h2 */
---text-4xl: 2.25rem;    /* 36px - h1, hero */
-```
+**Colors:** Deep space aesthetic (#0a0e27 base) with nebula accents and rarity overlays (legendary=#FFD700, epic=#DA70D6, rare=#00BFFF, common=#C0C0C0)
+**Animations:** `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS (0.1-1.2s) and SPRING_CONFIGS (snappy/smooth/bouncy)
+**Spacing:** 0.25-3rem scale (--space-1 to --space-12)
 
-**Color System (Deep Space Aesthetic - Phase 1):**
-```css
-/* Core backgrounds */
---bg-space-dark: #0a0e27;
---bg-space-mid: #1a1625;
---bg-space-light: #0f0d1f;
+#### Accessibility (WCAG AA)
 
-/* Nebula accents */
---nebula-blue: rgba(59, 130, 246, 0.12);
---nebula-purple: rgba(139, 92, 246, 0.08);
---nebula-cyan: rgba(34, 211, 238, 0.06);
-
-/* Rarity colors (overlay, not base) */
---legendary: #FFD700;
---epic: #DA70D6;
---rare: #00BFFF;
---common: #C0C0C0;
-
-/* Accent colors */
---accent-primary: #4F46E5;   /* Indigo */
---accent-secondary: #EC4899;  /* Pink */
-```
-
-**Animation System (Phase 2):**
-```typescript
-// react-ui/src/utils/animations.ts
-export const ANIMATION_DURATIONS = {
-  instant: 0.1,     // Tooltips, micro-interactions
-  fast: 0.2,        // Button hovers, toggles
-  normal: 0.3,      // Default transitions
-  slow: 0.5,        // Modals, page changes
-  dramatic: 0.8,    // Gacha pulls, reveals
-  epic: 1.2,        // Legendary character reveals
-};
-
-export const SPRING_CONFIGS = {
-  snappy: { stiffness: 400, damping: 25 },   // Buttons, cards
-  smooth: { stiffness: 300, damping: 30 },   // Default
-  bouncy: { stiffness: 200, damping: 15 },   // Celebrations
-};
-```
-
-**Spacing System:**
-```css
---space-1: 0.25rem;   /* 4px */
---space-2: 0.5rem;    /* 8px */
---space-4: 1rem;      /* 16px */
---space-6: 1.5rem;    /* 24px */
---space-8: 2rem;      /* 32px */
---space-12: 3rem;     /* 48px */
-```
-
-#### Accessibility Requirements
-
-**WCAG AA Compliance (Phase 1):**
-- Minimum 4.5:1 color contrast for body text
-- Minimum 3:1 color contrast for large text (18px+)
-- All interactive elements keyboard accessible
+- 4.5:1 contrast for body text, 3:1 for large text (18px+)
+- Keyboard nav: Tab/Shift+Tab, Enter/Space, Esc
+- Screen reader: `aria-label`, `.sr-only` class, `role="status" aria-live="polite"`
 - Focus indicators: 3px solid outline with 2px offset
-- Screen reader labels (`aria-label`, `sr-only` class)
-- Skip to main content link
-- Proper heading hierarchy (h1 → h2 → h3)
-
-**Keyboard Navigation (Phase 1):**
-- Tab/Shift+Tab cycles through interactive elements
-- Enter/Space activates buttons and links
-- Esc closes modals and dropdowns
-- Arrow keys navigate lists (where applicable)
-- Focus trap in modals (focus stays within modal)
-
-**Screen Reader Support:**
-```tsx
-{/* Screen reader only text */}
-<span className="sr-only">Response time: </span>
-
-{/* Accessible button labels */}
-<button aria-label="Select Eeva, legendary rarity character">
-  Select
-</button>
-
-{/* Live regions for dynamic content */}
-<div role="status" aria-live="polite">
-  {isSearching && "Searching the web..."}
-</div>
-```
-
-**CSS for Screen Readers:**
-```css
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-```
 
 #### Component Patterns
 
-**Button Hierarchy (Phase 2):**
-```tsx
-{/* Primary CTA - Largest, solid gradient */}
-<button className="px-10 py-5 text-xl font-display uppercase
-                   bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400
-                   shadow-2xl shadow-yellow-400/50 rounded-2xl">
-  Primary Action
-</button>
-
-{/* Secondary CTA - Outlined style */}
-<button className="px-6 py-3 text-base font-body
-                   border-2 border-yellow-400/50 text-yellow-400
-                   hover:bg-yellow-400/10 rounded-xl">
-  Secondary Action
-</button>
-
-{/* Tertiary - Text link */}
-<a className="text-gray-400 hover:text-white underline">
-  Tertiary Action →
-</a>
-```
-
-**Animation Usage (Phase 2):**
-```tsx
-import { SPRING_CONFIGS, ANIMATION_DURATIONS } from '../utils/animations';
-
-{/* Snappy button animation */}
-<motion.button
-  whileHover={{ scale: 1.05 }}
-  whileTap={{ scale: 0.95 }}
-  transition={SPRING_CONFIGS.snappy}
->
-
-{/* Smooth page transition */}
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={SPRING_CONFIGS.smooth}
->
-
-{/* Use will-change only when animating */}
-<motion.div
-  style={{ willChange: isAnimating ? 'transform, opacity' : 'auto' }}
->
-```
-
-**Performance Optimization (Phase 2):**
-```tsx
-{/* Reduce concurrent animations */}
-<FloatingParticles isActive={loading && !isSidebarOpen && !isSearching} />
-
-{/* Memoize expensive components */}
-const FloatingParticles = React.memo(({ isActive }) => {
-  const particles = React.useMemo(() => {
-    return Array.from({ length: 8 }, createParticle);
-  }, []); // Generate once
-
-  return (/* ... */);
-});
-
-{/* Respect reduced motion preference */}
-import { conditionalAnimation } from '../utils/animations';
-
-animate={conditionalAnimation(
-  { scale: 1.2, rotate: 360 },  // Full animation
-  { scale: 1.0, rotate: 0 }     // Static fallback
-)}
-```
-
-#### Search Features (Phase 2)
-
-**Session Search Pattern:**
-```tsx
-{/* In SessionList.tsx */}
-const [searchQuery, setSearchQuery] = useState('');
-
-const filteredSessions = useMemo(() => {
-  if (!searchQuery.trim()) return sessions;
-  const query = searchQuery.toLowerCase();
-  return sessions.filter(s =>
-    s.title.toLowerCase().includes(query) ||
-    persona?.display_name.toLowerCase().includes(query)
-  );
-}, [sessions, searchQuery]);
-
-<input
-  type="search"
-  placeholder="Search conversations..."
-  value={searchQuery}
-  onChange={(e) => setSearchQuery(e.target.value)}
-  aria-label="Search conversations"
-/>
-```
-
-**Message Search Pattern (Phase 2):**
-```tsx
-{/* In Chat.tsx */}
-const [messageSearchQuery, setMessageSearchQuery] = useState('');
-const [searchResults, setSearchResults] = useState<number[]>([]);
-
-{/* Highlight matching messages */}
-<div className={searchResults.includes(idx) ? 'ring-2 ring-blue-200' : ''}>
-  <MessageBubble message={msg} />
-</div>
-```
-
-#### Visual Hierarchy
-
-**Depth Layers (Z-Index Scale):**
-```css
---z-background: -1;     /* Backgrounds, decorative elements */
---z-base: 0;            /* Default layer */
---z-elevated: 10;       /* Cards, panels */
---z-dropdown: 20;       /* Dropdowns, tooltips */
---z-modal: 30;          /* Modals, overlays */
---z-header: 40;         /* Fixed header */
---z-toast: 50;          /* Notifications */
-```
-
-**Visual Weight:**
-1. **Primary Actions:** Large buttons, solid gradients, strong shadows
-2. **Secondary Actions:** Medium buttons, outlined style, subtle hover
-3. **Tertiary Actions:** Text links, icon buttons, minimal styling
-4. **Decorative Elements:** Low opacity, blur, background layer
+**Button Hierarchy:** Primary (gradient, xl), Secondary (outlined, base), Tertiary (text link)
+**Animation:** Use `SPRING_CONFIGS` from utils/animations.ts, respect `prefers-reduced-motion`
+**Performance:** Memoize with `React.memo`, reduce concurrent animations, use `will-change` only when animating
+**Search:** Session search in SessionList.tsx, message search with highlight in Chat.tsx
 
 #### Implementation Checklist
 
-**Before Modifying Frontend:**
-- [ ] Check `UX_IMPROVEMENT_PLAN.md` for detailed implementation guide
-- [ ] Use design system values (CSS variables, animation constants)
-- [ ] Test keyboard navigation (Tab, Enter, Esc)
-- [ ] Verify color contrast (4.5:1 minimum for body text)
-- [ ] Add screen reader labels where needed
-- [ ] Respect `prefers-reduced-motion`
+**Before Frontend Changes:**
+- Check `UX_IMPROVEMENT_PLAN.md`
+- Use design system values (CSS vars, animation constants)
+- Test keyboard nav (Tab, Enter, Esc)
+- Verify 4.5:1 contrast, add `aria-label` where needed
 
-**Common Violations to Avoid:**
-- ❌ Using system fonts (Arial, Roboto) instead of design system fonts
-- ❌ Generic slate gradients instead of deep space aesthetic
-- ❌ `<div>` for clickable elements instead of `<button>`
-- ❌ Text colors below 4.5:1 contrast ratio
-- ❌ Missing `aria-label` on icon buttons
-- ❌ Animations without `will-change` management
-- ❌ Concurrent animations causing performance issues
+**Violations to Avoid:**
+- ❌ System fonts (MUST use Orbitron for headings, Poppins for body, Space Mono for mono)
+- ❌ `<div>` for clickable elements (MUST use `<button>` or semantic HTML)
+- ❌ Low contrast ratios (<4.5:1 for body text, <3:1 for large text)
+- ❌ Animations without `will-change` management or `prefers-reduced-motion` support
 
-**Testing Requirements:**
-```bash
-# Accessibility audit
-npm run test -- --testNamePattern="accessibility"
+**Typography Usage Examples:**
+```tsx
+// Headings - use font-display
+<h1 className="font-display font-black text-4xl">Title</h1>
 
-# Lighthouse CI (target: 95+ accessibility score)
-npm run lighthouse
+// Body text - use font-body (default, can omit)
+<p className="font-body text-base">Body text</p>
 
-# Manual keyboard test
-# 1. Unplug mouse
-# 2. Tab through all interactive elements
-# 3. Enter/Space activates buttons
-# 4. Esc closes modals
+// Technical/stats - use font-mono
+<span className="font-mono text-xs">{latency}ms</span>
+
+// CSS modules - use CSS variables
+.character-name {
+  font-family: var(--font-display);
+  font-weight: 900;
+}
 ```
 
 ## Important Implementation Details
 
 ### MCP (Model Context Protocol) Integration
-- The coordinator can connect to external MCP servers (e.g., RAG, knowledge graph, Brave search, MongoDB)
-- MCP client in `mcp_client.py` handles server discovery and tool invocation
-- Tool definitions in `tool_definitions.py` define available functions for LLM function calling
-- Architecture supports multiple MCP servers bridged through the coordinator
+**Status:** ✅ Ephemeral STDIO Pattern (Dec 2025)
+
+MCP servers run as **ephemeral Docker containers** using the official pattern from Brave's implementation.
+
+**Architecture Overview:**
+```
+Backend Container (mounts /var/run/docker.sock)
+    │
+    ├─> spawns: docker run -i --rm docker.io/mcp/brave-search
+    │   (lives 2-3 seconds, processes request via STDIN/STDOUT, dies)
+    │
+    ├─> spawns: docker run -i --rm docker.io/mcp/mongodb
+    │   (separate image, same pattern)
+    │
+    └─> spawns: docker run -i --rm docker.io/mcp/[any-mcp-server]
+        (universal pattern for all MCP servers)
+```
+
+**Key Characteristics:**
+- **Ephemeral Containers**: Each request spawns `docker run -i --rm` with the MCP image
+- **STDIO Transport**: Communication via stdin/stdout pipes using JSON-RPC 2.0 protocol
+- **Stateless**: Containers process one request and die automatically (no long-running services)
+- **Isolated**: Each MCP server is a separate Docker image with complete isolation
+- **Scalable**: Universal pattern works for ANY MCP server (Brave, MongoDB, Neo4j, Google Calendar, etc.)
+- **Container Orchestration**: Backend mounts Docker socket to spawn ephemeral containers
+
+**Implementation:**
+- `mcp_client_stdio.py` - Ephemeral STDIO client for Brave Search (reference implementation)
+- `mongodb_mcp_client.py` - MongoDB MCP client (HTTP transport, to be migrated)
+- `tool_definitions.py` - Tool/function definitions for LLM function calling
+- `startup.py` - MCP client initialization and dependency injection
+
+**Docker Socket Mounting:**
+Backend container requires Docker socket access to spawn ephemeral MCP containers:
+```yaml
+backend:
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock  # Enables container orchestration
+```
+This is the standard pattern for container orchestration (used by CI/CD runners like GitHub Actions).
 
 ### Brave MCP Integration (Web Search)
 **Status:** ✅ Fully implemented (MVP 2-4 complete)
 
-Rare, Epic, and Legendary personas can perform autonomous web searches using the Brave Search API.
+Rare+ personas perform autonomous web searches with mandatory citations.
 
-**Features:**
-- **Autonomous Decision-Making:** Personas intelligently decide when to search vs. answer directly
-- **Mandatory Citations:** All web search responses must include properly formatted source citations
-- **Smart UI Indicators:** SearchIndicator shown for predicted searches, TypingIndicator for direct answers
-- **Citation Validation:** Backend validates that responses include "🔍 Sources:" section with markdown links
-- **Client-Side Prediction:** ~85-90% accuracy predicting when search will be used (for optimal UX)
-- **Rarity-Based Access:** Common personas blocked, Rare+ have web search enabled
+**Key Features:**
+- Autonomous search/answer decision-making with 85-90% UI prediction accuracy
+- Mandatory citation format: `🔍 Sources:\n• [Title - Source](url)`
+- Backend validation, rarity-based access (Rare/Epic/Legendary only)
 
-**Configuration:**
-```bash
-BRAVE_API_KEY=your_api_key_here           # Required for web search
-BRAVE_MAX_RESULTS=5                        # Number of search results (default: 5)
-BRAVE_SAFESEARCH=moderate                  # moderate|strict|off
-BRAVE_SEARCH_TIMEOUT=10                    # Timeout in seconds
-BRAVE_ENABLED_RARITIES=rare,epic,legendary # Which rarities can search
-```
+**Config:** `BRAVE_API_KEY`, `BRAVE_MAX_RESULTS=5`, `BRAVE_ENABLED_RARITIES=rare,epic,legendary`
+**Persona:** `"allowed_mcp": ["brave_search"]` in JSON
 
-**Persona Configuration:**
-```json
-{
-  "key": "Eeva",
-  "rarity": "legendary",
-  "allowed_mcp": ["chat", "graphrag", "brave_search"],
-  ...
-}
-```
+**Flow:** User query → Frontend predicts → Backend classifies → LLM searches → Synthesizes with citations → Validates → Renders
 
-**Citation Format (Enforced):**
-```
-🔍 Sources:
-• [Article Title - Source Name](https://url1.com)
-• [Article Title - Source Name](https://url2.com)
-• [Article Title - Source Name](https://url3.com)
-```
+**Synthesis Rules (Anti-Hallucination):**
+1. USE ONLY SEARCH RESULTS (no training data)
+2. SYNTHESIZE NATURALLY (coherent narrative)
+3. STAY IN CHARACTER (persona voice)
+4. BE ACCURATE (exact numbers/dates)
+5. MANDATORY CITATIONS (🔍 emoji + markdown links)
 
-**Usage:**
-Users simply ask questions requiring current info. Personas automatically search when needed.
-
-**Example Flow:**
-1. User: "What is the current Bitcoin price?"
-2. Frontend predicts search needed → shows SearchIndicator 🔍
-3. Backend classifies query → injects `brave_web_search` tool
-4. LLM decides to search → executes Brave API call
-5. LLM synthesizes response with mandatory citations
-6. Backend validates citations → returns with `citation_valid` flag
-7. Frontend renders answer with citation section styled separately
-
-**Synthesis Prompt (Anti-Hallucination):**
-Uses `build_synthesis_prompt()` to prevent hallucinations, ensure natural synthesis, and enforce citation formatting.
-
-**5 Core Rules:**
-1. USE ONLY SEARCH RESULTS - No training data/estimates
-2. SYNTHESIZE NATURALLY - Combine sources coherently
-3. STAY IN CHARACTER - Maintain persona voice
-4. BE ACCURATE - Exact numbers/dates from search
-5. MANDATORY CITATIONS - Bullet points with 🔍 emoji + markdown links
-
-**Implementation:** `src/coordinator/llm_client.py` line 173-187
-**Tests:** `test_synthesis_prompt.py`, `test_synthesis_integration.py`, frontend tests (SearchIndicator, MessageBubble.citations, searchHeuristics)
+**Impl:** `llm_client.py:173-187` | **Tests:** `test_synthesis_*.py`, frontend citation tests
 
 ### MongoDB MCP Integration (Trading Data)
-**Status:** ✅ Fully implemented and tested (Dec 2025)
+**Status:** ✅ Fully implemented (Dec 2025)
 
-Epic and Legendary personas can query real-time Bitcoin price and trading data from MongoDB Atlas.
+Epic/Legendary personas query Bitcoin data from MongoDB Atlas with 4 tools: `bitcoin_current_price` (RSI, MACD, Bollinger Bands, EMAs), `bitcoin_historical_prices` (OHLCV 2016-present), `bitcoin_trading_summary` (DCA stats), `bitcoin_technical_analysis` (multi-timeframe signals).
 
-**Features:**
-- **Real-Time Data:** Live Bitcoin prices with 35+ technical indicators (RSI, MACD, Bollinger Bands, EMAs)
-- **Historical Data:** Price history from 2016-07-18 to present (daily) and last 6 months (hourly)
-- **Trading Stats:** DCA purchase history, total BTC acquired, average prices
-- **Smart Caching:** TTL-based cache (60s for current price, 3600s for historical)
-- **Rarity-Based Access:** Only Epic and Legendary personas can query MongoDB
+**Config:** `MONGODB_URI`, `MONGODB_TIMEOUT=30`, `MONGODB_ENABLED_RARITIES=epic,legendary`
+**Caching:** 60s (current), 3600s (historical), per-tool TTL
 
-**Configuration:**
-```bash
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/btc_data
-MONGODB_TIMEOUT=30                       # Query timeout in seconds
-MONGODB_MAX_RESPONSE_BYTES=100000        # Max response size
-MONGODB_ENABLED_RARITIES=epic,legendary  # Which rarities can query
-```
+**Flow:** User query → Backend classifies (`mongodb` intent) → Tools injected → MCP container query → LLM synthesizes → Frontend renders with 🗄️ badge
 
-**Available Tools (4 semantic tools):**
-| Tool | Description |
-|------|-------------|
-| `bitcoin_current_price` | Latest price with RSI, MACD, Bollinger Bands, EMAs |
-| `bitcoin_historical_prices` | Historical OHLCV data with date range filtering |
-| `bitcoin_trading_summary` | DCA statistics: total BTC, spend, fees, avg price |
-| `bitcoin_technical_analysis` | Multi-timeframe analysis with trend/momentum signals |
+**Synthesis Rules (Persona Flavor):**
+1. USE ONLY DB DATA (no estimates)
+2. SYNTHESIZE NATURALLY (narrative not JSON)
+3. STAY IN CHARACTER (persona voice)
+4. BE ACCURATE (exact numbers: $87,855.80 not "~$88K")
+5. ADD INTERPRETATION (explain indicators)
 
-**Example Query Flow:**
-1. User: "What is the current Bitcoin price?"
-2. Backend classifies intent → `mongodb`
-3. Tools injected: `['bitcoin_current_price', ...]`
-4. MongoDB queried via Docker MCP container
-5. LLM synthesizes response: "Bitcoin is $87,855.80 with RSI 42.04..."
-6. Frontend displays with 🗄️ MongoDB badge
-
-**Response Metadata:**
-```json
-{
-  "source_type": "mongodb_mcp",
-  "tools_used": ["bitcoin_current_price"],
-  "cache_status": "hit",
-  "data_timestamp": "2025-12-23T11:00:00Z"
-}
-```
-
-**Testing:**
-```bash
-# End-to-end test (requires backend + Docker)
-python tests/exploration/test_mongodb_phase4.py
-
-# Unit tests
-python tests/backend/coordinator/test_mongodb_integration.py
-```
-
-**Logging:**
-- `[Intent]` - Query classification (mongodb/brave/llm)
-- `[Tools]` - Tools injected for MongoDB queries
-- `Cache HIT/MISS` - Cache status with age in seconds
-- `MongoDB query completed` - Tool used and cache status
-- `[MongoDB Synthesis]` - Synthesis prompt usage and length
-
-**Synthesis Prompt (Persona Flavor Enhancement):**
-Uses `build_mongodb_synthesis_prompt()` to ensure responses maintain persona flavor instead of emotionless data dumps.
-
-**5 Core Rules:**
-1. USE ONLY DATABASE DATA - No training data estimates
-2. SYNTHESIZE NATURALLY - Narrative not JSON dump
-3. STAY IN CHARACTER - Maintain persona voice
-4. BE ACCURATE - Exact numbers ($87,855.80 not "around $88K")
-5. ADD INTERPRETATION - Explain indicators, connect data points
-
-**Implementation:** `src/coordinator/services/query_handler_service.py`
-**Tests:** `test_mongodb_persona_flavor.py`, `test_mongodb_eeva_flavor.py`
+**Impl:** `query_handler_service.py` | **Tests:** `test_mongodb_*.py`
 
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
@@ -793,98 +512,28 @@ Type-safe persona system with advanced characterization and emotional tracking.
 **Testing:** `test_persona_schema.py` (16), `test_phase2_integration.py` (6), frontend `phase2PersonaQuality` tests (14)
 
 ### Memory Management (Phase 1, 2 & 3)
-**Status:** ✅ Phase 1 & 2 Complete | ✅ Phase 3 Complete & Production-Ready (Dec 23, 2025)
+**Status:** ✅ All phases complete & production-ready (Dec 23, 2025)
 
-Advanced AI memory system with importance scoring, automatic summarization, semantic search, and cross-session user profiles.
+Advanced AI memory with importance scoring, auto-summarization, semantic search (FAISS), and cross-session user profiles.
 
-**Test Results:**
-- Phase 1-2: 5/7 tests passing (71%)
-- Phase 3: ✅ All features validated with live conversations
-- Fact Extraction: ✅ Working (profiles created after 10 messages)
-- Cross-Session Memory: ✅ Working (personas remember users)
-- RAG Indexing: ✅ Working (FAISS vector database operational)
-
-**Phase 1 Features (Infrastructure):**
-- **Database Context Loading**: Messages loaded from SQLite instead of request body
-- **Token Budget Monitoring**: Real-time tracking with color-coded warnings at >90% usage
-- **Model Context Verification**: Dynamic window sizing based on model's 4096 token limit
-
-**Phase 2 Features (Intelligence):**
-- **Importance Scoring**: Messages scored by personal info, questions, length, recency
-- **Critical Message Detection**: Names/holdings (6x weight) - NEVER dropped from context
-- **Memory Awareness Rules**: System prompt instructs LLM to use conversation history
-- **Auto-Summarization**: Triggers every 30 messages, summaries injected as context
-- **Smart Selection**: First 3 + last 10 messages always included, plus high-scoring middle messages
-
-**Phase 3 Features (Advanced AI Memory - PRODUCTION READY):**
-- **RAG-Based Semantic Search**: FAISS vector database for semantic similarity over conversation history
-- **Cross-Session User Profiles**: Persistent memory across sessions with different personas
-- **Automated Fact Extraction**: LLM-powered extraction at every 10 messages (name, preferences, holdings, facts)
-- **User Profile Context**: Personas greet returning users by name, remember past discussions/holdings
-- **Real-Time Vector Indexing**: Incremental FAISS indexing after each message (CPU backend, GPU optional)
-- **Intelligent Profile Building**: Accumulates knowledge, deduplicates info, JSON storage for schema evolution
+**Phase 1 (Infrastructure):** DB context loading, token budget monitoring, 4096 token limit enforcement
+**Phase 2 (Intelligence):** Importance scoring (6x names/holdings, 4x personal info, 1.3x questions), auto-summarization every 30 messages, first 3 + last 10 messages always included
+**Phase 3 (Advanced - PRODUCTION):** RAG semantic search (FAISS), cross-session profiles, automated fact extraction (every 10 messages), personas remember users by name
 
 **Key Components:**
-- `memory_manager.py` - `MessageImportanceScorer`, `MemoryManager`, `ConversationSummarizer`
-- `persona_memory.py` - `MEMORY_AWARENESS_RULES` injected into system prompts
-- `summary_repository.py` - Persistent storage for conversation summaries
-- `memory_rag.py` - `EpisodicMemoryRAG` for semantic search with FAISS (Phase 3)
-- `user_profile.py` - `UserProfile` class for cross-session memory (Phase 3)
-- `fact_extractor.py` - `FactExtractor` for LLM-powered fact extraction (Phase 3)
-- `user_profile_repository.py` - Database operations for user profiles (Phase 3)
+- `memory_manager.py` - Scoring, selection, summarization
+- `memory_rag.py` - FAISS semantic search (Phase 3)
+- `user_profile.py` - Cross-session memory (Phase 3)
+- `fact_extractor.py` - LLM fact extraction (Phase 3)
 
-**Importance Scoring Weights:**
-| Content Type | Weight |
-|--------------|--------|
-| Name introduction ("my name is...") | 6x |
-| Personal info (holdings, goals) | 4x |
-| Questions | 1.3x |
-| Long messages (>200 chars) | 1.2x |
-| Recency (newer messages) | 1.0-3.0x |
+**DB Schema (Phase 3):** `user_profiles` (user_id, profile_data JSON), `user_sessions` (links users to sessions)
 
-**Database Schema (Phase 3):**
-```sql
--- User profiles for cross-session memory
-CREATE TABLE user_profiles (
-    user_id TEXT PRIMARY KEY,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    profile_data TEXT NOT NULL  -- JSON: name, background, preferences, holdings, topics, facts
-);
+**Dependencies:** `faiss-cpu`, `langchain-community`, `nomic-embed-text:latest` (Ollama embedding model)
 
--- Links users to their chat sessions
-CREATE TABLE user_sessions (
-    user_id TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES user_profiles(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
-    PRIMARY KEY(user_id, session_id)
-);
-```
+**Usage:** Automatic - profiles created at 10 messages, personas remember users across sessions
+**Tests:** `test_memory_phase*.py`, `test_phase3_*.py`
 
-**Dependencies (Phase 3):**
-- `faiss-cpu` - Vector database for semantic search
-- `langchain-community` - Integration with FAISS and embeddings
-- `nomic-embed-text:latest` - Ollama embedding model for vector search
-
-**Phase 3 Production Usage:**
-Automatic workflow: User chats naturally → Profile created at 10 messages → Subsequent sessions remember user (no config needed)
-
-**Testing:** `test_memory_phase1.py`, `test_memory_phase2.py`, `test_phase3_simple.py`, `test_phase3_live.py`
-
-**Important Note (Dec 23, 2025):**
-A critical bug fix was applied to enable fact extraction. If using code before this date, apply this fix to `src/coordinator/routes/chat.py` line 590:
-
-```python
-# OLD (broken):
-if fact_extractor and user_profile_repo and len(db_messages) % 10 == 0:
-
-# NEW (working):
-if user_profile_repo and len(db_messages) % 10 == 0:
-```
-
-This single-line change enables all Phase 3 features.
+**Critical Bug Fix (Dec 23):** `routes/chat.py:590` - Remove `fact_extractor and` from conditional (enables Phase 3)
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -988,47 +637,19 @@ This single-line change enables all Phase 3 features.
 
 ## Project Hygiene
 
-**Current Status:** ✅ Hygiene Score 10/10 (Perfect - Dec 26, 2025)
+**Current Status:** ✅ Score 10/10 (Perfect - Dec 26, 2025)
 
-**Recent Improvements:**
-- **Dec 26, 2025:** Massive Refactoring - routes/chat.py reduced 759 → 279 lines (63% reduction)
-- **Dec 26, 2025:** Service Layer Extraction (3 new services: message_processing, memory_selection, chat_session)
-- **Dec 26, 2025:** Hygiene Session #6 (2 junk files deleted, 44+ cache files cleaned, 5 docs moved to AI_documentation/)
-- **Dec 26, 2025:** Hygiene Session #5 (6 logs deleted, 7 docs archived, 2 test artifacts removed)
-- **Dec 25, 2025:** Hygiene Session #4 (8 test files moved, 9 docs archived, venv cleaned, chats.db untracked)
-- **Dec 24, 2025:** Phase 1 Configuration Externalization (7 values → `.env`)
-- **Dec 24, 2025:** MongoDB Persona Flavor Enhancement (synthesis prompt fix)
-- **Dec 24, 2025:** Hygiene Session #3 (4 files moved, 11 archived, zero issues)
-- **Dec 23, 2025:** Phase 3 Advanced Memory System (RAG, user profiles, fact extraction)
-- **Dec 23, 2025:** Modular Refactoring (server.py 1,645 → 85 lines, 95% reduction)
-- **Dec 23, 2025:** Hygiene Sessions #1 & #2 (major cleanup, file organization)
+**Key Metrics:**
+- Zero unused imports, dead code, log files, test artifacts ✅
+- Type hints: 95%+ | Technical debt: 1 TODO
+- routes/chat.py: 759 → 279 lines (63% reduction via service layer extraction)
+- server.py: 1,645 → 85 lines (95% reduction via modular refactoring)
 
-**Code Quality Metrics:**
-- Unused imports: **0** ✅
-- Dead code: **0** ✅
-- Log files in repo: **0** ✅
-- Test artifacts in root: **0** ✅
-- Technical debt: **1 TODO** (performance optimization note)
-- Type hints coverage: **95%+**
-- Root Python files: **1** (run_react.py only)
-- Largest backend file: **420 lines** (services/chat_session_service.py)
-- routes/chat.py: **279 lines** (reduced from 759, 63% improvement)
+**Organization:**
+- `tests/`: 12 backend, 23 integration, 10 exploration
+- `src/coordinator/`: 3 routes, 7 services
+- `AI_documentation/`: 43+ docs (5 categories: implementation_history, ux_design_specs, feature_specs, deprecated, roadmaps)
 
-**Project Organization:**
-- `tests/backend/coordinator/`: 12 test files
-- `tests/integration/`: 23 test files (+5 from root)
-- `tests/exploration/`: 10 test files (+3 from root)
-- `src/coordinator/routes/`: 3 route modules
-- `src/coordinator/services/`: 7 service modules (+3 new: message_processing, memory_selection, chat_session)
-- `AI_documentation/`: 43+ docs across 5 categories (+5 moved in Session #6)
+**Root Markdown Policy:** README, CLAUDE, DOCKER_QUICKSTART, NEXT_STEPS, CHANGELOG only - all others → `AI_documentation/`
 
-**Markdown File Policy:**
-Root directory markdown files are limited to essential user-facing documentation:
-- `README.md` - GitHub landing page (user entry point)
-- `CLAUDE.md` - Agent instructions (must remain in root)
-- `DOCKER_QUICKSTART.md` - Primary setup guide (quick access)
-- `NEXT_STEPS.md` - Active development roadmap
-- `CHANGELOG.md` - Version history (standard location)
-- All other `.md` files → `AI_documentation/` subdirectories
-
-**Full History:** See `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md` for complete hygiene session details, refactoring summaries, and architectural improvements.
+**Full History:** `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md`

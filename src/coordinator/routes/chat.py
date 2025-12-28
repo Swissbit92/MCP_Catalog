@@ -15,6 +15,7 @@ from ..config import (
     get_ollama_base,
     get_persona_model,
     get_persona_temperature,
+    get_persona_temperature_override,
     get_model_context_window,
     get_summarization_interval,
     get_fact_extraction_interval,
@@ -132,7 +133,7 @@ def chat(body: ChatBody):
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
-            temperature=get_persona_temperature()
+            temperature=get_persona_temperature_override(card)
         )
         answer = client.complete(system=system, user_prompt=user_compiled)
 
@@ -177,7 +178,8 @@ def chat(body: ChatBody):
             user_compiled=user_compiled,
             mongodb_tools=mongodb_tools,
             metadata=metadata,
-            persona_name=persona_name
+            persona_name=persona_name,
+            persona_card=card
         )
 
     elif brave_tools and not mongodb_tools:
@@ -187,7 +189,8 @@ def chat(body: ChatBody):
             user_compiled=user_compiled,
             tools=tools,
             metadata=metadata,
-            persona_name=persona_name
+            persona_name=persona_name,
+            persona_card=card
         )
 
     elif brave_tools and mongodb_tools:
@@ -197,7 +200,8 @@ def chat(body: ChatBody):
             user_compiled=user_compiled,
             brave_tools=brave_tools,
             metadata=metadata,
-            persona_name=persona_name
+            persona_name=persona_name,
+            persona_card=card
         )
 
     else:
@@ -205,7 +209,7 @@ def chat(body: ChatBody):
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
-            temperature=get_persona_temperature()
+            temperature=get_persona_temperature_override(card)
         )
         answer = client.complete(system=system, user_prompt=user_compiled)
         answer, was_rewritten = post_process_first_person(answer, persona_name)
@@ -263,7 +267,7 @@ def greet(body: GreetBody):
     client = LC_OllamaClient(
         base=get_ollama_base(),
         model=get_persona_model(),
-        temperature=get_persona_temperature(),
+        temperature=get_persona_temperature_override(card),
     )
     answer = client.complete(system=system, user_prompt=user_prompt)
 

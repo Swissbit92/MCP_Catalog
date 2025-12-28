@@ -10,7 +10,7 @@ import logging
 from typing import Optional, Any
 
 from ..schemas import ResponseMetadata
-from ..config import get_ollama_base, get_persona_model, get_persona_temperature
+from ..config import get_ollama_base, get_persona_model, get_persona_temperature, get_persona_temperature_override
 from ..llm_client import LC_OllamaClient
 from ..tool_definitions import build_mongodb_synthesis_prompt
 from .citation_service import validate_citations
@@ -39,7 +39,8 @@ class QueryHandlerService:
         user_compiled: str,
         mongodb_tools: list,
         metadata: ResponseMetadata,
-        persona_name: str
+        persona_name: str,
+        persona_card: dict
     ) -> dict:
         """Handle MongoDB-only query.
 
@@ -85,7 +86,7 @@ class QueryHandlerService:
                 client = LC_OllamaClient(
                     base=get_ollama_base(),
                     model=get_persona_model(),
-                    temperature=get_persona_temperature()
+                    temperature=get_persona_temperature_override(persona_card)
                 )
 
                 # Build enhanced synthesis prompt with persona flavor guidance
@@ -136,7 +137,7 @@ User Query: {user_compiled}"""
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
-            temperature=get_persona_temperature()
+            temperature=get_persona_temperature_override(persona_card)
         )
         answer = client.complete(system=system_prompt, user_prompt=user_compiled)
         answer, was_rewritten = post_process_first_person(answer, persona_name)
@@ -165,7 +166,8 @@ User Query: {user_compiled}"""
         user_compiled: str,
         tools: list,
         metadata: ResponseMetadata,
-        persona_name: str
+        persona_name: str,
+        persona_card: dict
     ) -> dict:
         """Handle Brave-only query.
 
@@ -185,7 +187,7 @@ User Query: {user_compiled}"""
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
-            temperature=get_persona_temperature(),
+            temperature=get_persona_temperature_override(persona_card),
             mcp_client=self.brave_client
         )
 
@@ -247,7 +249,8 @@ User Query: {user_compiled}"""
         user_compiled: str,
         brave_tools: list,
         metadata: ResponseMetadata,
-        persona_name: str
+        persona_name: str,
+        persona_card: dict
     ) -> dict:
         """Handle Multi-MCP query (Brave + MongoDB).
 
@@ -266,7 +269,7 @@ User Query: {user_compiled}"""
         client = LC_OllamaClient(
             base=get_ollama_base(),
             model=get_persona_model(),
-            temperature=get_persona_temperature(),
+            temperature=get_persona_temperature_override(persona_card),
             mcp_client=self.brave_client
         )
 
