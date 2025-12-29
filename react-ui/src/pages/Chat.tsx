@@ -377,7 +377,7 @@ const Chat: React.FC = () => {
 
       {/* Main Chat Area */}
       <div
-        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 relative ${
           isSidebarOpen ? 'md:ml-[320px]' : ''
         }`}
         onTouchStart={handleTouchStart}
@@ -433,7 +433,7 @@ const Chat: React.FC = () => {
         </div>
         </div>
 
-        {/* Messages Container */}
+        {/* Messages Container - with indicators positioned absolutely inside */}
         <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 min-h-0 relative">
           <div className="space-y-3 md:space-y-4 pb-20">
             {messages.length === 0 && currentSession && !initializingSession ? (
@@ -462,10 +462,10 @@ const Chat: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Fixed indicator layer - positioned absolutely to prevent layout shifts */}
+          {/* Indicators - positioned absolutely inside Messages Container to not affect flex layout */}
           <AnimatePresence mode="wait">
             {isSearching && !initializingSession && toolType !== 'none' && (
-              <div className="absolute bottom-4 left-4 z-10 pointer-events-none">
+              <div className="fixed bottom-24 left-4 md:left-6 z-50 pointer-events-none">
                 <ToolIndicator
                   toolType={toolType}
                   personaName={selectedPersona?.display_name}
@@ -474,7 +474,7 @@ const Chat: React.FC = () => {
               </div>
             )}
             {!isSearching && loading && !initializingSession && (
-              <div className="absolute bottom-4 left-4 z-10 pointer-events-none">
+              <div className="fixed bottom-24 left-4 md:left-6 z-50 pointer-events-none">
                 <TypingIndicator />
               </div>
             )}
