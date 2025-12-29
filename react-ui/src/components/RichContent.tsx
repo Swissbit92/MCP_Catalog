@@ -49,17 +49,36 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
 // Helper to parse inline markdown (bold, italic, links, URLs)
 const parseInlineMarkdown = (text: string, startKey: number): React.ReactNode[] => {
   let key = startKey;
-  
-  // Process bold first (**text**) - greedy to handle multiple on same line
-  const boldParts: React.ReactNode[] = [];
-  text.split(/(\*\*[^*]+\*\*)/).forEach((segment, i) => {
+
+  // Process <br> tags first (literal HTML breaks from LLM)
+  const brParts: React.ReactNode[] = [];
+  text.split(/(<br\s*\/?>)/i).forEach((segment, i) => {
     if (i % 2 === 0) {
-      // Not a bold match - will process for italic/links later
-      boldParts.push(segment);
+      // Not a br match - will process for bold/italic later
+      brParts.push(segment);
     } else {
-      // Bold match - strip ** and wrap in <strong>
-      const content = segment.slice(2, -2);
-      boldParts.push(<strong key={`bold-${key++}`} className="font-bold">{content}</strong>);
+      // br match - replace with actual React <br />
+      brParts.push(<br key={`br-${key++}`} />);
+    }
+  });
+
+  // Process bold (**text**) - greedy to handle multiple on same line
+  const boldParts: React.ReactNode[] = [];
+  brParts.forEach((part) => {
+    if (typeof part === 'string') {
+      part.split(/(\*\*[^*]+\*\*)/).forEach((segment, i) => {
+        if (i % 2 === 0) {
+          // Not a bold match - will process for italic/links later
+          boldParts.push(segment);
+        } else {
+          // Bold match - strip ** and wrap in <strong>
+          const content = segment.slice(2, -2);
+          boldParts.push(<strong key={`bold-${key++}`} className="font-bold">{content}</strong>);
+        }
+      });
+    } else {
+      // Already a React node (br), keep as-is
+      boldParts.push(part);
     }
   });
   

@@ -761,6 +761,30 @@ Backend architecture improvements focused on eliminating code duplication, extra
 - Particle effects optimized for 60fps
 - Reduced motion support for accessibility
 
+### Typing Indicator Layout Fix (Dec 29, 2025)
+**Status:** ✅ Resolved - Critical UX bug where layout collapsed when indicators appeared
+
+**Problem:** When typing/tool indicators appeared, the input message bar would jump to the top of the screen with huge empty space filling the chat area.
+
+**Root Cause:** `AnimatePresence` wrapper was a flex child even though its children were absolutely positioned, disrupting flex layout calculation.
+
+**Solution:**
+- Changed indicator positioning from `absolute` to `fixed` (viewport-relative)
+- Moved indicators inside Messages Container to prevent flex layout disruption
+- Increased z-index to 50 to ensure visibility above all content
+
+**Files Modified:**
+- `react-ui/src/pages/Chat.tsx` (lines 437, 466-481) - Fixed positioning and container structure
+- `react-ui/src/components/RichContent.tsx` (lines 53-83) - Added `<br>` tag parsing for LLM responses
+
+**Prevention Guidelines:**
+- Never add flex children that don't take up space (absolutely/fixed positioned components)
+- Place `AnimatePresence` wrappers outside flex containers or inside non-flex parents
+- Use `fixed` positioning for viewport-locked overlays
+- Always test: send message, scroll up, send again, verify indicators appear without layout shifts
+
+**Documentation:** `AI_documentation/01_implementation_history/TYPING_INDICATOR_LAYOUT_FIX.md`
+
 ### Mobile Optimization
 - ChatGPT-style responsive layout: sidebar pushes content on desktop, overlays on mobile
 - Touch gestures, swipe navigation
