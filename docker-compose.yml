@@ -66,10 +66,12 @@ services:
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
       BRAVE_ENABLED_RARITIES: ${BRAVE_ENABLED_RARITIES:-rare,epic,legendary}
       BRAVE_MAX_RESULTS: ${BRAVE_MAX_RESULTS:-5}
+      BRAVE_MCP_URL: http://brave-mcp:8080  # HTTP transport to MCP service
 
       # MongoDB MCP (optional - requires connection URI)
       MONGODB_URI: ${MONGODB_URI:-}
       MONGODB_ENABLED: ${MONGODB_ENABLED:-false}
+      MONGODB_MCP_URL: http://mongodb-mcp:3000  # HTTP transport to MCP service
 
       # Memory & RAG settings
       MEMORY_EMBEDDING_MODEL: ${MEMORY_EMBEDDING_MODEL:-nomic-embed-text:latest}
@@ -88,6 +90,10 @@ services:
 
       # Persona definitions (read-only)
       - ./personas:/app/personas:ro
+
+      # Docker socket - enables backend to spawn ephemeral MCP containers
+      # This is the standard pattern for container orchestration (like CI/CD runners)
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8000:8000"
     healthcheck:
@@ -125,6 +131,10 @@ services:
     networks:
       - mcp-network
     restart: unless-stopped
+
+  # Note: Brave MCP no longer runs as a service
+  # Using ephemeral container pattern: backend spawns `docker run -i --rm` on-demand
+  # See: src/coordinator/mcp_client_stdio.py
 
 volumes:
   # Ollama models storage (can be large - 4-10GB per model)
