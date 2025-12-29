@@ -1,6 +1,6 @@
 # src/coordinator/mongodb/__init__.py
 # MongoDB MCP client package
-# Combines Docker client and operations into unified interface
+# Uses long-running Docker client (MongoDB MCP doesn't support ephemeral pattern)
 
 from __future__ import annotations
 
@@ -28,8 +28,11 @@ class MongoDBMCPClient(MongoDBDockerClient, MongoDBOperations):
     Combined MongoDB MCP client with Docker management and high-level operations.
 
     Inherits from:
-    - MongoDBDockerClient: Low-level Docker subprocess and JSON-RPC protocol
+    - MongoDBDockerClient: Long-running Docker process and JSON-RPC protocol
     - MongoDBOperations: High-level MongoDB operations (find, aggregate, count, etc.)
+
+    Note: MongoDB MCP uses long-running container pattern (not ephemeral like Brave)
+    The container starts once and stays alive for multiple requests.
 
     Usage:
         client = MongoDBMCPClient()

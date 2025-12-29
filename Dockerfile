@@ -18,9 +18,23 @@ WORKDIR /app
 # Install system dependencies
 # - curl: health checks
 # - git: some Python packages require it
+# - Docker CLI: for spawning MCP server containers (Brave Search, MongoDB)
 RUN apt-get update && apt-get install -y \
     curl \
     git \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CLI for MCP container spawning
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -38,11 +52,14 @@ COPY personas/ ./personas/
 RUN mkdir -p /app/data /app/logs
 
 # Create non-root user for security
+# NOTE: Running as root to allow Docker socket access for MCP containers
+# In production, use Docker group permissions instead
 RUN useradd -m -u 1000 coordinator && \
     chown -R coordinator:coordinator /app
 
 # Switch to non-root user
-USER coordinator
+# DISABLED: Need root for Docker socket access (MCP container spawning)
+# USER coordinator
 
 # Health check - verifies backend is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

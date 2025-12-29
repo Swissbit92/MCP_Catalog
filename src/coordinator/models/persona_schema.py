@@ -229,12 +229,6 @@ class PersonaCard(BaseModel):
     bg: str = Field(default="", description="Chat background path")
     emoji: str = Field(default="", max_length=4, description="Fallback avatar emoji")
 
-    # Permissions
-    allowed_mcp: List[str] = Field(
-        default_factory=list,
-        description="Allowed MCP servers (chat, graphrag, brave_search, etc.)"
-    )
-
     # Core personality
     lore: List[str] = Field(
         default_factory=list,

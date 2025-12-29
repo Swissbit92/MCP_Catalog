@@ -13,8 +13,8 @@ def force_multi_message_split(response: str, query: str) -> str:
     """
     Force-split LLM response into multi-message format if it doesn't have <msg> tags.
 
-    PHASE 2 FIX: Since dolphin-llama3:8b doesn't reliably follow <msg> tag instructions,
-    this function intelligently splits responses using heuristics.
+    BUGFIX (Dec 28, 2025): Reduced aggressiveness to prevent unwanted splits.
+    Only splits responses that are VERY long (500+ chars) with clear conversational breaks.
 
     Args:
         response: LLM response string (without <msg> tags)
@@ -27,21 +27,34 @@ def force_multi_message_split(response: str, query: str) -> str:
     if '<msg>' in response:
         return response
 
-    # Don't split very short responses (greetings, thanks, etc.)
-    if len(response.strip()) < 50:
+    # Don't split short responses (< 500 chars) - keep them as single message
+    if len(response.strip()) < 500:
         return response
 
-    # Strategy 1: Split by paragraphs (double newline)
-    paragraphs = [p.strip() for p in response.split('\n\n') if p.strip()]
+    # BUGFIX: Remove paragraph splitting - too aggressive
+    # Only split VERY long responses (800+ chars) with clear conversational structure
+    response_clean = response.strip()
 
-    if len(paragraphs) >= 2:
-        # We have natural paragraph breaks - use them
-        messages = []
-        for para in paragraphs[:4]:  # Cap at 4 messages
-            messages.append(f'<msg>{para}</msg>')
+    # Strategy 1: Only split if response is VERY long (800+ chars) AND has question at end
+    question_match = re.search(r'(.*?)([.!]\s+)(.+\?)\s*$', response_clean, re.DOTALL)
+    if question_match and len(response_clean) > 800:
+        main_content = question_match.group(1) + question_match.group(2)
+        question = question_match.group(3)
 
-        logger.info(f"[Phase2-ForceSplit] Split by paragraphs: {len(messages)} messages")
-        return '\n'.join(messages)
+        # Split main content if it's very long
+        if len(main_content) > 400:
+            # Split main content in half
+            mid_point = len(main_content) // 2
+            # Find nearest sentence break
+            split_point = main_content.rfind('. ', 0, mid_point + 50)
+            if split_point > 0:
+                first_part = main_content[:split_point + 1].strip()
+                second_part = main_content[split_point + 1:].strip()
+                logger.info(f"[Phase2-ForceSplit] Split long response with question: 3 messages")
+                return f'<msg>{first_part}</msg>\n<msg>{second_part}</msg>\n<msg>{question}</msg>'
+
+        logger.info(f"[Phase2-ForceSplit] Split long response with question: 2 messages")
+        return f'<msg>{main_content.strip()}</msg>\n<msg>{question}</msg>'
 
     # Strategy 2: Split long single paragraph by sentences
     response_clean = response.strip()
