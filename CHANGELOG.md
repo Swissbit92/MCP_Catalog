@@ -8,22 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Option 6: Glassmorphic + Rarity Hybrid Background System** ✅ (Jan 1, 2026) - Implemented sophisticated rarity-adaptive background theming system:
+- **Option 6: Rarity-Adaptive Background System** ✅ (Jan 1, 2026) - Implemented rarity-based background theming with interactive card selection:
   - ✅ **Rarity-Based Theming**: Dynamic backgrounds that adapt based on selected persona's rarity tier
   - ✅ **4 Rarity Tiers**: Common (Blue #60a5fa), Rare (Cyan #06b6d4), Epic (Purple #a78bfa), Legendary (Gold #fbbf24)
   - ✅ **Deep Space Aesthetic**: Gradient backgrounds with nebula overlays for immersive sci-fi experience
-  - ✅ **Glassmorphism Effects**: Translucent cards with backdrop blur for premium modern feel
   - ✅ **Contextual Activation**: Neutral background on home page, rarity theming on agent selection & chat pages
   - ✅ **Smooth Transitions**: 0.8s cubic-bezier animations between rarity switches
+  - ✅ **Clickable Character Cards**: Full card clickable for selection, hover states, selection feedback with pulsing halo
+  - ✅ **Continuous Particle System**: Ambient particles on agent selection and chat pages
   - ✅ **CSS Architecture**: 40 CSS variables across 4 rarity tiers, utility classes (`.space-background`, `.nebula-overlay`, `.glass-card`)
   - ✅ **Production Testing**: Comprehensive Playwright test suite validating all 4 rarity tiers in both dev and Docker environments
   - ✅ **Performance**: CSS-only system with minimal overhead (+336B CSS, +72B JS)
-  - **Files Modified**: `react-ui/src/index.css`, `react-ui/src/App.tsx`, `react-ui/src/pages/Home.tsx`, `react-ui/src/pages/Chat.tsx`, `react-ui/src/pages/CharacterCardV2Showcase.tsx`
+  - ❌ **Phase 1 Deferred**: Full glassmorphic UI polish (translucent message bubbles, rarity-adaptive buttons, glass inputs) - foundation deemed sufficient
+  - **Files Modified**: `react-ui/src/index.css`, `react-ui/src/App.tsx`, `react-ui/src/pages/Home.tsx`, `react-ui/src/pages/Chat.tsx`, `react-ui/src/pages/CharacterCardV2Showcase.tsx`, `react-ui/src/components/CharacterCard.tsx`, `react-ui/src/components/EnergyParticles.tsx`
   - **Research**: 10 design options evaluated, scored on 8 criteria (2026 trends, accessibility, performance, gacha appeal, AI trust, differentiation)
   - **Mockups Created**: 10 interactive HTML mockups showcasing different aesthetic approaches
-  - **Development Time**: 5 hours (research, mockups, implementation, testing, Docker deployment)
+  - **Development Time**: ~4 hours (research, mockups, implementation, testing, Docker deployment)
   - **Status**: Production-ready, deployed to Docker, all tests passing
-  - **Documentation**: Updated CLAUDE.md with background system specification
+  - **Documentation**: Updated CLAUDE.md with background system specification, archived gap analysis in `AI_documentation/01_implementation_history/OPTION6_GAP_ANALYSIS.md`
 
 - **Prompt System Optimization** ✅ (Dec 28, 2025) - Optimized persona system prompts with comprehensive quality testing:
   - ✅ **Token Efficiency**: Reduced system prompt from 3,543 → 2,523 tokens (-1,020 tokens, -28.8%)

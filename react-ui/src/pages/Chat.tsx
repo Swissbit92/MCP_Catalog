@@ -8,41 +8,6 @@ import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 import { Menu, X } from 'lucide-react';
 
-// Persona color schemes based on rarity (matching character cards)
-const getPersonaColorScheme = (rarity?: string) => {
-  switch (rarity) {
-    case 'legendary':
-      return {
-        primary: 'from-yellow-500 to-amber-600',
-        secondary: 'from-yellow-400 to-amber-500',
-        accent: 'text-yellow-600',
-        bgGradient: 'from-yellow-100/20 to-amber-100/20',
-      };
-    case 'epic':
-      return {
-        primary: 'from-purple-500 to-violet-600',
-        secondary: 'from-purple-400 to-violet-500',
-        accent: 'text-purple-600',
-        bgGradient: 'from-purple-100/20 to-violet-100/20',
-      };
-    case 'rare':
-      return {
-        primary: 'from-blue-500 to-cyan-600',
-        secondary: 'from-blue-400 to-cyan-500',
-        accent: 'text-blue-600',
-        bgGradient: 'from-blue-100/20 to-cyan-100/20',
-      };
-    case 'common':
-    default:
-      return {
-        primary: 'from-gray-500 to-slate-600',
-        secondary: 'from-gray-400 to-slate-500',
-        accent: 'text-gray-600',
-        bgGradient: 'from-gray-100/20 to-slate-100/20',
-      };
-  }
-};
-
 const Chat: React.FC = () => {
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);

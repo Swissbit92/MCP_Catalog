@@ -275,11 +275,16 @@ Optional - See `.env.docker` for complete list with defaults:
 
 **Typography:** Outfit (display), Manrope (body), Space Mono (mono). Use `font-display`, `font-body`, `font-mono` classes.
 
-**Background System (Option 6: Glassmorphic + Rarity Hybrid):**
-- **Implementation:** Rarity-adaptive backgrounds combining glassmorphism with dynamic color theming
-- **Home Page:** Neutral slate gradient (introduction page, no persona context)
-- **Agent Selection & Chat:** Rarity-based space backgrounds with nebula overlays
-- **CSS Classes:** `.space-background`, `.nebula-overlay`, `.glass-card`
+**Background System (Option 6: Rarity-Adaptive Backgrounds):**
+- **Status:** Partial implementation (Jan 1, 2026) - Background colors + interactions complete, glassmorphic polish deferred
+- **Implemented:**
+  - Rarity-adaptive background colors with dynamic theming
+  - Home Page: Neutral slate gradient (no persona context)
+  - Agent Selection & Chat: Rarity-based space backgrounds with nebula overlays
+  - Clickable character cards with selection feedback and hover states
+  - Continuous particle system (agent page + chat)
+- **Deferred:** Full glassmorphic UI (translucent message bubbles, rarity-adaptive buttons, glass inputs)
+- **CSS Classes:** `.space-background`, `.nebula-overlay`, `.glass-card` (defined but not widely applied)
 - **Rarity Colors:**
   - Common (Blue): `#60a5fa` accent, `#0a0e27` space - AI trust
   - Rare (Cyan): `#06b6d4` accent, `#0a1628` space - Tech reliability
@@ -287,6 +292,7 @@ Optional - See `.env.docker` for complete list with defaults:
   - Legendary (Gold): `#fbbf24` accent, `#1f1a0a` space - Ultimate cosmic
 - **Transitions:** Smooth 0.8s cubic-bezier animations between rarity switches
 - **Implementation:** `react-ui/src/index.css` (40 CSS variables), `react-ui/src/App.tsx` (body class management)
+- **Archive:** See `AI_documentation/01_implementation_history/OPTION6_GAP_ANALYSIS.md` for rejected Phase 1 details
 
 **Animations:** See `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS, SPRING_CONFIGS
 **Full Spec:** `UX_IMPROVEMENT_PLAN.md`, `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`

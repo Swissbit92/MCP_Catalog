@@ -1,51 +1,44 @@
 # Next Steps - MCP Coordinator Development Roadmap
 
 **Last Updated:** January 1, 2026
-**Current Status:** 9/10 Critical Issues Resolved (90% Complete)
+**Current Status:** UX Polish Complete (Option 6 + Animation Refinements)
 **Architecture Score:** 75/100 (was 59/100, +27% improvement)
 
 ---
 
-## 🚧 Current Implementation: Option 6 UX Polish
+## ✅ Completed: Option 6 UX Polish + Animation Refinements
 
-**Status:** In Progress (Jan 1, 2026)
+**Status:** Complete (Jan 1, 2026)
 **Priority:** ⭐⭐⭐⭐⭐ HIGH - Visual Impact
 **Tracking Document:** [OPTION6_GAP_ANALYSIS.md](OPTION6_GAP_ANALYSIS.md)
 
-**Goal:** Complete Option 6 visual implementation with glassmorphism and rarity-adaptive UI elements.
+**Final Implementation:**
+- [x] **Phase 1-3:** Option 6 background system, interaction fixes, particle system
+- [x] **Phase 4:** UX Refinements (Jan 1, 2026)
+  - [x] Removed particles from header (all pages)
+  - [x] Removed particles from chat page background
+  - [x] Removed particles from chat history sidebar
+  - [x] Optimized character card hover effects (research-backed)
+    - Removed rotation animation (user feedback: distracting)
+    - Reduced hover duration to 150ms (Nielsen Norman Group standard)
+    - Fixed asymmetric timing (hover-in/out now consistent at 150ms)
+    - Applied easeOut curve for smooth deceleration
+  - [x] Fixed inconsistent click feedback across all personas
+  - [x] Removed unused FloatingParticles components
+  - [x] Cleaned up dead code (zero build warnings)
 
-**Current Gap:** Background colors implemented, but missing premium glassmorphic UI polish from mockup.
+**Key Decisions:**
+- **Particle removal:** User preference for cleaner aesthetic (Option 6 glassmorphism sufficient)
+- **Animation timing:** 150ms standard per NN/G research (100-200ms sweet spot for simple hover effects)
+- **Consistency:** Hover-in and hover-out use identical timing (best practice per 2025 motion design guidelines)
 
-**Implementation Plan:**
-- **Phase 1: Visual Polish** (4-5h) - Glassmorphic message bubbles, rarity-adaptive buttons/inputs, glow effects
-- **Phase 2: Interaction Fixes** (2h) - Clickable character cards, hover states, selection feedback
-- **Phase 3: Particle Bugs** (1h) - Fix agent page particles, fix chat page disappearing particles
+**Research Sources:**
+- [Nielsen Norman Group: Animation Duration](https://www.nngroup.com/articles/animation-duration/)
+- [Motion Design Principles (2025)](https://www.mockplus.com/blog/post/20-motion-design-principles-with-examples)
+- [Card Hover Effects Best Practices](https://www.numberanalytics.com/blog/mastering-hover-effects-in-ux-design)
 
-**Current Phase:** Phase 3 Complete ✅
-
-**Implementation Progress:**
-- [x] Background color system (40 CSS variables, 4 rarity tiers)
-- [x] Gap analysis completed (OPTION6_GAP_ANALYSIS.md)
-- [x] Phase 1.1: Glassmorphic message bubbles with backdrop blur (REVERTED - user feedback)
-- [x] Phase 1.2: Rarity-adaptive UI system (buttons, inputs, badges)
-- [x] Phase 1.3: Glassmorphic cards & panels (Home.tsx REVERTED - user feedback, CharacterCollection kept)
-- [ ] Phase 1.4: Polish & refinement (DEFERRED)
-- [x] Phase 2: Interaction improvements (complete & tested with Playwright)
-  - [x] Card click = selection only (no navigation)
-  - [x] Choose button = navigate to chat (hover overlay - original design)
-  - [x] Selection state persists across navigation (uses PersonaContext)
-  - [x] Background changes to match selected card rarity
-  - [x] Hover glow removed (user feedback)
-- [x] Phase 3: Fix particle bugs (complete)
-  - [x] Fixed EnergyParticles with tsParticles v3 initialization
-  - [x] Agent page particles working (30 particles, increased visibility)
-  - [x] Chat page particles continuous (isActive={true})
-  - [x] Removed particles from Home page (no rarity background)
-
-**Effort:** 7-8 hours total
-**Expected Impact:** Premium visual aesthetic matching Option 6 mockup, improved UX
-
-**See:** [OPTION6_GAP_ANALYSIS.md](OPTION6_GAP_ANALYSIS.md) for detailed implementation plan and checklist.
+**Effort:** ~8 hours total
+**Impact:** Production-grade UX with research-backed animation standards
 
 ---
 
