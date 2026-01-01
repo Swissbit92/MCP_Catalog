@@ -24,6 +24,9 @@ tiktoken==0.12.0
 # Phase 3: RAG & Vector Search
 faiss-cpu==1.13.1
 
+# Evaluation & Quality Metrics
+ragas==0.2.3
+
 # Note: This project requires Node.js and npm for the React UI
 # Install Node.js from: https://nodejs.org/
 # After installing Node.js, run: cd react-ui && npm install

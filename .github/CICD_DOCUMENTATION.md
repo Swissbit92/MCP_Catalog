@@ -11,10 +11,10 @@
 This repository uses GitHub Actions for continuous integration and deployment. The pipeline automatically runs tests, builds the application, and performs code quality checks on every push and pull request.
 
 **Quick stats:**
-- **5 automated jobs** run in parallel
+- **6 automated jobs** run in parallel (including RAGAS evaluation)
 - **~5 minutes** per push (typical)
 - **Free** (public repository)
-- **360+ tests** executed automatically
+- **417+ tests** executed automatically (360+ backend + 57+ RAGAS evaluation)
 - **68%+ code coverage** tracked
 
 ## Workflows
@@ -48,6 +48,42 @@ This repository uses GitHub Actions for continuous integration and deployment. T
 - `test_repositories.py` - Repository pattern tests
 - `test_intent_classification.py` - Intent classifier (360 test cases)
 - `test_phase3_simple.py` - Phase 3 memory system (11 component tests)
+
+#### RAGAS Persona Quality Evaluation
+- **Runtime**: Ubuntu Latest, Python 3.11
+- **Timeout**: 15 minutes
+- **Steps**:
+  1. Checkout code
+  2. Set up Python 3.11 with pip caching
+  3. Install dependencies (including RAGAS framework)
+  4. Run RAGAS evaluation tests (fast unit tests only)
+  5. Validate golden Q&A datasets
+  6. Upload test results artifacts
+
+**What is RAGAS?**
+RAGAS (RAG Assessment) is an evaluation framework for measuring persona response quality using four key metrics:
+- **Faithfulness**: Is the answer grounded in retrieved context? (Target: ≥0.85)
+- **Answer Relevancy**: Does the answer address the question? (Target: ≥0.90)
+- **Context Precision**: Is retrieved context relevant? (Target: ≥0.80)
+- **Context Recall**: Was all relevant context retrieved? (Target: ≥0.80)
+
+**Test Files Executed:**
+- `test_metrics.py` - F1 score calculation, regression detection (16 tests)
+- `test_golden_examples.py` - Golden Q&A schema validation (20 tests)
+- `test_ragas_evaluator.py` - RAGAS evaluator unit tests (12 tests)
+- `test_persona_quality.py` - Persona quality validation (9 tests: 6 fast, 3 skipped slow)
+
+**Note:** Slow integration tests requiring OpenAI API are skipped in CI (--skip-slow flag). Full RAGAS evaluation with LLM scoring requires manual execution with API credentials.
+
+**Golden Q&A Datasets:**
+- `eeva_golden_qa.json` - 10 questions (Bitcoin expert persona)
+- `frieren_golden_qa.json` - 10 questions (Elven mage persona)
+- `gojo_golden_qa.json` - 10 questions (Jujutsu sorcerer persona)
+
+**Failure Conditions:**
+- Any fast unit test fails
+- Golden Q&A validation fails (missing files, invalid schema)
+- Dataset quality below minimum standards (< 10 questions, missing difficulty levels)
 
 #### Frontend Tests (React)
 - **Runtime**: Ubuntu Latest, Node.js 20

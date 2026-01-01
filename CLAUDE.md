@@ -109,13 +109,16 @@ cd react-ui && npm run build
 
 The project has **automated testing** via GitHub Actions that runs on every push:
 - ✅ Backend tests (10 test files, ~360 test cases)
+- ✅ **RAGAS persona quality evaluation** (57 tests: metrics, golden Q&A validation, evaluator tests)
 - ✅ Frontend tests (Jest with coverage reporting)
 - ✅ Production build verification
 - ✅ Code quality checks (syntax, naming, TODOs)
 - ✅ Security scanning (npm audit, secret detection)
 
-**Typical run time:** ~5 minutes (5 jobs in parallel)
+**Typical run time:** ~5 minutes (6 jobs in parallel)
 **View results:** GitHub → Actions tab → See workflow runs
+
+**RAGAS Evaluation:** Validates persona response quality using golden Q&A datasets (Eeva, Frieren, Gojo). Checks faithfulness, answer relevancy, context precision, and context recall metrics. Fast unit tests run in CI; slow integration tests (requiring OpenAI API) run manually.
 
 **Technical reference:** `.github/CICD_DOCUMENTATION.md`
 
@@ -133,6 +136,13 @@ cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 # Integration: test_brave_mcp_connectivity.py, test_intent_classification.py, test_synthesis_integration.py
 # Integration: test_phase2_integration.py, test_memory_phase1.py, test_memory_phase2.py
 # MongoDB: test_mongodb_integration.py, test_mongodb_persona_flavor.py, test_mongodb_eeva_flavor.py
+
+# RAGAS Evaluation (Persona Quality) - 🚧 IN PROGRESS
+# Quantifiable quality metrics using RAGAS framework (faithfulness, answer relevancy, context precision/recall)
+# pytest tests/evaluation/test_persona_quality.py -v                    # All personas
+# pytest tests/evaluation/test_persona_quality.py --persona=eeva -v     # Single persona
+# pytest tests/evaluation/test_ragas_evaluator.py -v                    # Unit tests
+# See: AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md
 ```
 
 ### Ollama Setup
@@ -151,75 +161,24 @@ ollama pull nomic-embed-text:latest
 
 ### Backend (`src/coordinator/`)
 
-**Core Modules:**
-- `server.py` - FastAPI app entry point, CORS middleware, router assembly (~85 lines)
-- `startup.py` - Application initialization, dependency injection, database setup
-- `schemas.py` - Pydantic request/response models for API endpoints
-- `config.py` - Pydantic Settings for centralized, validated configuration (Ollama, Brave, MongoDB)
-
-**Route Handlers (`routes/`):**
-- `chat.py` - Chat endpoints (`/persona/chat`, `/sessions/{id}/chat`, `/persona/greet`)
-- `sessions.py` - Session CRUD (`/sessions`, `/sessions/{id}`, import/export)
-- `personas.py` - Persona endpoints (`/personas`, `/persona/summary`)
-
-**Services (`services/`):**
-- `llm_completion_service.py` - Basic LLM completion without tool calling (Phase 2)
-- `tool_calling_service.py` - Autonomous tool calling orchestration (Phase 2)
-- `citation_service.py` - Web search citation validation and hallucination prevention (Phase 2 refactored)
-- `query_handler_service.py` - MCP query routing with DRY finalization (Phase 2)
-- `first_person_service.py` - First-person voice enforcement for persona responses
-- `message_processing_service.py` - Multi-message parsing and formatting
-- `chat_session_service.py` - Chat session management
-- `mongodb_handlers.py` - MongoDB tool handlers with caching (Bitcoin price, trading data)
-
-**Business Logic:**
-- `persona_memory.py` - Persona card loading, CV summary generation, prompt building
-- `memory_manager.py` - MemoryManager for importance scoring, ConversationSummarizer
-- `llm_client.py` - LangChain Ollama client wrapper with advanced sampling support
-- `tool_definitions.py` - Tool/function definitions for LLM function calling
-
-**Infrastructure:**
-- `ollama_utils.py` - Ollama health checks, model availability assertions
-- `mcp_client_stdio.py` - Ephemeral STDIO MCP client for Brave Search (Phase 1: consolidated from 4 implementations)
-- `mongodb_mcp_client.py` - MongoDB MCP client for database operations (to be migrated to STDIO)
-- `cache.py` - MongoDB caching layer with TTL support
-
-**Data Models (`models/`):**
-- `persona_schema.py` - PersonaCard, VoiceProfile, EmotionalProfile, PsychologicalProfile
-- `sampling_presets.py` - SamplingConfig and preset library (creative, balanced, precise, etc.)
-- `mcp_models.py` - Shared MCP models: SearchResult, MCPError hierarchy (Phase 1)
-
-**Database Layer (`repositories/`):**
-- `session_repository.py` - Chat session CRUD operations
-- `message_repository.py` - Message persistence and retrieval
-- `summary_repository.py` - Conversation summary management
-- `emotional_state_repository.py` - Emotional state tracking (Phase 2.2)
+**Core:** `server.py`, `startup.py`, `schemas.py`, `config.py`
+**Routes:** `chat.py`, `sessions.py`, `personas.py`
+**Services:** `llm_completion_service.py`, `tool_calling_service.py`, `citation_service.py`, `query_handler_service.py`, `first_person_service.py`, `message_processing_service.py`, `chat_session_service.py`, `mongodb_handlers.py`
+**Business Logic:** `persona_memory.py`, `memory_manager.py`, `llm_client.py`, `tool_definitions.py`
+**Infrastructure:** `ollama_utils.py`, `mcp_client_stdio.py`, `mongodb_mcp_client.py`, `cache.py`
+**Models:** `persona_schema.py`, `sampling_presets.py`, `mcp_models.py`
+**Repositories:** `session_repository.py`, `message_repository.py`, `summary_repository.py`, `emotional_state_repository.py`
 
 ### Shared (`src/shared/`)
 - `persona_assets.py` - Shared utilities for persona asset paths and loading
 
 ### Frontend (`react-ui/src/`)
-- `pages/` - Top-level routes: `Home.tsx`, `Chat.tsx`, `CharacterCardV2Showcase.tsx`
-- `components/` - Reusable UI: `Header.tsx`, `CharacterCard.tsx`, `CharacterCardV2.tsx`, `SessionList.tsx`, `MessageBubble.tsx`, `PullInterface.tsx`, `CharacterCollection.tsx`, etc.
-- `services/` - API client for backend communication
-- `context/` - React contexts (e.g., PersonaContext for global state)
-- `utils/` - Utility functions
+**Pages:** `Home.tsx`, `Chat.tsx`, `CharacterCardV2Showcase.tsx`
+**Components:** `Header.tsx`, `CharacterCard.tsx`, `SessionList.tsx`, `MessageBubble.tsx`, `PullInterface.tsx`, etc.
+**Services:** API client | **Context:** PersonaContext | **Utils:** Helper functions
 
 ### Personas (`personas/`)
-Each persona is a JSON file defining:
-- `key`, `display_name`, `rarity` (common/rare/epic/legendary)
-- `lore` (background story array), `voice` (greeting, signoff, tics)
-- `do`/`dont` lists, `behavior` traits, `emotional_profile`
-- `expertise` (strong/familiar/avoid topics)
-- `image`, `avatar`, `logo`, `bg` paths for UI assets
-- **Phase 1 additions:**
-  - `model_preferences` - Per-persona sampling config (temperature, preset)
-  - `psychological_profile` - Deep characterization (core_wound, coping_mechanism, defense_style, growth_edge, contradiction_pairs)
-  - `example_dialogues` - User/response pairs to teach LLM correct persona voice (max 20)
-
-**Summary caching**: `personas/_summaries/` contains auto-generated CV-style persona summaries used in system prompts.
-
-**Schema validation**: All persona JSON files are validated against Pydantic schema on load (`src/coordinator/models/persona_schema.py`).
+JSON files with: `key`, `display_name`, `rarity`, `lore`, `voice`, `behavior`, `expertise`, `psychological_profile`, `model_preferences`, `example_dialogues`. Auto-generated summaries cached in `personas/_summaries/`. Schema: `src/coordinator/models/persona_schema.py`.
 
 ### Database Schema (`chats.db`)
 - `chat_sessions`: session_id, persona_key, title, created_at, updated_at
@@ -276,38 +235,12 @@ COORD_URL=http://127.0.0.1:8000                        # Backend URL for fronten
 PERSONA_DIR=personas                                   # Persona JSON directory
 ```
 
-Optional - Basic:
-- `REACT_PORT=3000` - React dev server port (default: 3000)
-- `DEFAULT_PERSONA` - Preselect persona on load
-- `APP_LOGO_PATH`, `USER_AVATAR` - UI branding paths
-- `COORDINATOR_DB_PATH` - Custom SQLite path (default: `chats.db`)
-
-Optional - Memory & RAG (Phase 3):
-- `MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest` - Ollama embedding model for semantic search
-- `MEMORY_SUMMARIZATION_INTERVAL=30` - Messages before triggering auto-summarization
-- `MEMORY_FACT_EXTRACTION_INTERVAL=10` - Messages before fact extraction for user profiles
-
-Optional - LLM Temperature Overrides:
-- `OLLAMA_TEMP_REWRITE=0.2` - Temperature for first-person voice rewrites
-- `OLLAMA_TEMP_SUMMARIZATION=0.3` - Temperature for conversation summarization
-- `OLLAMA_TEMP_FACT_EXTRACTION=0.3` - Temperature for fact extraction
-
-Optional - Brave MCP (Ephemeral STDIO Pattern):
-- `BRAVE_API_KEY` - Brave Search API key (required for web search)
-- `BRAVE_MCP_IMAGE=docker.io/mcp/brave-search` - Docker image for Brave MCP server
-- `BRAVE_MAX_RESULTS=5` - Maximum search results to return
-- `BRAVE_ENABLED_RARITIES=rare,epic,legendary` - Persona rarities with search access
-- `BRAVE_SEARCH_TIMEOUT=30` - Container spawn timeout in seconds
-- `BRAVE_SAFESEARCH=moderate` - Safe search filter (off/moderate/strict)
-
-Optional - MongoDB (Phase 3):
-- `MONGODB_URI` - MongoDB connection URI
-- `MONGODB_ENABLED=false` - Enable MongoDB integration
-- `MONGODB_ENABLED_RARITIES=epic,legendary` - Rarities with MongoDB access
-- `MONGODB_CACHE_CURRENT_PRICE=60` - Cache TTL for current price (seconds)
-- `MONGODB_CACHE_TECHNICAL=60` - Cache TTL for technical analysis (seconds)
-- `MONGODB_CACHE_HISTORICAL=3600` - Cache TTL for historical data (seconds)
-- `MONGODB_CACHE_TRADING=300` - Cache TTL for trading stats (seconds)
+Optional - See `.env.docker` for complete list with defaults:
+- Basic: `REACT_PORT`, `DEFAULT_PERSONA`, `APP_LOGO_PATH`, `COORDINATOR_DB_PATH`
+- Memory/RAG: `MEMORY_EMBEDDING_MODEL`, `MEMORY_SUMMARIZATION_INTERVAL`, `MEMORY_FACT_EXTRACTION_INTERVAL`
+- LLM Temps: `OLLAMA_TEMP_REWRITE`, `OLLAMA_TEMP_SUMMARIZATION`, `OLLAMA_TEMP_FACT_EXTRACTION`
+- Brave MCP: `BRAVE_API_KEY` (required), `BRAVE_ENABLED_RARITIES`, `BRAVE_MAX_RESULTS`, `BRAVE_SEARCH_TIMEOUT`
+- MongoDB: `MONGODB_URI`, `MONGODB_ENABLED_RARITIES`, cache TTLs
 
 ## Code Style
 
@@ -340,17 +273,10 @@ Optional - MongoDB (Phase 3):
 
 #### Design System
 
-**Typography (✅ Updated Dec 28, 2025 - Premium Feel):**
-- **Display/Headings:** Outfit (500, 700, 900 weights) - Modern geometric sans-serif, premium aesthetic - Use `font-display` class or CSS var `--font-display`
-- **Body Text:** Manrope (400, 600, 700 weights) - Semi-rounded, designed for UI/UX, excellent readability - Use `font-body` class or CSS var `--font-body`
-- **Monospace/Technical:** Space Mono (400, 700 weights) - Use `font-mono` class or CSS var `--font-mono`
-- **Type Scale:** 0.75rem to 3rem (CSS vars: `--text-xs` through `--text-5xl`)
-- **Implementation:** Fonts loaded via Google Fonts CDN in `react-ui/public/index.html`
-- **Usage:** Tailwind classes (`font-display`, `font-body`, `font-mono`) or CSS variables
-
-**Colors:** Deep space aesthetic (#0a0e27 base) with nebula accents and rarity overlays (legendary=#FFD700, epic=#DA70D6, rare=#00BFFF, common=#C0C0C0)
-**Animations:** `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS (0.1-1.2s) and SPRING_CONFIGS (snappy/smooth/bouncy)
-**Spacing:** 0.25-3rem scale (--space-1 to --space-12)
+**Typography:** Outfit (display), Manrope (body), Space Mono (mono). Use `font-display`, `font-body`, `font-mono` classes.
+**Colors:** Deep space (#0a0e27) + rarity overlays (legendary=#FFD700, epic=#DA70D6, rare=#00BFFF, common=#C0C0C0)
+**Animations:** See `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS, SPRING_CONFIGS
+**Full Spec:** `UX_IMPROVEMENT_PLAN.md`, `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
 
 #### Accessibility (WCAG AA)
 
@@ -375,92 +301,24 @@ Optional - MongoDB (Phase 3):
 - Verify 4.5:1 contrast, add `aria-label` where needed
 
 **Violations to Avoid:**
-- ❌ System fonts (MUST use Outfit for headings, Manrope for body, Space Mono for mono)
-- ❌ `<div>` for clickable elements (MUST use `<button>` or semantic HTML)
-- ❌ Low contrast ratios (<4.5:1 for body text, <3:1 for large text)
-- ❌ Animations without `will-change` management or `prefers-reduced-motion` support
-
-**Typography Usage Examples:**
-```tsx
-// Headings - use font-display
-<h1 className="font-display font-black text-4xl">Title</h1>
-
-// Body text - use font-body (default, can omit)
-<p className="font-body text-base">Body text</p>
-
-// Technical/stats - use font-mono
-<span className="font-mono text-xs">{latency}ms</span>
-
-// CSS modules - use CSS variables
-.character-name {
-  font-family: var(--font-display);
-  font-weight: 900;
-}
-```
+- ❌ System fonts (MUST use Outfit/Manrope/Space Mono)
+- ❌ `<div>` for clickable elements (use `<button>`)
+- ❌ Low contrast (<4.5:1 body, <3:1 large text)
+- ❌ Animations without `prefers-reduced-motion` support
 
 ## Important Implementation Details
 
 ### MCP (Model Context Protocol) Integration
 **Status:** ✅ Two Proven Patterns (Dec 2025)
 
-MCP servers run as **Docker containers** using STDIO transport. We support two patterns based on MCP server behavior.
+MCP servers run as Docker containers via STDIO transport. Backend mounts `/var/run/docker.sock` to spawn containers on-demand.
 
-**Architecture Overview:**
-```
-Backend Container (mounts /var/run/docker.sock)
-    │
-    ├─> spawns: docker run -i --rm docker.io/mcp/brave-search
-    │   (ephemeral: lives 2-3 seconds, processes request via STDIN/STDOUT, dies)
-    │
-    ├─> spawns: docker run -i --rm docker.io/mcp/mongodb
-    │   (long-running: stays alive for multiple requests)
-    │
-    └─> spawns: docker run -i --rm docker.io/mcp/[any-mcp-server]
-        (universal pattern for all MCP servers)
-```
+**Patterns:**
+- **Ephemeral** (Brave): `docker run -i --rm` per request, dies after 2-3s (stateless)
+- **Long-Running** (MongoDB): Container stays alive for multiple requests (stateful)
 
-**Two Patterns:**
-
-1. **Ephemeral STDIO (Brave Search):**
-   - Spawns `docker run -i --rm` per request
-   - Container lives 2-3 seconds
-   - Dies automatically after response
-   - Perfect for stateless operations
-
-2. **Long-Running STDIO (MongoDB):**
-   - Spawns container once
-   - Stays alive for multiple requests
-   - Must be manually terminated when done
-   - Better for stateful operations
-
-**Key Characteristics:**
-- **STDIO Transport**: Communication via stdin/stdout pipes using JSON-RPC 2.0 protocol
-- **Container Isolation**: Each MCP server is a separate Docker image with complete isolation
-- **Scalable**: Universal pattern works for ANY MCP server (Brave, MongoDB, Neo4j, Google Calendar, etc.)
-- **Container Orchestration**: Backend mounts Docker socket to spawn containers on-demand
-
-**Implementation:**
-- `mcp_client_stdio.py` - Ephemeral STDIO client for Brave Search (reference implementation)
-- `mongodb/` - Long-running STDIO client for MongoDB (reference implementation)
-- `tool_definitions.py` - Tool/function definitions for LLM function calling
-- `startup.py` - MCP client initialization and dependency injection
-
-**Docker Socket Mounting:**
-Backend container requires Docker socket access to spawn MCP containers:
-```yaml
-backend:
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock  # Enables container orchestration
-```
-This is the standard pattern for container orchestration (used by CI/CD runners like GitHub Actions).
-
-**Adding New MCP Servers:**
-See **[docs/ADDING_MCP_SERVERS.md](docs/ADDING_MCP_SERVERS.md)** for comprehensive guide on:
-- Choosing the right pattern (ephemeral vs long-running)
-- Step-by-step implementation instructions
-- Testing and troubleshooting
-- Rarity-based feature gating
-- Best practices and examples
+**Implementation:** `mcp_client_stdio.py` (Brave), `mongodb/` (MongoDB), `tool_definitions.py`
+**Guide:** See `docs/ADDING_MCP_SERVERS.md` for adding new MCP servers
 
 ### Rarity-Based Feature Gating
 
@@ -511,69 +369,18 @@ Update `rarity` in persona JSON:
 - MCP access automatically adjusts based on new tier
 
 ### Brave MCP Integration (Web Search)
-**Status:** ✅ Fully implemented with ephemeral STDIO pattern (Dec 2025)
+**Status:** ✅ Implemented - Rare+ personas perform autonomous web searches with mandatory citations via ephemeral containers (2-3s lifecycle).
 
-Rare+ personas perform autonomous web searches with mandatory citations using ephemeral Docker containers.
-
-**Architecture:**
-- **Transport**: STDIO with ephemeral containers (`docker run -i --rm docker.io/mcp/brave-search`)
-- **Client**: `mcp_client_stdio.py` - BraveMCPClientStdio class
-- **Container Lifecycle**: Spawned on-demand, processes request via stdin/stdout, dies after response
-- **Typical Duration**: 2-3 seconds per search request
-
-**Key Features:**
-- Autonomous search/answer decision-making with 85-90% UI prediction accuracy
-- Mandatory citation format: `🔍 Sources:\n• [Title - Source](url)`
-- Backend validation, rarity-based access (Rare/Epic/Legendary only)
-- Stateless architecture with no long-running MCP service
-
-**Config:**
-- `BRAVE_API_KEY` - Brave Search API key (required)
-- `BRAVE_MCP_IMAGE=docker.io/mcp/brave-search` - Docker image for MCP server
-- `BRAVE_MAX_RESULTS=5` - Maximum search results
-- `BRAVE_ENABLED_RARITIES=rare,epic,legendary` - Rarities with search access (see Rarity-Based Feature Gating)
-- `BRAVE_SEARCH_TIMEOUT=30` - Container timeout in seconds
-
-**Flow:** User query → Frontend predicts → Backend classifies → Spawns ephemeral container → LLM searches → Synthesizes with citations → Container dies → Validates → Renders
-
-**Synthesis Rules (Anti-Hallucination):**
-1. USE ONLY SEARCH RESULTS (no training data)
-2. SYNTHESIZE NATURALLY (coherent narrative)
-3. STAY IN CHARACTER (persona voice)
-4. BE ACCURATE (exact numbers/dates)
-5. MANDATORY CITATIONS (🔍 emoji + markdown links)
-
-**Citation Deduplication (Dec 28, 2025):**
-Hybrid defense-in-depth approach prevents duplicate citation blocks:
-- **Primary Defense**: Backend strips LLM-generated citations before appending verified citations (`llm_client.py:365-379, 475-489`)
-- **Secondary Defense**: Enhanced synthesis prompt with explicit "NO CITATIONS" instruction (`synthesis_prompts.py:170-186`)
-- **Monitoring**: Logs LLM citation violations for continuous improvement (`[Anti-Hallucination] LLM ignored citation instruction`)
-- **Result**: Single clean citation block with 5 verified URLs, no duplicates
-- **Best Practice**: Aligned with 2025 RAG deduplication standards (Perplexity-style)
-
-**Impl:** `mcp_client_stdio.py:55-314`, `llm_client.py:173-187` | **Tests:** `test_synthesis_*.py`, frontend citation tests
+**Config:** `BRAVE_API_KEY` (required), `BRAVE_ENABLED_RARITIES=rare,epic,legendary`, `BRAVE_MAX_RESULTS=5`
+**Rules:** Use only search results, synthesize naturally, stay in character, exact numbers, mandatory citations (🔍 Sources)
+**Citation Deduplication:** Backend strips LLM citations, single clean verified block
 
 ### MongoDB MCP Integration (Trading Data)
-**Status:** ✅ Fully implemented (Dec 2025)
+**Status:** ✅ Implemented - Epic/Legendary personas query Bitcoin data (current price, historical, trading stats, technical analysis).
 
-Epic/Legendary personas query Bitcoin data from MongoDB Atlas with 4 tools: `bitcoin_current_price` (RSI, MACD, Bollinger Bands, EMAs), `bitcoin_historical_prices` (OHLCV 2016-present), `bitcoin_trading_summary` (DCA stats), `bitcoin_technical_analysis` (multi-timeframe signals).
-
-**Config:**
-- `MONGODB_URI` - MongoDB Atlas connection string
-- `MONGODB_TIMEOUT=30` - Operation timeout
-- `MONGODB_ENABLED_RARITIES=epic,legendary` - Rarities with MongoDB access (see Rarity-Based Feature Gating)
-**Caching:** 60s (current), 3600s (historical), per-tool TTL
-
-**Flow:** User query → Backend classifies (`mongodb` intent) → Tools injected → MCP container query → LLM synthesizes → Frontend renders with 🗄️ badge
-
-**Synthesis Rules (Persona Flavor):**
-1. USE ONLY DB DATA (no estimates)
-2. SYNTHESIZE NATURALLY (narrative not JSON)
-3. STAY IN CHARACTER (persona voice)
-4. BE ACCURATE (exact numbers: $87,855.80 not "~$88K")
-5. ADD INTERPRETATION (explain indicators)
-
-**Impl:** `query_handler_service.py` | **Tests:** `test_mongodb_*.py`
+**Config:** `MONGODB_URI`, `MONGODB_ENABLED_RARITIES=epic,legendary`, `MONGODB_TIMEOUT=30`
+**Caching:** 60s (current), 3600s (historical)
+**Rules:** Use only DB data, exact numbers, persona voice, add interpretation
 
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
@@ -583,172 +390,16 @@ Epic/Legendary personas query Bitcoin data from MongoDB Atlas with 4 tools: `bit
 - **Phase 1**: Psychological profile integrated into system prompt for realistic behavior
 
 ### Persona Quality Enhancement (Phase 1 & 2)
-**Status:** ✅ Phase 1 & 2 Complete (Dec 2025)
-
-Type-safe persona system with advanced characterization and emotional tracking.
-
-**Phase 1 Features:**
-- **Pydantic Schema Validation**: All persona JSON validated on load with clear error messages
-- **Centralized Configuration**: `config.py` uses `pydantic-settings` for validated env vars
-- **Advanced Sampling**: Per-persona LLM sampling (temperature, top_k, top_p, repeat_penalty)
-- **Sampling Presets**: Named presets (creative, balanced, precise, chaotic, deterministic)
-- **Psychological Profiles**: Deep characterization with core_wound, coping_mechanism, defense_style, contradiction_pairs
-- **Example Dialogues**: User/response pairs to teach correct persona voice
-
-**Phase 2 Features:**
-- **Emotional State Tracking**: Per-session trust_level, rapport, current_mood tracking
-- **Dynamic Context Injection**: Emotional state injected into system prompts
-- **Heuristic Emotion Detection**: Automatic mood updates from user sentiment signals
-- **All Personas Enhanced**: 6/6 personas have psychological profiles + 50 total example dialogues
-- **UI Integration**: Emotional state resets when clearing messages, deletes with session
-
-**Emotional State Lifecycle:**
-| UI Action | Emotional State |
-|-----------|-----------------|
-| Delete session | Deleted (DB cascade) |
-| Clear messages | Reset to defaults |
-| New message | Updated dynamically |
-
-**Emotional State API:** `GET /sessions/{id}/emotional-state`, `POST /sessions/{id}/chat` (returns state), `DELETE /sessions/{id}/messages` (resets to defaults)
-
-**Sampling Presets:** creative (1.2), balanced (0.9), precise (0.5), chaotic (1.5), deterministic (0.1)
-
-**Testing:** `test_persona_schema.py` (16), `test_phase2_integration.py` (6), frontend `phase2PersonaQuality` tests (14)
+**Status:** ✅ Complete - Pydantic validation, psychological profiles, emotional state tracking, sampling presets (creative/balanced/precise/chaotic/deterministic). API: `GET /sessions/{id}/emotional-state`.
 
 ### Memory Management (Phase 1, 2 & 3)
-**Status:** ✅ All phases complete & production-ready (Dec 23, 2025)
-
-Advanced AI memory with importance scoring, auto-summarization, semantic search (FAISS), and cross-session user profiles.
-
-**Phase 1 (Infrastructure):** DB context loading, token budget monitoring, 4096 token limit enforcement
-**Phase 2 (Intelligence):** Importance scoring (6x names/holdings, 4x personal info, 1.3x questions), auto-summarization every 30 messages, first 3 + last 10 messages always included
-**Phase 3 (Advanced - PRODUCTION):** RAG semantic search (FAISS), cross-session profiles, automated fact extraction (every 10 messages), personas remember users by name
-
-**Key Components:**
-- `memory_manager.py` - Scoring, selection, summarization
-- `memory_rag.py` - FAISS semantic search (Phase 3)
-- `user_profile.py` - Cross-session memory (Phase 3)
-- `fact_extractor.py` - LLM fact extraction (Phase 3)
-
-**DB Schema (Phase 3):** `user_profiles` (user_id, profile_data JSON), `user_sessions` (links users to sessions)
-
-**Dependencies:** `faiss-cpu`, `langchain-community`, `nomic-embed-text:latest` (Ollama embedding model)
-
-**Usage:** Automatic - profiles created at 10 messages, personas remember users across sessions
-**Tests:** `test_memory_phase*.py`, `test_phase3_*.py`
-
-**Critical Bug Fix (Dec 23):** `routes/chat.py:590` - Remove `fact_extractor and` from conditional (enables Phase 3)
+**Status:** ✅ Production - Importance scoring, auto-summarization (every 30 messages), FAISS semantic search, cross-session user profiles. Dependencies: `faiss-cpu`, `langchain-community`, `nomic-embed-text:latest`. See troubleshooting for issues.
 
 ### Prompt System Optimization (Dec 28, 2025)
-**Status:** ✅ Production-ready & deployed with comprehensive quality testing
-
-Optimized persona system prompts for improved token efficiency while maintaining and enhancing quality.
-
-**Key Improvements:**
-- **Token Efficiency:** Reduced from 3,543 → 2,523 tokens (-1,020 tokens, -28.8% reduction)
-- **Context Capacity:** Increased available context from 553 → 1,573 tokens (+184% for conversation history)
-- **Quality Metrics:** Overall score improved 74.0% → 79.2% (+5.2%), pass rate 56.2% → 68.8% (+12.5%)
-- **Conversation Length:** Users can now have 2-3x longer conversations before hitting context limits
-
-**Optimization Changes:**
-1. **First-Person Rules** - Streamlined from 84 lines to 20 lines (saved ~600 tokens)
-   - Removed redundant visual formatting and excessive examples
-   - Improved adherence: 75.0% → 87.5% (+12.5%)
-2. **Multi-Message Examples** - Reduced from 12 to 6 highest-quality examples (saved ~400 tokens)
-   - Maintained 88.9% format usage score
-3. **Consolidated Rules** - Merged overlapping conversational behavior sections (saved ~200 tokens)
-   - Improved voice consistency: 44.4% → 55.6% (+11.1%)
-
-**Test Results (16 scenarios, 7 categories):**
-- ✅ First-person adherence: 75.0% → 87.5% (+12.5%)
-- ✅ Voice consistency: 44.4% → 55.6% (+11.1%)
-- ✅ Persona differentiation: 75.0% → 100.0% (+25.0%)
-- ✅ Multi-message format: 88.9% maintained
-- ✅ Pass rate: 56.2% → 68.8% (+12.5%)
-
-**Files:**
-- `src/coordinator/prompt_builder.py` - Optimized version (deployed)
-- `src/coordinator/prompt_builder.backup_20251228_155820.py` - Original backup
-- `tests/prompt_optimization_tests.py` - Comprehensive test suite
-- `tests/run_prompt_optimization_test.py` - Test runner
-- `tests/apply_prompt_optimization.py` - Deployment script
-
-**Documentation:**
-- `AI_documentation/01_implementation_history/PROMPT_OPTIMIZATION_FINAL_REPORT.md` - Full analysis
-- `AI_documentation/01_implementation_history/PERSONA_PROMPT_SYSTEM_ANALYSIS.md` - Research & scoring
-- `AI_documentation/01_implementation_history/PROMPT_OPTIMIZATION_TEST_REPORT.json` - Raw test data
-
-**Rollback:** If issues detected, backup available at `prompt_builder.backup_20251228_155820.py`
+**Status:** ✅ Deployed - Reduced tokens 3,543→2,523 (-28.8%), improved quality 74%→79%. Rollback: `prompt_builder.backup_20251228_155820.py`. See `AI_documentation/01_implementation_history/PROMPT_OPTIMIZATION_FINAL_REPORT.md`.
 
 ### Backend Core Refactoring (Phase 1 & 2)
-**Status:** ✅ Phase 1 & 2 Complete (Dec 28, 2025)
-
-Backend architecture improvements focused on eliminating code duplication, extracting service layers, and improving maintainability.
-
-**Phase 1 (Quick Wins):**
-- **MCP Client Consolidation**: Deleted 3 deprecated MCP clients (mcp_client.py, mcp_client_exec.py, mcp_client_http.py) - 1,304 LOC removed
-- **Shared Models**: Created `models/mcp_models.py` for SearchResult and MCPError hierarchy to eliminate duplication
-- **Config Deprecation**: Added deprecation warnings to 25 config getter functions for future migration
-- **Impact**: -1,247 LOC total reduction, improved code maintainability
-
-**Phase 2 (Core Refactoring):**
-- **Service Layer Extraction** (Task 1):
-  - Created `services/llm_completion_service.py` (162 LOC) - Basic LLM completion without tool calling
-  - Created `services/tool_calling_service.py` (89 LOC) - Autonomous tool calling orchestration
-  - Refactored `services/citation_service.py` (157 LOC) - Citation generation and hallucination prevention
-  - Foundation for future full delegation from llm_client.py (currently uses delegation pattern)
-- **Query Handler DRY** (Task 2):
-  - Extracted `_finalize_response()` shared method in `services/query_handler_service.py`
-  - Eliminated 45 LOC of duplicated finalization logic across 3 handlers
-  - All handlers (MongoDB, Brave, Multi-MCP) now use single source of truth
-  - Applies: first-person rewrite, multi-message splitting, response formatting
-- **Config Migration** (Task 3):
-  - DEFERRED to separate effort due to high risk (13 files affected, critical paths)
-  - Estimated 8-10 hours with incremental file-by-file migration and extensive testing
-  - Deprecation warnings already in place to guide future migration
-
-**Architecture Health Improvement:**
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| **Overall Health** | 6.8/10 | 8.6/10 | **+26%** |
-| Separation of Concerns | 7/10 | 8/10 | +14% |
-| Code Reuse (DRY) | 6/10 | 9/10 | +50% |
-| Testability | 7/10 | 9/10 | +29% |
-| Maintainability | 7/10 | 9/10 | +29% |
-
-**Testing & Validation:**
-- ✅ Backend imports: All pass (LLMCompletionService, ToolCallingService, CitationService)
-- ✅ Backend startup: All services initialize (FastAPI, MCP clients, Memory RAG)
-- ✅ Docker compatibility: 14 tests, 100% pass rate (see DOCKER_TEST_REPORT.md)
-- ✅ Production requests: Real requests processed successfully with Phase 2 refactored code
-- ✅ Error analysis: Zero errors in production logs
-
-**Implementation Details:**
-- **Commits**:
-  - e139042a - Phase 1: Eliminate MCP client duplication and deprecate config getters
-  - ec726957 - Phase 2 Task 1: Extract service layer from llm_client.py
-  - c6ced6c7 - Fix citation service import error
-  - 5f9f43e3 - Phase 2 Task 2: DRY query handler finalization logic
-- **LOC Impact**: +420 LOC (new services), -45 LOC (duplication removed), net +375 LOC for improved modularity
-- **Service files**: 7 → 10 files (+43% modularity improvement)
-
-**Key Files:**
-- `src/coordinator/models/mcp_models.py` - Shared MCP models (Phase 1)
-- `src/coordinator/services/llm_completion_service.py` - LLM completion service (Phase 2)
-- `src/coordinator/services/tool_calling_service.py` - Tool calling service (Phase 2)
-- `src/coordinator/services/citation_service.py` - Citation validation service (Phase 2)
-- `src/coordinator/services/query_handler_service.py` - DRY finalization method (Phase 2)
-- `src/coordinator/config.py` - Deprecation warnings on legacy getters (Phase 1)
-
-**Documentation:**
-- `PHASE2_COMPLETION_REPORT.md` - Comprehensive completion report with testing results
-- `DOCKER_TEST_REPORT.md` - Docker testing validation (14 tests, all passing, zero errors)
-- `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md` - Phase 1 details
-
-**Future Work (Deferred):**
-1. **Task 3: Config Migration** (8-10 hours) - Migrate 13 files from deprecated config getters to structured Pydantic objects
-2. **Full LLM Client Refactoring** (4-6 hours) - Fully implement tool calling in ToolCallingService, reduce llm_client.py from 567 → ~150 LOC
-3. **Unit Test Updates** (2-3 hours) - Fix outdated mocks in test_server.py for refactored server.py
+**Status:** ✅ Complete (Dec 28, 2025) - Service layer extracted, DRY refactoring applied, architecture health improved 6.8→8.6/10. See `AI_documentation/01_implementation_history/PHASE2_COMPLETION_REPORT.md` for full details.
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -762,28 +413,7 @@ Backend architecture improvements focused on eliminating code duplication, extra
 - Reduced motion support for accessibility
 
 ### Typing Indicator Layout Fix (Dec 29, 2025)
-**Status:** ✅ Resolved - Critical UX bug where layout collapsed when indicators appeared
-
-**Problem:** When typing/tool indicators appeared, the input message bar would jump to the top of the screen with huge empty space filling the chat area.
-
-**Root Cause:** `AnimatePresence` wrapper was a flex child even though its children were absolutely positioned, disrupting flex layout calculation.
-
-**Solution:**
-- Changed indicator positioning from `absolute` to `fixed` (viewport-relative)
-- Moved indicators inside Messages Container to prevent flex layout disruption
-- Increased z-index to 50 to ensure visibility above all content
-
-**Files Modified:**
-- `react-ui/src/pages/Chat.tsx` (lines 437, 466-481) - Fixed positioning and container structure
-- `react-ui/src/components/RichContent.tsx` (lines 53-83) - Added `<br>` tag parsing for LLM responses
-
-**Prevention Guidelines:**
-- Never add flex children that don't take up space (absolutely/fixed positioned components)
-- Place `AnimatePresence` wrappers outside flex containers or inside non-flex parents
-- Use `fixed` positioning for viewport-locked overlays
-- Always test: send message, scroll up, send again, verify indicators appear without layout shifts
-
-**Documentation:** `AI_documentation/01_implementation_history/TYPING_INDICATOR_LAYOUT_FIX.md`
+**Status:** ✅ Resolved - Fixed layout collapse with typing indicators. Prevention: never add flex children with absolute/fixed positioning. See `AI_documentation/01_implementation_history/TYPING_INDICATOR_LAYOUT_FIX.md`.
 
 ### Mobile Optimization
 - ChatGPT-style responsive layout: sidebar pushes content on desktop, overlays on mobile
@@ -950,54 +580,3 @@ docker-compose ps
 **Root Markdown Policy:** README, CLAUDE, DOCKER_QUICKSTART, NEXT_STEPS, CHANGELOG only - all others → `AI_documentation/`
 
 **Full History:** `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md`
-
-## [2025-12-29] Hygiene Session Summary
-**Actions Taken:**
-- Moved: 4 files to proper locations (root → AI_documentation/)
-- Deleted: 0 obsolete files
-- Consolidated: 0 files (documentation structure is optimal)
-- Archived: 2 files (prompt optimization artifacts)
-
-**Updated Paths:**
-- DOCKER_TEST_REPORT.md → AI_documentation/01_implementation_history/DOCKER_TEST_REPORT.md
-- DOCKER_TROUBLESHOOTING.md → AI_documentation/01_implementation_history/DOCKER_TROUBLESHOOTING.md
-- PHASE2_COMPLETION_REPORT.md → AI_documentation/01_implementation_history/PHASE2_COMPLETION_REPORT.md
-- PROMPT_OPTIMIZATION_SUMMARY.md → AI_documentation/01_implementation_history/PROMPT_OPTIMIZATION_SUMMARY.md
-- src/coordinator/prompt_builder.backup_20251228_155820.py → archive/prompt_optimization/ (historical reference)
-- src/coordinator/prompt_builder_optimized.py → archive/prompt_optimization/ (duplicate removed)
-
-**Project Map Status:**
-- tests/: 51 test files, comprehensive coverage (backend: 12, integration: 23, exploration: 10, e2e: 1, root: 5)
-- AI_documentation/: 74+ docs across 5 categories (implementation_history, ux_design_specs, feature_specs, deprecated, roadmaps)
-- archive/: 4 categories (logs, test_results, prompt_optimization, _ARCHIVED_*.txt manifests)
-- Root markdown: 5 files (CLAUDE.md, README.md, DOCKER_QUICKSTART.md, NEXT_STEPS.md, CHANGELOG.md) - POLICY COMPLIANT ✅
-
-**Technical Debt Analysis:**
-- Stale TODOs: 0 found (2 recent TODOs from Dec 26-28, 2025)
-- Commented code: 0 blocks found
-- Unused imports: 0 found
-- Dead functions: 0 found
-- Orphaned modules: 0 found
-- Deprecated dependencies: 0 found
-
-**Archive Summary:**
-- Created: archive/prompt_optimization/ directory
-- Archived: prompt_builder.backup_20251228_155820.py (699 lines, rollback reference)
-- Archived: prompt_builder_optimized.py (592 lines, duplicate removed)
-- Space freed: ~52KB
-- Manifest: archive/_ARCHIVED_20251229.txt
-
-**Quality Gates:**
-- ✅ Zero misplaced test files in project root
-- ✅ Zero markdown files outside AI_documentation/ (except approved 5)
-- ✅ Zero TODO comments older than 90 days
-- ✅ Zero unused imports (verified via grep scan)
-- ✅ Zero commented code blocks without explanation
-- ✅ CLAUDE.md updated with complete change log
-
-**Metrics:**
-- Files moved: 4 (markdown policy enforcement)
-- Files deleted: 0 (nothing obsolete)
-- Files consolidated: 0 (docs already optimally organized)
-- Files archived: 2 (prompt optimization artifacts)
-- Code debt reduced: 0% (already at 10/10 perfect score)
