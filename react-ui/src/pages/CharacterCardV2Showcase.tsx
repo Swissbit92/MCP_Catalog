@@ -101,8 +101,12 @@ const CharacterCardV2Showcase: React.FC = () => {
 
   if (personas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
+        <div className="absolute inset-0 space-background"></div>
+        <div className="absolute inset-0 nebula-overlay"></div>
+
+        <div className="relative z-10 text-center">
           <div className="text-white text-xl mb-4">Loading Classic Cards...</div>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
         </div>
@@ -111,8 +115,12 @@ const CharacterCardV2Showcase: React.FC = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
+      <div className="absolute inset-0 space-background"></div>
+      <div className="absolute inset-0 nebula-overlay"></div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
