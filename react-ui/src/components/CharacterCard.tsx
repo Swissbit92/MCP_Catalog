@@ -43,7 +43,10 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
         y: { type: 'spring', stiffness: 300, damping: 20, delay: index * 0.1 },
         default: { duration: 0.15, ease: [0.4, 0, 0.2, 1] }
       }}
-      whileHover={{ y: -8, scale: 1.02 }}
+      whileHover={{
+        scale: 1.05,
+        transition: { duration: 0.15, ease: [0.4, 0, 0.2, 1] }
+      }}
       whileTap={{ scale: 0.96 }}
     >
       <div className={styles['card-frame']}></div>
