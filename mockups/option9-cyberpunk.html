@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 9: Cyberpunk</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --font-display: 'Orbitron', sans-serif;
+      --font-body: 'Outfit', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+
+      --cyber-black: #0a0a0a;
+      --cyber-dark: #1a1a1a;
+      --neon-green: #00ff41;
+      --neon-pink: #ff0080;
+      --neon-cyan: #00d9ff;
+      --holographic: #c0c0ff;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--cyber-black);
+      color: var(--neon-green);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Grid background */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: -3;
+      animation: grid-scroll 20s linear infinite;
+    }
+
+    @keyframes grid-scroll {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(50px); }
+    }
+
+    /* Scanlines */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 100;
+      animation: scanline-jitter 0.1s infinite;
+    }
+
+    @keyframes scanline-jitter {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.9; }
+    }
+
+    /* Glitch text effect */
+    @keyframes glitch {
+      0% { text-shadow: 2px 0 #ff0080, -2px 0 #00d9ff; }
+      25% { text-shadow: -2px 0 #ff0080, 2px 0 #00d9ff; }
+      50% { text-shadow: 2px 0 #ff0080, -2px 0 #00d9ff; }
+      75% { text-shadow: -2px 0 #ff0080, 2px 0 #00d9ff; }
+      100% { text-shadow: 2px 0 #ff0080, -2px 0 #00d9ff; }
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Cyber panel */
+    .cyber-panel {
+      background: linear-gradient(135deg, rgba(0, 255, 65, 0.05), rgba(0, 217, 255, 0.05));
+      border: 2px solid var(--neon-green);
+      border-radius: 0;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 0 30px rgba(0, 255, 65, 0.3), inset 0 0 20px rgba(0, 255, 65, 0.05);
+      position: relative;
+    }
+
+    /* Corner accents */
+    .cyber-panel::before, .cyber-panel::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--neon-cyan);
+    }
+
+    .cyber-panel::before {
+      top: -2px;
+      left: -2px;
+      border-right: none;
+      border-bottom: none;
+    }
+
+    .cyber-panel::after {
+      bottom: -2px;
+      right: -2px;
+      border-left: none;
+      border-top: none;
+    }
+
+    .cyber-panel h1 {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--neon-green);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+      animation: glitch 5s infinite;
+    }
+
+    .cyber-panel h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--neon-cyan);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+    }
+
+    .cyber-panel p, .cyber-panel li {
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+      color: #c0c0c0;
+    }
+
+    .cyber-panel ul {
+      margin-left: 1.5rem;
+    }
+
+    .pro { color: var(--neon-green); font-family: var(--font-mono); }
+    .con { color: var(--neon-pink); font-family: var(--font-mono); }
+
+    /* Terminal badge */
+    .terminal-badge {
+      display: inline-block;
+      background: rgba(0, 255, 65, 0.1);
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      padding: 0.5rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      margin-top: 1rem;
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+    }
+
+    .terminal-badge::before {
+      content: '> ';
+    }
+
+    /* Grid */
+    .components-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Cyber card */
+    .cyber-card {
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid var(--neon-cyan);
+      padding: 1.5rem;
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+      position: relative;
+    }
+
+    .cyber-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      color: var(--neon-cyan);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+    }
+
+    /* Message */
+    .message-bubble {
+      background: rgba(0, 255, 65, 0.05);
+      border: 1px solid var(--neon-green);
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+    }
+
+    .message-bubble.user {
+      background: rgba(255, 0, 128, 0.05);
+      border-color: var(--neon-pink);
+    }
+
+    .message-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--neon-cyan);
+      margin-top: 0.5rem;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border: 2px solid var(--neon-green);
+      cursor: pointer;
+      background: rgba(0, 255, 65, 0.1);
+      color: var(--neon-green);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--neon-green);
+      color: var(--cyber-black);
+      box-shadow: 0 0 30px var(--neon-green);
+    }
+
+    /* Input */
+    .input-field {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      margin-top: 1rem;
+    }
+
+    .input-field:focus {
+      outline: none;
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+    }
+
+    /* Highlight */
+    .highlight-box {
+      background: rgba(0, 217, 255, 0.05);
+      border-left: 4px solid var(--neon-cyan);
+      padding: 1rem 1.5rem;
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+
+  <div class="container">
+    <div class="cyber-panel">
+      <h1>Option 9: Cyberpunk</h1>
+      <div class="terminal-badge">blade_runner.exe</div>
+      <p><strong>Tagline:</strong> "Neon Dreams in a Digital Dystopia"</p>
+
+      <div class="highlight-box">
+        <strong style="color: var(--neon-cyan);">⚡ Inspired by:</strong> Blade Runner UI, The Matrix terminals, Cyberpunk 2077, 2026 holographic trends, electric neon aesthetic
+      </div>
+
+      <h2>Description</h2>
+      <p>Pure cyberpunk: deep blacks with electric neon green, holographic cyan, and hot pink accents. Animated grid background, CRT scanlines, glitch text effects, and terminal-style typography. Dystopian future meets retro-futurism.</p>
+
+      <h2>Pros</h2>
+      <ul>
+        <li class="pro">[✓] UNIQUE_AESTHETIC // stands out dramatically</li>
+        <li class="pro">[✓] 2026_TREND // cyberpunk era dominant</li>
+        <li class="pro">[✓] VISUAL_IMPACT // neon on black = maximum contrast</li>
+        <li class="pro">[✓] TECH_CREDIBILITY // signals advanced AI capabilities</li>
+        <li class="pro">[✓] GAMING_APPEAL // resonates with cyberpunk game fans</li>
+      </ul>
+
+      <h2>Cons</h2>
+      <ul>
+        <li class="con">[X] ACCESSIBILITY_RISK // high contrast might cause eye strain</li>
+        <li class="con">[X] NICHE_APPEAL // polarizing aesthetic (love/hate)</li>
+        <li class="con">[X] READABILITY // green text harder to read long-form</li>
+        <li class="con">[X] PROFESSIONAL_PERCEPTION // might feel too "edgy"</li>
+      </ul>
+
+      <h2>Research Insight</h2>
+      <p>Cyberpunk design sees 30% growth predicted by 2026. Core elements: electric neon, holographic silver, glitch effects, grid patterns. Cyberpunk UI features bold typography and neon accents amplifying sci-fi vibe. Tech industry embracing dystopian aesthetics for edge/innovation signals.</p>
+    </div>
+
+    <div class="components-grid">
+      <div class="cyber-card">
+        <h3>Terminal Messages</h3>
+        <div class="message-bubble">
+          <strong>[AI]:</strong> ACCESSING NEURAL NET...<br>Cyberpunk aesthetic loaded successfully.
+          <div class="message-meta">&gt;&gt; 0.7s LATENCY</div>
+        </div>
+        <div class="message-bubble user">
+          <strong>[USER]:</strong> This looks like The Matrix!
+        </div>
+        <input type="text" class="input-field" placeholder="> ENTER COMMAND_">
+      </div>
+
+      <div class="cyber-card">
+        <h3>Cyber Actions</h3>
+        <div class="button-group">
+          <button class="btn">EXECUTE</button>
+          <button class="btn" style="border-color: var(--neon-pink); color: var(--neon-pink);">ABORT</button>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.875rem; color: #808080;">
+          All buttons feature neon glow on hover
+        </p>
+      </div>
+
+      <div class="cyber-card">
+        <h3>System Info</h3>
+        <p style="font-family: var(--font-mono); font-size: 0.875rem; color: var(--neon-green);">
+          DISPLAY: Orbitron/Share Tech Mono<br>
+          GRID: 50px × 50px animated<br>
+          FX: Scanlines + Glitch<br>
+          STATUS: ONLINE
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

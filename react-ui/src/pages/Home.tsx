@@ -19,7 +19,9 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen relative">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Neutral introduction background - rarity theming activates after persona selection */}
+
       <EnergyParticles isActive={true} />
       <div className="relative z-10">
         <div className="text-center py-8">

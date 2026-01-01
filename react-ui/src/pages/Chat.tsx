@@ -320,13 +320,10 @@ const Chat: React.FC = () => {
   const colorScheme = getPersonaColorScheme(selectedPersona?.rarity);
 
   return (
-    <div
-      className={`flex h-full overflow-hidden relative transition-all duration-500 bg-gradient-to-br ${colorScheme.bgGradient}`}
-    >
-      {/* Glassmorphism background layers */}
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl"></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-800/70 to-slate-900/70 backdrop-blur-lg"></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/50 via-slate-800/50 to-slate-900/50 backdrop-blur-md"></div>
+    <div className="flex h-full overflow-hidden relative transition-all duration-500">
+      {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
+      <div className="absolute inset-0 space-background"></div>
+      <div className="absolute inset-0 nebula-overlay"></div>
 
       {/* Floating particles - only animate when there's activity */}
       <FloatingParticles isActive={loading || isSearching || input.length > 0} />
@@ -343,9 +340,6 @@ const Chat: React.FC = () => {
         }}
       />
     )}
-
-   {/* Background overlay for text readability */}
-   <div className="absolute inset-0 bg-white bg-opacity-85"></div>
 
       {/* Content container */}
       <div className="relative z-10 flex h-full w-full">

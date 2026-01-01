@@ -274,7 +274,20 @@ Optional - See `.env.docker` for complete list with defaults:
 #### Design System
 
 **Typography:** Outfit (display), Manrope (body), Space Mono (mono). Use `font-display`, `font-body`, `font-mono` classes.
-**Colors:** Deep space (#0a0e27) + rarity overlays (legendary=#FFD700, epic=#DA70D6, rare=#00BFFF, common=#C0C0C0)
+
+**Background System (Option 6: Glassmorphic + Rarity Hybrid):**
+- **Implementation:** Rarity-adaptive backgrounds combining glassmorphism with dynamic color theming
+- **Home Page:** Neutral slate gradient (introduction page, no persona context)
+- **Agent Selection & Chat:** Rarity-based space backgrounds with nebula overlays
+- **CSS Classes:** `.space-background`, `.nebula-overlay`, `.glass-card`
+- **Rarity Colors:**
+  - Common (Blue): `#60a5fa` accent, `#0a0e27` space - AI trust
+  - Rare (Cyan): `#06b6d4` accent, `#0a1628` space - Tech reliability
+  - Epic (Purple): `#a78bfa` accent, `#1a0f2e` space - Premium magic
+  - Legendary (Gold): `#fbbf24` accent, `#1f1a0a` space - Ultimate cosmic
+- **Transitions:** Smooth 0.8s cubic-bezier animations between rarity switches
+- **Implementation:** `react-ui/src/index.css` (40 CSS variables), `react-ui/src/App.tsx` (body class management)
+
 **Animations:** See `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS, SPRING_CONFIGS
 **Full Spec:** `UX_IMPROVEMENT_PLAN.md`, `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
 
