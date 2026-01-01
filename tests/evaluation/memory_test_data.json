@@ -1,0 +1,97 @@
+[
+  {
+    "scenario": "bitcoin_holdings_recall",
+    "query": "What did I tell you about my Bitcoin holdings?",
+    "expected_recall": ["2.5 BTC", "bought in 2021", "cost basis $35k"],
+    "conversation": [
+      {"role": "user", "content": "Hi, I'm new to Bitcoin investing"},
+      {"role": "assistant", "content": "Welcome! I can help you understand Bitcoin."},
+      {"role": "user", "content": "I bought 2.5 BTC in 2021"},
+      {"role": "assistant", "content": "That's a significant position!"},
+      {"role": "user", "content": "My cost basis was around $35,000 per coin"},
+      {"role": "assistant", "content": "Important to track for tax purposes."},
+      {"role": "user", "content": "What about cold storage?"},
+      {"role": "assistant", "content": "Cold storage is essential for large holdings."},
+      {"role": "user", "content": "I'm worried about security"},
+      {"role": "assistant", "content": "Let's discuss hardware wallets..."}
+    ]
+  },
+  {
+    "scenario": "wallet_discussion_continuity",
+    "query": "Remind me about the wallet options we discussed",
+    "expected_recall": ["Ledger Nano X", "Trezor Model T", "hardware wallet", "$150", "secure element"],
+    "conversation": [
+      {"role": "user", "content": "I need a hardware wallet"},
+      {"role": "assistant", "content": "Good choice for security."},
+      {"role": "user", "content": "What about Ledger Nano X?"},
+      {"role": "assistant", "content": "The Ledger Nano X costs around $150 and has Bluetooth."},
+      {"role": "user", "content": "And Trezor?"},
+      {"role": "assistant", "content": "Trezor Model T is another excellent option with touchscreen."},
+      {"role": "user", "content": "Which has better security?"},
+      {"role": "assistant", "content": "Both use secure elements. Ledger uses proprietary chip, Trezor is open-source."},
+      {"role": "user", "content": "What about software wallets?"},
+      {"role": "assistant", "content": "Software wallets are convenient but less secure for large amounts."}
+    ]
+  },
+  {
+    "scenario": "tax_and_trading_multi_topic",
+    "query": "Summarize our discussion about trading strategies and tax implications",
+    "expected_recall": ["day trading", "FIFO", "capital gains", "wash sale", "tax-loss harvesting"],
+    "conversation": [
+      {"role": "user", "content": "I'm thinking about day trading Bitcoin"},
+      {"role": "assistant", "content": "Be aware of tax implications with frequent trading."},
+      {"role": "user", "content": "What method should I use for cost basis?"},
+      {"role": "assistant", "content": "FIFO (First In First Out) is the default IRS method."},
+      {"role": "user", "content": "Tell me about capital gains tax"},
+      {"role": "assistant", "content": "Short-term gains (<1 year) are taxed as ordinary income, long-term at lower rates."},
+      {"role": "user", "content": "What about wash sales?"},
+      {"role": "assistant", "content": "Wash sale rules may not apply to crypto, but this is evolving."},
+      {"role": "user", "content": "Can I do tax-loss harvesting?"},
+      {"role": "assistant", "content": "Yes, crypto tax-loss harvesting can offset gains. Harvest before year-end."}
+    ]
+  },
+  {
+    "scenario": "long_conversation_recall",
+    "query": "What were the main security recommendations you gave me?",
+    "expected_recall": ["2FA", "unique passwords", "hardware wallet", "never share seed phrase", "verify addresses"],
+    "conversation": [
+      {"role": "user", "content": "How do I secure my crypto?"},
+      {"role": "assistant", "content": "Security has multiple layers."},
+      {"role": "user", "content": "Start with the basics"},
+      {"role": "assistant", "content": "Enable 2FA on all exchange accounts immediately."},
+      {"role": "user", "content": "What kind of 2FA?"},
+      {"role": "assistant", "content": "Use authenticator apps, not SMS. Google Authenticator or Authy work well."},
+      {"role": "user", "content": "Password tips?"},
+      {"role": "assistant", "content": "Use unique, complex passwords for each exchange. Consider a password manager."},
+      {"role": "user", "content": "What about my holdings?"},
+      {"role": "assistant", "content": "Move large amounts to a hardware wallet for cold storage."},
+      {"role": "user", "content": "Seed phrase storage?"},
+      {"role": "assistant", "content": "Never share your seed phrase. Write it down, store in fireproof safe."},
+      {"role": "user", "content": "Before sending transactions?"},
+      {"role": "assistant", "content": "Always verify the full address character-by-character. Check first and last 6 characters at minimum."},
+      {"role": "user", "content": "Anything else?"},
+      {"role": "assistant", "content": "Beware of phishing. Bookmark official sites. Never click email links to exchanges."},
+      {"role": "user", "content": "Thanks for all the advice"},
+      {"role": "assistant", "content": "You're welcome! Security is the foundation of crypto ownership."}
+    ]
+  },
+  {
+    "scenario": "technical_concepts_recall",
+    "query": "Explain the blockchain concepts we covered earlier",
+    "expected_recall": ["proof-of-work", "mining", "blocks", "transactions", "consensus", "decentralization"],
+    "conversation": [
+      {"role": "user", "content": "How does Bitcoin actually work?"},
+      {"role": "assistant", "content": "Bitcoin uses blockchain technology."},
+      {"role": "user", "content": "What's proof-of-work?"},
+      {"role": "assistant", "content": "Proof-of-work is a consensus mechanism where miners solve computational puzzles."},
+      {"role": "user", "content": "Why mine?"},
+      {"role": "assistant", "content": "Mining secures the network and validates transactions. Miners earn rewards."},
+      {"role": "user", "content": "What's in a block?"},
+      {"role": "assistant", "content": "Blocks contain batches of transactions, a timestamp, and reference to previous block."},
+      {"role": "user", "content": "How is it decentralized?"},
+      {"role": "assistant", "content": "No single authority controls it. Thousands of nodes maintain copies of the blockchain."},
+      {"role": "user", "content": "What prevents cheating?"},
+      {"role": "assistant", "content": "Consensus rules and economic incentives make attacking more expensive than honest participation."}
+    ]
+  }
+]

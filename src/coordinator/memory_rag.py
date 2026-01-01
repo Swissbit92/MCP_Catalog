@@ -119,8 +119,8 @@ class EpisodicMemoryRAG:
         self,
         session_id: str,
         query: str,
-        k: int = 10,  # Default: 10 (balanced recall vs precision)
-        min_relevance: float = 0.5  # Default: 0.5 (middle-ground threshold)
+        k: int = 15,  # Optimized via hyperparameter tuning (Jan 2026): k=15 for best recall
+        min_relevance: float = 0.7  # Optimized via hyperparameter tuning: 0.7 for best precision
     ) -> List[Tuple[Dict[str, Any], float]]:
         """Search conversation memory semantically.
 
@@ -130,14 +130,13 @@ class EpisodicMemoryRAG:
         Args:
             session_id: Chat session ID
             query: Search query (typically the user's current message)
-            k: Number of results to return (default: 10)
-               - Higher k = more context but may include less relevant messages
-               - Lower k = focused context but may miss relevant info
-               - 10 is a balanced default for most conversations
-            min_relevance: Minimum relevance score (0-1, default: 0.5)
-               - Higher threshold (0.7+) = stricter matching, fewer false positives
-               - Lower threshold (0.3-) = looser matching, better recall
-               - 0.5 is middle ground between precision and recall
+            k: Number of results to return (default: 15)
+               - Optimized via grid search over 100 configurations
+               - Provides best balance: 77% recall, 80% precision, F1=0.7684
+            min_relevance: Minimum relevance score (0-1, default: 0.7)
+               - Optimized threshold for high-quality results
+               - Filters noise while maintaining strong recall
+               - See tests/evaluation/memory_tuning_results.json
 
         Returns:
             List of (message_dict, relevance_score) tuples, sorted by relevance
@@ -188,7 +187,7 @@ class EpisodicMemoryRAG:
         self,
         session_id: str,
         query: str,
-        max_messages: int = 10
+        max_messages: int = 15  # Optimized default (was 10)
     ) -> List[Dict[str, Any]]:
         """Get relevant conversation context for a query.
 
@@ -198,7 +197,7 @@ class EpisodicMemoryRAG:
         Args:
             session_id: Chat session ID
             query: Current user query
-            max_messages: Maximum messages to retrieve
+            max_messages: Maximum messages to retrieve (default: 15, optimized)
 
         Returns:
             List of relevant message dicts (sorted chronologically)
