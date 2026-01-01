@@ -1,74 +1,68 @@
 # Next Steps - MCP Coordinator Development Roadmap
 
-**Last Updated:** December 28, 2025
-**Current Status:** 7/10 Critical Issues Resolved (70% Complete) - **MCP INFRASTRUCTURE BROKEN**
+**Last Updated:** January 1, 2026
+**Current Status:** 9/10 Critical Issues Resolved (90% Complete)
 **Architecture Score:** 75/100 (was 59/100, +27% improvement)
 
 ---
 
-## 🚨 **CRITICAL: MCP Infrastructure Refactoring** (Dec 28, 2025)
+## 🚧 Current Implementation: RAGAS Evaluation Framework
 
-**Status:** 🔄 **IN PROGRESS** (Phase 1 of 3)
-**Priority:** ⚠️ **URGENT** - All MCP features non-functional
-**Effort:** 3.5 hours total (1.5h + 1.5h + 0.5h)
-**Documentation:** `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md`
+**Status:** In Progress (Week 1-2, started Jan 1, 2026)
+**Priority:** ⭐⭐⭐ CRITICAL
+**Tracking Document:** [AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md](AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md)
 
-### Problem
+**Goal:** Add quantifiable quality metrics for persona responses using RAGAS (RAG Assessment) framework.
 
-**ALL MCP servers are completely broken in Docker deployment:**
-- ❌ Brave Search: Weather queries fail → "I don't have current information"
-- ❌ MongoDB: Bitcoin price queries hallucinate data → "$87,855" (from training data, not real)
-- ❌ Root Cause: Docker-in-Docker subprocess failures (`docker run` inside container)
+**Current Gap:** MCP Coordinator has ZERO evaluation infrastructure despite production-grade architecture (8.6/10 score).
 
-**Evidence from Production Logs:**
-```
-ERROR: Docker command not found - is Docker installed?
-ERROR: Failed to initialize MongoDB MCP client
-ERROR: Brave search failed: Docker not found
-```
+**Expected Benefits:**
+- 📊 Baseline quality metrics for all personas
+- 🔍 Regression detection in CI/CD (fail if quality drops >5%)
+- 📈 Data-driven model selection (llama3.1:8b vs alternatives)
+- ✅ Confidence in deployments
 
-### Solution
+**Implementation Progress:**
+- [x] Comparative analysis completed (venv_Projektarbeit vs MCP Coordinator)
+- [x] Implementation plan documented (RAGAS_EVALUATION_IMPLEMENTATION.md)
+- [ ] Phase 1: Foundation (add dependency, create module structure)
+- [ ] Phase 2: Golden Q&A examples (30 questions for 3 personas)
+- [ ] Phase 3: Core evaluator implementation
+- [ ] Phase 4: Integration & testing
+- [ ] Phase 5: CI/CD integration
 
-**Migrate from stdio (subprocess) to HTTP transport (Docker Compose services):**
+**Effort:** 8-12 hours total
+**Dependencies:** +1 primary (`ragas==0.2.3`), +4 transitive (~150MB)
 
-**Phase 1: Brave MCP Migration** (1.5 hours) - 🔄 **IN PROGRESS**
-- [ ] Add `brave-mcp` service to docker-compose.yml
-- [ ] Refactor `BraveMCPClient` to use HTTP requests
-- [ ] Test: Weather query returns real data with citations
-
-**Phase 2: MongoDB MCP Migration** (1.5 hours) - ⏳ Pending
-- [ ] Add `mongodb-mcp` service to docker-compose.yml
-- [ ] Refactor `MongoDBMCPClient` to use HTTP requests
-- [ ] Test: Bitcoin price returns real data (not hallucinated)
-
-**Phase 3: Documentation** (30 minutes) - ⏳ Pending
-- [ ] Create `docs/ADDING_MCP_SERVERS.md` template
-- [ ] Update CLAUDE.md with HTTP architecture
-- [ ] Document Neo4j/Google Calendar examples
-
-**Why This Approach:**
-- ✅ No Docker-in-Docker security risks
-- ✅ MCP spec-compliant (Streamable HTTP 2025 standard)
-- ✅ Scalable: Add new MCP servers in 20 minutes
-- ✅ Production-ready: Can deploy to Kubernetes
-
-**Impact After Fix:**
-- ✅ Weather searches work (Brave API integration functional)
-- ✅ Bitcoin prices accurate (MongoDB real-time data)
-- ✅ Future MCPs easy to add (Neo4j, Google Calendar, etc.)
-
-**Next Update:** After Phase 1 completion (ETA: +1.5 hours)
+**See:** [RAGAS_EVALUATION_IMPLEMENTATION.md](AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md) for detailed implementation plan, timelines, and acceptance criteria.
 
 ---
 
-## 🎉 Recent Completion (Dec 25, 2025)
+## 🎉 Recent Completions
 
-### Model Selection & Validation ✅
+### MCP Infrastructure Implementation ✅ (Dec 28-29, 2025)
+- **Phase 1 Complete:** Brave Search MCP with ephemeral STDIO pattern
+  - Spawns `docker run -i --rm` per request (stateless, 2-3s lifecycle)
+  - Validated with real weather queries and citations
+  - Implementation: `src/coordinator/mcp_client_stdio.py` (398 lines)
+- **Phase 2 Complete:** MongoDB MCP with long-running STDIO pattern
+  - Container stays alive for multiple requests (stateful database connections)
+  - Intentional design choice for performance with initialization overhead
+  - Implementation: `src/coordinator/mongodb/` (3 modules)
+- **Documentation Complete:** Comprehensive MCP integration guide
+  - Created `docs/ADDING_MCP_SERVERS.md` (1,240 lines)
+  - Documents both ephemeral and long-running patterns
+  - Step-by-step templates for adding new MCP servers
+- **Architecture:** Docker socket mounted to backend for container orchestration
+- **Impact:** All MCP features functional, universal pattern for future integrations
+- **See:** `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md`
+
+### Model Selection & Validation ✅ (Dec 25, 2025)
 - **Tested:** seamon67/Gemma3-Abliterated:4b-f16 vs nchapman/gemma-2-9b-it-abliterated:9b
 - **Selected:** nchapman (0% failures vs 25%, better quality, 32% smaller)
 - **Status:** Backend validated and running in production
 
-### Conversational AI Evolution (Phases 1-2) ✅
+### Conversational AI Evolution (Phases 1-2) ✅ (Dec 25, 2025)
 - **Phase 1 Complete:** Enhanced conversational prompting with few-shot examples
 - **Phase 2 Complete:** Multi-message response architecture (33/33 tests passed)
 - **Usage Rate:** 75% multi-message with nchapman model
@@ -80,6 +74,12 @@ ERROR: Brave search failed: Docker not found
 - Phase 5: Autonomous Reflection (optional, 1 week) - Post-conversation reflections
 
 **See:** `CONVERSATIONAL_AI_STATUS.md` for detailed status and next steps
+
+### Backend Core Refactoring ✅ (Dec 28, 2025)
+- **Phase 1:** Eliminated MCP client duplication
+- **Phase 2:** Extracted service layer from routes (chat.py: 759→279 lines, -63%)
+- **Impact:** DRY compliance, improved testability, architecture score +27%
+- **See:** `AI_documentation/01_implementation_history/PHASE2_COMPLETION_REPORT.md`
 
 ---
 
@@ -186,10 +186,12 @@ ERROR: Brave search failed: Docker not found
 ## Quick Reference
 
 **✅ Completed:**
-- God-object file refactoring (4 files → 17 modular components)
-- CI/CD pipeline (GitHub Actions with 5 jobs)
-- Test coverage metrics (Jest + scripts)
-- Production code cleanup (print statements, test fixes)
+- **MCP Infrastructure** (Brave ephemeral + MongoDB long-running STDIO patterns)
+- **Backend Core Refactoring** (service layer extraction, DRY compliance)
+- **God-object file refactoring** (4 files → 17 modular components)
+- **CI/CD pipeline** (GitHub Actions with 5 jobs)
+- **Test coverage metrics** (Jest + scripts)
+- **Production code cleanup** (print statements, test fixes)
 - **Conversational AI Phases 1-2** (multi-message responses, curiosity prompts)
 - **Model selection & validation** (nchapman production-ready)
 - **Branding update Phase 1** (user-facing text → "AI Companions")
@@ -200,10 +202,11 @@ ERROR: Brave search failed: Docker not found
 - Database migration (planned, PostgreSQL strategy)
 
 **📚 Documentation:**
+- See `docs/ADDING_MCP_SERVERS.md` for MCP integration guide
+- See `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md` for MCP architecture
 - See `CONVERSATIONAL_AI_STATUS.md` for conversational AI roadmap status
 - See `AI_documentation/01_implementation_history/ARCHITECTURE_IMPROVEMENTS_SUMMARY.md` for refactoring details
 - See `AI_documentation/01_implementation_history/ASYNC_CONVERSION_PLAN.md` for async implementation plan
-- See `PHASE2_MODEL_COMPARISON_RECOMMENDATION.md` for model selection analysis
 
 ---
 
@@ -729,5 +732,10 @@ All refactorings maintained 100% backward compatibility. Existing imports contin
 ---
 
 **Status:** Awaiting decision on async conversion strategy
-**Last Updated:** December 24, 2025
+**Last Updated:** January 1, 2026
 **Next Review:** After decision is made
+
+**Recent Achievements:**
+- ✅ MCP Infrastructure complete (Dec 28-29, 2025)
+- ✅ Backend refactoring complete (Dec 28, 2025)
+- ✅ Comprehensive MCP integration guide created

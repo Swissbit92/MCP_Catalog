@@ -27,8 +27,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest
 
-      - name: Run backend unit tests
+      - name: Run backend unit tests (legacy)
         run: |
           echo "Running backend unit tests..."
           python tests/backend/coordinator/test_server.py || true
@@ -45,6 +46,47 @@ jobs:
           echo "Running integration tests..."
           python tests/integration/test_intent_classification.py || true
           python tests/integration/test_phase3_simple.py || true
+
+  # RAGAS persona quality evaluation
+  ragas-evaluation:
+    name: RAGAS Persona Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run RAGAS evaluation tests (fast unit tests only)
+        run: |
+          echo "Running RAGAS evaluation tests..."
+          pytest tests/evaluation/ --skip-slow -v --tb=short
+
+      - name: Validate golden Q&A datasets
+        run: |
+          echo "Validating golden Q&A datasets..."
+          python validate_golden_qa.py
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ragas-test-results
+          path: |
+            tests/evaluation/*.log
+            tests/evaluation/baseline_metrics.json
 
   # React frontend tests
   frontend-tests:
