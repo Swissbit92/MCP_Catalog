@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Character Card Hover Animation Optimization** ✅ (Jan 1-2, 2026) - Iteratively refined hover animations based on UX research and user feedback:
+  - ✅ **Particle Removal**: Removed floating particles from header, chat page, and session list sidebar for cleaner aesthetic
+  - ✅ **Animation Simplification**: Evolved from dual-transform (y + scale) to scale-only animation
+  - ✅ **Iteration 1**: Removed rotation animation (user feedback: distracting)
+  - ✅ **Iteration 2**: Fixed asymmetric timing issue (hover-in fast, hover-out slow → both 150ms)
+  - ✅ **Iteration 3**: Eliminated CSS transform conflicts (removed 180ms CSS transition)
+  - ✅ **Iteration 4**: Simplified to scale-only (1.0 → 1.05) to eliminate "two animation" perception
+  - ✅ **Final Specs**: Pure scale effect, 150ms, cubic-bezier [0.4, 0, 0.2, 1], modern minimalist aesthetic
+  - ✅ **Performance**: Single transform property = optimal GPU acceleration
+  - ✅ **Testing**: Playwright automated validation with transform matrix verification
+  - **User Experience**: Smooth single animation, snappy and consistent both directions, Spotify/Netflix card style
+  - **Research Sources**: Nielsen Norman Group (150ms standard), Material Design 3 (single-property transforms), 2025 UI trends
+  - **Files Modified**: `react-ui/src/components/CharacterCard.tsx`, `react-ui/src/components/CharacterCard.module.css`, `react-ui/src/components/SessionList.tsx`, `react-ui/src/components/header/HeaderVisuals.tsx`, `react-ui/src/pages/Chat.tsx`
+  - **Development Time**: ~10 hours (4 iterations with user testing)
+  - **Status**: Production-ready, deployed to Docker, tested and validated
+
 - **Option 6: Rarity-Adaptive Background System** ✅ (Jan 1, 2026) - Implemented rarity-based background theming with interactive card selection:
   - ✅ **Rarity-Based Theming**: Dynamic backgrounds that adapt based on selected persona's rarity tier
   - ✅ **4 Rarity Tiers**: Common (Blue #60a5fa), Rare (Cyan #06b6d4), Epic (Purple #a78bfa), Legendary (Gold #fbbf24)

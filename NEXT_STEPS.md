@@ -14,31 +14,41 @@
 
 **Final Implementation:**
 - [x] **Phase 1-3:** Option 6 background system, interaction fixes, particle system
-- [x] **Phase 4:** UX Refinements (Jan 1, 2026)
+- [x] **Phase 4:** UX Refinements (Jan 1-2, 2026)
   - [x] Removed particles from header (all pages)
   - [x] Removed particles from chat page background
   - [x] Removed particles from chat history sidebar
-  - [x] Optimized character card hover effects (research-backed)
-    - Removed rotation animation (user feedback: distracting)
-    - Reduced hover duration to 150ms (Nielsen Norman Group standard)
-    - Fixed asymmetric timing (hover-in/out now consistent at 150ms)
-    - Applied easeOut curve for smooth deceleration
+  - [x] Optimized character card hover effects (research-backed, iterative refinement)
+    - **Iteration 1:** Removed rotation animation (user feedback: distracting)
+    - **Iteration 2:** Fixed asymmetric timing (hover-in/out consistent at 150ms)
+    - **Iteration 3:** Removed CSS transform conflicts (eliminated 180ms CSS transition)
+    - **Iteration 4:** Simplified to scale-only animation (eliminated "two animation" feel)
+    - **Final:** Pure scale effect (1.0 → 1.05, 150ms, cubic-bezier)
   - [x] Fixed inconsistent click feedback across all personas
   - [x] Removed unused FloatingParticles components
   - [x] Cleaned up dead code (zero build warnings)
 
 **Key Decisions:**
 - **Particle removal:** User preference for cleaner aesthetic (Option 6 glassmorphism sufficient)
-- **Animation timing:** 150ms standard per NN/G research (100-200ms sweet spot for simple hover effects)
-- **Consistency:** Hover-in and hover-out use identical timing (best practice per 2025 motion design guidelines)
+- **Animation approach:** Scale-only (modern minimalist, Spotify/Netflix style) over dual-transform
+- **Rationale:** Single transform property = mathematically impossible to feel "two animations"
+- **Timing:** 150ms symmetric (NN/G standard for simple hover effects)
+- **Performance:** Single transform property = optimal GPU acceleration
 
 **Research Sources:**
-- [Nielsen Norman Group: Animation Duration](https://www.nngroup.com/articles/animation-duration/)
-- [Motion Design Principles (2025)](https://www.mockplus.com/blog/post/20-motion-design-principles-with-examples)
-- [Card Hover Effects Best Practices](https://www.numberanalytics.com/blog/mastering-hover-effects-in-ux-design)
+- [Nielsen Norman Group: Animation Duration](https://www.nngroup.com/articles/animation-duration/) - 100-200ms for simple effects
+- [Motion Design Principles (2025)](https://www.mockplus.com/blog/post/20-motion-design-principles-with-examples) - Single focus animations
+- [Card Hover Effects Best Practices](https://www.numberanalytics.com/blog/mastering-hover-effects-in-ux-design) - Subtle and consistent
+- [Modern UI Design Trends 2025](https://www.elegantthemes.com/blog/design/modern-ui-design-trends) - Clean minimalist interactions
+- [CSS Transform Order](https://jakearchibald.com/2025/animating-zooming/) - Scale + translate synchronization
 
-**Effort:** ~8 hours total
-**Impact:** Production-grade UX with research-backed animation standards
+**Testing:**
+- Playwright automated validation (transform matrix verification)
+- Visual regression testing with screenshots
+- Manual user testing with iterative refinement
+
+**Effort:** ~10 hours total (4 iterations to perfection)
+**Impact:** Production-grade UX with research-backed animation standards, modern minimalist aesthetic
 
 ---
 
