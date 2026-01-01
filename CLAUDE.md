@@ -294,6 +294,20 @@ Optional - See `.env.docker` for complete list with defaults:
 - **Implementation:** `react-ui/src/index.css` (40 CSS variables), `react-ui/src/App.tsx` (body class management)
 - **Archive:** See `AI_documentation/01_implementation_history/OPTION6_GAP_ANALYSIS.md` for rejected Phase 1 details
 
+**Character Card Hover Animation:**
+- **Status:** Optimized (Jan 1-2, 2026) - Iteratively refined through 4 iterations based on user feedback
+- **Final Implementation:** Scale-only animation (modern minimalist approach)
+  - Scale: 1.0 → 1.05 (5% zoom)
+  - Duration: 150ms symmetric (hover-in and hover-out)
+  - Easing: Cubic-bezier [0.4, 0, 0.2, 1] (Material Design easeInOut)
+  - Transform: Single property (scale only, no Y-axis movement)
+- **Removed:** Rotation animation, Y-axis translation, CSS transform conflicts, floating particles
+- **UX Goal:** Single smooth animation (no "two animation" perception)
+- **Performance:** Single transform property = optimal GPU acceleration
+- **Style:** Modern minimalist (Spotify/Netflix card aesthetic)
+- **Research:** Nielsen Norman Group (150ms standard), Material Design 3, 2025 UI trends
+- **Testing:** Playwright automated validation with transform matrix verification
+
 **Animations:** See `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS, SPRING_CONFIGS
 **Full Spec:** `UX_IMPROVEMENT_PLAN.md`, `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
 
