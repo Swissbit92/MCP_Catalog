@@ -162,3 +162,92 @@ body:not([class*="rarity-"]) {
   border: 1px solid var(--glass-border);
   box-shadow: 0 8px 32px var(--glass-shadow);
 }
+
+/* Rarity-Adaptive Buttons */
+.btn-rarity-primary {
+  background: linear-gradient(135deg, var(--accent-color), var(--space-glow));
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transition: all 0.2s ease;
+}
+
+.btn-rarity-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.btn-rarity-secondary {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  color: var(--accent-color);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-rarity-secondary:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 20px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+/* Glassmorphic Input Field */
+.glass-input {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  color: #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.glass-input::placeholder {
+  color: #6b7280;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Rarity Badge with Pulse Animation */
+.rarity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  box-shadow: 0 0 15px var(--accent-glow);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.rarity-badge-legendary {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 0 0 25px var(--accent-glow), 0 0 35px var(--accent-glow);
+  }
+}

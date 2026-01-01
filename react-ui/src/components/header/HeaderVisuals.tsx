@@ -59,9 +59,6 @@ export const HeaderBackground: React.FC<HeaderBackgroundProps> = ({
         key={currentTheme} // Force re-animation when theme changes
       ></motion.div>
 
-      {/* Floating particles */}
-      <FloatingParticles />
-
       {/* HIGHLY VISIBLE animated border */}
       <motion.div
         className="absolute bottom-0 left-0 right-0 h-1"
