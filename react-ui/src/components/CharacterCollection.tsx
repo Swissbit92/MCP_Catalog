@@ -6,9 +6,11 @@ import { fetchPersonas } from '../services/api';
 
 interface CharacterCollectionProps {
   onCharacterSelect: (personaKey: string) => void;
+  onChoose?: (personaKey: string) => void;
+  selectedPersonaKey?: string | null;
 }
 
-const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSelect }) => {
+const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSelect, onChoose, selectedPersonaKey }) => {
   const { isCollected, collectionStats } = usePersona();
   const [personas, setPersonas] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -50,19 +52,19 @@ const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSe
 
         {/* Collection Stats */}
         <div className="flex justify-center gap-6 mb-8">
-          <div className="bg-gray-800/50 rounded-lg px-4 py-2">
+          <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-yellow-400">{collectionStats.total}</div>
             <div className="text-sm text-gray-400">Total</div>
           </div>
-          <div className="bg-gray-800/50 rounded-lg px-4 py-2">
+          <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-purple-400">{collectionStats.legendary}</div>
             <div className="text-sm text-gray-400">Legendary</div>
           </div>
-          <div className="bg-gray-800/50 rounded-lg px-4 py-2">
+          <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-blue-400">{collectionStats.epic}</div>
             <div className="text-sm text-gray-400">Epic</div>
           </div>
-          <div className="bg-gray-800/50 rounded-lg px-4 py-2">
+          <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-green-400">{collectionStats.rare}</div>
             <div className="text-sm text-gray-400">Rare</div>
           </div>
@@ -93,7 +95,8 @@ const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSe
                   image={`/images/${persona.image.replace('images/', '')}`}
                   rarity={persona.rarity}
                   onSelect={onCharacterSelect}
-                  isSelected={false}
+                  onChoose={onChoose}
+                  isSelected={selectedPersonaKey === persona.key}
                   personaKey={persona.key}
                   index={index}
                 />

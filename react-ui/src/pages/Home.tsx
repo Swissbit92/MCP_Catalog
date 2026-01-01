@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import EnergyParticles from '../components/EnergyParticles';
 import CharacterShowcase from '../components/CharacterShowcase';
 import styles from '../components/CharacterCard.module.css';
 
@@ -22,7 +21,6 @@ const Home: React.FC = () => {
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Neutral introduction background - rarity theming activates after persona selection */}
 
-      <EnergyParticles isActive={true} />
       <div className="relative z-10">
         <div className="text-center py-8">
           <h1 className="text-4xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">

@@ -8,51 +8,6 @@ import { fetchPersonas, greetWithSession } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 import { Menu, X } from 'lucide-react';
 
-// Floating particles component for glassmorphism effect
-const FloatingParticles: React.FC<{ isActive: boolean }> = React.memo(({ isActive }) => {
-  const particles = React.useMemo(() => {
-    return Array.from({ length: 8 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      xOffset: Math.random() * 10 - 5,
-      duration: 3 + Math.random() * 2,
-      delay: Math.random() * 2,
-    }));
-  }, []); // Empty dependency array ensures particles are generated only once
-
-  // Only animate when active (typing, searching, or loading)
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute w-1.5 h-1.5 bg-white/30 rounded-full shadow-sm"
-          style={{
-            left: `${particle.left}%`,
-            top: `${particle.top}%`,
-          }}
-          animate={isActive ? {
-            y: [0, -20, 0],
-            x: [0, particle.xOffset, 0],
-            opacity: [0.2, 0.6, 0.2],
-            scale: [0.6, 1.0, 0.6],
-          } : {
-            opacity: 0.1,
-            scale: 0.6,
-          }}
-          transition={{
-            duration: particle.duration,
-            repeat: isActive ? Infinity : 0,
-            delay: particle.delay,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
-});
-
 // Persona color schemes based on rarity (matching character cards)
 const getPersonaColorScheme = (rarity?: string) => {
   switch (rarity) {
@@ -315,18 +270,14 @@ const Chat: React.FC = () => {
     setTouchEndX(0);
   };
 
-  // Get persona background and color scheme
+  // Get persona background
   const personaBackground = selectedPersona?.bg ? `/images/${selectedPersona.bg.replace('images/', '')}` : null;
-  const colorScheme = getPersonaColorScheme(selectedPersona?.rarity);
 
   return (
     <div className="flex h-full overflow-hidden relative transition-all duration-500">
       {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
       <div className="absolute inset-0 space-background"></div>
       <div className="absolute inset-0 nebula-overlay"></div>
-
-      {/* Floating particles - only animate when there's activity */}
-      <FloatingParticles isActive={loading || isSearching || input.length > 0} />
 
     {/* Subtle character background for gacha style */}
     {personaBackground && (
@@ -493,7 +444,7 @@ const Chat: React.FC = () => {
                   handleSendMessage();
                 }
               }}
-              className="flex-1 px-4 py-3 md:py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-base md:text-base"
+              className="glass-input flex-1 px-4 py-3 md:py-3 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-base"
               placeholder={initializingSession ? "Loading character..." : "Type a message..."}
               disabled={loading || !currentSession || initializingSession}
               whileFocus={{ scale: 1.01 }}
@@ -507,7 +458,7 @@ const Chat: React.FC = () => {
             <motion.button
               onClick={handleSendMessage}
               disabled={loading || !currentSession || !input.trim() || initializingSession}
-               className={`px-4 md:px-6 py-3 bg-gradient-to-r ${colorScheme.primary} text-white font-medium rounded-2xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 min-w-[60px] md:min-w-[80px] touch-manipulation`}
+               className="btn-rarity-primary px-4 md:px-6 py-3 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed min-w-[60px] md:min-w-[80px] touch-manipulation"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}

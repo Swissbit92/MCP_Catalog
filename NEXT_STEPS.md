@@ -6,9 +6,52 @@
 
 ---
 
-## 🚧 Current Implementation: RAGAS Evaluation Framework
+## 🚧 Current Implementation: Option 6 UX Polish
 
-**Status:** In Progress (Week 1-2, started Jan 1, 2026)
+**Status:** In Progress (Jan 1, 2026)
+**Priority:** ⭐⭐⭐⭐⭐ HIGH - Visual Impact
+**Tracking Document:** [OPTION6_GAP_ANALYSIS.md](OPTION6_GAP_ANALYSIS.md)
+
+**Goal:** Complete Option 6 visual implementation with glassmorphism and rarity-adaptive UI elements.
+
+**Current Gap:** Background colors implemented, but missing premium glassmorphic UI polish from mockup.
+
+**Implementation Plan:**
+- **Phase 1: Visual Polish** (4-5h) - Glassmorphic message bubbles, rarity-adaptive buttons/inputs, glow effects
+- **Phase 2: Interaction Fixes** (2h) - Clickable character cards, hover states, selection feedback
+- **Phase 3: Particle Bugs** (1h) - Fix agent page particles, fix chat page disappearing particles
+
+**Current Phase:** Phase 3 Complete ✅
+
+**Implementation Progress:**
+- [x] Background color system (40 CSS variables, 4 rarity tiers)
+- [x] Gap analysis completed (OPTION6_GAP_ANALYSIS.md)
+- [x] Phase 1.1: Glassmorphic message bubbles with backdrop blur (REVERTED - user feedback)
+- [x] Phase 1.2: Rarity-adaptive UI system (buttons, inputs, badges)
+- [x] Phase 1.3: Glassmorphic cards & panels (Home.tsx REVERTED - user feedback, CharacterCollection kept)
+- [ ] Phase 1.4: Polish & refinement (DEFERRED)
+- [x] Phase 2: Interaction improvements (complete & tested with Playwright)
+  - [x] Card click = selection only (no navigation)
+  - [x] Choose button = navigate to chat (hover overlay - original design)
+  - [x] Selection state persists across navigation (uses PersonaContext)
+  - [x] Background changes to match selected card rarity
+  - [x] Hover glow removed (user feedback)
+- [x] Phase 3: Fix particle bugs (complete)
+  - [x] Fixed EnergyParticles with tsParticles v3 initialization
+  - [x] Agent page particles working (30 particles, increased visibility)
+  - [x] Chat page particles continuous (isActive={true})
+  - [x] Removed particles from Home page (no rarity background)
+
+**Effort:** 7-8 hours total
+**Expected Impact:** Premium visual aesthetic matching Option 6 mockup, improved UX
+
+**See:** [OPTION6_GAP_ANALYSIS.md](OPTION6_GAP_ANALYSIS.md) for detailed implementation plan and checklist.
+
+---
+
+## 🔄 Deferred: RAGAS Evaluation Framework
+
+**Status:** Deferred (temporarily paused for UX work)
 **Priority:** ⭐⭐⭐ CRITICAL
 **Tracking Document:** [AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md](AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md)
 

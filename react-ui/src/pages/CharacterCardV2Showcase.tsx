@@ -5,6 +5,7 @@ import CharacterCard from '../components/CharacterCard';
 import PullInterface from '../components/PullInterface';
 import CharacterCollection from '../components/CharacterCollection';
 import PullHistory from '../components/PullHistory';
+import EnergyParticles from '../components/EnergyParticles';
 import { fetchPersonas } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 
@@ -30,7 +31,7 @@ const CharacterCardV2Showcase: React.FC = () => {
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>(initialTab);
-  const { setSelectedPersona } = usePersona();
+  const { setSelectedPersona, selectedPersona } = usePersona();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -90,12 +91,20 @@ const CharacterCardV2Showcase: React.FC = () => {
     }
   }, [searchQuery, personas]);
 
-  const handleCardSelect = async (personaKey: string) => {
+  // Card click - selection only (no navigation)
+  const handleCardSelect = (personaKey: string) => {
+    const personaToSelect = personas.find(p => p.key === personaKey);
+    if (personaToSelect) {
+      setSelectedPersona(personaToSelect); // Updates context for background AND persists selection
+    }
+  };
+
+  // Choose button - navigate to chat
+  const handleChoose = (personaKey: string) => {
     const personaToSelect = personas.find(p => p.key === personaKey);
     if (personaToSelect) {
       setSelectedPersona(personaToSelect);
-      // Navigate to chat - let the Chat component handle session logic
-      navigate('/chat');
+      navigate('/chat'); // Navigate to chat
     }
   };
 
@@ -105,6 +114,7 @@ const CharacterCardV2Showcase: React.FC = () => {
         {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
         <div className="absolute inset-0 space-background"></div>
         <div className="absolute inset-0 nebula-overlay"></div>
+        <EnergyParticles isActive={true} />
 
         <div className="relative z-10 text-center">
           <div className="text-white text-xl mb-4">Loading Classic Cards...</div>
@@ -119,6 +129,7 @@ const CharacterCardV2Showcase: React.FC = () => {
       {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
       <div className="absolute inset-0 space-background"></div>
       <div className="absolute inset-0 nebula-overlay"></div>
+      <EnergyParticles isActive={true} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
@@ -225,7 +236,8 @@ const CharacterCardV2Showcase: React.FC = () => {
               image={`/images/${persona.image}`}
               rarity={persona.rarity}
               onSelect={handleCardSelect}
-              isSelected={false}
+              onChoose={handleChoose}
+              isSelected={selectedPersona?.key === persona.key}
               personaKey={persona.key}
               index={index}
             />
@@ -281,7 +293,11 @@ const CharacterCardV2Showcase: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <CharacterCollection onCharacterSelect={handleCardSelect} />
+              <CharacterCollection
+                onCharacterSelect={handleCardSelect}
+                onChoose={handleChoose}
+                selectedPersonaKey={selectedPersona?.key || null}
+              />
             </motion.div>
           ) : (
             <motion.div

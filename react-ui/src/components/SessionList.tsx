@@ -47,38 +47,6 @@ const getRarityStyles = (rarity?: string) => {
   }
 };
 
-// Floating particles component for header-style effects
-const FloatingParticles: React.FC = () => {
-  const particles = Array.from({ length: 8 }, (_, i) => i);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle}
-          className="absolute w-1.5 h-1.5 bg-white/40 rounded-full shadow-lg"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            x: [0, Math.random() * 15 - 7.5, 0],
-            opacity: [0.3, 0.8, 0.3],
-            scale: [0.8, 1.2, 0.8],
-          }}
-          transition={{
-            duration: 4 + Math.random() * 3,
-            repeat: Infinity,
-            delay: Math.random() * 3,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
 // Dynamic background animation function (matching header)
 const getBackgroundAnimation = (rarity?: string) => {
   const themeColors = {
@@ -189,9 +157,6 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
         transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
         key={currentTheme} // Force re-animation when theme changes
       ></motion.div>
-
-      {/* Floating particles */}
-      <FloatingParticles />
 
       {/* HIGHLY VISIBLE animated border */}
       <motion.div
