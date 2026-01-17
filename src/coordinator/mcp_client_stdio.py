@@ -74,6 +74,12 @@ class BraveMCPClientStdio:
         This is the official MCP pattern: spawn container, send JSON-RPC via STDIN,
         receive response via STDOUT, container dies automatically.
 
+        SECURITY: Resource limits applied to prevent DoS attacks:
+        - Memory: 256MB max (prevents memory exhaustion)
+        - CPU: 0.5 cores max (prevents CPU starvation)
+        - PIDs: 100 max (prevents fork bombs)
+        - Labels: Enables orphan container detection
+
         Args:
             request: JSON-RPC request object
 
@@ -84,12 +90,21 @@ class BraveMCPClientStdio:
             MCPConnectionError: If container spawn fails
             MCPTimeoutError: If operation times out
         """
-        # Construct docker run command
+        # Construct docker run command with resource limits
         # -i: interactive (enables STDIN)
         # --rm: remove container after exit
         # -e: pass environment variable
+        # --memory: limit memory to prevent exhaustion
+        # --cpus: limit CPU to prevent starvation
+        # --pids-limit: limit processes to prevent fork bombs
+        # --label: enable orphan detection and cleanup
         cmd = [
             "docker", "run", "-i", "--rm",
+            "--memory=256m",
+            "--cpus=0.5",
+            "--pids-limit=100",
+            "--label=mcp.coordinator.ephemeral=true",
+            "--label=mcp.coordinator.service=brave-search",
             "-e", f"BRAVE_API_KEY={self.api_key}",
             self.image
         ]
@@ -100,6 +115,7 @@ class BraveMCPClientStdio:
         logger.debug(f"Spawning ephemeral container: {' '.join(cmd)}")
         logger.debug(f"Request: {stdin_data.strip()}")
 
+        process = None
         try:
             # Spawn container with STDIN/STDOUT pipes
             process = subprocess.Popen(
@@ -127,8 +143,17 @@ class BraveMCPClientStdio:
             return stdout
 
         except subprocess.TimeoutExpired:
-            process.kill()
-            logger.error(f"MCP operation timed out after {self.timeout}s")
+            # Guaranteed cleanup: kill process and wait for termination
+            if process:
+                logger.warning(f"MCP operation timed out after {self.timeout}s, killing container...")
+                process.kill()
+                try:
+                    # Wait for process to die (max 5 seconds)
+                    process.wait(timeout=5)
+                    logger.info("Container killed successfully")
+                except subprocess.TimeoutExpired:
+                    # If still alive after kill, log error (--rm will cleanup eventually)
+                    logger.error("Container did not die after kill signal - orphan cleanup required")
             raise MCPTimeoutError(f"Operation timed out after {self.timeout}s")
 
         except FileNotFoundError:
@@ -136,6 +161,15 @@ class BraveMCPClientStdio:
             raise MCPConnectionError("Docker command not available")
 
         except Exception as e:
+            # Cleanup on any error
+            if process and process.poll() is None:
+                logger.warning("Cleaning up container due to unexpected error...")
+                try:
+                    process.kill()
+                    process.wait(timeout=5)
+                except Exception as cleanup_error:
+                    logger.error(f"Cleanup failed: {cleanup_error}")
+
             logger.error(f"Failed to spawn MCP container: {e}")
             raise MCPConnectionError(f"Failed to spawn container: {e}")
 

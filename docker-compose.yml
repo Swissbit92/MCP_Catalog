@@ -93,6 +93,16 @@ services:
 
       # Docker socket - enables backend to spawn ephemeral MCP containers
       # This is the standard pattern for container orchestration (like CI/CD runners)
+      #
+      # SECURITY MEASURES (Jan 2026):
+      # - All spawned containers have resource limits (memory, CPU, PID limits)
+      # - Containers labeled for orphan detection and cleanup
+      # - Guaranteed cleanup on timeout/error with graceful termination
+      # - Run scripts/cleanup_orphan_containers.py periodically to detect leaks
+      #
+      # Resource limits applied:
+      # - Brave MCP (ephemeral): 256MB RAM, 0.5 CPU, 100 PIDs max
+      # - MongoDB MCP (long-running): 512MB RAM, 1.0 CPU, 100 PIDs max
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8000:8000"
@@ -132,9 +142,26 @@ services:
       - mcp-network
     restart: unless-stopped
 
-  # Note: Brave MCP no longer runs as a service
+  # =============================================================================
+  # MCP Services (Brave Search, MongoDB)
+  # =============================================================================
+  # No longer run as long-lived services in docker-compose.
+  #
   # Using ephemeral container pattern: backend spawns `docker run -i --rm` on-demand
-  # See: src/coordinator/mcp_client_stdio.py
+  # - Brave MCP: New container per search (2-3s lifecycle)
+  # - MongoDB MCP: Long-running container, auto-restarts if parent dies
+  #
+  # SECURITY (Jan 2026):
+  # All MCP containers have resource limits to prevent DoS attacks:
+  # - Memory limits (256MB-512MB)
+  # - CPU limits (0.5-1.0 cores)
+  # - PID limits (100 max)
+  # - Container labels for orphan detection
+  #
+  # See:
+  # - src/coordinator/mcp_client_stdio.py (Brave MCP)
+  # - src/coordinator/mongodb/docker_client.py (MongoDB MCP)
+  # - scripts/cleanup_orphan_containers.py (orphan cleanup)
 
 volumes:
   # Ollama models storage (can be large - 4-10GB per model)
