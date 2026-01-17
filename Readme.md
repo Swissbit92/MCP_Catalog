@@ -154,7 +154,7 @@
 | Feature | Description |
 |---------|-------------|
 | 🔒 **Local-First** | All AI processing and data storage happens on your device |
-| 🛡️ **Secure Dependencies** | Regular security audits, CI/CD testing on every push |
+| 🛡️ **Secure Dependencies** | Regular security audits |
 | 🤖 **Ollama LLM** | Powered by local LLM models (nchapman/gemma-2-9b-it-abliterated:9b - validated Dec 2025) |
 | 🐳 **Docker Ready** | Containerized deployment with automated setup scripts |
 | 📊 **Type Safety** | TypeScript strict mode + Pydantic validation throughout |
@@ -190,7 +190,6 @@
 - **Brave Search API** for web search (Rare+ personas)
 - **MongoDB Atlas** for Bitcoin trading data (Epic+ personas)
 - **Docker + Docker Compose** for deployment
-- **GitHub Actions** for CI/CD testing
 
 ---
 
@@ -623,11 +622,6 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
   - Component tests for all major UI elements
   - Integration tests for multi-message rendering
   - Phase 2 persona quality validation
-- **CI/CD**: GitHub Actions on every push
-  - Backend + Frontend test suites run in parallel
-  - ~5 minute runtime, 5 jobs
-  - Production build verification
-  - Security scanning (npm audit, secret detection)
 
 ### Code Quality Metrics
 
@@ -657,10 +651,9 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 ### Quality Assurance Process
 
 1. **Pre-Commit**: Local testing before commits
-2. **CI/CD**: Automated tests on every push
-3. **Code Review**: Documentation-first approach
-4. **Validation**: Manual testing for major features
-5. **Hygiene Sessions**: Regular cleanup and refactoring
+2. **Code Review**: Documentation-first approach
+3. **Validation**: Manual testing for major features
+4. **Hygiene Sessions**: Regular cleanup and refactoring
 
 ---
 
@@ -725,7 +718,6 @@ See `CHANGELOG.md` for recent updates and project evolution.
 - ✅ Brave MCP Integration (web search with citations)
 - ✅ MongoDB MCP Integration (trading data with technical indicators)
 - ✅ Docker deployment with automated setup
-- ✅ CI/CD pipeline with comprehensive testing
 
 **Future Enhancements:**
 - Phase 3 Conversational AI (response timing analysis, follow-up generation)

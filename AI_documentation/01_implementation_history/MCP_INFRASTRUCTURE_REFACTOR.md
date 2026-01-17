@@ -136,7 +136,7 @@ ERROR: Brave search failed: Docker not found
 - **Stateless** (containers live only during request, auto-cleanup)
 - **Resource efficient** (no idle containers consuming memory)
 - **Universal** (works for ANY MCP server with same pattern)
-- Docker socket mounting is **industry standard** (used by CI/CD runners, Kubernetes, etc.)
+- Docker socket mounting is **industry standard** (used by Kubernetes, container orchestration platforms, etc.)
 
 ### Why Ephemeral STDIO (Final Solution)
 
@@ -146,16 +146,16 @@ ERROR: Brave search failed: Docker not found
 3. **Resource Efficient:** Containers only exist for 2-3 seconds per request
 4. **Universal:** Same pattern works for Brave, MongoDB, Neo4j, any MCP server
 5. **Simple:** No Docker Compose service definitions, no port management
-6. **Security:** Standard container orchestration pattern (same as GitHub Actions runners)
+6. **Security:** Standard container orchestration pattern (same as automated testing runners)
 7. **Scalable:** Add new MCP = 50 lines of Python, zero YAML changes
 
 **Security Note (Docker Socket):**
 - **Context matters:** We're not giving backend arbitrary Docker access
 - Backend spawns **specific** MCP images with **specific** commands
 - This is the **same pattern** used by:
-  - GitHub Actions runners (mount socket to spawn job containers)
-  - CI/CD systems (Jenkins, GitLab, CircleCI)
+  - Automated testing platforms (mount socket to spawn job containers)
   - Kubernetes Docker-in-Docker (DinD) sidecar pattern
+  - Container orchestration systems
 - Backend runs as **non-root** user, socket access is read-only for container spawning
 - MCP containers themselves have **no socket access** (proper isolation)
 
