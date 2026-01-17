@@ -476,7 +476,7 @@ The MCP Coordinator uses two proven patterns for integrating external data sourc
 
 Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin/stdout pipes).
 
-**Want to add your own MCP server?** See **[docs/ADDING_MCP_SERVERS.md](docs/ADDING_MCP_SERVERS.md)** for:
+**Want to add your own MCP server?** See **[docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md)** for:
 - Choosing the right pattern for your use case
 - Step-by-step implementation guide with examples
 - Testing, troubleshooting, and best practices
@@ -677,7 +677,25 @@ Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to st
 | **[AGENTS.md](AGENTS.md)** | Repository guidelines, coding style, setup commands |
 | **[ASSESSMENT.md](ASSESSMENT.md)** | Codebase quality assessment (Dec 2025) |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and feature additions |
-| **[docs/ADDING_MCP_SERVERS.md](docs/ADDING_MCP_SERVERS.md)** | Guide for integrating new MCP servers (ephemeral & long-running patterns) |
+| **[docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md)** | Guide for integrating new MCP servers (ephemeral & long-running patterns) |
+| **[docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md)** | Testing setup, organization, and best practices |
+
+### Testing & Quality
+
+| Document | Description |
+|----------|-------------|
+| **[docs/testing/PYTEST_BASELINE_REPORT.md](docs/testing/PYTEST_BASELINE_REPORT.md)** | Pytest configuration and coverage baseline |
+
+### Scripts & Utilities
+
+| Directory | Description |
+|-----------|-------------|
+| **[scripts/](scripts/)** | Organized collection of development and deployment scripts |
+| **[scripts/docker/](scripts/docker/)** | Docker setup, validation, and troubleshooting scripts |
+| **[scripts/setup/](scripts/setup/)** | Local development environment setup scripts |
+| **[scripts/utils/](scripts/utils/)** | Python utilities (unified launcher, validation, cleanup) |
+
+See each directory's README.md for usage examples and detailed documentation.
 
 ### Production & Scaling
 
