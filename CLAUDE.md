@@ -566,13 +566,17 @@ docker-compose ps
 - `CICD_GETTING_STARTED.md` - Beginner-friendly CI/CD introduction (what, why, how)
 - `CICD_DOCUMENTATION.md` - Technical reference for CI/CD pipeline configuration
 
-**Historical Documentation (Archive):**
-- `AI_documentation/` - Historical specs, completion summaries, feature details
-  - `01_implementation_history/` - Phase completions, refactoring summaries, bug fixes
-  - `02_ux_design_specs/` - UX design roadmaps
-  - `03_feature_specs/` - Brave/MongoDB MCP specs, model recommendations
-  - `04_deprecated/` - Obsolete docs (React migration complete)
-  - `05_roadmaps/` - Persona quality, memory management roadmaps
+**Essential Documentation (AI_documentation/):**
+- `01_implementation_history/` - Critical architecture decisions and major refactorings (12 files)
+  - MCP infrastructure (Brave/MongoDB architecture, refactoring)
+  - Backend refactoring (Phase 1/2/3 completion reports, prompt optimization)
+  - UX implementations (typography system, typing indicator fix, Option 6 gap analysis)
+  - Quality systems (RAGAS evaluation, project hygiene log)
+- `02_ux_design_specs/` - Active UX specifications (2 files)
+  - UX_IMPROVEMENT_PLAN.md - Master UX design system
+  - UI_MULTI_MESSAGE_TEST_GUIDE.md - Frontend testing guide
+- `05_roadmaps/` - Future planning (1 file)
+  - PRODUCTION_READINESS_PLAN.md - Kubernetes migration roadmap
 
 ## Dependencies
 
@@ -608,12 +612,24 @@ docker-compose ps
 **Organization:**
 - `tests/`: 12 backend, 23 integration, 10 exploration
 - `src/coordinator/`: 3 routes, 7 services
-- `AI_documentation/`: 74+ docs (5 categories: implementation_history, ux_design_specs, feature_specs, deprecated, roadmaps)
+- `AI_documentation/`: 15 docs (3 categories: implementation_history, ux_design_specs, roadmaps) - 85.7% reduction from 105 files
 - `archive/test_artifacts/`: UX test artifacts (scale-only animation validation)
 
 **Root Markdown Policy:** README, CLAUDE, DOCKER_QUICKSTART, NEXT_STEPS, CHANGELOG only - all others → `AI_documentation/`
 
-**Latest Session (Jan 17, 2026):**
+**Latest Session (Jan 17, 2026 - Documentation Purge):**
+- Deleted: 90 obsolete documentation files (105→15, 85.7% reduction)
+  - 67 implementation logs (bug fixes, MVPs, phase completions, test summaries)
+  - 5 UX specs (completed features documented in CLAUDE.md)
+  - 7 feature specs (implemented features: Brave MCP, MongoDB, SQLite, model selection)
+  - 1 deprecated file (React migration complete)
+  - 6 completed roadmaps (persona quality, memory phases, conversational AI)
+  - 4 redundant root docs (analysis guides, README duplicates)
+- Removed: 4 empty directories (04_deprecated/, 03_feature_specs/, archive/)
+- Kept: Only essential docs (MCP architecture, major refactorings, UX plan, production roadmap, project hygiene log)
+- Result: Reduced context bloat, cleaner navigation, git history preserves all deleted content
+
+**Previous Session (Jan 17, 2026):**
 - Archived: test_scale_only.py + screenshots/ (1.7MB, UX test artifacts)
 - Cleaned: 5 debug console.log statements from React components
 - Verified: .pyc files properly gitignored, 2 TODOs recent (Dec 28 - Jan 1)

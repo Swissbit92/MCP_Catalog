@@ -58,7 +58,6 @@ const CharacterCardV2Showcase: React.FC = () => {
           const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key));
           if (validCollected.length !== collectedPersonas.length) {
             localStorage.setItem('collectedPersonas', JSON.stringify(validCollected));
-            console.log(`Cleaned up ${collectedPersonas.length - validCollected.length} removed personas from collection`);
           }
         }
 
