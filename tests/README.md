@@ -138,17 +138,6 @@ def test_end_to_end():
     # Test real interactions
 ```
 
-## CI/CD Integration
-
-For continuous integration, run:
-```bash
-# Backend unit tests (fast, no external deps)
-pytest tests/backend/ -v --tb=short
-
-# Skip integration tests in CI (they need external services)
-pytest tests/backend/ -v -m "not integration"
-```
-
 ## Troubleshooting
 
 ### Import Errors

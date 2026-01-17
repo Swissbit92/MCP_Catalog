@@ -56,12 +56,10 @@
 - ✅ **Dependencies**: Minimal npm vulnerabilities (dev dependencies only)
 - ✅ **SQL Injection**: Protected via parameterized queries
 
-#### 3. Testing & CI/CD (7/10)
-- ✅ **GitHub Actions**: 5 parallel jobs (backend, frontend, build, quality, security)
+#### 3. Testing (6/10)
 - ✅ **Test Coverage**: Backend unit tests + integration tests + frontend tests
-- ✅ **Build Verification**: Production build validated on every push
-- ✅ **Security Scanning**: npm audit + secret detection
-- ⚠️ **Non-blocking Tests**: Tests run with `|| true` (failures don't block CI)
+- ✅ **Build Verification**: Production build validated manually
+- ✅ **Security Scanning**: npm audit (run manually)
 
 #### 4. Configuration Management (9/10)
 - ✅ **Centralized Config**: Pydantic-based settings in `config.py`
@@ -1538,121 +1536,7 @@ monitoring:
 
 ---
 
-#### 3.3 CI/CD Pipeline (Week 2)
-
-**GitHub Actions Workflow**:
-```yaml
-# .github/workflows/deploy.yml
-name: Build and Deploy to K8s
-
-on:
-  push:
-    branches: [ main ]
-    tags:
-      - 'v*'
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
-  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
-
-jobs:
-  build-backend:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  build-frontend:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ./react-ui
-          file: ./react-ui/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  deploy:
-    needs: [build-backend, build-frontend]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure kubectl
-        uses: azure/k8s-set-context@v3
-        with:
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      - name: Deploy with Helm
-        run: |
-          helm upgrade --install mcp-coordinator ./helm/mcp-coordinator \
-            --namespace mcp-coordinator \
-            --create-namespace \
-            --set backend.image.tag=${{ github.sha }} \
-            --set frontend.image.tag=${{ github.sha }} \
-            --wait
-```
-
----
-
-#### 3.4 Monitoring Stack (Week 3)
+#### 3.3 Monitoring Stack (Week 3)
 
 **Prometheus + Grafana**:
 ```yaml
@@ -1771,7 +1655,6 @@ By end of Phase 3, you will have:
 - ✅ **Load Balancing**: Ingress with SSL/TLS termination
 - ✅ **Monitoring**: Prometheus + Grafana dashboards
 - ✅ **Log Aggregation**: ELK or Loki for centralized logs
-- ✅ **CI/CD**: Automated build + deploy pipeline
 - ✅ **Disaster Recovery**: Backup strategy for PostgreSQL + Ollama models
 - ✅ **High Availability**: Multi-AZ deployment
 - ✅ **Network Policies**: Pod-to-pod security

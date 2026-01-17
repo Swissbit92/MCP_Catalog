@@ -200,22 +200,6 @@ exclude_lines =
 
 ---
 
-## Running Tests in CI
-
-Tests run automatically on every push via GitHub Actions:
-
-```yaml
-# .github/workflows/test.yml
-- name: Run tests
-  run: |
-    pytest -v --cov --cov-report=xml
-
-- name: Upload coverage
-  uses: codecov/codecov-action@v3
-```
-
----
-
 ## Migrating from unittest to pytest
 
 ### Before (unittest)

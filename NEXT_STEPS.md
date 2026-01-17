@@ -64,7 +64,7 @@
 
 **Expected Benefits:**
 - 📊 Baseline quality metrics for all personas
-- 🔍 Regression detection in CI/CD (fail if quality drops >5%)
+- 🔍 Regression detection (fail if quality drops >5%)
 - 📈 Data-driven model selection (llama3.1:8b vs alternatives)
 - ✅ Confidence in deployments
 
@@ -75,7 +75,6 @@
 - [ ] Phase 2: Golden Q&A examples (30 questions for 3 personas)
 - [ ] Phase 3: Core evaluator implementation
 - [ ] Phase 4: Integration & testing
-- [ ] Phase 5: CI/CD integration
 
 **Effort:** 8-12 hours total
 **Dependencies:** +1 primary (`ragas==0.2.3`), +4 transitive (~150MB)
@@ -235,7 +234,6 @@
 - **MCP Infrastructure** (Brave ephemeral + MongoDB long-running STDIO patterns)
 - **Backend Core Refactoring** (service layer extraction, DRY compliance)
 - **God-object file refactoring** (4 files → 17 modular components)
-- **CI/CD pipeline** (GitHub Actions with 5 jobs)
 - **Test coverage metrics** (Jest + scripts)
 - **Production code cleanup** (print statements, test fixes)
 - **Conversational AI Phases 1-2** (multi-message responses, curiosity prompts)
@@ -353,18 +351,7 @@
 - [ ] Read `ASYNC_CONVERSION_PLAN.md` (8-phase implementation strategy)
 - [ ] Understand trade-offs of each async rollout option
 
-### 2. Test CI/CD Pipeline ✅
-```bash
-# Trigger CI by making a test commit
-git add .
-git commit -m "Test CI/CD pipeline"
-git push origin main
-
-# Watch GitHub Actions tab for workflow runs
-# Verify all 5 jobs pass (backend, frontend, build, quality, security)
-```
-
-### 3. Run Coverage Reports ✅
+### 2. Run Coverage Reports ✅
 ```bash
 # Windows
 scripts\coverage-report.bat
@@ -376,7 +363,7 @@ scripts\coverage-report.bat
 # Open react-ui/coverage/index.html in browser
 ```
 
-### 4. Make Decision on Async Conversion 🎯
+### 3. Make Decision on Async Conversion 🎯
 **Choose one:**
 - [ ] **Option A:** Big Bang (2-3 days, high risk)
 - [ ] **Option B:** Gradual Migration (1 month, medium risk) ← **RECOMMENDED**
@@ -434,14 +421,6 @@ async def get_async_db_connection(db_path: str):
         await conn.close()
 
 # Add more helpers as needed
-```
-
-**3. Update CI/CD for Async Tests**
-```yaml
-# .github/workflows/ci.yml (backend-tests job)
-- name: Run async backend tests
-  run: |
-    python -m pytest tests/backend/coordinator/test_async_*.py -v
 ```
 
 ### Phase 2-8: Follow ASYNC_CONVERSION_PLAN.md
@@ -537,15 +516,6 @@ touch tests/performance/locustfile.py
 
 **Goal:** Prevent coverage from decreasing
 
-**Implementation:**
-```yaml
-# .github/workflows/ci.yml (frontend-tests job)
-- name: Run frontend tests with coverage
-  working-directory: react-ui
-  run: |
-    npm test -- --watchAll=false --coverage --coverageThreshold='{"global":{"lines":70}}'
-```
-
 **Add to package.json:**
 ```json
 {
@@ -599,7 +569,6 @@ async def health_check():
 **Week 1-2: E2E Testing**
 - Add Playwright
 - Test critical flows
-- Integrate into CI
 
 **Week 3-4: Coverage Improvement**
 - Frontend 68% → 80%
@@ -635,7 +604,6 @@ async def health_check():
 
 **Week 5-6: Deployment Automation**
 - Docker Compose
-- CI/CD deployment stage
 - Environment configs
 
 **Week 7-8: Production Launch Prep**
@@ -655,7 +623,6 @@ async def health_check():
 
 ### Short-term (1 Month)
 
-- [ ] CI/CD pipeline runs successfully on every commit
 - [ ] Test coverage tracked and visible
 - [ ] Decision made on async conversion strategy
 - [ ] At least one additional improvement completed (E2E tests OR coverage OR performance)
@@ -683,7 +650,6 @@ async def health_check():
 
 - **Architecture Summary:** `AI_documentation/01_implementation_history/ARCHITECTURE_IMPROVEMENTS_SUMMARY.md`
 - **Async Conversion Plan:** `AI_documentation/01_implementation_history/ASYNC_CONVERSION_PLAN.md`
-- **CI/CD Guide:** `.github/CICD_DOCUMENTATION.md`
 - **Claude Code Guide:** `CLAUDE.md`
 - **Project README:** `README.md`
 
@@ -749,7 +715,6 @@ scripts\coverage-report.bat
 - `src/coordinator/tools/*.py` (6 files)
 - `src/coordinator/mongodb/*.py` (3 files)
 - `react-ui/src/components/header/*.tsx` (3 files)
-- `.github/workflows/*.yml` (2 files)
 - `scripts/coverage-report.*` (2 files)
 - Various documentation files (10+ files)
 

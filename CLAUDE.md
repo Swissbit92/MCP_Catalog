@@ -103,28 +103,7 @@ cd react-ui && npm run start:dev
 cd react-ui && npm run build
 ```
 
-### CI/CD (Automated Testing)
-
-**New to CI/CD?** See `.github/CICD_GETTING_STARTED.md` for a beginner-friendly introduction.
-
-The project has **automated testing** via GitHub Actions that runs on every push:
-- ✅ Backend tests (10 test files, ~360 test cases)
-- ✅ **RAGAS persona quality evaluation** (57 tests: metrics, golden Q&A validation, evaluator tests)
-- ✅ Frontend tests (Jest with coverage reporting)
-- ✅ Production build verification
-- ✅ Code quality checks (syntax, naming, TODOs)
-- ✅ Security scanning (npm audit, secret detection)
-
-**Typical run time:** ~5 minutes (6 jobs in parallel)
-**View results:** GitHub → Actions tab → See workflow runs
-
-**RAGAS Evaluation:** Validates persona response quality using golden Q&A datasets (Eeva, Frieren, Gojo). Checks faithfulness, answer relevancy, context precision, and context recall metrics. Fast unit tests run in CI; slow integration tests (requiring OpenAI API) run manually.
-
-**Technical reference:** `.github/CICD_DOCUMENTATION.md`
-
----
-
-### Testing (Manual/Local)
+### Testing
 ```bash
 # React tests
 cd react-ui && npm test
@@ -262,7 +241,6 @@ Optional - See `.env.docker` for complete list with defaults:
 ### Testing
 - React: Jest + React Testing Library, `*.test.tsx` colocated with components
 - Mock API calls, test user interactions
-- Use `--watchAll=false` for CI
 - Python: Limited test coverage currently, mock Ollama for critical paths
 
 ### UX & Design Guidelines
@@ -561,10 +539,6 @@ docker-compose ps
 - `DOCKER_SQLITE_OPTIMIZATION_SUMMARY.md` - SQLite technical decision
 - `SQLITE_ARCHITECTURE.md` - Database architecture technical decision record
 - `UI_MULTI_MESSAGE_TEST_GUIDE.md` - Frontend testing guide
-
-**CI/CD Documentation (.github/):**
-- `CICD_GETTING_STARTED.md` - Beginner-friendly CI/CD introduction (what, why, how)
-- `CICD_DOCUMENTATION.md` - Technical reference for CI/CD pipeline configuration
 
 **Essential Documentation (AI_documentation/):**
 - `01_implementation_history/` - Critical architecture decisions and major refactorings (12 files)

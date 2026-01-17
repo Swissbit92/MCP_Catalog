@@ -14,9 +14,9 @@ Implementation of the RAGAS (RAG Assessment) evaluation framework to provide qua
 
 **Expected Benefits:**
 - 📊 Baseline quality metrics for all personas
-- 🔍 Regression detection in CI/CD
+- 🔍 Regression detection for quality monitoring
 - 📈 Data-driven model selection (llama3.1:8b vs alternatives)
-- ✅ Confidence in deployments (fail CI if quality drops >5%)
+- ✅ Confidence in deployments
 
 **Implementation Effort:** 8-12 hours
 **Dependencies Added:** +1 primary (`ragas==0.2.3`), +4 transitive
@@ -49,7 +49,6 @@ venv_Projektarbeit demonstrated RAGAS usage in `SA2_zehnder_ramon.ipynb` with:
 **Adaptation for MCP Coordinator:**
 - No chunking needed (full messages indexed in Phase 3 memory)
 - Focus on persona response quality, not retrieval optimization
-- Integrate with existing CI/CD pipeline (GitHub Actions)
 
 ---
 
@@ -224,37 +223,6 @@ tests/evaluation/
 
 ---
 
-### Phase 5: CI/CD Integration (Week 2, Days 12-14) ✅ COMPLETE
-
-**Goal:** Add RAGAS checks to GitHub Actions workflow
-
-#### CI/CD Strategy:
-```yaml
-# .github/workflows/ci.yml
-- name: RAGAS Persona Quality Check
-  run: |
-    pytest tests/evaluation/ --skip-slow -v --tb=short
-  # Fast unit tests only (57 tests), slow tests skipped
-```
-
-#### Tasks:
-- [x] Add RAGAS job to `.github/workflows/ci.yml`
-- [x] Create `tests/evaluation/conftest.py` with `--threshold` CLI arg
-- [x] Add artifact upload for test results
-- [x] Update `.github/CICD_DOCUMENTATION.md`
-- [x] Update `CLAUDE.md` with RAGAS CI/CD info
-
-#### Acceptance Criteria:
-- ✅ CI/CD runs RAGAS evaluation on every push
-- ✅ Fast unit tests execute (57 tests)
-- ✅ Slow integration tests skipped (require OpenAI API)
-- ✅ Golden Q&A validation runs automatically
-- ✅ Documentation updated
-
-**Status:** CI/CD integration complete. RAGAS evaluation now runs as 6th parallel job in GitHub Actions pipeline (~5 min total runtime).
-
----
-
 ## Success Metrics
 
 ### Baseline Metrics (To Be Established)
@@ -275,7 +243,7 @@ tests/evaluation/
 
 ### Regression Detection Rules
 
-**CI/CD Failure Conditions:**
+**Quality Alert Thresholds:**
 1. **Hard Failure:**
    - Faithfulness drops >10% from baseline
    - Answer Relevancy drops >10% from baseline
@@ -330,8 +298,6 @@ src/coordinator/evaluation/
 ### Modified Files
 
 - `requirements.txt` - Add `ragas==0.2.3`
-- `.github/workflows/test.yml` - Add RAGAS evaluation job
-- `.github/CICD_DOCUMENTATION.md` - Document RAGAS checks
 - `CLAUDE.md` - Add RAGAS evaluation section
 - `NEXT_STEPS.md` - Reference this implementation doc
 
@@ -341,7 +307,7 @@ src/coordinator/evaluation/
 - ✅ Memory system (Phase 3 RAG unchanged)
 - ✅ API routes (evaluation is testing-only, no new endpoints yet)
 - ✅ Database schema (no new tables)
-- ✅ Docker deployment (optional: evaluation runs in CI/CD)
+- ✅ Docker deployment (evaluation runs locally)
 
 ---
 
@@ -355,12 +321,7 @@ src/coordinator/evaluation/
 ### Integration Tests
 - `test_persona_quality.py` - End-to-end evaluation of 3 personas
 - Mock LLM responses for deterministic testing
-- Real LLM evaluation (manual/CI)
-
-### CI/CD Tests
-- Automated RAGAS checks on every push
-- Baseline comparison (fail if regression)
-- Metrics reporting in GitHub Actions summary
+- Real LLM evaluation (manual testing)
 
 ---
 
@@ -398,13 +359,13 @@ src/coordinator/evaluation/
 - Test installation in clean venv before commit
 - Document known issues in this file
 
-### Risk 2: Slow CI/CD Execution
+### Risk 2: Slow Evaluation Execution
 **Likelihood:** Medium
 **Impact:** Low
 **Mitigation:**
-- Use subset of golden examples in CI (3 questions per persona)
-- Full evaluation on release branches only
-- Cache RAGAS models in CI environment
+- Use subset of golden examples for quick checks (3 questions per persona)
+- Full evaluation on release validation
+- Cache RAGAS models locally
 
 ### Risk 3: Subjectivity in Ground Truth
 **Likelihood:** Medium
@@ -445,15 +406,6 @@ src/coordinator/evaluation/
    **Tracking:** AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md
    ```
 
-3. **.github/CICD_DOCUMENTATION.md**
-   ```markdown
-   ## RAGAS Persona Quality Checks
-
-   Automated evaluation of persona response quality using RAGAS framework.
-   Metrics: faithfulness, answer_relevancy, context_precision, context_recall.
-   Fails if metrics drop >5% from baseline.
-   ```
-
 ---
 
 ## Progress Tracking
@@ -471,9 +423,8 @@ src/coordinator/evaluation/
 - [ ] **Day 6:** Implement `golden_examples.py` and `metrics.py`
 - [ ] **Day 7:** Write unit tests, establish baseline metrics
 - [ ] **Day 8:** Write integration tests
-- [ ] **Day 9:** CI/CD integration
-- [ ] **Day 10:** Documentation updates
-- [ ] **Day 11:** Final testing and review
+- [ ] **Day 9:** Documentation updates
+- [ ] **Day 10:** Final testing and review
 
 ---
 
@@ -485,15 +436,13 @@ src/coordinator/evaluation/
 2. ✅ 3 personas with 10 golden Q&A examples each (30 total)
 3. ✅ Evaluation module implemented and tested (>80% coverage)
 4. ✅ Baseline metrics established and documented
-5. ✅ CI/CD integration complete (fails on regression)
-6. ✅ Documentation updated (CLAUDE.md, NEXT_STEPS.md, CICD_DOCUMENTATION.md)
-7. ✅ Peer review completed
-8. ✅ All tests passing in CI/CD
+5. ✅ Documentation updated (CLAUDE.md, NEXT_STEPS.md)
+6. ✅ Peer review completed
+7. ✅ All tests passing
 
 **Sign-Off:**
 - [ ] Code review approved
 - [ ] Documentation reviewed
-- [ ] CI/CD passing
 - [ ] User acceptance (Ramon Zehnder)
 
 ---
@@ -507,7 +456,6 @@ src/coordinator/evaluation/
 **MCP Coordinator Context:**
 - `ASSESSMENT.md` - Quality score: 8.6/10 (missing evaluation)
 - `CLAUDE.md` - Testing section (to be updated)
-- `.github/CICD_DOCUMENTATION.md` - CI/CD pipeline documentation
 - `src/coordinator/memory_rag.py` - Phase 3 memory system
 
 **External Documentation:**
