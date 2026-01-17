@@ -49,9 +49,7 @@ const CharacterShowcase: React.FC = () => {
   useEffect(() => {
     const loadPersonas = async () => {
       try {
-        console.log('Loading personas from API...');
         const personasData = await fetchPersonas();
-        console.log('Loaded personas:', personasData.length, 'characters');
         setPersonas(personasData);
       } catch (error) {
         console.error('Failed to load personas:', error);
@@ -82,7 +80,6 @@ const CharacterShowcase: React.FC = () => {
             escalation_policy: {}
           }
         ];
-        console.log('Using fallback data');
         setPersonas(fallbackPersonas);
       }
     };
@@ -100,9 +97,7 @@ const CharacterShowcase: React.FC = () => {
 
       setIsLoadingBio(true);
       try {
-        console.log('Loading bio for:', currentPersona.key);
         const bio = await fetchCharacterBio(currentPersona.key);
-        console.log('Loaded bio:', bio.summary.substring(0, 100) + '...');
         setCharacterBio(bio);
       } catch (error) {
         console.error('Failed to load character bio:', error);
