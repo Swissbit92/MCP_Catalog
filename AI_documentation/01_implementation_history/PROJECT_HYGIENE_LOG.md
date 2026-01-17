@@ -123,7 +123,7 @@ Archive (87.3 KB):
 - Dead code: **0** ✅
 - Commented code blocks: **0** ✅
 - Active TODOs: **1** (memory_rag.py:233 - acceptable optimization note)
-- Root Python files: **1** (run_react.py only - correct)
+- Root Python files: **0** (run_react.py moved to scripts/utils/ - correct)
 - Root Markdown files: **5** (all essential docs)
 
 **Updated Project Map:**
@@ -297,7 +297,7 @@ verify_model_context.py    → src/coordinator/utils/
 - src/coordinator/services/: 3 service modules (citations, first-person, mongodb)
 - src/coordinator/utils/: 2 utility scripts
 - AI_documentation/: 22+ docs across 5 categories
-- Root directory: Clean (only run_react.py entry point)
+- Root directory: Clean (scripts/ and docs/ directories, 0 Python files)
 
 ## Code Quality Metrics
 
@@ -306,5 +306,5 @@ verify_model_context.py    → src/coordinator/utils/
 - Code duplication: 0
 - Type hints coverage: 95%+
 - Naming convention violations: 0
-- Root Python files: 1 (run_react.py - correct)
+- Root Python files: 0 (run_react.py moved to scripts/utils/ - correct)
 - Largest backend file: 534 lines (routes/chat.py)

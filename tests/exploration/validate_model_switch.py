@@ -271,7 +271,7 @@ if __name__ == "__main__":
     except requests.exceptions.ConnectionError:
         print("\n❌ ERROR: Cannot connect to backend at http://127.0.0.1:8000")
         print("Make sure the backend is running:")
-        print("   python run_react.py")
+        print("   python scripts/utils/run_react.py")
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ ERROR: {e}")

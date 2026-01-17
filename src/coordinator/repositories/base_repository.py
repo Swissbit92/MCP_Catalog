@@ -7,20 +7,34 @@ import sqlite3
 import threading
 import os
 from datetime import datetime
+from .db_adapter import DatabaseAdapter, SQLiteAdapter
+
 
 class BaseRepository:
-    """Base repository class providing common database operations."""
+    """Base repository class providing common database operations via adapter pattern."""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: Optional[str] = None, adapter: Optional[DatabaseAdapter] = None):
+        """
+        Initialize repository with database adapter.
+
+        Args:
+            db_path: Path to database file (SQLite default)
+            adapter: Optional database adapter instance (defaults to SQLiteAdapter)
+        """
         self._db_path = db_path or os.environ.get("COORDINATOR_DB_PATH", "chats.db")
         self._lock = threading.Lock()
 
+        # Use provided adapter or default to SQLiteAdapter
+        self._adapter = adapter if adapter is not None else SQLiteAdapter(self._db_path)
+
     def _conn(self) -> sqlite3.Connection:
-        """Create a new database connection with row factory."""
-        conn = sqlite3.connect(self._db_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
-        return conn
+        """
+        Get a database connection via the adapter.
+
+        Returns:
+            Database connection object
+        """
+        return self._adapter.get_connection()
 
     def _execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         """
@@ -34,12 +48,7 @@ class BaseRepository:
             Cursor object with query results
         """
         with self._lock:
-            conn = self._conn()
-            cur = conn.cursor()
-            cur.execute(query, params)
-            conn.commit()
-            conn.close()
-            return cur
+            return self._adapter.execute(query, params)
 
     def _fetchone_dict(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         """
@@ -53,15 +62,7 @@ class BaseRepository:
             Dictionary with query results or None
         """
         with self._lock:
-            conn = self._conn()
-            cur = conn.cursor()
-            cur.execute(query, params)
-            row = cur.fetchone()
-            conn.close()
-
-            if not row:
-                return None
-            return dict(row)
+            return self._adapter.fetchone(query, params)
 
     def _fetchall_list(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """
@@ -75,13 +76,7 @@ class BaseRepository:
             List of dictionaries with query results
         """
         with self._lock:
-            conn = self._conn()
-            cur = conn.cursor()
-            cur.execute(query, params)
-            rows = cur.fetchall()
-            conn.close()
-
-            return [dict(r) for r in rows]
+            return self._adapter.fetchall(query, params)
 
     @staticmethod
     def _now() -> str:

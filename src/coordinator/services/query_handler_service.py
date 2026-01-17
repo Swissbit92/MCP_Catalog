@@ -11,7 +11,8 @@ from typing import Optional, Any
 
 from ..schemas import ResponseMetadata
 from ..config import get_ollama_base, get_persona_model, get_persona_temperature, get_persona_temperature_override
-from ..llm_client import LC_OllamaClient
+from .llm_completion_service import LLMCompletionService
+from ..llm_client import LC_OllamaClient  # For tool calling (Brave/Multi-MCP)
 from ..tool_definitions import build_mongodb_synthesis_prompt
 from .citation_service import CitationService, validate_citations
 from .first_person_service import post_process_first_person
@@ -141,7 +142,7 @@ class QueryHandlerService:
             if mongodb_result:
                 formatted_data = json.dumps(mongodb_result, indent=2)
 
-                client = LC_OllamaClient(
+                service = LLMCompletionService(
                     base=get_ollama_base(),
                     model=get_persona_model(),
                     temperature=get_persona_temperature_override(persona_card)
@@ -160,7 +161,7 @@ class QueryHandlerService:
 
 User Query: {user_compiled}"""
 
-                answer = client.complete(system=synthesis_system, user_prompt=synthesis_prompt)
+                answer = service.complete(system=synthesis_system, user_prompt=synthesis_prompt)
 
                 metadata.source_type = "mongodb_mcp"
                 metadata.tools_used = [tool_name]

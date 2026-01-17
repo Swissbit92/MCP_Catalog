@@ -13,6 +13,9 @@ lib64/
 Scripts/
 pyvenv.cfg
 
+# Exception: Allow project scripts directory (not venv Scripts/)
+!scripts/
+
 # Jupyter / system folders
 **/share/
 **/etc/

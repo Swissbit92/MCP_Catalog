@@ -240,124 +240,21 @@ def init_phase3_memory():
 
 
 def init_db():
-    """Initialize database tables and perform migrations."""
-    conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    cur = conn.cursor()
+    """Initialize database using Alembic migrations."""
+    from alembic.config import Config
+    from alembic import command
 
-    # Create chat_sessions table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS chat_sessions (
-        id TEXT PRIMARY KEY,
-        persona_key TEXT NOT NULL,
-        title TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-    )""")
-
-    # Create messages table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-        id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
-        role TEXT NOT NULL,
-        content TEXT NOT NULL,
-        timestamp TEXT NOT NULL,
-        latency_ms INTEGER,
-        source_type TEXT DEFAULT 'llm',
-        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
-    )""")
-
-    # Create conversation_summaries table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS conversation_summaries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id TEXT NOT NULL,
-        message_range TEXT NOT NULL,
-        summary_text TEXT NOT NULL,
-        emotional_developments TEXT,
-        topics_discussed TEXT,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
-    )""")
-
-    # Migration: If old tables exist, migrate data
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
-    if cur.fetchone():
-        logger.info("Migrating old chat data to new schema...")
-        cur.execute("""
-        INSERT OR IGNORE INTO chat_sessions (id, persona_key, title, created_at, updated_at)
-        SELECT printf('session_%06d', id), persona, title, created_at, updated_at FROM chats
-        """)
-        cur.execute("""
-        INSERT OR IGNORE INTO messages (id, session_id, role, content, timestamp, latency_ms)
-        SELECT printf('msg_%06d', id), printf('session_%06d', chat_id), role, content, ts, latency_ms FROM messages
-        """)
-        logger.info("Migration completed.")
-
-    # Create emotional_states table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS emotional_states (
-        session_id TEXT PRIMARY KEY,
-        trust_level REAL DEFAULT 0.5,
-        rapport REAL DEFAULT 0.5,
-        current_mood TEXT DEFAULT 'neutral',
-        mood_intensity REAL DEFAULT 0.5,
-        last_emotional_event TEXT,
-        emotional_history TEXT DEFAULT '[]',
-        updated_at TEXT,
-        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
-    )""")
-
-    # Create user_profiles table (Phase 3: Cross-session memory)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS user_profiles (
-        user_id TEXT PRIMARY KEY,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        profile_data TEXT NOT NULL
-    )""")
-
-    # Create user_sessions table (links users to their chat sessions)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS user_sessions (
-        user_id TEXT NOT NULL,
-        session_id TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES user_profiles(user_id) ON DELETE CASCADE,
-        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
-        PRIMARY KEY(user_id, session_id)
-    )""")
-
-    # Migration: Add source_type column to messages table if it doesn't exist
-    cur.execute("PRAGMA table_info(messages)")
-    columns = [row[1] for row in cur.fetchall()]
-    if 'source_type' not in columns:
-        logger.info("Adding source_type column to messages table...")
-        cur.execute("ALTER TABLE messages ADD COLUMN source_type TEXT DEFAULT 'llm'")
-        logger.info("source_type column added successfully")
-
-    # Migration: Add multi-message support fields
-    cur.execute("PRAGMA table_info(messages)")
-    columns = [row[1] for row in cur.fetchall()]
-    if 'multi_message_id' not in columns:
-        logger.info("Adding multi-message support columns to messages table...")
-        cur.execute("ALTER TABLE messages ADD COLUMN multi_message_id TEXT")
-        cur.execute("ALTER TABLE messages ADD COLUMN multi_message_index INTEGER")
-        logger.info("Multi-message columns added successfully")
-
-    # Create indexes
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_persona ON chat_sessions(persona_key)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON chat_sessions(created_at)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_summaries_session_id ON conversation_summaries(session_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_emotional_states_session ON emotional_states(session_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_user_sessions_session_id ON user_sessions(session_id)")
-
-    conn.commit()
-    conn.close()
+    try:
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{_DB_PATH}")
+        
+        # Run migrations to latest version
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations applied successfully")
+        
+    except Exception as e:
+        logger.error(f"Database migration failed: {e}")
+        raise
 
 
 def cleanup_orphaned_sessions():
