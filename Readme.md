@@ -232,14 +232,14 @@ cd MCP_Catalog
 
 # 2. Run the setup script
 # Windows (PowerShell):
-.\setup-docker.ps1
+.\scripts\docker\setup-docker.ps1
 
 # Windows (Command Prompt):
-setup-docker.bat
+scripts\docker\setup-docker.bat
 
 # Linux/Mac:
-chmod +x setup-docker.sh
-./setup-docker.sh
+chmod +x scripts/docker/setup-docker.sh
+./scripts/docker/setup-docker.sh
 ```
 
 **🎉 That's it!** The script will:
@@ -301,14 +301,14 @@ Test your Docker setup:
 
 ```bash
 # Windows
-.\test_docker_setup.ps1
+.\scripts\docker\test_docker_setup.ps1
 
 # Linux/Mac
-chmod +x test_docker_setup.sh
-./test_docker_setup.sh
+chmod +x scripts/docker/test_docker_setup.sh
+./scripts/docker/test_docker_setup.sh
 ```
 
-**📖 Detailed Guide**: See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for full documentation, troubleshooting, and advanced configuration.
+**📖 Detailed Guide**: See [docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md) for full documentation, troubleshooting, and advanced configuration.
 
 ---
 
@@ -329,11 +329,11 @@ cd MCP_Catalog
 
 ```bash
 # Linux/macOS
-chmod +x setup.sh
-./setup.sh
+chmod +x scripts/setup/setup.sh
+./scripts/setup/setup.sh
 
 # Windows
-setup.bat
+scripts\setup\setup.bat
 ```
 
 #### **Option B: Manual Setup**
@@ -563,7 +563,7 @@ cp data/chats.db backups/chats.db.$(date +%Y%m%d)
 #### **Option A: Unified Startup (Recommended)**
 
 ```bash
-python run_react.py
+python scripts/utils/run_react.py
 ```
 
 **🎯 This starts both backend and frontend automatically!**
@@ -580,7 +580,7 @@ cd react-ui && npm start
 
 #### **Stopping the Application**
 
-Press `Ctrl+C` in the terminal running `python run_react.py` to stop both services gracefully.
+Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to stop both services gracefully.
 
 ---
 
@@ -663,11 +663,11 @@ Press `Ctrl+C` in the terminal running `python run_react.py` to stop both servic
 
 | Document | Description |
 |----------|-------------|
-| **[DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)** | Complete Docker setup guide with troubleshooting |
+| **[docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md)** | Complete Docker setup guide with troubleshooting |
 | **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** | Technical decision record for SQLite architecture |
 | **[.env.docker](.env.docker)** | Environment configuration template |
-| **[test_docker_setup.ps1](test_docker_setup.ps1)** | Windows validation script |
-| **[test_docker_setup.sh](test_docker_setup.sh)** | Linux/Mac validation script |
+| **[scripts/docker/test_docker_setup.ps1](scripts/docker/test_docker_setup.ps1)** | Windows validation script |
+| **[scripts/docker/test_docker_setup.sh](scripts/docker/test_docker_setup.sh)** | Linux/Mac validation script |
 
 ### Development & Architecture
 

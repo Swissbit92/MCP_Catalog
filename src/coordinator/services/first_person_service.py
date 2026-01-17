@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 
 from ..config import get_ollama_base, get_persona_model, get_temp_rewrite
-from ..llm_client import LC_OllamaClient
+from .llm_completion_service import LLMCompletionService
 
 logger = logging.getLogger(__name__)
 
@@ -87,13 +87,13 @@ Your task:
 Rewritten first-person response:"""
 
     try:
-        client = LC_OllamaClient(
+        service = LLMCompletionService(
             base=get_ollama_base(),
             model=get_persona_model(),
             temperature=get_temp_rewrite()
         )
 
-        rewritten = client.complete(
+        rewritten = service.complete(
             system="You are a helpful assistant that rewrites text from third-person to first-person. Follow the instructions exactly.",
             user_prompt=rewrite_prompt
         )

@@ -249,7 +249,7 @@ def main():
 
     except requests.exceptions.ConnectionError:
         print("\n[FAIL] Could not connect to backend server")
-        print("[INFO] Make sure server is running: python run_react.py")
+        print("[INFO] Make sure server is running: python scripts/utils/run_react.py")
         return False
 
     except Exception as e:

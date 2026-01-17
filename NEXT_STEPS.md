@@ -668,7 +668,7 @@ npm run start:dev
 
 **Unified:**
 ```bash
-python run_react.py
+python scripts/utils/run_react.py
 ```
 
 ### Running Tests

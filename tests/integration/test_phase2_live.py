@@ -156,7 +156,7 @@ if __name__ == "__main__":
     except requests.exceptions.ConnectionError:
         print("\n❌ ERROR: Cannot connect to backend at http://127.0.0.1:8000")
         print("Make sure the backend is running:")
-        print("   python run_react.py")
+        print("   python scripts/utils/run_react.py")
         print("   OR")
         print("   uvicorn src.coordinator.server:app --reload --port 8000")
         exit(1)

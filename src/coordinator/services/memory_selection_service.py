@@ -12,7 +12,7 @@ from ..config import (
     get_summarization_interval,
     get_temp_summarization,
 )
-from ..llm_client import LC_OllamaClient
+from ..llm_client import LC_OllamaClient  # For conversation_summarizer
 from ..persona_memory import get_persona_card
 
 logger = logging.getLogger(__name__)

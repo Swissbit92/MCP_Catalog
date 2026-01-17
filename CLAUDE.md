@@ -17,18 +17,18 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 
 ### Docker Deployment (Recommended)
 
-**🐳 Docker is the recommended setup method** for local development and testing. See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for full guide.
+**🐳 Docker is the recommended setup method** for local development and testing. See [docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md) for full guide.
 
 **One-Command Setup (Easiest):**
 ```bash
 # Windows PowerShell
-.\setup-docker.ps1
+.\scripts\docker\setup-docker.ps1
 
 # Windows Command Prompt
-setup-docker.bat
+scripts\docker\setup-docker.bat
 
 # Linux/Mac
-./setup-docker.sh
+./scripts/docker/setup-docker.sh
 ```
 
 **Manual Setup (Alternative):**
@@ -67,7 +67,7 @@ docker-compose down               # Stop all services
 - Ollama models: Docker volume (9GB for gemma-2-9b)
 
 **Documentation:**
-- **[DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)** - Complete setup guide
+- **[docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md)** - Complete setup guide
 - **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** - Technical decision record
 - **[.env.docker](.env.docker)** - Configuration template
 
@@ -80,8 +80,8 @@ For code modification and development (alternative to Docker):
 **Setup:**
 ```bash
 # Automated setup (installs Python + React dependencies)
-./setup.sh          # Linux/macOS
-setup.bat           # Windows
+./scripts/setup/setup.sh          # Linux/macOS
+scripts\setup\setup.bat           # Windows
 
 # Manual setup
 pip install -r requirements.txt
@@ -91,7 +91,7 @@ cd react-ui && npm install
 **Running the Application:**
 ```bash
 # Unified startup (recommended) - starts both backend + frontend
-python run_react.py
+python scripts/utils/run_react.py
 
 # Backend only (FastAPI on port 8000)
 uvicorn src.coordinator.server:app --reload --port 8000
@@ -502,12 +502,12 @@ Update `rarity` in persona JSON:
 **Automated Fix (Recommended):**
 ```powershell
 # PowerShell (full diagnostics)
-.\fix-docker-network.ps1          # Quick fix (recommended)
-.\fix-docker-network.ps1 -Nuclear # Full rebuild
-.\fix-docker-network.ps1 -Verify  # Check status only
+.\scripts\docker\fix-docker-network.ps1          # Quick fix (recommended)
+.\scripts\docker\fix-docker-network.ps1 -Nuclear # Full rebuild
+.\scripts\docker\fix-docker-network.ps1 -Verify  # Check status only
 
 # Windows batch (simple fix)
-.\fix-docker-network.bat
+.\scripts\docker\fix-docker-network.bat
 ```
 
 **Manual Fix:**
@@ -534,7 +534,7 @@ docker-compose ps
 - `AGENTS.md` - AI coding guidelines, tech stack, build commands, code style
 - `CHANGELOG.md` - Version history, feature additions, security fixes
 - `PRODUCTION_READINESS_PLAN.md` - Kubernetes production readiness assessment & 3-phase migration plan (Dec 2025)
-- `DOCKER_QUICKSTART.md` - Docker deployment guide (recommended setup method)
+- `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment guide (recommended setup method)
 - `DOCKER_README_UPDATE_SUMMARY.md` - Docker implementation log
 - `DOCKER_SQLITE_OPTIMIZATION_SUMMARY.md` - SQLite technical decision
 - `SQLITE_ARCHITECTURE.md` - Database architecture technical decision record
@@ -589,7 +589,7 @@ docker-compose ps
 - `AI_documentation/`: 15 docs (3 categories: implementation_history, ux_design_specs, roadmaps) - 85.7% reduction from 105 files
 - `archive/test_artifacts/`: UX test artifacts (scale-only animation validation)
 
-**Root Markdown Policy:** README, CLAUDE, DOCKER_QUICKSTART, NEXT_STEPS, CHANGELOG only - all others → `AI_documentation/`
+**Root Markdown Policy:** README, CLAUDE, NEXT_STEPS, CHANGELOG only (specialized guides in docs/) - all others → `AI_documentation/`
 
 **Latest Session (Jan 17, 2026 - Documentation Purge):**
 - Deleted: 90 obsolete documentation files (105→15, 85.7% reduction)

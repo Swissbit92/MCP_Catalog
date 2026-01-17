@@ -29,7 +29,8 @@ from ..config import (
     get_fact_extraction_interval,
     get_temp_fact_extraction,
 )
-from ..llm_client import LC_OllamaClient, estimate_tokens
+from ..llm_client import estimate_tokens, LC_OllamaClient  # LC_OllamaClient for FactExtractor/Summarizer
+from .llm_completion_service import LLMCompletionService
 from ..persona_memory import build_system_prompt, get_persona_card
 
 logger = logging.getLogger(__name__)
