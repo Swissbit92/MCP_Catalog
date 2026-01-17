@@ -131,6 +131,12 @@ class MongoDBDockerClient:
         """
         Start the Docker MCP server process and keep it alive.
 
+        SECURITY: Resource limits applied to prevent DoS attacks:
+        - Memory: 512MB max (MongoDB queries can be memory-intensive)
+        - CPU: 1.0 cores max (query processing needs more CPU than Brave)
+        - PIDs: 100 max (prevents fork bombs)
+        - Labels: Enables orphan container detection
+
         Returns:
             subprocess.Popen: The running MCP server process
 
@@ -143,6 +149,11 @@ class MongoDBDockerClient:
             "docker", "run",
             "-i",  # Interactive mode (keep stdin open)
             "--rm",  # Remove container after exit
+            "--memory=512m",  # Higher limit for MongoDB query processing
+            "--cpus=1.0",  # Full core for query performance
+            "--pids-limit=100",  # Prevent fork bombs
+            "--label=mcp.coordinator.ephemeral=false",  # Long-running
+            "--label=mcp.coordinator.service=mongodb",
             "-e", "MDB_MCP_CONNECTION_STRING",
             "mcp/mongodb"
         ]
@@ -371,17 +382,34 @@ class MongoDBDockerClient:
     def close(self):
         """
         Close the MCP client and terminate the Docker container.
+
+        SECURITY: Guaranteed cleanup with graceful termination and forced kill fallback.
         """
         if self._process:
             logger.info("Shutting down MongoDB MCP server...")
             try:
+                # Try graceful termination first (SIGTERM)
                 self._process.terminate()
                 self._process.wait(timeout=5)
-                logger.info("MongoDB MCP server shut down successfully")
+                logger.info("MongoDB MCP server shut down gracefully")
             except subprocess.TimeoutExpired:
-                logger.warning("MCP server did not terminate, forcing kill...")
+                # Force kill if graceful shutdown fails (SIGKILL)
+                logger.warning("MCP server did not terminate gracefully, forcing kill...")
                 self._process.kill()
-                self._process.wait()
+                try:
+                    self._process.wait(timeout=5)
+                    logger.info("MongoDB MCP server killed successfully")
+                except subprocess.TimeoutExpired:
+                    # Should never happen, but log if it does
+                    logger.error("Container did not die after SIGKILL - this should not happen")
+            except Exception as e:
+                # Catch any other errors and attempt kill
+                logger.error(f"Error during shutdown: {e}, forcing kill...")
+                try:
+                    self._process.kill()
+                    self._process.wait(timeout=5)
+                except Exception as kill_error:
+                    logger.error(f"Kill failed: {kill_error}")
             finally:
                 self._process = None
 
