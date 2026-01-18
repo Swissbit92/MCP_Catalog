@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { ToolIndicator } from '../components/ToolIndicator';
@@ -111,6 +111,16 @@ const Chat: React.FC = () => {
     }
   };
 
+  // Memoize callback to prevent MessageBubble re-renders
+  const handleRetryMessage = useCallback(async (messageId: string) => {
+    try {
+      await retryMessage(messageId);
+    } catch (error) {
+      console.error('Failed to retry message:', error);
+      alert('Failed to retry message. Please try again.');
+    }
+  }, [retryMessage]);
+
   // If no persona is selected, show a message
   if (!selectedPersona) {
     return (
@@ -184,15 +194,6 @@ const Chat: React.FC = () => {
         console.error('Failed to clear chat:', error);
         alert('Failed to clear chat. Please try again.');
       }
-    }
-  };
-
-  const handleRetryMessage = async (messageId: string) => {
-    try {
-      await retryMessage(messageId);
-    } catch (error) {
-      console.error('Failed to retry message:', error);
-      alert('Failed to retry message. Please try again.');
     }
   };
 

@@ -206,7 +206,7 @@ body:not([class*="rarity-"]) {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
-  color: #e0e0e0;
+  color: #1f2937; /* Dark gray for proper contrast on light backgrounds */
   transition: all 0.3s ease;
 }
 
