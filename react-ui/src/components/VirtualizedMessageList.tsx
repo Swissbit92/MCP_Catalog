@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { MessageBubble } from './MessageBubble';
@@ -44,7 +44,8 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
     }
   }, [messages.length]);
 
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+  // Memoize Row component to prevent recreation on every render
+  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
     const message = messages[index];
 
     return (
@@ -62,7 +63,7 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
         </div>
       </div>
     );
-  };
+  }, [messages, personaAvatar, userAvatar, personaRarity, personaName, onRetry]);
 
   // Handle empty state
   if (messages.length === 0) {
