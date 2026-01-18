@@ -1,13 +1,13 @@
 import React, { useRef, useEffect } from 'react';
-import { VariableSizeList as List } from 'react-window';
+import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { MessageBubble } from './MessageBubble';
 
 interface Message {
   id: string;
-  role: string;
+  role: 'user' | 'assistant';
   content: string;
-  timestamp: string;
+  timestamp: Date;
   [key: string]: any;
 }
 
@@ -33,31 +33,9 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   typingIndicatorComponent
 }) => {
   const listRef = useRef<List>(null);
-  const rowHeights = useRef<{ [index: number]: number }>({});
 
-  // Estimate row height based on message content
-  const getRowHeight = (index: number): number => {
-    // Return cached height if available
-    if (rowHeights.current[index]) {
-      return rowHeights.current[index];
-    }
-
-    // Estimate height based on content length
-    const message = messages[index];
-    const contentLength = message?.content?.length || 0;
-
-    // Base height + variable height based on content
-    // Rough estimate: 20px per line (assuming ~80 chars per line)
-    const estimatedLines = Math.ceil(contentLength / 80);
-    const estimatedHeight = 100 + (estimatedLines * 20); // 100px base + content
-
-    return Math.max(estimatedHeight, 120); // Minimum 120px
-  };
-
-  const setRowHeight = (index: number, size: number) => {
-    listRef.current?.resetAfterIndex(0);
-    rowHeights.current = { ...rowHeights.current, [index]: size };
-  };
+  // Fixed row height for simplicity (can be made dynamic later)
+  const ROW_HEIGHT = 150;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -67,21 +45,11 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   }, [messages.length]);
 
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const rowRef = useRef<HTMLDivElement>(null);
     const message = messages[index];
-
-    useEffect(() => {
-      if (rowRef.current) {
-        const height = rowRef.current.getBoundingClientRect().height;
-        if (height !== rowHeights.current[index]) {
-          setRowHeight(index, height);
-        }
-      }
-    }, [index]);
 
     return (
       <div style={style}>
-        <div ref={rowRef} className="px-4 md:px-6 py-2">
+        <div className="px-4 md:px-6 py-2">
           <MessageBubble
             message={message}
             personaAvatar={personaAvatar}
@@ -110,12 +78,12 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   return (
     <div className="flex-1 min-h-0">
       <AutoSizer>
-        {({ height, width }) => (
+        {({ height, width }: { height: number; width: number }) => (
           <List
             ref={listRef}
             height={height}
             itemCount={messages.length}
-            itemSize={getRowHeight}
+            itemSize={ROW_HEIGHT}
             width={width}
             overscanCount={5}
           >
