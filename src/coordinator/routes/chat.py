@@ -276,8 +276,15 @@ def greet(body: GreetBody):
     answer, was_rewritten = post_process_first_person(answer, persona_name)
 
     # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags (for greetings)
-    # Note: Greetings don't use the multi-message response format in API, but we still
-    # apply force-split for consistency and potential future use
     answer = force_multi_message_split(answer, "greeting")
 
-    return {"answer": answer, "rewritten": was_rewritten}
+    # PHASE 2: Parse multi-message response (same as chat endpoint)
+    # This removes <msg> tags and returns clean messages
+    messages, flow_type = parse_multi_message_response(answer)
+
+    return {
+        "answer": messages if flow_type == 'multi' else messages[0],
+        "message_flow": flow_type,
+        "message_count": len(messages),
+        "rewritten": was_rewritten
+    }
