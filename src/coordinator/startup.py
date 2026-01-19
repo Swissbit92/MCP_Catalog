@@ -240,11 +240,11 @@ def init_phase3_memory():
 
 
 def init_db():
-    """Initialize database using Alembic migrations."""
-    from alembic.config import Config
-    from alembic import command
-
+    """Initialize database using Alembic migrations (if available), otherwise repositories auto-initialize schema."""
     try:
+        from alembic.config import Config
+        from alembic import command
+
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{_DB_PATH}")
         
@@ -252,6 +252,10 @@ def init_db():
         command.upgrade(alembic_cfg, "head")
         logger.info("Database migrations applied successfully")
         
+    except ImportError:
+        # Alembic not installed - repositories will auto-initialize schema when first used
+        logger.info("Alembic not available, repositories will auto-initialize database schema")
+            
     except Exception as e:
         logger.error(f"Database migration failed: {e}")
         raise
