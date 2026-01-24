@@ -8,7 +8,12 @@
   // REQUIRED (unique among personas)
   "key": "Name",
 
- // OPTIONAL (for rarity-based UX; default: "common") 
+ // OPTIONAL (determines MCP access & UI tier; default: "common")
+ // Rarity-based feature gating (see CLAUDE.md):
+ //   - common: Pure LLM only
+ //   - rare: Brave Search access (web search with citations)
+ //   - epic: Brave Search + MongoDB (Bitcoin trading data)
+ //   - legendary: All MCP features (future: GraphRAG, etc.)
  "rarity": "common | rare | epic | legendary",
 
   // REQUIRED (used in UI cards & Bio; recommended format: "Name — Tagline")
@@ -31,8 +36,12 @@
   // OPTIONAL single-char emoji used as avatar fallback
   "emoji": "🙂",
 
-  // OPTIONAL — future routing (chips in Bio; coordinator can enforce later)
-  "allowed_mcp": ["chat", "graphrag"],
+  // OPTIONAL — per-persona LLM sampling configuration (Phase 1)
+  // Overrides global PERSONA_TEMPERATURE from .env
+  "model_preferences": {
+    "temperature": 0.7  // Range: 0.0-2.0 (0.0=deterministic, 2.0=chaotic)
+    // Future: top_k, top_p, repeat_penalty, preset
+  },
 
   // OPTIONAL — 10–40 short lines of backstory, values, worldview
   "lore": [

@@ -31,7 +31,7 @@ def test_mongodb_persona_flavor():
         print(f"[FAIL] Cannot connect to backend: {e}")
         print()
         print("Please start the backend:")
-        print("  python run_react.py")
+        print("  python scripts/utils/run_react.py")
         print()
         return False
 

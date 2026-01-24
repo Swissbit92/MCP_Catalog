@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 2: Gacha City Pop Neon</title>
+
+  <!-- Google Fonts (same as your app) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Manrope:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Typography */
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Manrope', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+
+      /* Gacha Neon Color System */
+      --neon-base: #0d0118;
+      --neon-dark: #1a0a2e;
+
+      --neon-pink: #ff006e;
+      --neon-purple: #8338ec;
+      --neon-cyan: #06ffa5;
+      --neon-gold: #ffbe0b;
+
+      --glow-pink: rgba(255, 0, 110, 0.15);
+      --glow-purple: rgba(131, 56, 236, 0.12);
+      --glow-cyan: rgba(6, 255, 165, 0.10);
+      --glow-gold: rgba(255, 190, 11, 0.12);
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--neon-base);
+      color: #e0e0e0;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Dark purple-black gradient base */
+    .background-layer-base {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg,
+        var(--neon-base) 0%,
+        var(--neon-dark) 50%,
+        var(--neon-base) 100%);
+      z-index: -4;
+    }
+
+    /* Animated neon orbs */
+    .neon-orbs {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      overflow: hidden;
+    }
+
+    .neon-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      animation: float 8s ease-in-out infinite;
+    }
+
+    .orb-pink {
+      width: 400px;
+      height: 400px;
+      background: var(--glow-pink);
+      top: 10%;
+      left: 20%;
+      animation-delay: 0s;
+    }
+
+    .orb-purple {
+      width: 500px;
+      height: 500px;
+      background: var(--glow-purple);
+      top: 60%;
+      right: 15%;
+      animation-delay: 2s;
+    }
+
+    .orb-cyan {
+      width: 350px;
+      height: 350px;
+      background: var(--glow-cyan);
+      bottom: 20%;
+      left: 30%;
+      animation-delay: 4s;
+    }
+
+    .orb-gold {
+      width: 300px;
+      height: 300px;
+      background: var(--glow-gold);
+      top: 40%;
+      right: 40%;
+      animation-delay: 1s;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translate(0, 0) scale(1);
+      }
+      33% {
+        transform: translate(30px, -40px) scale(1.1);
+      }
+      66% {
+        transform: translate(-20px, 30px) scale(0.9);
+      }
+    }
+
+    /* Scanline overlay (CRT effect) */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: -2;
+      opacity: 0.3;
+    }
+
+    /* Pulsing glow effect */
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.4;
+      }
+      50% {
+        opacity: 0.8;
+      }
+    }
+
+    .pulse-glow {
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    /* Content container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Info panel at top */
+    .info-panel {
+      background: rgba(26, 10, 46, 0.8);
+      border: 2px solid var(--neon-purple);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 0 30px var(--glow-purple), 0 8px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .info-panel h1 {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 20px var(--glow-pink);
+    }
+
+    .info-panel h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--glow-cyan);
+    }
+
+    .info-panel p {
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+      color: #d1d5db;
+    }
+
+    .info-panel ul {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .info-panel li {
+      margin-bottom: 0.5rem;
+      color: #d1d5db;
+    }
+
+    .pro { color: #06ffa5; text-shadow: 0 0 8px rgba(6, 255, 165, 0.5); }
+    .con { color: #ffbe0b; text-shadow: 0 0 8px rgba(255, 190, 11, 0.5); }
+
+    /* Sample Components Grid */
+    .components-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Neon Card */
+    .neon-card {
+      background: rgba(26, 10, 46, 0.7);
+      border: 2px solid var(--neon-purple);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 0 20px var(--glow-purple), 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .neon-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--glow-cyan);
+    }
+
+    /* Chat Message Bubble */
+    .message-bubble {
+      background: rgba(26, 10, 46, 0.6);
+      border: 1px solid rgba(131, 56, 236, 0.4);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 0 15px var(--glow-purple);
+    }
+
+    .message-bubble.user {
+      background: rgba(255, 0, 110, 0.15);
+      border-color: var(--neon-pink);
+      box-shadow: 0 0 15px var(--glow-pink);
+    }
+
+    .message-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--neon-cyan);
+      margin-top: 0.5rem;
+      text-shadow: 0 0 5px var(--glow-cyan);
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      font-family: var(--font-body);
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+      color: white;
+      box-shadow: 0 0 20px var(--glow-pink), 0 4px 16px rgba(255, 0, 110, 0.4);
+      border: 1px solid var(--neon-pink);
+    }
+
+    .btn-secondary {
+      background: rgba(26, 10, 46, 0.8);
+      border: 2px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 15px var(--glow-cyan);
+    }
+
+    /* Rarity Badges */
+    .rarity-badges {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      font-weight: 700;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-legendary {
+      background: rgba(255, 190, 11, 0.2);
+      border: 2px solid var(--neon-gold);
+      color: var(--neon-gold);
+      box-shadow: 0 0 20px var(--glow-gold);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .badge-epic {
+      background: rgba(131, 56, 236, 0.2);
+      border: 2px solid var(--neon-purple);
+      color: var(--neon-purple);
+      box-shadow: 0 0 20px var(--glow-purple);
+    }
+
+    .badge-rare {
+      background: rgba(6, 255, 165, 0.2);
+      border: 2px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 20px var(--glow-cyan);
+    }
+
+    .badge-common {
+      background: rgba(156, 163, 175, 0.2);
+      border: 2px solid #9ca3af;
+      color: #9ca3af;
+    }
+
+    /* Input field */
+    .input-field {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      padding: 0.75rem;
+      background: rgba(26, 10, 46, 0.8);
+      border: 2px solid var(--neon-purple);
+      border-radius: 8px;
+      color: #e0e0e0;
+      margin-top: 1rem;
+      box-shadow: 0 0 15px var(--glow-purple);
+    }
+
+    .input-field::placeholder {
+      color: #8338ec;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--neon-pink);
+      box-shadow: 0 0 20px var(--glow-pink);
+    }
+  </style>
+</head>
+<body>
+  <!-- Background Layers -->
+  <div class="background-layer-base"></div>
+  <div class="neon-orbs">
+    <div class="neon-orb orb-pink"></div>
+    <div class="neon-orb orb-purple"></div>
+    <div class="neon-orb orb-cyan"></div>
+    <div class="neon-orb orb-gold"></div>
+  </div>
+  <div class="scanlines"></div>
+
+  <!-- Content -->
+  <div class="container">
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <h1>Option 2: Gacha City Pop Neon</h1>
+      <p><strong>Tagline:</strong> "Industry Standard, Maximum Engagement"</p>
+
+      <h2>Description</h2>
+      <p>Dark purple-black base with animated neon orb gradients (pink/purple/cyan/gold). Scanline overlay creates subtle CRT retro effect. Pulsing glow on high-rarity elements. Blade Runner meets Genshin Impact aesthetic.</p>
+
+      <h2>Pros</h2>
+      <ul>
+        <li class="pro">✅ User Expectation (gacha players EXPECT this aesthetic)</li>
+        <li class="pro">✅ Excitement (neon = dopamine hit, proven in Nikke, Blue Archive)</li>
+        <li class="pro">✅ Rarity Alignment (colors match legendary/epic/rare system perfectly)</li>
+        <li class="pro">✅ Differentiation (stands out from corporate AI chatbots)</li>
+        <li class="pro">✅ Engagement (city pop aesthetic proven to increase retention)</li>
+      </ul>
+
+      <h2>Cons</h2>
+      <ul>
+        <li class="con">⚠️ Accessibility (neon on dark = potential contrast issues, needs tuning)</li>
+        <li class="con">⚠️ Cliché Risk ("every gacha game looks like this")</li>
+        <li class="con">⚠️ AI Disconnect (might feel too "game-y" for serious conversations)</li>
+        <li class="con">⚠️ Professionalism (could hurt credibility for serious AI interactions)</li>
+      </ul>
+    </div>
+
+    <!-- Sample Components -->
+    <div class="components-grid">
+      <!-- Chat Messages -->
+      <div class="neon-card">
+        <h3>Chat Messages</h3>
+        <div class="message-bubble">
+          <strong>Gojo:</strong> Yo! Want to see something awesome? I've got some sick techniques to show you!
+          <div class="message-meta">0.8s</div>
+        </div>
+        <div class="message-bubble user">
+          <strong>You:</strong> Yeah, show me what you've got!
+        </div>
+        <input type="text" class="input-field" placeholder="Type your message...">
+      </div>
+
+      <!-- Buttons & Rarity Badges -->
+      <div class="neon-card">
+        <h3>UI Elements</h3>
+        <div class="button-group">
+          <button class="btn btn-primary">Gacha Pull</button>
+          <button class="btn btn-secondary">View Collection</button>
+        </div>
+
+        <h3 style="margin-top: 1.5rem;">Rarity Badges</h3>
+        <div class="rarity-badges">
+          <span class="badge badge-legendary">Legendary</span>
+          <span class="badge badge-epic">Epic</span>
+          <span class="badge badge-rare">Rare</span>
+          <span class="badge badge-common">Common</span>
+        </div>
+      </div>
+
+      <!-- Typography Sample -->
+      <div class="neon-card">
+        <h3>Typography System</h3>
+        <h1 style="font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.5rem; color: var(--neon-pink); text-shadow: 0 0 15px var(--glow-pink);">Display Font (Outfit)</h1>
+        <p style="margin-bottom: 1rem;">Body text uses Manrope for optimal readability. This neon aesthetic is designed for maximum excitement and gacha game familiarity.</p>
+        <p style="font-family: var(--font-mono); font-size: 0.875rem; color: var(--neon-cyan); text-shadow: 0 0 8px var(--glow-cyan);">Technical data: 342ms latency • Space Mono</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

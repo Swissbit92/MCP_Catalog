@@ -388,7 +388,7 @@ def run_all_tests():
         print("🎉 ALL TESTS PASSED - Phase 2 Task 2.2 Implementation Validated!")
         print("="*80)
         print("\nNext Steps:")
-        print("1. Start backend: python run_react.py")
+        print("1. Start backend: python scripts/utils/run_react.py")
         print("2. Have a 60+ message conversation with a persona")
         print("3. Monitor logs for [Summarizer] entries")
         print("4. Check database: conversation_summaries table")

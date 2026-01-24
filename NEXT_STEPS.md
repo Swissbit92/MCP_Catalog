@@ -1,25 +1,255 @@
 # Next Steps - MCP Coordinator Development Roadmap
 
-**Last Updated:** December 24, 2025
-**Current Status:** 8/10 Critical Issues Resolved (80% Complete)
+**Last Updated:** January 1, 2026
+**Current Status:** UX Polish Complete (Option 6 + Animation Refinements)
 **Architecture Score:** 75/100 (was 59/100, +27% improvement)
+
+---
+
+## ✅ Completed: Option 6 UX Polish + Animation Refinements
+
+**Status:** Complete (Jan 1, 2026)
+**Priority:** ⭐⭐⭐⭐⭐ HIGH - Visual Impact
+**Tracking Document:** [OPTION6_GAP_ANALYSIS.md](OPTION6_GAP_ANALYSIS.md)
+
+**Final Implementation:**
+- [x] **Phase 1-3:** Option 6 background system, interaction fixes, particle system
+- [x] **Phase 4:** UX Refinements (Jan 1-2, 2026)
+  - [x] Removed particles from header (all pages)
+  - [x] Removed particles from chat page background
+  - [x] Removed particles from chat history sidebar
+  - [x] Optimized character card hover effects (research-backed, iterative refinement)
+    - **Iteration 1:** Removed rotation animation (user feedback: distracting)
+    - **Iteration 2:** Fixed asymmetric timing (hover-in/out consistent at 150ms)
+    - **Iteration 3:** Removed CSS transform conflicts (eliminated 180ms CSS transition)
+    - **Iteration 4:** Simplified to scale-only animation (eliminated "two animation" feel)
+    - **Final:** Pure scale effect (1.0 → 1.05, 150ms, cubic-bezier)
+  - [x] Fixed inconsistent click feedback across all personas
+  - [x] Removed unused FloatingParticles components
+  - [x] Cleaned up dead code (zero build warnings)
+
+**Key Decisions:**
+- **Particle removal:** User preference for cleaner aesthetic (Option 6 glassmorphism sufficient)
+- **Animation approach:** Scale-only (modern minimalist, Spotify/Netflix style) over dual-transform
+- **Rationale:** Single transform property = mathematically impossible to feel "two animations"
+- **Timing:** 150ms symmetric (NN/G standard for simple hover effects)
+- **Performance:** Single transform property = optimal GPU acceleration
+
+**Research Sources:**
+- [Nielsen Norman Group: Animation Duration](https://www.nngroup.com/articles/animation-duration/) - 100-200ms for simple effects
+- [Motion Design Principles (2025)](https://www.mockplus.com/blog/post/20-motion-design-principles-with-examples) - Single focus animations
+- [Card Hover Effects Best Practices](https://www.numberanalytics.com/blog/mastering-hover-effects-in-ux-design) - Subtle and consistent
+- [Modern UI Design Trends 2025](https://www.elegantthemes.com/blog/design/modern-ui-design-trends) - Clean minimalist interactions
+- [CSS Transform Order](https://jakearchibald.com/2025/animating-zooming/) - Scale + translate synchronization
+
+**Testing:**
+- Playwright automated validation (transform matrix verification)
+- Visual regression testing with screenshots
+- Manual user testing with iterative refinement
+
+**Effort:** ~10 hours total (4 iterations to perfection)
+**Impact:** Production-grade UX with research-backed animation standards, modern minimalist aesthetic
+
+---
+
+## 🔄 Deferred: RAGAS Evaluation Framework
+
+**Status:** Deferred (temporarily paused for UX work)
+**Priority:** ⭐⭐⭐ CRITICAL
+**Tracking Document:** [AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md](AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md)
+
+**Goal:** Add quantifiable quality metrics for persona responses using RAGAS (RAG Assessment) framework.
+
+**Current Gap:** MCP Coordinator has ZERO evaluation infrastructure despite production-grade architecture (8.6/10 score).
+
+**Expected Benefits:**
+- 📊 Baseline quality metrics for all personas
+- 🔍 Regression detection (fail if quality drops >5%)
+- 📈 Data-driven model selection (llama3.1:8b vs alternatives)
+- ✅ Confidence in deployments
+
+**Implementation Progress:**
+- [x] Comparative analysis completed (venv_Projektarbeit vs MCP Coordinator)
+- [x] Implementation plan documented (RAGAS_EVALUATION_IMPLEMENTATION.md)
+- [ ] Phase 1: Foundation (add dependency, create module structure)
+- [ ] Phase 2: Golden Q&A examples (30 questions for 3 personas)
+- [ ] Phase 3: Core evaluator implementation
+- [ ] Phase 4: Integration & testing
+
+**Effort:** 8-12 hours total
+**Dependencies:** +1 primary (`ragas==0.2.3`), +4 transitive (~150MB)
+
+**See:** [RAGAS_EVALUATION_IMPLEMENTATION.md](AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md) for detailed implementation plan, timelines, and acceptance criteria.
+
+---
+
+## 🎉 Recent Completions
+
+### MCP Infrastructure Implementation ✅ (Dec 28-29, 2025)
+- **Phase 1 Complete:** Brave Search MCP with ephemeral STDIO pattern
+  - Spawns `docker run -i --rm` per request (stateless, 2-3s lifecycle)
+  - Validated with real weather queries and citations
+  - Implementation: `src/coordinator/mcp_client_stdio.py` (398 lines)
+- **Phase 2 Complete:** MongoDB MCP with long-running STDIO pattern
+  - Container stays alive for multiple requests (stateful database connections)
+  - Intentional design choice for performance with initialization overhead
+  - Implementation: `src/coordinator/mongodb/` (3 modules)
+- **Documentation Complete:** Comprehensive MCP integration guide
+  - Created `docs/ADDING_MCP_SERVERS.md` (1,240 lines)
+  - Documents both ephemeral and long-running patterns
+  - Step-by-step templates for adding new MCP servers
+- **Architecture:** Docker socket mounted to backend for container orchestration
+- **Impact:** All MCP features functional, universal pattern for future integrations
+- **See:** `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md`
+
+### Model Selection & Validation ✅ (Dec 25, 2025)
+- **Tested:** seamon67/Gemma3-Abliterated:4b-f16 vs nchapman/gemma-2-9b-it-abliterated:9b
+- **Selected:** nchapman (0% failures vs 25%, better quality, 32% smaller)
+- **Status:** Backend validated and running in production
+
+### Conversational AI Evolution (Phases 1-2) ✅ (Dec 25, 2025)
+- **Phase 1 Complete:** Enhanced conversational prompting with few-shot examples
+- **Phase 2 Complete:** Multi-message response architecture (33/33 tests passed)
+- **Usage Rate:** 75% multi-message with nchapman model
+- **Impact:** Personas now ask follow-up questions and send 2-3 messages when natural
+
+**Remaining Work:**
+- Phase 3: Proactive Memory Integration (10-14 hours) - Cross-session topic continuity
+- Phase 4: Greeting Enhancement (4-6 hours) - Personalized greetings on resumption
+- Phase 5: Autonomous Reflection (optional, 1 week) - Post-conversation reflections
+
+**See:** `CONVERSATIONAL_AI_STATUS.md` for detailed status and next steps
+
+### Backend Core Refactoring ✅ (Dec 28, 2025)
+- **Phase 1:** Eliminated MCP client duplication
+- **Phase 2:** Extracted service layer from routes (chat.py: 759→279 lines, -63%)
+- **Impact:** DRY compliance, improved testability, architecture score +27%
+- **See:** `AI_documentation/01_implementation_history/PHASE2_COMPLETION_REPORT.md`
+
+---
+
+## 🎨 Deferred: Code-Level Branding Harmonization
+
+**Last Updated:** December 26, 2025
+**Status:** Phase 1 Complete (User-Facing Text) | Phase 2-3 Deferred
+
+### Phase 1: User-Facing Text Updates ✅ COMPLETE (Dec 26, 2025)
+
+**Updated Files:**
+- `README.md` - Title, descriptions, feature tables ("AI Companions" branding)
+- `react-ui/src/pages/Home.tsx` - Page titles and subtitles
+- `react-ui/src/components/header/HeaderNavigation.tsx` - Header branding ("AI Companions", "Agents")
+- `react-ui/src/components/header/MobileMenu.tsx` - Mobile navigation labels
+- `react-ui/src/pages/CharacterCardV2Showcase.tsx` - Description updates
+
+**Changes:**
+- "Persona Chat" → "AI Companions" (user-facing)
+- "Characters" → "Agents" (navigation labels only)
+- Gacha card terminology preserved ("Classic Character Cards" is correct)
+
+---
+
+### Phase 2: Route Harmonization ⏳ DEFERRED
+
+**Why Deferred:**
+- URL changes break bookmarks and external links
+- Browser history disruption for existing users
+- No SEO benefit for local-first app
+- High refactoring effort for minimal UX improvement
+
+**Future Implementation (Optional):**
+
+1. **Add Route Aliases** (Low Risk)
+   ```tsx
+   // App.tsx - Support both URLs
+   <Route path="/select" element={<CharacterCardV2Showcase />} />
+   <Route path="/agents" element={<CharacterCardV2Showcase />} />  // New alias
+   ```
+
+2. **Update Internal Links**
+   - Navigation components use `/agents` going forward
+   - Keep `/select` working for backward compatibility
+
+3. **Deprecation Timeline**
+   - Month 1-3: Both routes active
+   - Month 4-6: Redirect `/select` → `/agents` with notice
+   - Month 6+: Full migration (optional)
+
+**Decision Point:** Evaluate after 3-6 months of user feedback
+
+---
+
+### Phase 3: Component Naming Harmonization ⏳ DEFERRED
+
+**Why Deferred:**
+- "Character Card" is correct terminology for gacha mechanics
+- 71+ import statements across 20 files (massive refactoring)
+- High risk of introducing bugs in test files and mocks
+- Type definitions cascade to interfaces, props, and context
+- No user-facing benefit (internal code structure only)
+
+**Files Affected (If Attempted):**
+- `CharacterCard.tsx` → `CompanionCard.tsx`? (Not recommended)
+- `CharacterCardV2.tsx` → Keep as-is (gacha authenticity)
+- `CharacterSelector.tsx` → `AgentSelector.tsx`? (Low priority)
+- `CharacterShowcase.tsx` → `CompanionShowcase.tsx`? (Low priority)
+- `CharacterCollection.tsx` → Keep as-is (gacha collection system)
+
+**Recommendation:**
+- **Keep "Character" terminology** for gacha/card components
+- Only rename if future features require it (e.g., non-card agent views)
+- Focus on user-facing language, not internal code structure
+
+**Decision Point:** Revisit only if user confusion occurs (unlikely)
+
+---
+
+### Summary
+
+**What Changed (Phase 1):**
+- ✅ All user-facing text uses "AI Companions" branding
+- ✅ Navigation labels updated to "Agents"
+- ✅ Gacha card terminology preserved for authenticity
+
+**What's Deferred (Phase 2-3):**
+- ⏳ Route URL changes (`/select` → `/agents`)
+- ⏳ Component file naming (`CharacterCard` → keep as-is)
+- ⏳ TypeScript interface renaming (not needed)
+
+**Risk Assessment:**
+- Phase 1: ✅ LOW RISK (text only, no breaking changes)
+- Phase 2: ⚠️ MEDIUM RISK (bookmarks, requires testing)
+- Phase 3: 🔴 HIGH RISK (71+ files, cascading changes, low benefit)
+
+**Next Steps:**
+1. Monitor user feedback for 3-6 months
+2. Evaluate if route aliases are needed
+3. Only proceed with Phase 2-3 if user confusion occurs
 
 ---
 
 ## Quick Reference
 
 **✅ Completed:**
-- God-object file refactoring (4 files → 17 modular components)
-- CI/CD pipeline (GitHub Actions with 5 jobs)
-- Test coverage metrics (Jest + scripts)
-- Production code cleanup (print statements, test fixes)
+- **MCP Infrastructure** (Brave ephemeral + MongoDB long-running STDIO patterns)
+- **Backend Core Refactoring** (service layer extraction, DRY compliance)
+- **God-object file refactoring** (4 files → 17 modular components)
+- **Test coverage metrics** (Jest + scripts)
+- **Production code cleanup** (print statements, test fixes)
+- **Conversational AI Phases 1-2** (multi-message responses, curiosity prompts)
+- **Model selection & validation** (nchapman production-ready)
+- **Branding update Phase 1** (user-facing text → "AI Companions")
 
 **⏳ Ready to Implement:**
+- Conversational AI Phases 3-4 (14-20 hours, cross-session memory)
 - Async conversion (planned, 8-phase strategy)
 - Database migration (planned, PostgreSQL strategy)
 
 **📚 Documentation:**
-- See `AI_documentation/01_implementation_history/ARCHITECTURE_IMPROVEMENTS_SUMMARY.md` for full details
+- See `docs/ADDING_MCP_SERVERS.md` for MCP integration guide
+- See `AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md` for MCP architecture
+- See `CONVERSATIONAL_AI_STATUS.md` for conversational AI roadmap status
+- See `AI_documentation/01_implementation_history/ARCHITECTURE_IMPROVEMENTS_SUMMARY.md` for refactoring details
 - See `AI_documentation/01_implementation_history/ASYNC_CONVERSION_PLAN.md` for async implementation plan
 
 ---
@@ -121,18 +351,7 @@
 - [ ] Read `ASYNC_CONVERSION_PLAN.md` (8-phase implementation strategy)
 - [ ] Understand trade-offs of each async rollout option
 
-### 2. Test CI/CD Pipeline ✅
-```bash
-# Trigger CI by making a test commit
-git add .
-git commit -m "Test CI/CD pipeline"
-git push origin main
-
-# Watch GitHub Actions tab for workflow runs
-# Verify all 5 jobs pass (backend, frontend, build, quality, security)
-```
-
-### 3. Run Coverage Reports ✅
+### 2. Run Coverage Reports ✅
 ```bash
 # Windows
 scripts\coverage-report.bat
@@ -144,7 +363,7 @@ scripts\coverage-report.bat
 # Open react-ui/coverage/index.html in browser
 ```
 
-### 4. Make Decision on Async Conversion 🎯
+### 3. Make Decision on Async Conversion 🎯
 **Choose one:**
 - [ ] **Option A:** Big Bang (2-3 days, high risk)
 - [ ] **Option B:** Gradual Migration (1 month, medium risk) ← **RECOMMENDED**
@@ -202,14 +421,6 @@ async def get_async_db_connection(db_path: str):
         await conn.close()
 
 # Add more helpers as needed
-```
-
-**3. Update CI/CD for Async Tests**
-```yaml
-# .github/workflows/ci.yml (backend-tests job)
-- name: Run async backend tests
-  run: |
-    python -m pytest tests/backend/coordinator/test_async_*.py -v
 ```
 
 ### Phase 2-8: Follow ASYNC_CONVERSION_PLAN.md
@@ -305,15 +516,6 @@ touch tests/performance/locustfile.py
 
 **Goal:** Prevent coverage from decreasing
 
-**Implementation:**
-```yaml
-# .github/workflows/ci.yml (frontend-tests job)
-- name: Run frontend tests with coverage
-  working-directory: react-ui
-  run: |
-    npm test -- --watchAll=false --coverage --coverageThreshold='{"global":{"lines":70}}'
-```
-
 **Add to package.json:**
 ```json
 {
@@ -367,7 +569,6 @@ async def health_check():
 **Week 1-2: E2E Testing**
 - Add Playwright
 - Test critical flows
-- Integrate into CI
 
 **Week 3-4: Coverage Improvement**
 - Frontend 68% → 80%
@@ -403,7 +604,6 @@ async def health_check():
 
 **Week 5-6: Deployment Automation**
 - Docker Compose
-- CI/CD deployment stage
 - Environment configs
 
 **Week 7-8: Production Launch Prep**
@@ -423,7 +623,6 @@ async def health_check():
 
 ### Short-term (1 Month)
 
-- [ ] CI/CD pipeline runs successfully on every commit
 - [ ] Test coverage tracked and visible
 - [ ] Decision made on async conversion strategy
 - [ ] At least one additional improvement completed (E2E tests OR coverage OR performance)
@@ -451,7 +650,6 @@ async def health_check():
 
 - **Architecture Summary:** `AI_documentation/01_implementation_history/ARCHITECTURE_IMPROVEMENTS_SUMMARY.md`
 - **Async Conversion Plan:** `AI_documentation/01_implementation_history/ASYNC_CONVERSION_PLAN.md`
-- **CI/CD Guide:** `.github/CICD_DOCUMENTATION.md`
 - **Claude Code Guide:** `CLAUDE.md`
 - **Project README:** `README.md`
 
@@ -470,7 +668,7 @@ npm run start:dev
 
 **Unified:**
 ```bash
-python run_react.py
+python scripts/utils/run_react.py
 ```
 
 ### Running Tests
@@ -517,7 +715,6 @@ scripts\coverage-report.bat
 - `src/coordinator/tools/*.py` (6 files)
 - `src/coordinator/mongodb/*.py` (3 files)
 - `react-ui/src/components/header/*.tsx` (3 files)
-- `.github/workflows/*.yml` (2 files)
 - `scripts/coverage-report.*` (2 files)
 - Various documentation files (10+ files)
 
@@ -546,5 +743,10 @@ All refactorings maintained 100% backward compatibility. Existing imports contin
 ---
 
 **Status:** Awaiting decision on async conversion strategy
-**Last Updated:** December 24, 2025
+**Last Updated:** January 1, 2026
 **Next Review:** After decision is made
+
+**Recent Achievements:**
+- ✅ MCP Infrastructure complete (Dec 28-29, 2025)
+- ✅ Backend refactoring complete (Dec 28, 2025)
+- ✅ Comprehensive MCP integration guide created

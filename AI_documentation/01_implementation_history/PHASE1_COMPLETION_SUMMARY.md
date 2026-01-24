@@ -159,7 +159,7 @@ pytest test_memory_phase1.py -v -s
 ### Manual Testing Checklist
 
 ```
-1. Start backend: python run_react.py
+1. Start backend: python scripts/utils/run_react.py
 2. Open React UI: http://localhost:3000
 3. Create new chat session with Eeva
 4. Send: "My name is Alex and I bought 0.5 BTC"
@@ -330,7 +330,7 @@ Phase 1 is considered **successful** if:
 ## 🛠️ Troubleshooting Guide
 
 ### Issue: Tests Fail with "Session not found"
-**Solution:** Ensure backend is running (`python run_react.py`) before running tests.
+**Solution:** Ensure backend is running (`python scripts/utils/run_react.py`) before running tests.
 
 ### Issue: Token warnings appear frequently (>90%)
 **Solution:**

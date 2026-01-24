@@ -322,7 +322,7 @@ def run_all_tests():
         print("🎉 ALL TESTS PASSED - Phase 2 Task 2.1 Complete!")
         print("="*80)
         print("\nNext Steps:")
-        print("1. Run backend with: python run_react.py")
+        print("1. Run backend with: python scripts/utils/run_react.py")
         print("2. Test with real conversations in the UI")
         print("3. Monitor logs for [Memory] and [MemoryManager] entries")
         print("4. Proceed to Task 2.2: Conversation Summarization")

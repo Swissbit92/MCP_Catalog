@@ -5,6 +5,7 @@ import CharacterCard from '../components/CharacterCard';
 import PullInterface from '../components/PullInterface';
 import CharacterCollection from '../components/CharacterCollection';
 import PullHistory from '../components/PullHistory';
+import EnergyParticles from '../components/EnergyParticles';
 import { fetchPersonas } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
 
@@ -30,7 +31,7 @@ const CharacterCardV2Showcase: React.FC = () => {
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>(initialTab);
-  const { setSelectedPersona } = usePersona();
+  const { setSelectedPersona, selectedPersona } = usePersona();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,7 +58,6 @@ const CharacterCardV2Showcase: React.FC = () => {
           const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key));
           if (validCollected.length !== collectedPersonas.length) {
             localStorage.setItem('collectedPersonas', JSON.stringify(validCollected));
-            console.log(`Cleaned up ${collectedPersonas.length - validCollected.length} removed personas from collection`);
           }
         }
 
@@ -90,19 +90,32 @@ const CharacterCardV2Showcase: React.FC = () => {
     }
   }, [searchQuery, personas]);
 
-  const handleCardSelect = async (personaKey: string) => {
+  // Card click - selection only (no navigation)
+  const handleCardSelect = (personaKey: string) => {
+    const personaToSelect = personas.find(p => p.key === personaKey);
+    if (personaToSelect) {
+      setSelectedPersona(personaToSelect); // Updates context for background AND persists selection
+    }
+  };
+
+  // Choose button - navigate to chat
+  const handleChoose = (personaKey: string) => {
     const personaToSelect = personas.find(p => p.key === personaKey);
     if (personaToSelect) {
       setSelectedPersona(personaToSelect);
-      // Navigate to chat - let the Chat component handle session logic
-      navigate('/chat');
+      navigate('/chat'); // Navigate to chat
     }
   };
 
   if (personas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
+        <div className="absolute inset-0 space-background"></div>
+        <div className="absolute inset-0 nebula-overlay"></div>
+        <EnergyParticles isActive={true} />
+
+        <div className="relative z-10 text-center">
           <div className="text-white text-xl mb-4">Loading Classic Cards...</div>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
         </div>
@@ -111,16 +124,21 @@ const CharacterCardV2Showcase: React.FC = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
+      <div className="absolute inset-0 space-background"></div>
+      <div className="absolute inset-0 nebula-overlay"></div>
+      <EnergyParticles isActive={true} />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
             Classic Character Cards
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Experience the timeless gacha-style character cards with classic foil effects,
-            elegant rarity theming, and smooth animations that started it all.
+            Experience the timeless gacha-style character cards featuring your AI companions.
+            Classic foil effects, elegant rarity theming, and smooth animations that started it all.
           </p>
 
           {/* Tab Navigation */}
@@ -217,7 +235,8 @@ const CharacterCardV2Showcase: React.FC = () => {
               image={`/images/${persona.image}`}
               rarity={persona.rarity}
               onSelect={handleCardSelect}
-              isSelected={false}
+              onChoose={handleChoose}
+              isSelected={selectedPersona?.key === persona.key}
               personaKey={persona.key}
               index={index}
             />
@@ -273,7 +292,11 @@ const CharacterCardV2Showcase: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <CharacterCollection onCharacterSelect={handleCardSelect} />
+              <CharacterCollection
+                onCharacterSelect={handleCardSelect}
+                onChoose={handleChoose}
+                selectedPersonaKey={selectedPersona?.key || null}
+              />
             </motion.div>
           ) : (
             <motion.div

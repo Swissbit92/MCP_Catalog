@@ -15,21 +15,83 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 
 ## Development Commands
 
-### Setup
+### Docker Deployment (Recommended)
+
+**🐳 Docker is the recommended setup method** for local development and testing. See [docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md) for full guide.
+
+**One-Command Setup (Easiest):**
+```bash
+# Windows PowerShell
+.\scripts\docker\setup-docker.ps1
+
+# Windows Command Prompt
+scripts\docker\setup-docker.bat
+
+# Linux/Mac
+./scripts/docker/setup-docker.sh
+```
+
+**Manual Setup (Alternative):**
+```bash
+# Start services
+docker-compose --env-file .env.docker up -d
+
+# Pull AI models
+docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
+```
+
+**Access:**
+```bash
+# Frontend: http://localhost:3000
+# Backend: http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
+**Common Commands:**
+```bash
+docker-compose logs -f backend    # View backend logs
+docker-compose logs -f            # View all logs
+docker-compose restart backend    # Restart backend
+docker-compose down               # Stop all services
+
+# Backup database
+# Windows: Copy-Item data\chats.db backups\chats.db.backup
+# Linux/Mac: cp data/chats.db backups/chats.db.backup
+```
+
+**Docker Stack:**
+- 3 services: ai-companion-brain (Ollama LLM), ai-companion-api (FastAPI), ai-companion-web (React/Nginx)
+- SQLite database: `./data/chats.db` (persists on host)
+- Persona summaries: `./personas/_summaries/` (persists on host)
+- Ollama models: Docker volume (9GB for gemma-2-9b)
+
+**Documentation:**
+- **[docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md)** - Complete setup guide
+- **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** - Technical decision record
+- **[.env.docker](.env.docker)** - Configuration template
+
+---
+
+### Local Development Setup
+
+For code modification and development (alternative to Docker):
+
+**Setup:**
 ```bash
 # Automated setup (installs Python + React dependencies)
-./setup.sh          # Linux/macOS
-setup.bat           # Windows
+./scripts/setup/setup.sh          # Linux/macOS
+scripts\setup\setup.bat           # Windows
 
 # Manual setup
 pip install -r requirements.txt
 cd react-ui && npm install
 ```
 
-### Running the Application
+**Running the Application:**
 ```bash
 # Unified startup (recommended) - starts both backend + frontend
-python run_react.py
+python scripts/utils/run_react.py
 
 # Backend only (FastAPI on port 8000)
 uvicorn src.coordinator.server:app --reload --port 8000
@@ -41,57 +103,25 @@ cd react-ui && npm run start:dev
 cd react-ui && npm run build
 ```
 
-### CI/CD (Automated Testing)
-
-**New to CI/CD?** See `.github/CICD_GETTING_STARTED.md` for a beginner-friendly introduction.
-
-The project has **automated testing** via GitHub Actions that runs on every push:
-- ✅ Backend tests (10 test files, ~360 test cases)
-- ✅ Frontend tests (Jest with coverage reporting)
-- ✅ Production build verification
-- ✅ Code quality checks (syntax, naming, TODOs)
-- ✅ Security scanning (npm audit, secret detection)
-
-**Typical run time:** ~5 minutes (5 jobs in parallel)
-**View results:** GitHub → Actions tab → See workflow runs
-
-**Technical reference:** `.github/CICD_DOCUMENTATION.md`
-
----
-
-### Testing (Manual/Local)
+### Testing
 ```bash
-# React tests (full suite)
+# React tests
 cd react-ui && npm test
-
-# Single test pattern
 cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 
-# Python backend tests (organized in tests/ directory)
-# Backend unit tests
-python tests/backend/coordinator/test_server.py
-python tests/backend/coordinator/test_mcp_client.py
-python tests/backend/coordinator/test_tool_calling.py
-python tests/backend/coordinator/test_citation_validation.py
-python tests/backend/coordinator/test_synthesis_prompt.py
-python tests/backend/coordinator/test_summarization.py
-python tests/backend/coordinator/test_persona_schema.py      # Phase 1: Pydantic validation
-python tests/backend/coordinator/test_mongodb_integration.py # MongoDB MCP tests
-python tests/backend/coordinator/test_mongodb_persona_flavor.py # MongoDB synthesis prompt validation
-python tests/backend/coordinator/test_repositories.py        # Repository pattern tests
+# Python tests (standalone scripts in tests/ directory)
+# Backend: test_server.py, test_mcp_client.py, test_tool_calling.py, test_citation_validation.py
+# Backend: test_synthesis_prompt.py, test_summarization.py, test_persona_schema.py, test_repositories.py
+# Integration: test_brave_mcp_connectivity.py, test_intent_classification.py, test_synthesis_integration.py
+# Integration: test_phase2_integration.py, test_memory_phase1.py, test_memory_phase2.py
+# MongoDB: test_mongodb_integration.py, test_mongodb_persona_flavor.py, test_mongodb_eeva_flavor.py
 
-# Integration tests
-python tests/integration/test_brave_mcp_connectivity.py
-python tests/integration/test_intent_classification.py
-python tests/integration/test_mvp2_integration.py
-python tests/integration/test_synthesis_integration.py
-python tests/integration/test_long_conversation.py
-python tests/integration/test_phase2_integration.py          # Phase 2: Emotional state
-python tests/integration/test_memory_phase1.py               # Memory management Phase 1
-python tests/integration/test_memory_phase2.py               # Memory management Phase 2
-python tests/integration/test_mongodb_eeva_flavor.py         # MongoDB persona flavor E2E test
-
-# Note: Python tests are standalone scripts, not pytest-based
+# RAGAS Evaluation (Persona Quality) - 🚧 IN PROGRESS
+# Quantifiable quality metrics using RAGAS framework (faithfulness, answer relevancy, context precision/recall)
+# pytest tests/evaluation/test_persona_quality.py -v                    # All personas
+# pytest tests/evaluation/test_persona_quality.py --persona=eeva -v     # Single persona
+# pytest tests/evaluation/test_ragas_evaluator.py -v                    # Unit tests
+# See: AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md
 ```
 
 ### Ollama Setup
@@ -99,78 +129,35 @@ python tests/integration/test_mongodb_eeva_flavor.py         # MongoDB persona f
 # Start Ollama service
 ollama serve
 
-# Pull required model
-ollama pull llama3.1:latest
-# or whatever model is specified in PERSONA_MODEL env var
+# Pull required model (from your .env PERSONA_MODEL)
+ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+
+# For Phase 3 RAG memory (if needed)
+ollama pull nomic-embed-text:latest
 ```
 
 ## Project Structure
 
 ### Backend (`src/coordinator/`)
 
-**Core Modules:**
-- `server.py` - FastAPI app entry point, CORS middleware, router assembly (~85 lines)
-- `startup.py` - Application initialization, dependency injection, database setup
-- `schemas.py` - Pydantic request/response models for API endpoints
-- `config.py` - Pydantic Settings for centralized, validated configuration (Ollama, Brave, MongoDB)
-
-**Route Handlers (`routes/`):**
-- `chat.py` - Chat endpoints (`/persona/chat`, `/sessions/{id}/chat`, `/persona/greet`)
-- `sessions.py` - Session CRUD (`/sessions`, `/sessions/{id}`, import/export)
-- `personas.py` - Persona endpoints (`/personas`, `/persona/summary`)
-
-**Services (`services/`):**
-- `citation_service.py` - Web search citation validation
-- `first_person_service.py` - First-person voice enforcement for persona responses
-- `mongodb_handlers.py` - MongoDB tool handlers with caching (Bitcoin price, trading data)
-
-**Business Logic:**
-- `persona_memory.py` - Persona card loading, CV summary generation, prompt building
-- `memory_manager.py` - MemoryManager for importance scoring, ConversationSummarizer
-- `llm_client.py` - LangChain Ollama client wrapper with advanced sampling support
-- `tool_definitions.py` - Tool/function definitions for LLM function calling
-
-**Infrastructure:**
-- `ollama_utils.py` - Ollama health checks, model availability assertions
-- `mcp_client.py` - MCP (Model Context Protocol) client for Brave Search
-- `mongodb_mcp_client.py` - MongoDB MCP client for database operations
-- `cache.py` - MongoDB caching layer with TTL support
-
-**Data Models (`models/`):**
-- `persona_schema.py` - PersonaCard, VoiceProfile, EmotionalProfile, PsychologicalProfile
-- `sampling_presets.py` - SamplingConfig and preset library (creative, balanced, precise, etc.)
-
-**Database Layer (`repositories/`):**
-- `session_repository.py` - Chat session CRUD operations
-- `message_repository.py` - Message persistence and retrieval
-- `summary_repository.py` - Conversation summary management
-- `emotional_state_repository.py` - Emotional state tracking (Phase 2.2)
+**Core:** `server.py`, `startup.py`, `schemas.py`, `config.py`
+**Routes:** `chat.py`, `sessions.py`, `personas.py`
+**Services:** `llm_completion_service.py`, `tool_calling_service.py`, `citation_service.py`, `query_handler_service.py`, `first_person_service.py`, `message_processing_service.py`, `chat_session_service.py`, `mongodb_handlers.py`
+**Business Logic:** `persona_memory.py`, `memory_manager.py`, `llm_client.py`, `tool_definitions.py`
+**Infrastructure:** `ollama_utils.py`, `mcp_client_stdio.py`, `mongodb_mcp_client.py`, `cache.py`
+**Models:** `persona_schema.py`, `sampling_presets.py`, `mcp_models.py`
+**Repositories:** `session_repository.py`, `message_repository.py`, `summary_repository.py`, `emotional_state_repository.py`
 
 ### Shared (`src/shared/`)
 - `persona_assets.py` - Shared utilities for persona asset paths and loading
 
 ### Frontend (`react-ui/src/`)
-- `pages/` - Top-level routes: `Home.tsx`, `Chat.tsx`, `CharacterCardV2Showcase.tsx`
-- `components/` - Reusable UI: `Header.tsx`, `CharacterCard.tsx`, `CharacterCardV2.tsx`, `SessionList.tsx`, `MessageBubble.tsx`, `PullInterface.tsx`, `CharacterCollection.tsx`, etc.
-- `services/` - API client for backend communication
-- `context/` - React contexts (e.g., PersonaContext for global state)
-- `utils/` - Utility functions
+**Pages:** `Home.tsx`, `Chat.tsx`, `CharacterCardV2Showcase.tsx`
+**Components:** `Header.tsx`, `CharacterCard.tsx`, `SessionList.tsx`, `MessageBubble.tsx`, `PullInterface.tsx`, etc.
+**Services:** API client | **Context:** PersonaContext | **Utils:** Helper functions
 
 ### Personas (`personas/`)
-Each persona is a JSON file defining:
-- `key`, `display_name`, `rarity` (common/rare/epic/legendary)
-- `lore` (background story array), `voice` (greeting, signoff, tics)
-- `do`/`dont` lists, `behavior` traits, `emotional_profile`
-- `expertise` (strong/familiar/avoid topics)
-- `image`, `avatar`, `logo`, `bg` paths for UI assets
-- **Phase 1 additions:**
-  - `model_preferences` - Per-persona sampling config (temperature, preset)
-  - `psychological_profile` - Deep characterization (core_wound, coping_mechanism, defense_style, growth_edge, contradiction_pairs)
-  - `example_dialogues` - User/response pairs to teach LLM correct persona voice (max 20)
-
-**Summary caching**: `personas/_summaries/` contains auto-generated CV-style persona summaries used in system prompts.
-
-**Schema validation**: All persona JSON files are validated against Pydantic schema on load (`src/coordinator/models/persona_schema.py`).
+JSON files with: `key`, `display_name`, `rarity`, `lore`, `voice`, `behavior`, `expertise`, `psychological_profile`, `model_preferences`, `example_dialogues`. Auto-generated summaries cached in `personas/_summaries/`. Schema: `src/coordinator/models/persona_schema.py`.
 
 ### Database Schema (`chats.db`)
 - `chat_sessions`: session_id, persona_key, title, created_at, updated_at
@@ -219,38 +206,20 @@ Each persona is a JSON file defining:
 
 Required in `.env` at project root (no .env.example exists - create from scratch):
 ```bash
-OLLAMA_BASE=http://127.0.0.1:11434     # Ollama API endpoint
-PERSONA_MODEL=llama3.1:latest          # LLM model to use
-PERSONA_TEMPERATURE=0.1                # LLM sampling temperature
-COORD_PORT=8000                        # Backend port
-COORD_URL=http://127.0.0.1:8000        # Backend URL for frontend
-PERSONA_DIR=personas                   # Persona JSON directory
+OLLAMA_BASE=http://127.0.0.1:11434                     # Ollama API endpoint
+PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b   # LLM model (uncensored, great for personas)
+PERSONA_TEMPERATURE=0.9                                # LLM sampling temperature (balanced creativity)
+COORD_PORT=8000                                        # Backend port
+COORD_URL=http://127.0.0.1:8000                        # Backend URL for frontend
+PERSONA_DIR=personas                                   # Persona JSON directory
 ```
 
-Optional - Basic:
-- `REACT_PORT=3000` - React dev server port (default: 3000)
-- `DEFAULT_PERSONA` - Preselect persona on load
-- `APP_LOGO_PATH`, `USER_AVATAR` - UI branding paths
-- `COORDINATOR_DB_PATH` - Custom SQLite path (default: `chats.db`)
-
-Optional - Memory & RAG (Phase 3):
-- `MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest` - Ollama embedding model for semantic search
-- `MEMORY_SUMMARIZATION_INTERVAL=30` - Messages before triggering auto-summarization
-- `MEMORY_FACT_EXTRACTION_INTERVAL=10` - Messages before fact extraction for user profiles
-
-Optional - LLM Temperature Overrides:
-- `OLLAMA_TEMP_REWRITE=0.2` - Temperature for first-person voice rewrites
-- `OLLAMA_TEMP_SUMMARIZATION=0.3` - Temperature for conversation summarization
-- `OLLAMA_TEMP_FACT_EXTRACTION=0.3` - Temperature for fact extraction
-
-Optional - MongoDB (Phase 3):
-- `MONGODB_URI` - MongoDB connection URI
-- `MONGODB_ENABLED=false` - Enable MongoDB integration
-- `MONGODB_ENABLED_RARITIES=epic,legendary` - Rarities with MongoDB access
-- `MONGODB_CACHE_CURRENT_PRICE=60` - Cache TTL for current price (seconds)
-- `MONGODB_CACHE_TECHNICAL=60` - Cache TTL for technical analysis (seconds)
-- `MONGODB_CACHE_HISTORICAL=3600` - Cache TTL for historical data (seconds)
-- `MONGODB_CACHE_TRADING=300` - Cache TTL for trading stats (seconds)
+Optional - See `.env.docker` for complete list with defaults:
+- Basic: `REACT_PORT`, `DEFAULT_PERSONA`, `APP_LOGO_PATH`, `COORDINATOR_DB_PATH`
+- Memory/RAG: `MEMORY_EMBEDDING_MODEL`, `MEMORY_SUMMARIZATION_INTERVAL`, `MEMORY_FACT_EXTRACTION_INTERVAL`
+- LLM Temps: `OLLAMA_TEMP_REWRITE`, `OLLAMA_TEMP_SUMMARIZATION`, `OLLAMA_TEMP_FACT_EXTRACTION`
+- Brave MCP: `BRAVE_API_KEY` (required), `BRAVE_ENABLED_RARITIES`, `BRAVE_MAX_RESULTS`, `BRAVE_SEARCH_TIMEOUT`
+- MongoDB: `MONGODB_URI`, `MONGODB_ENABLED_RARITIES`, cache TTLs
 
 ## Code Style
 
@@ -272,229 +241,157 @@ Optional - MongoDB (Phase 3):
 ### Testing
 - React: Jest + React Testing Library, `*.test.tsx` colocated with components
 - Mock API calls, test user interactions
-- Use `--watchAll=false` for CI
 - Python: Limited test coverage currently, mock Ollama for critical paths
+
+### UX & Design Guidelines
+
+**Status:** UX Improvement Initiative (Dec 26-28, 2025) | Phase 1.1 Complete ✅
+**Full Spec:** `UX_IMPROVEMENT_PLAN.md` (200+ pages)
+**Implementation:** `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
+
+#### Design System
+
+**Typography:** Outfit (display), Manrope (body), Space Mono (mono). Use `font-display`, `font-body`, `font-mono` classes.
+
+**Background System (Option 6: Rarity-Adaptive Backgrounds):**
+- **Status:** Partial implementation (Jan 1, 2026) - Background colors + interactions complete, glassmorphic polish deferred
+- **Implemented:**
+  - Rarity-adaptive background colors with dynamic theming
+  - Home Page: Neutral slate gradient (no persona context)
+  - Agent Selection & Chat: Rarity-based space backgrounds with nebula overlays
+  - Clickable character cards with selection feedback and hover states
+  - Continuous particle system (agent page + chat)
+- **Deferred:** Full glassmorphic UI (translucent message bubbles, rarity-adaptive buttons, glass inputs)
+- **CSS Classes:** `.space-background`, `.nebula-overlay`, `.glass-card` (defined but not widely applied)
+- **Rarity Colors:**
+  - Common (Blue): `#60a5fa` accent, `#0a0e27` space - AI trust
+  - Rare (Cyan): `#06b6d4` accent, `#0a1628` space - Tech reliability
+  - Epic (Purple): `#a78bfa` accent, `#1a0f2e` space - Premium magic
+  - Legendary (Gold): `#fbbf24` accent, `#1f1a0a` space - Ultimate cosmic
+- **Transitions:** Smooth 0.8s cubic-bezier animations between rarity switches
+- **Implementation:** `react-ui/src/index.css` (40 CSS variables), `react-ui/src/App.tsx` (body class management)
+- **Archive:** See `AI_documentation/01_implementation_history/OPTION6_GAP_ANALYSIS.md` for rejected Phase 1 details
+
+**Character Card Hover Animation:**
+- **Status:** Optimized (Jan 1-2, 2026) - Iteratively refined through 4 iterations based on user feedback
+- **Final Implementation:** Scale-only animation (modern minimalist approach)
+  - Scale: 1.0 → 1.05 (5% zoom)
+  - Duration: 150ms symmetric (hover-in and hover-out)
+  - Easing: Cubic-bezier [0.4, 0, 0.2, 1] (Material Design easeInOut)
+  - Transform: Single property (scale only, no Y-axis movement)
+- **Removed:** Rotation animation, Y-axis translation, CSS transform conflicts, floating particles
+- **UX Goal:** Single smooth animation (no "two animation" perception)
+- **Performance:** Single transform property = optimal GPU acceleration
+- **Style:** Modern minimalist (Spotify/Netflix card aesthetic)
+- **Research:** Nielsen Norman Group (150ms standard), Material Design 3, 2025 UI trends
+- **Testing:** Playwright automated validation with transform matrix verification
+
+**Animations:** See `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS, SPRING_CONFIGS
+**Full Spec:** `UX_IMPROVEMENT_PLAN.md`, `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
+
+#### Accessibility (WCAG AA)
+
+- 4.5:1 contrast for body text, 3:1 for large text (18px+)
+- Keyboard nav: Tab/Shift+Tab, Enter/Space, Esc
+- Screen reader: `aria-label`, `.sr-only` class, `role="status" aria-live="polite"`
+- Focus indicators: 3px solid outline with 2px offset
+
+#### Component Patterns
+
+**Button Hierarchy:** Primary (gradient, xl), Secondary (outlined, base), Tertiary (text link)
+**Animation:** Use `SPRING_CONFIGS` from utils/animations.ts, respect `prefers-reduced-motion`
+**Performance:** Memoize with `React.memo`, reduce concurrent animations, use `will-change` only when animating
+**Search:** Session search in SessionList.tsx, message search with highlight in Chat.tsx
+
+#### Implementation Checklist
+
+**Before Frontend Changes:**
+- Check `UX_IMPROVEMENT_PLAN.md`
+- Use design system values (CSS vars, animation constants)
+- Test keyboard nav (Tab, Enter, Esc)
+- Verify 4.5:1 contrast, add `aria-label` where needed
+
+**Violations to Avoid:**
+- ❌ System fonts (MUST use Outfit/Manrope/Space Mono)
+- ❌ `<div>` for clickable elements (use `<button>`)
+- ❌ Low contrast (<4.5:1 body, <3:1 large text)
+- ❌ Animations without `prefers-reduced-motion` support
 
 ## Important Implementation Details
 
 ### MCP (Model Context Protocol) Integration
-- The coordinator can connect to external MCP servers (e.g., RAG, knowledge graph, Brave search, MongoDB)
-- MCP client in `mcp_client.py` handles server discovery and tool invocation
-- Tool definitions in `tool_definitions.py` define available functions for LLM function calling
-- Architecture supports multiple MCP servers bridged through the coordinator
+**Status:** ✅ Two Proven Patterns (Dec 2025)
+
+MCP servers run as Docker containers via STDIO transport. Backend mounts `/var/run/docker.sock` to spawn containers on-demand.
+
+**Patterns:**
+- **Ephemeral** (Brave): `docker run -i --rm` per request, dies after 2-3s (stateless)
+- **Long-Running** (MongoDB): Container stays alive for multiple requests (stateful)
+
+**Implementation:** `mcp_client_stdio.py` (Brave), `mongodb/` (MongoDB), `tool_definitions.py`
+**Guide:** See `docs/ADDING_MCP_SERVERS.md` for adding new MCP servers
+
+### Rarity-Based Feature Gating
+
+**MCP access is controlled by persona rarity**, not per-persona configuration. This provides clear feature tiers while keeping configuration simple.
+
+**Feature Matrix:**
+
+| Rarity | MCP Access | Features |
+|--------|------------|----------|
+| **Common** | None | Pure LLM responses only |
+| **Rare** | Brave Search | Web search with mandatory citations |
+| **Epic** | Brave Search + MongoDB | Web search + Bitcoin trading data access |
+| **Legendary** | Brave Search + MongoDB | All MCP features (future: GraphRAG, etc.) |
+
+**Configuration (.env):**
+```bash
+BRAVE_ENABLED_RARITIES=rare,epic,legendary   # Rarities with Brave Search access
+MONGODB_ENABLED_RARITIES=epic,legendary      # Rarities with MongoDB access
+```
+
+**How it Works:**
+1. Backend reads persona `rarity` from JSON (e.g., `"rarity": "epic"`)
+2. Intent classifier checks rarity against `.env` config (`intent_classifier.py:55-56`)
+3. Tools are dynamically injected based on rarity tier
+4. Frontend shows rarity-based UI badges and styling
+
+**Temperature Override:**
+Personas can override the global temperature via `model_preferences`:
+```json
+{
+  "model_preferences": {
+    "temperature": 0.7
+  }
+}
+```
+Fallback to global `.env` setting: `PERSONA_TEMPERATURE=0.9`
+
+**Why Not Per-Persona MCP Control?**
+- Simplifies configuration (one place: `.env`)
+- Aligns with gacha tier system (rarity = feature tier)
+- Environment-driven (easy to change for dev/prod)
+- Reduces JSON bloat and validation overhead
+
+**Changing Rarity:**
+Update `rarity` in persona JSON:
+- Frontend updates instantly (card styling, UI badges)
+- Backend respects new rarity on next request
+- MCP access automatically adjusts based on new tier
 
 ### Brave MCP Integration (Web Search)
-**Status:** ✅ Fully implemented (MVP 2-4 complete)
+**Status:** ✅ Implemented - Rare+ personas perform autonomous web searches with mandatory citations via ephemeral containers (2-3s lifecycle).
 
-Rare, Epic, and Legendary personas can perform autonomous web searches using the Brave Search API.
-
-**Features:**
-- **Autonomous Decision-Making:** Personas intelligently decide when to search vs. answer directly
-- **Mandatory Citations:** All web search responses must include properly formatted source citations
-- **Smart UI Indicators:** SearchIndicator shown for predicted searches, TypingIndicator for direct answers
-- **Citation Validation:** Backend validates that responses include "🔍 Sources:" section with markdown links
-- **Client-Side Prediction:** ~85-90% accuracy predicting when search will be used (for optimal UX)
-- **Rarity-Based Access:** Common personas blocked, Rare+ have web search enabled
-
-**Configuration:**
-```bash
-BRAVE_API_KEY=your_api_key_here           # Required for web search
-BRAVE_MAX_RESULTS=5                        # Number of search results (default: 5)
-BRAVE_SAFESEARCH=moderate                  # moderate|strict|off
-BRAVE_SEARCH_TIMEOUT=10                    # Timeout in seconds
-BRAVE_ENABLED_RARITIES=rare,epic,legendary # Which rarities can search
-```
-
-**Persona Configuration:**
-```json
-{
-  "key": "Eeva",
-  "rarity": "legendary",
-  "allowed_mcp": ["chat", "graphrag", "brave_search"],
-  ...
-}
-```
-
-**Citation Format (Enforced):**
-```
-🔍 Sources:
-• [Article Title - Source Name](https://url1.com)
-• [Article Title - Source Name](https://url2.com)
-• [Article Title - Source Name](https://url3.com)
-```
-
-**Usage:**
-Users simply ask questions requiring current info. Personas automatically search when needed.
-
-**Example Flow:**
-1. User: "What is the current Bitcoin price?"
-2. Frontend predicts search needed → shows SearchIndicator 🔍
-3. Backend classifies query → injects `brave_web_search` tool
-4. LLM decides to search → executes Brave API call
-5. LLM synthesizes response with mandatory citations
-6. Backend validates citations → returns with `citation_valid` flag
-7. Frontend renders answer with citation section styled separately
-
-**Synthesis Prompt (Anti-Hallucination):**
-The system uses a dedicated synthesis prompt (`build_synthesis_prompt()` in `tool_definitions.py`) when generating answers from web search results. This prevents three critical issues:
-
-1. **Hallucination Prevention:** Explicitly instructs LLM to "ONLY use information from web search results" and "Do NOT use training data"
-   - Example: Prevents using outdated $1,850 Ethereum price from training data when search returns $3,245
-
-2. **Natural Synthesis:** Instructs LLM to combine information from multiple sources into cohesive answer
-   - Prevents raw dumps of search result titles
-
-3. **Citation Formatting:** Enforces bullet point format with specific examples
-   - Prevents inline citations `[Source](url)[Source](url)`
-
-**Synthesis Rules (5 Core Rules):**
-- **RULE 1: USE ONLY SEARCH RESULTS** - No training data, no estimates
-- **RULE 2: SYNTHESIZE NATURALLY** - Combine sources, don't list
-- **RULE 3: STAY IN CHARACTER** - Maintain persona voice
-- **RULE 4: BE ACCURATE** - Exact numbers, dates, facts from search
-- **RULE 5: MANDATORY CITATIONS** - Bullet points with emoji + markdown links
-
-**Implementation:** `src/coordinator/llm_client.py` line 173-187 builds synthesis prompt before final response generation.
-
-**Testing:**
-```bash
-# Backend synthesis prompt tests (10 unit tests)
-python src/coordinator/test_synthesis_prompt.py
-
-# Backend integration tests (3 end-to-end tests)
-# Requires backend running on port 8000
-python test_synthesis_integration.py
-
-# Backend citation validation
-python -c "from server import validate_citations; ..."
-
-# Frontend SearchIndicator tests
-cd react-ui && npm test -- SearchIndicator --watchAll=false
-
-# Frontend citation rendering tests
-cd react-ui && npm test -- MessageBubble.citations --watchAll=false
-
-# Search heuristics tests
-cd react-ui && npm test -- searchHeuristics --watchAll=false
-```
-
-**Logging:**
-- `[Chat]` - Request received with query preview
-- `[Intent]` - Query classification result
-- `[Tools]` - Tools injected for this request
-- `[Brave]` - Workflow status, timing, results count
-- `[Citations]` - Validation results (✅/❌)
-- `[Synthesis]` - Synthesis prompt usage, length, answer generation
+**Config:** `BRAVE_API_KEY` (required), `BRAVE_ENABLED_RARITIES=rare,epic,legendary`, `BRAVE_MAX_RESULTS=5`
+**Rules:** Use only search results, synthesize naturally, stay in character, exact numbers, mandatory citations (🔍 Sources)
+**Citation Deduplication:** Backend strips LLM citations, single clean verified block
 
 ### MongoDB MCP Integration (Trading Data)
-**Status:** ✅ Fully implemented and tested (Dec 2025)
+**Status:** ✅ Implemented - Epic/Legendary personas query Bitcoin data (current price, historical, trading stats, technical analysis).
 
-Epic and Legendary personas can query real-time Bitcoin price and trading data from MongoDB Atlas.
-
-**Features:**
-- **Real-Time Data:** Live Bitcoin prices with 35+ technical indicators (RSI, MACD, Bollinger Bands, EMAs)
-- **Historical Data:** Price history from 2016-07-18 to present (daily) and last 6 months (hourly)
-- **Trading Stats:** DCA purchase history, total BTC acquired, average prices
-- **Smart Caching:** TTL-based cache (60s for current price, 3600s for historical)
-- **Rarity-Based Access:** Only Epic and Legendary personas can query MongoDB
-
-**Configuration:**
-```bash
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/btc_data
-MONGODB_TIMEOUT=30                       # Query timeout in seconds
-MONGODB_MAX_RESPONSE_BYTES=100000        # Max response size
-MONGODB_ENABLED_RARITIES=epic,legendary  # Which rarities can query
-```
-
-**Available Tools (4 semantic tools):**
-| Tool | Description |
-|------|-------------|
-| `bitcoin_current_price` | Latest price with RSI, MACD, Bollinger Bands, EMAs |
-| `bitcoin_historical_prices` | Historical OHLCV data with date range filtering |
-| `bitcoin_trading_summary` | DCA statistics: total BTC, spend, fees, avg price |
-| `bitcoin_technical_analysis` | Multi-timeframe analysis with trend/momentum signals |
-
-**Example Query Flow:**
-1. User: "What is the current Bitcoin price?"
-2. Backend classifies intent → `mongodb`
-3. Tools injected: `['bitcoin_current_price', ...]`
-4. MongoDB queried via Docker MCP container
-5. LLM synthesizes response: "Bitcoin is $87,855.80 with RSI 42.04..."
-6. Frontend displays with 🗄️ MongoDB badge
-
-**Response Metadata:**
-```json
-{
-  "source_type": "mongodb_mcp",
-  "tools_used": ["bitcoin_current_price"],
-  "cache_status": "hit",
-  "data_timestamp": "2025-12-23T11:00:00Z"
-}
-```
-
-**Testing:**
-```bash
-# End-to-end test (requires backend + Docker)
-python tests/exploration/test_mongodb_phase4.py
-
-# Unit tests
-python tests/backend/coordinator/test_mongodb_integration.py
-```
-
-**Logging:**
-- `[Intent]` - Query classification (mongodb/brave/llm)
-- `[Tools]` - Tools injected for MongoDB queries
-- `Cache HIT/MISS` - Cache status with age in seconds
-- `MongoDB query completed` - Tool used and cache status
-- `[MongoDB Synthesis]` - Synthesis prompt usage and length
-
-**Synthesis Prompt (Persona Flavor Enhancement):**
-The system uses a dedicated synthesis prompt (`build_mongodb_synthesis_prompt()` in `tool_definitions.py`) when generating answers from MongoDB data. This ensures responses maintain persona flavor and aren't emotionless data dumps.
-
-**Problem Solved:**
-Without synthesis guidance, LLM treats database queries as technical tasks and ignores persona traits, resulting in robotic responses like "Bitcoin price is $87,855.80. RSI is 42.04." The synthesis prompt explicitly reminds the LLM to stay in character.
-
-**Synthesis Rules (5 Core Rules):**
-- **RULE 1: USE ONLY DATABASE DATA** - No training data, no estimates for numbers
-- **RULE 2: SYNTHESIZE NATURALLY** - Combine data points into narrative, not raw JSON dump
-- **RULE 3: STAY IN CHARACTER** - Maintain persona voice, personality, and style
-- **RULE 4: BE ACCURATE** - Use exact numbers from database ($87,855.80, not "around $88K")
-- **RULE 5: ADD INTERPRETATION** - Explain what indicators mean, connect data points
-
-**Implementation:** `src/coordinator/services/query_handler_service.py` builds MongoDB synthesis prompt before response generation.
-
-**Examples:**
-
-Before fix (emotionless):
-```
-User: "What's the Bitcoin price?"
-Response: "Bitcoin price is $87,855.80. RSI is 42.04."
-```
-
-After fix (Eeva - sarcastic, sharp):
-```
-User: "What's the Bitcoin price?"
-Response: "Bitcoin's sitting at $87,855.80 right now. RSI at 42.04 means we're in
-neutral territory—not overbought, not oversold. Pretty calm, honestly. I'd watch
-for momentum shifts before making moves."
-```
-
-After fix (Frieren - formal, contemplative):
-```
-User: "What's the Bitcoin price?"
-Response: "The current price stands at $87,855.80. The RSI reading of 42.04 indicates
-neutral momentum—neither extreme greed nor fear dominates the market at this moment.
-A measured observation period would be prudent."
-```
-
-**Testing:**
-```bash
-# Synthesis prompt validation test
-python tests/backend/coordinator/test_mongodb_persona_flavor.py
-
-# End-to-end persona flavor test with Eeva
-python tests/integration/test_mongodb_eeva_flavor.py
-```
+**Config:** `MONGODB_URI`, `MONGODB_ENABLED_RARITIES=epic,legendary`, `MONGODB_TIMEOUT=30`
+**Caching:** 60s (current), 3600s (historical)
+**Rules:** Use only DB data, exact numbers, persona voice, add interpretation
 
 ### Persona System Prompt Construction
 - Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
@@ -504,203 +401,54 @@ python tests/integration/test_mongodb_eeva_flavor.py
 - **Phase 1**: Psychological profile integrated into system prompt for realistic behavior
 
 ### Persona Quality Enhancement (Phase 1 & 2)
-**Status:** ✅ Phase 1 & 2 Complete (Dec 2025)
-
-Type-safe persona system with advanced characterization and emotional tracking.
-
-**Phase 1 Features:**
-- **Pydantic Schema Validation**: All persona JSON validated on load with clear error messages
-- **Centralized Configuration**: `config.py` uses `pydantic-settings` for validated env vars
-- **Advanced Sampling**: Per-persona LLM sampling (temperature, top_k, top_p, repeat_penalty)
-- **Sampling Presets**: Named presets (creative, balanced, precise, chaotic, deterministic)
-- **Psychological Profiles**: Deep characterization with core_wound, coping_mechanism, defense_style, contradiction_pairs
-- **Example Dialogues**: User/response pairs to teach correct persona voice
-
-**Phase 2 Features:**
-- **Emotional State Tracking**: Per-session trust_level, rapport, current_mood tracking
-- **Dynamic Context Injection**: Emotional state injected into system prompts
-- **Heuristic Emotion Detection**: Automatic mood updates from user sentiment signals
-- **All Personas Enhanced**: 6/6 personas have psychological profiles + 50 total example dialogues
-- **UI Integration**: Emotional state resets when clearing messages, deletes with session
-
-**Emotional State Lifecycle:**
-| UI Action | Emotional State |
-|-----------|-----------------|
-| Delete session | Deleted (DB cascade) |
-| Clear messages | Reset to defaults |
-| New message | Updated dynamically |
-
-**Emotional State API:**
-```bash
-# Get emotional state for a session
-GET /sessions/{session_id}/emotional-state
-
-# Response includes emotional_state in chat responses
-POST /sessions/{session_id}/chat
-# Returns: { "answer": "...", "emotional_state": { "trust_level": 0.52, ... } }
-
-# Clear messages also resets emotional state
-DELETE /sessions/{session_id}/messages
-# Resets: trust_level=0.5, rapport=0.5, current_mood="neutral"
-```
-
-**Sampling Presets:**
-```python
-# Available presets (src/coordinator/models/sampling_presets.py)
-"creative"      # temp=1.2, high creativity for roleplay
-"balanced"      # temp=0.9, general conversation
-"precise"       # temp=0.5, factual answers
-"chaotic"       # temp=1.5, maximum unpredictability
-"deterministic" # temp=0.1, reproducible outputs
-```
-
-**Testing:**
-```bash
-# Phase 1: Schema validation (16 tests)
-python tests/backend/coordinator/test_persona_schema.py
-
-# Phase 2: Integration tests with KPIs (6 tests)
-python tests/integration/test_phase2_integration.py
-
-# Phase 2: UI tests (14 tests)
-cd react-ui && npm test -- --testPathPattern="phase2PersonaQuality" --watchAll=false
-```
+**Status:** ✅ Complete - Pydantic validation, psychological profiles, emotional state tracking, sampling presets (creative/balanced/precise/chaotic/deterministic). API: `GET /sessions/{id}/emotional-state`.
 
 ### Memory Management (Phase 1, 2 & 3)
-**Status:** ✅ Phase 1 & 2 Complete | ✅ Phase 3 Complete & Production-Ready (Dec 23, 2025)
+**Status:** ✅ Production - Importance scoring, auto-summarization (every 30 messages), FAISS semantic search, cross-session user profiles. Dependencies: `faiss-cpu`, `langchain-community`, `nomic-embed-text:latest`. See troubleshooting for issues.
 
-Advanced AI memory system with importance scoring, automatic summarization, semantic search, and cross-session user profiles.
+### Prompt System Optimization (Dec 28, 2025)
+**Status:** ✅ Deployed - Reduced tokens 3,543→2,523 (-28.8%), improved quality 74%→79%. Rollback: `prompt_builder.backup_20251228_155820.py`. See `AI_documentation/01_implementation_history/PROMPT_OPTIMIZATION_FINAL_REPORT.md`.
 
-**Test Results:**
-- Phase 1-2: 5/7 tests passing (71%)
-- Phase 3: ✅ All features validated with live conversations
-- Fact Extraction: ✅ Working (profiles created after 10 messages)
-- Cross-Session Memory: ✅ Working (personas remember users)
-- RAG Indexing: ✅ Working (FAISS vector database operational)
+### Backend Core Refactoring (Phase 1 & 2)
+**Status:** ✅ Complete (Dec 28, 2025) - Service layer extracted, DRY refactoring applied, architecture health improved 6.8→8.6/10. See `AI_documentation/01_implementation_history/PHASE2_COMPLETION_REPORT.md` for full details.
 
-**Phase 1 Features (Infrastructure):**
-- **Database Context Loading**: Messages loaded from SQLite instead of request body
-- **Token Budget Monitoring**: Real-time tracking with color-coded warnings at >90% usage
-- **Model Context Verification**: Dynamic window sizing based on model's 4096 token limit
+### Comprehensive Production Readiness Refactoring (4 Phases)
+**Status:** ✅ Complete (Jan 18, 2026) - Full-stack refactoring improving codebase from 50/100 ("Embarrassing") to 85/100+ ("Production-ready").
 
-**Phase 2 Features (Intelligence):**
-- **Importance Scoring**: Messages scored by personal info, questions, length, recency
-- **Critical Message Detection**: Names/holdings (6x weight) - NEVER dropped from context
-- **Memory Awareness Rules**: System prompt instructs LLM to use conversation history
-- **Auto-Summarization**: Triggers every 30 messages, summaries injected as context
-- **Smart Selection**: First 3 + last 10 messages always included, plus high-scoring middle messages
+**Phase 1 - Testing Infrastructure:**
+- Fixed CI/CD to fail loudly on test failures (removed `|| true` patterns)
+- Created 8 comprehensive test files with 75+ test cases
+- Established 60%+ coverage baseline with pytest-cov configuration
+- Added connection pooling performance tests
 
-**Phase 3 Features (Advanced AI Memory - PRODUCTION READY):**
-- **RAG-Based Semantic Search**: FAISS vector database for semantic similarity search over conversation history
-- **Cross-Session User Profiles**: Persistent user memory across multiple chat sessions with different personas
-- **Automated Fact Extraction**: LLM-powered extraction of user names, preferences, holdings, and key facts
-  - Triggers automatically at message 10, 20, 30, etc. (every 10 messages)
-  - Extracts: name, background, topics, facts, preferences, holdings
-  - Creates user profiles without manual input
-- **User Profile Context Injection**: System prompts enhanced with cross-session knowledge about the user
-  - Personas greet returning users by name
-  - Remember past discussions, holdings, preferences
-  - Context persists across all chat sessions
-- **Real-Time Vector Indexing**: Conversations automatically indexed for fast semantic retrieval
-  - Incremental indexing after each message
-  - FAISS CPU backend (GPU support optional)
-- **Intelligent Profile Building**: Profiles accumulate knowledge from conversations
-  - Tracks topics discussed, facts learned, holdings mentioned
-  - Deduplicates information automatically
-  - JSON storage allows schema evolution
+**Phase 2 - Service Decomposition:**
+- Extracted 6 services from monolithic `llm_client.py` (587 → 234 lines, -60% reduction)
+- Created: QueryExtractionService, ForceSearchService, SearchExecutionService
+- Completed ToolCallingService migration (removed TODO wrapper)
+- Eliminated all circular dependencies
+- Backward-compatible facade pattern for legacy code
 
-**Key Components:**
-- `memory_manager.py` - `MessageImportanceScorer`, `MemoryManager`, `ConversationSummarizer`
-- `persona_memory.py` - `MEMORY_AWARENESS_RULES` injected into system prompts
-- `summary_repository.py` - Persistent storage for conversation summaries
-- `memory_rag.py` - `EpisodicMemoryRAG` for semantic search with FAISS (Phase 3)
-- `user_profile.py` - `UserProfile` class for cross-session memory (Phase 3)
-- `fact_extractor.py` - `FactExtractor` for LLM-powered fact extraction (Phase 3)
-- `user_profile_repository.py` - Database operations for user profiles (Phase 3)
+**Phase 3 - Database Improvements:**
+- Implemented Alembic migration system (360 lines inline SQL → 19 lines)
+- Added SQLAlchemy connection pooling (QueuePool with 5 connections, 10 overflow)
+- Created database adapter pattern (PostgreSQL-ready)
+- Performance: 0.139s for 20 concurrent operations
+- Fixed engine caching (per-database-path instead of global)
 
-**Importance Scoring Weights:**
-| Content Type | Weight |
-|--------------|--------|
-| Name introduction ("my name is...") | 6x |
-| Personal info (holdings, goals) | 4x |
-| Questions | 1.3x |
-| Long messages (>200 chars) | 1.2x |
-| Recency (newer messages) | 1.0-3.0x |
+**Phase 4 - Frontend Refactoring:**
+- Created 4 new components: ChatHeader, ChatInput, ErrorBoundary, VirtualizedMessageList
+- Reduced Chat.tsx from 450 → 372 lines (-17% reduction)
+- Fixed all useEffect linter warnings with proper dependencies
+- Added virtualized message rendering (react-window 1.8.10 + react-virtualized-auto-sizer 1.0.24)
+- Performance: Smooth 60fps scrolling with 500+ messages
+- Docker frontend build: Compiled successfully, bundle 199.55 kB gzipped
 
-**Database Schema (Phase 3):**
-```sql
--- User profiles for cross-session memory
-CREATE TABLE user_profiles (
-    user_id TEXT PRIMARY KEY,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    profile_data TEXT NOT NULL  -- JSON: name, background, preferences, holdings, topics, facts
-);
-
--- Links users to their chat sessions
-CREATE TABLE user_sessions (
-    user_id TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES user_profiles(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
-    PRIMARY KEY(user_id, session_id)
-);
-```
-
-**Dependencies (Phase 3):**
-- `faiss-cpu` - Vector database for semantic search
-- `langchain-community` - Integration with FAISS and embeddings
-- `nomic-embed-text:latest` - Ollama embedding model for vector search
-
-**Phase 3 Production Usage:**
-
-How it works automatically:
-1. User starts chatting naturally
-2. After 10 messages, profile automatically created
-3. Subsequent sessions with same/different personas remember user
-4. No configuration or user action required
-
-Example user profile created:
-```json
-{
-  "name": "Sarah",
-  "holdings": {"BTC": "1.2", "ETH": "5"},
-  "facts": ["Investing since 2021", "Uses Ledger wallet"],
-  "topics_discussed": {"Bitcoin": 3, "Wallets": 2},
-  "total_sessions": 2,
-  "total_messages": 20
-}
-```
-
-**Testing:**
-```bash
-# Phase 1-2 Memory tests
-python -m pytest tests/integration/test_memory_phase1.py -v
-python -m pytest tests/integration/test_memory_phase2.py -v
-
-# Phase 3 component tests
-python test_phase3_simple.py
-
-# Phase 3 live conversation test
-python test_phase3_live.py
-
-# Quick database check
-python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor(); cur.execute('SELECT COUNT(*) FROM user_profiles'); print(f'User profiles: {cur.fetchone()[0]}'); conn.close()"
-```
-
-**Important Note (Dec 23, 2025):**
-A critical bug fix was applied to enable fact extraction. If using code before this date, apply this fix to `src/coordinator/routes/chat.py` line 590:
-
-```python
-# OLD (broken):
-if fact_extractor and user_profile_repo and len(db_messages) % 10 == 0:
-
-# NEW (working):
-if user_profile_repo and len(db_messages) % 10 == 0:
-```
-
-This single-line change enables all Phase 3 features.
+**Metrics Achievement:**
+- llm_client.py: 587 → 234 lines (-60%)
+- Chat.tsx: 450 → 372 lines (-17%)
+- Test Coverage: 30% → 75%+
+- Circular Dependencies: 0
+- Architecture Score: 50/100 → 85/100+
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -712,6 +460,9 @@ This single-line change enables all Phase 3 features.
 - Hardware-accelerated animations with Framer Motion
 - Particle effects optimized for 60fps
 - Reduced motion support for accessibility
+
+### Typing Indicator Layout Fix (Dec 29, 2025)
+**Status:** ✅ Resolved - Fixed layout collapse with typing indicators. Prevention: never add flex children with absolute/fixed positioning. See `AI_documentation/01_implementation_history/TYPING_INDICATOR_LAYOUT_FIX.md`.
 
 ### Mobile Optimization
 - ChatGPT-style responsive layout: sidebar pushes content on desktop, overlays on mobile
@@ -729,8 +480,9 @@ This single-line change enables all Phase 3 features.
 
 ### Backend won't start
 - Verify Ollama is running: `ollama serve`
-- Check model is pulled: `ollama list` / `ollama pull llama3.1:latest`
+- Check model is pulled: `ollama list` / `ollama pull nchapman/gemma-2-9b-it-abliterated:9b`
 - Confirm `.env` has required vars: `OLLAMA_BASE`, `PERSONA_MODEL`
+- Verify model matches .env: Default uses `nchapman/gemma-2-9b-it-abliterated:9b` @ temp `0.9`
 
 ### Frontend build errors
 - Clear node_modules: `cd react-ui && rm -rf node_modules && npm install`
@@ -748,40 +500,68 @@ This single-line change enables all Phase 3 features.
 
 ### Phase 3 Memory Issues
 
-**User profiles not being created:**
-- Verify 10+ messages sent in a session (triggers at 10, 20, 30...)
-- Check database: `SELECT COUNT(*) FROM user_profiles;`
-- Look for `[Phase3]` in backend logs
-- Ensure bug fix applied (see Phase 3 section above)
+**Profiles not created:** Verify 10+ messages sent, check `SELECT COUNT(*) FROM user_profiles;`, look for `[Phase3]` logs, ensure bug fix applied
+**Cross-session memory failing:** Profiles must exist first, check `user_sessions` table links, verify name extraction
+**RAG no results:** Expected (threshold 0.5), Phase 2 importance scoring handles most recall, tune `memory_rag.py` if needed
+**FAISS errors:** Pull `nomic-embed-text:latest`, install `faiss-cpu langchain-community`, deprecation warnings are non-blocking
 
-**Cross-session memory not working:**
-- User profiles must exist first (see above)
-- Check `user_sessions` table for profile-session links
-- Verify profile has correct name extracted
-- Note: Without authentication, each new session may create new profile
+### MCP (Ephemeral Container) Issues
 
-**RAG search returning no results:**
-- Expected behavior - relevance threshold may be strict (0.5)
-- Phase 2 importance scoring handles most recall
-- Check logs for `[RAG] Indexed N messages`
-- Tuning: Lower threshold in `memory_rag.py` if needed
+**Container spawn fails:**
+- Verify Docker socket mounted: `docker exec ai-companion-api ls -l /var/run/docker.sock`
+- Check Docker accessible from backend: `docker exec ai-companion-api docker version`
+- Ensure MCP image exists: `docker pull docker.io/mcp/brave-search`
+- Check API key set: `docker exec ai-companion-api env | grep BRAVE_API_KEY`
 
-**FAISS/embedding errors:**
-- Ensure `nomic-embed-text:latest` pulled: `ollama pull nomic-embed-text`
-- Check FAISS installed: `pip install faiss-cpu langchain-community`
-- Deprecation warnings are non-blocking (still works)
+**Search returns no results:**
+- Verify Brave API key is valid (test at api.search.brave.com)
+- Check container logs: `docker logs ai-companion-api | grep -i brave`
+- Test direct spawn: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"brave_web_search","arguments":{"query":"test","count":1}}}' | docker run -i --rm -e BRAVE_API_KEY=xxx docker.io/mcp/brave-search`
 
-**Checking Phase 3 status:**
-```bash
-# Check if profiles exist
-python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor(); cur.execute('SELECT user_id, profile_data FROM user_profiles'); import json; [print(f'{row[0]}: {json.loads(row[1]).get(\"name\")}') for row in cur.fetchall()]; conn.close()"
+**Timeout errors:**
+- Increase `BRAVE_SEARCH_TIMEOUT` (default: 30s)
+- Check network connectivity from backend container
+- Verify Docker daemon responding: `docker ps`
 
-# Check backend logs for Phase 3 activity
-grep -i "phase3\|rag\|profile" logs/*.log
+**Permission denied on Docker socket:**
+- Ensure socket permissions: `ls -l /var/run/docker.sock` (should be srw-rw----)
+- Backend user must have Docker group access
+- On Windows: Verify Docker Desktop "Expose daemon on tcp://localhost:2375" is disabled (use socket instead)
 
-# Verify tables exist
-python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor(); cur.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); print([row[0] for row in cur.fetchall()]); conn.close()"
+### Docker Networking Issues
+
+**Symptoms:**
+- Error: "network f708feda4bed... not found"
+- Containers fail to start with networking errors
+- "Cannot start Docker Compose application" in Docker Desktop
+
+**Cause:** Orphaned network references from improper shutdown or Docker daemon restart.
+
+**Automated Fix (Recommended):**
+```powershell
+# PowerShell (full diagnostics)
+.\scripts\docker\fix-docker-network.ps1          # Quick fix (recommended)
+.\scripts\docker\fix-docker-network.ps1 -Nuclear # Full rebuild
+.\scripts\docker\fix-docker-network.ps1 -Verify  # Check status only
+
+# Windows batch (simple fix)
+.\scripts\docker\fix-docker-network.bat
 ```
+
+**Manual Fix:**
+```powershell
+# 1. Stop and clean
+docker-compose down
+docker network prune -f
+
+# 2. Restart
+docker-compose --env-file .env.docker up -d
+
+# 3. Verify
+docker-compose ps
+```
+
+**Prevention:** Always use `docker-compose down` instead of manually stopping containers in Docker Desktop.
 
 ## Additional Documentation
 
@@ -791,28 +571,24 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 - `ASSESSMENT.md` - Comprehensive codebase quality assessment and scoring (Dec 2025)
 - `AGENTS.md` - AI coding guidelines, tech stack, build commands, code style
 - `CHANGELOG.md` - Version history, feature additions, security fixes
-- `PHASE3_FINAL_RESULTS.md` - Phase 3 live test results and validation (Dec 2025)
-- `PHASE3_LIVE_TEST_ANALYSIS.md` - Bug discovery and analysis (Dec 2025)
+- `PRODUCTION_READINESS_PLAN.md` - Kubernetes production readiness assessment & 3-phase migration plan (Dec 2025)
+- `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment guide (recommended setup method)
+- `DOCKER_README_UPDATE_SUMMARY.md` - Docker implementation log
+- `DOCKER_SQLITE_OPTIMIZATION_SUMMARY.md` - SQLite technical decision
+- `SQLITE_ARCHITECTURE.md` - Database architecture technical decision record
+- `UI_MULTI_MESSAGE_TEST_GUIDE.md` - Frontend testing guide
 
-**CI/CD Documentation (.github/):**
-- `CICD_GETTING_STARTED.md` - Beginner-friendly CI/CD introduction (what, why, how)
-- `CICD_DOCUMENTATION.md` - Technical reference for CI/CD pipeline configuration
-
-**Historical Documentation (Archive):**
-- `AI_documentation/` - Historical specs, completion summaries, feature implementation details
-  - `01_implementation_history/` - MVP and phase completion summaries
-    - `ARCHITECTURE_IMPROVEMENTS_SUMMARY.md` - Complete refactoring summary (Dec 2025)
-    - `ASYNC_CONVERSION_PLAN.md` - 8-phase async implementation strategy
-    - `CRITICAL_ISSUES_FIXED.md` - Master summary of all fixes (Dec 2025)
-    - `MONGODB_REFACTORING_COMPLETE.md` - MongoDB MCP client refactoring
-    - `HEADER_MODULAR_REFACTORING.md` - React Header component split
-    - `PHASE3_ADVANCED_MEMORY_COMPLETION.md` - Phase 3 implementation summary
-    - `PHASE3_TEST_RESULTS.md` - Component-level test validation
-  - `02_ux_design_specs/` - UX design roadmaps (Home, Chat, Character pages, Gacha)
-  - `03_feature_specs/` - Feature specs (Brave MCP, MongoDB MCP, model recommendations)
-  - `04_deprecated/` - Obsolete docs kept for reference (React migration complete)
-  - `05_roadmaps/` - Feature roadmaps (persona quality, memory management)
-    - `PERSONA_MEMORY_ROADMAP.md` - 3-phase memory enhancement roadmap
+**Essential Documentation (AI_documentation/):**
+- `01_implementation_history/` - Critical architecture decisions and major refactorings (12 files)
+  - MCP infrastructure (Brave/MongoDB architecture, refactoring)
+  - Backend refactoring (Phase 1/2/3 completion reports, prompt optimization)
+  - UX implementations (typography system, typing indicator fix, Option 6 gap analysis)
+  - Quality systems (RAGAS evaluation, project hygiene log)
+- `02_ux_design_specs/` - Active UX specifications (2 files)
+  - UX_IMPROVEMENT_PLAN.md - Master UX design system
+  - UI_MULTI_MESSAGE_TEST_GUIDE.md - Frontend testing guide
+- `05_roadmaps/` - Future planning (1 file)
+  - PRODUCTION_READINESS_PLAN.md - Kubernetes migration roadmap
 
 ## Dependencies
 
@@ -837,30 +613,37 @@ python -c "import sqlite3; conn = sqlite3.connect('chats.db'); cur = conn.cursor
 
 ## Project Hygiene
 
-**Current Status:** ✅ Hygiene Score 10/10 (Perfect cleanliness)
+**Current Status:** ✅ Score 10/10 (Perfect - Jan 17, 2026)
 
-**Recent Improvements:**
-- **Dec 24, 2025:** Phase 1 Configuration Externalization (7 values → `.env`)
-- **Dec 24, 2025:** MongoDB Persona Flavor Enhancement (synthesis prompt fix)
-- **Dec 24, 2025:** Hygiene Session #3 (4 files moved, 11 archived, zero issues)
-- **Dec 23, 2025:** Phase 3 Advanced Memory System (RAG, user profiles, fact extraction)
-- **Dec 23, 2025:** Modular Refactoring (server.py 1,645 → 85 lines, 95% reduction)
-- **Dec 23, 2025:** Hygiene Sessions #1 & #2 (major cleanup, file organization)
+**Key Metrics:**
+- Zero unused imports, dead code, log files, test artifacts ✅
+- Type hints: 95%+ | Technical debt: 2 TODOs (both recent, not stale)
+- routes/chat.py: 759 → 279 lines (63% reduction via service layer extraction)
+- server.py: 1,645 → 85 lines (95% reduction via modular refactoring)
 
-**Code Quality Metrics:**
-- Unused imports: **0** ✅
-- Dead code: **0** ✅
-- Technical debt: **1 TODO** (performance optimization note)
-- Type hints coverage: **95%+**
-- Root Python files: **1** (run_react.py only)
-- Largest backend file: **534 lines** (routes/chat.py)
+**Organization:**
+- `tests/`: 12 backend, 23 integration, 10 exploration
+- `src/coordinator/`: 3 routes, 7 services
+- `AI_documentation/`: 15 docs (3 categories: implementation_history, ux_design_specs, roadmaps) - 85.7% reduction from 105 files
+- `archive/test_artifacts/`: UX test artifacts (scale-only animation validation)
 
-**Project Organization:**
-- `tests/backend/coordinator/`: 12 test files
-- `tests/integration/`: 18 test files
-- `tests/exploration/`: 7 test files
-- `src/coordinator/routes/`: 3 route modules
-- `src/coordinator/services/`: 3 service modules
-- `AI_documentation/`: 22+ docs across 5 categories
+**Root Markdown Policy:** README, CLAUDE, NEXT_STEPS, CHANGELOG only (specialized guides in docs/) - all others → `AI_documentation/`
 
-**Full History:** See `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md` for complete hygiene session details, refactoring summaries, and architectural improvements.
+**Latest Session (Jan 17, 2026 - Documentation Purge):**
+- Deleted: 90 obsolete documentation files (105→15, 85.7% reduction)
+  - 67 implementation logs (bug fixes, MVPs, phase completions, test summaries)
+  - 5 UX specs (completed features documented in CLAUDE.md)
+  - 7 feature specs (implemented features: Brave MCP, MongoDB, SQLite, model selection)
+  - 1 deprecated file (React migration complete)
+  - 6 completed roadmaps (persona quality, memory phases, conversational AI)
+  - 4 redundant root docs (analysis guides, README duplicates)
+- Removed: 4 empty directories (04_deprecated/, 03_feature_specs/, archive/)
+- Kept: Only essential docs (MCP architecture, major refactorings, UX plan, production roadmap, project hygiene log)
+- Result: Reduced context bloat, cleaner navigation, git history preserves all deleted content
+
+**Previous Session (Jan 17, 2026):**
+- Archived: test_scale_only.py + screenshots/ (1.7MB, UX test artifacts)
+- Cleaned: 5 debug console.log statements from React components
+- Verified: .pyc files properly gitignored, 2 TODOs recent (Dec 28 - Jan 1)
+
+**Full History:** `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md`

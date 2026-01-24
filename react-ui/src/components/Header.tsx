@@ -50,7 +50,6 @@ const Header: React.FC = () => {
       }
     }
 
-    console.log('Header theme changed to:', newTheme, 'for persona:', selectedPersona?.display_name || 'none', 'path:', location.pathname);
     setCurrentTheme(newTheme);
   }, [location.pathname, selectedPersona]);
 

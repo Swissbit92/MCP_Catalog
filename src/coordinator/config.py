@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import logging
+import warnings
 from functools import lru_cache
 from typing import Optional, Set
 
@@ -31,8 +32,8 @@ class OllamaSettings(BaseSettings):
         alias="OLLAMA_BASE"
     )
     model: str = Field(
-        default="llama3.1:latest",
-        description="Default model for persona responses",
+        default="mistral:latest",
+        description="Default model for persona responses (fallback if PERSONA_MODEL not set)",
         alias="PERSONA_MODEL"
     )
     temperature: float = Field(
@@ -321,10 +322,36 @@ settings = get_settings()
 
 
 # ============================================================================
-# BACKWARD COMPATIBILITY FUNCTIONS
+# BACKWARD COMPATIBILITY FUNCTIONS (DEPRECATED)
 # These functions maintain compatibility with existing code that uses the
 # function-based API. They delegate to the Pydantic settings object.
+#
+# DEPRECATION NOTICE (Phase 1 Quick Wins - Dec 2025):
+# These getter functions are deprecated. Instead of calling get_ollama_base(),
+# use get_settings().ollama.base directly. This provides better type safety,
+# IDE autocomplete, and reduces code complexity.
+#
+# Migration example:
+#   OLD: base = get_ollama_base()
+#   NEW: base = get_settings().ollama.base
+#
+# All functions will be removed in a future version.
 # ============================================================================
+
+
+def _deprecated_config_getter(func):
+    """Decorator to mark config getter functions as deprecated."""
+    def wrapper(*args, **kwargs):
+        warnings.warn(
+            f"{func.__name__}() is deprecated. Use get_settings() with structured "
+            f"config objects instead. See config.py for migration examples.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
 
 
 def _required(name: str) -> str:
@@ -338,120 +365,176 @@ def _required(name: str) -> str:
     return val
 
 
+@_deprecated_config_getter
 def get_ollama_base() -> str:
     """Get Ollama base URL."""
     return settings.ollama.base
 
 
+@_deprecated_config_getter
 def get_persona_model() -> str:
     """Get default persona model."""
     return settings.ollama.model
 
 
+@_deprecated_config_getter
 def get_persona_dir() -> str:
     """Get persona directory path."""
     return settings.persona_dir
 
 
+@_deprecated_config_getter
 def get_persona_temperature() -> float:
     """Get default sampling temperature."""
     return settings.ollama.temperature
 
 
+@_deprecated_config_getter
 def get_model_context_window() -> int:
     """Get model context window size in tokens."""
     return settings.ollama.context_window
 
 
 # Brave MCP Configuration
+@_deprecated_config_getter
 def get_brave_api_key() -> str:
     """Get Brave API key."""
     return settings.brave.api_key
 
 
+@_deprecated_config_getter
 def get_brave_max_results() -> int:
     """Get max results for Brave search."""
     return settings.brave.max_results
 
 
+@_deprecated_config_getter
 def get_brave_safesearch() -> str:
     """Get Brave safesearch setting."""
     return settings.brave.safesearch
 
 
+@_deprecated_config_getter
 def get_brave_search_timeout() -> int:
     """Get Brave search timeout in seconds."""
     return settings.brave.timeout
 
 
+@_deprecated_config_getter
 def get_brave_enabled_rarities() -> set:
     """Get set of persona rarities with web search enabled."""
     return settings.brave.enabled_rarities_set
 
 
+@_deprecated_config_getter
 def is_brave_enabled() -> bool:
     """Check if Brave MCP is enabled."""
     return settings.brave.enabled
 
 
 # MongoDB MCP Configuration
+@_deprecated_config_getter
 def get_mongodb_uri() -> str:
     """Get MongoDB connection URI."""
     return settings.mongodb.uri
 
 
+@_deprecated_config_getter
 def get_mongodb_timeout() -> int:
     """Get MongoDB operation timeout in seconds."""
     return settings.mongodb.timeout
 
 
+@_deprecated_config_getter
 def get_mongodb_max_response_bytes() -> int:
     """Get max response size in bytes."""
     return settings.mongodb.max_response_bytes
 
 
+@_deprecated_config_getter
 def get_mongodb_enabled_rarities() -> set:
     """Get set of persona rarities with MongoDB access enabled."""
     return settings.mongodb.enabled_rarities_set
 
 
+@_deprecated_config_getter
 def is_mongodb_enabled() -> bool:
     """Check if MongoDB MCP is enabled."""
     return settings.mongodb.is_enabled
 
 
+@_deprecated_config_getter
 def get_mongodb_cache_ttl(tool_name: str) -> int:
     """Get cache TTL for a specific MongoDB tool."""
     return settings.mongodb.get_cache_ttl(tool_name)
 
 
 # Memory & RAG Configuration
+@_deprecated_config_getter
 def get_embedding_model() -> str:
     """Get Ollama embedding model for RAG semantic search."""
     return settings.memory.embedding_model
 
 
+@_deprecated_config_getter
 def get_summarization_interval() -> int:
     """Get number of messages before triggering auto-summarization."""
     return settings.memory.summarization_interval
 
 
+@_deprecated_config_getter
 def get_fact_extraction_interval() -> int:
     """Get number of messages before triggering fact extraction."""
     return settings.memory.fact_extraction_interval
 
 
 # Ollama Temperature Overrides
+@_deprecated_config_getter
 def get_temp_rewrite() -> float:
     """Get temperature for first-person rewrites."""
     return settings.ollama.temp_rewrite
 
 
+@_deprecated_config_getter
 def get_temp_summarization() -> float:
     """Get temperature for conversation summarization."""
     return settings.ollama.temp_summarization
 
 
+@_deprecated_config_getter
 def get_temp_fact_extraction() -> float:
     """Get temperature for fact extraction."""
     return settings.ollama.temp_fact_extraction
+
+
+@_deprecated_config_getter
+def get_persona_temperature_override(persona_card: dict) -> float:
+    """Get persona-specific temperature or fallback to global default.
+
+    Args:
+        persona_card: Persona dictionary from JSON (must contain model_preferences)
+
+    Returns:
+        Per-persona temperature if defined, otherwise global PERSONA_TEMPERATURE
+
+    Example:
+        >>> card = {"model_preferences": {"temperature": 0.7}}
+        >>> get_persona_temperature_override(card)
+        0.7
+        >>> get_persona_temperature_override({})  # Uses global default
+        0.9
+    """
+    model_prefs = persona_card.get("model_preferences", {})
+    if isinstance(model_prefs, dict) and "temperature" in model_prefs:
+        temp = model_prefs["temperature"]
+        # Validate it's a reasonable number
+        if isinstance(temp, (int, float)) and 0.0 <= temp <= 2.0:
+            return float(temp)
+        else:
+            logger.warning(
+                f"Invalid temperature in persona model_preferences: {temp}. "
+                f"Using global default {settings.ollama.temperature}"
+            )
+
+    # Fallback to global setting
+    return settings.ollama.temperature

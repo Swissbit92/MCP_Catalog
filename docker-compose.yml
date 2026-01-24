@@ -1,0 +1,174 @@
+version: '3.8'
+
+# =============================================================================
+# MCP Coordinator - SQLite Edition (Optimized for Local Personal Use)
+# =============================================================================
+# This setup uses SQLite for simplicity and performance in single-user scenarios.
+# All data persists in ./data/ directory on your host machine.
+#
+# For production/multi-user deployments, see PRODUCTION_READINESS_PLAN.md
+# =============================================================================
+
+services:
+  # Ollama LLM server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-companion-brain
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_FLASH_ATTENTION=true
+    # GPU support enabled for NVIDIA RTX 4090
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Backend FastAPI server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-companion-api
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      # Ollama configuration
+      OLLAMA_BASE: http://ollama:11434
+      PERSONA_MODEL: ${PERSONA_MODEL:-dolphin-llama3:8b}
+      PERSONA_TEMPERATURE: ${PERSONA_TEMPERATURE:-0.9}
+
+      # Server configuration
+      COORD_PORT: 8000
+      COORD_URL: http://backend:8000
+      PERSONA_DIR: personas
+
+      # Database (SQLite - stored in ./data/ on host)
+      COORDINATOR_DB_PATH: /app/data/chats.db
+
+      # Brave MCP (optional - requires API key)
+      BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      BRAVE_ENABLED_RARITIES: ${BRAVE_ENABLED_RARITIES:-rare,epic,legendary}
+      BRAVE_MAX_RESULTS: ${BRAVE_MAX_RESULTS:-5}
+      BRAVE_MCP_URL: http://brave-mcp:8080  # HTTP transport to MCP service
+
+      # MongoDB MCP (optional - requires connection URI)
+      MONGODB_URI: ${MONGODB_URI:-}
+      MONGODB_ENABLED: ${MONGODB_ENABLED:-false}
+      MONGODB_MCP_URL: http://mongodb-mcp:3000  # HTTP transport to MCP service
+
+      # Memory & RAG settings
+      MEMORY_EMBEDDING_MODEL: ${MEMORY_EMBEDDING_MODEL:-nomic-embed-text:latest}
+      MEMORY_SUMMARIZATION_INTERVAL: ${MEMORY_SUMMARIZATION_INTERVAL:-30}
+      MEMORY_FACT_EXTRACTION_INTERVAL: ${MEMORY_FACT_EXTRACTION_INTERVAL:-10}
+    volumes:
+      # SQLite database - persists all chat data
+      # Location: ./data/chats.db on your host machine
+      - ./data:/app/data
+
+      # Persona CV summaries cache - auto-generated
+      - ./personas/_summaries:/app/personas/_summaries
+
+      # Application logs (optional)
+      - ./logs:/app/logs
+
+      # Persona definitions (read-only)
+      - ./personas:/app/personas:ro
+
+      # Docker socket - enables backend to spawn ephemeral MCP containers
+      # This is the standard pattern for container orchestration (like CI/CD runners)
+      #
+      # SECURITY MEASURES (Jan 2026):
+      # - All spawned containers have resource limits (memory, CPU, PID limits)
+      # - Containers labeled for orphan detection and cleanup
+      # - Guaranteed cleanup on timeout/error with graceful termination
+      # - Run scripts/cleanup_orphan_containers.py periodically to detect leaks
+      #
+      # Resource limits applied:
+      # - Brave MCP (ephemeral): 256MB RAM, 0.5 CPU, 100 PIDs max
+      # - MongoDB MCP (long-running): 512MB RAM, 1.0 CPU, 100 PIDs max
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Frontend React app
+  frontend:
+    build:
+      context: ./react-ui
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:8000
+    container_name: ai-companion-web
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # MCP Services (Brave Search, MongoDB)
+  # =============================================================================
+  # No longer run as long-lived services in docker-compose.
+  #
+  # Using ephemeral container pattern: backend spawns `docker run -i --rm` on-demand
+  # - Brave MCP: New container per search (2-3s lifecycle)
+  # - MongoDB MCP: Long-running container, auto-restarts if parent dies
+  #
+  # SECURITY (Jan 2026):
+  # All MCP containers have resource limits to prevent DoS attacks:
+  # - Memory limits (256MB-512MB)
+  # - CPU limits (0.5-1.0 cores)
+  # - PID limits (100 max)
+  # - Container labels for orphan detection
+  #
+  # See:
+  # - src/coordinator/mcp_client_stdio.py (Brave MCP)
+  # - src/coordinator/mongodb/docker_client.py (MongoDB MCP)
+  # - scripts/cleanup_orphan_containers.py (orphan cleanup)
+
+volumes:
+  # Ollama models storage (can be large - 4-10GB per model)
+  # Persists across container restarts
+  ollama_models:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge

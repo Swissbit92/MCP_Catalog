@@ -52,9 +52,9 @@ export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
   return (
     <motion.div
       className={`flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-2xl border-2 border-transparent shadow-lg ${colors.glow} max-w-fit ${className}`}
-      initial={{ opacity: 0, scale: 0.8, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.8, y: 10 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       style={{
         borderImage: `linear-gradient(135deg, var(--tw-gradient-stops)) 1`,

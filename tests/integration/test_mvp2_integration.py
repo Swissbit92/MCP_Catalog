@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from coordinator.llm_client import LC_OllamaClient
-from coordinator.mcp_client import BraveMCPClient
+from coordinator.mcp_client_stdio import BraveMCPClientStdio as BraveMCPClient
 from coordinator.tool_definitions import get_brave_search_tool, get_tools_for_persona
 from coordinator.config import (
     get_ollama_base,

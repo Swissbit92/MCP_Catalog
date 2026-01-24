@@ -13,6 +13,9 @@ lib64/
 Scripts/
 pyvenv.cfg
 
+# Exception: Allow project scripts directory (not venv Scripts/)
+!scripts/
+
 # Jupyter / system folders
 **/share/
 **/etc/
@@ -51,6 +54,12 @@ react-ui/build/
 Thumbs.db
 *.bak
 
+# Windows null device bugs (Git Bash creates actual files)
+NUL
+nul
+null
+NULL
+
 # Persona summaries cache
 personas/_summaries/.lock
 personas/gwen_alt.json
@@ -59,4 +68,7 @@ react-ui/public/images/gwen_NSFW_logo.png
 react-ui/public/images/gwen_NSFW_bg.png
 react-ui/public/images/gwen_NSFW_card.png
 personas/_summaries/Gwen_alt.json
+
+# Serena files
+.serena/
 

@@ -1,0 +1,20 @@
+# Archive Manifest - December 29, 2025
+
+## Prompt Optimization Files Archived
+
+### prompt_builder.backup_20251228_155820.py
+- Original prompt builder before optimization (699 lines)
+- Created: December 28, 2025
+- Reason: Backup file - optimization already deployed to production
+- Historical value: Rollback reference for prompt system
+
+### prompt_builder_optimized.py
+- Duplicate of current prompt_builder.py (592 lines, identical)
+- Created: December 28, 2025
+- Reason: Duplicate file - optimization already merged into prompt_builder.py
+- Historical value: Development artifact from prompt optimization effort
+
+## Summary
+Archived 2 files from prompt optimization completion (Dec 28, 2025). The optimized version is now the production version in `src/coordinator/prompt_builder.py`. These files are preserved for historical reference and potential rollback scenarios.
+
+Total space freed: ~52KB

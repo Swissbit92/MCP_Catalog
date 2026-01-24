@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import EnergyParticles from '../components/EnergyParticles';
 import CharacterShowcase from '../components/CharacterShowcase';
 import styles from '../components/CharacterCard.module.css';
 
@@ -19,15 +18,16 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen relative">
-      <EnergyParticles isActive={true} />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Neutral introduction background - rarity theming activates after persona selection */}
+
       <div className="relative z-10">
         <div className="text-center py-8">
-          <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
-            Persona Chat
+          <h1 className="text-4xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
+            AI Companions
           </h1>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Experience the ultimate character chat experience with our gacha-style character selection system
+          <p className="text-xl font-body text-gray-300 max-w-3xl mx-auto mb-8">
+            Connect with intelligent AI companions through our gacha-style agent selection system
           </p>
         </div>
 
@@ -38,8 +38,8 @@ const Home: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <div className={`${styles['pull-instructions']} text-white`}>
-            <h2 className="text-2xl font-bold mb-2">Welcome to Persona Chat!</h2>
-            <p className="text-gray-300">Choose how you'd like to select your character to start chatting.</p>
+            <h2 className="text-2xl font-display font-bold mb-2">Welcome to AI Companions!</h2>
+            <p className="font-body text-gray-300">Choose how you'd like to select your agent to start chatting.</p>
           </div>
           <div className="flex flex-col gap-4 items-center w-full max-w-md">
             <motion.button
@@ -64,15 +64,15 @@ const Home: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              📚 Browse All Characters
+              📚 Browse All Agents
             </motion.button>
           </div>
         </motion.div>
 
-        {/* Character Showcase */}
+        {/* AI Companion Showcase */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-white text-center mb-6">
-            Character Showcase
+          <h2 className="text-2xl font-display font-bold text-white text-center mb-6">
+            AI Companion Showcase
           </h2>
           <CharacterShowcase />
         </div>

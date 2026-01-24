@@ -153,7 +153,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                   className="block px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 font-medium"
                   onClick={closeMobileMenu}
                 >
-                  🎭 Characters
+                  🤖 Agents
                 </Link>
                 <Link
                   to="/chat"

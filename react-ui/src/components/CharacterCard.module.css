@@ -16,10 +16,13 @@
   background:linear-gradient(160deg,rgba(15,20,35,.85),rgba(20,28,48,.78));
   box-shadow:0 14px 24px rgba(0,0,0,.35); backdrop-filter:blur(6px) saturate(110%);
   transform:translateZ(0);
-  transition:transform .18s,box-shadow .18s,filter .18s;
+  transition:box-shadow .18s,filter .18s;
   isolation:isolate;
 }
-.card-outer:hover{transform:translateY(-3px) rotateZ(-.35deg);box-shadow:0 18px 32px rgba(0,0,0,.45);filter:saturate(1.05)}
+.card-outer:hover{
+  box-shadow:0 18px 32px rgba(0,0,0,.45);
+  filter:saturate(1.05)
+}
 
 .rarity-legendary{--glow:rgba(255,208,80,.9);--glow2:rgba(255,240,166,.7)}
 .rarity-epic{--glow:rgba(186,120,255,.85);--glow2:rgba(246,212,255,.65)}

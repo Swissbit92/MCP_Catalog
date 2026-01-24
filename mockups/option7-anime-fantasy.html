@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 7: Anime Fantasy</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Manrope:wght@400;600;700&family=Space+Mono:wght@400;700&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Typography */
+      --font-display: 'Cinzel Decorative', 'Outfit', serif;
+      --font-body: 'Manrope', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    body {
+      font-family: var(--font-body);
+      color: #2d1b4e;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      transition: background 0.8s ease-in-out;
+    }
+
+    /* Rarity-Based Fantasy Themes */
+    body.rarity-common {
+      --fantasy-bg-1: #e8f5e9;
+      --fantasy-bg-2: #c8e6c9;
+      --fantasy-accent: rgba(76, 175, 80, 0.15);
+      --fantasy-primary: #4caf50;
+      --fantasy-glow: rgba(76, 175, 80, 0.5);
+      --fantasy-theme: "Meadow";
+    }
+
+    body.rarity-rare {
+      --fantasy-bg-1: #e3f2fd;
+      --fantasy-bg-2: #bbdefb;
+      --fantasy-accent: rgba(33, 150, 243, 0.15);
+      --fantasy-primary: #2196f3;
+      --fantasy-glow: rgba(33, 150, 243, 0.5);
+      --fantasy-theme: "Ocean";
+    }
+
+    body.rarity-epic {
+      --fantasy-bg-1: #f3e5f5;
+      --fantasy-bg-2: #e1bee7;
+      --fantasy-accent: rgba(156, 39, 176, 0.15);
+      --fantasy-primary: #9c27b0;
+      --fantasy-glow: rgba(156, 39, 176, 0.6);
+      --fantasy-theme: "Twilight";
+    }
+
+    body.rarity-legendary {
+      --fantasy-bg-1: #fff9e1;
+      --fantasy-bg-2: #ffe082;
+      --fantasy-accent: rgba(255, 193, 7, 0.2);
+      --fantasy-primary: #ffc107;
+      --fantasy-glow: rgba(255, 193, 7, 0.7);
+      --fantasy-theme: "Celestial";
+    }
+
+    /* Background layers */
+    .background-layer-base {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, var(--fantasy-bg-1) 0%, var(--fantasy-bg-2) 100%);
+      z-index: -3;
+      transition: background 0.8s ease-in-out;
+    }
+
+    /* Magical sparkles */
+    .sparkles {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--fantasy-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--fantasy-glow);
+      animation: twinkle 3s ease-in-out infinite;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* Ornate pattern overlay */
+    .pattern-overlay {
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(45deg, transparent, transparent 50px, var(--fantasy-accent) 50px, var(--fantasy-accent) 51px),
+        repeating-linear-gradient(-45deg, transparent, transparent 50px, var(--fantasy-accent) 50px, var(--fantasy-accent) 51px);
+      opacity: 0.3;
+      z-index: -1;
+    }
+
+    /* Content container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Rarity Switcher */
+    .rarity-switcher {
+      position: sticky;
+      top: 1rem;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.95);
+      border: 3px solid var(--fantasy-primary);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px var(--fantasy-glow), inset 0 0 20px rgba(255, 255, 255, 0.8);
+      transition: all 0.3s;
+    }
+
+    .rarity-switcher h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 900;
+      margin-bottom: 1rem;
+      color: var(--fantasy-primary);
+      text-align: center;
+      text-shadow: 0 0 10px var(--fantasy-glow);
+    }
+
+    .switcher-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .rarity-btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      border: 2px solid;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.875rem;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .rarity-btn:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .rarity-btn.btn-common {
+      border-color: #4caf50;
+      color: #4caf50;
+    }
+
+    .rarity-btn.btn-common.active {
+      background: #4caf50;
+      color: white;
+      box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+
+    .rarity-btn.btn-rare {
+      border-color: #2196f3;
+      color: #2196f3;
+    }
+
+    .rarity-btn.btn-rare.active {
+      background: #2196f3;
+      color: white;
+      box-shadow: 0 0 20px rgba(33, 150, 243, 0.6);
+    }
+
+    .rarity-btn.btn-epic {
+      border-color: #9c27b0;
+      color: #9c27b0;
+    }
+
+    .rarity-btn.btn-epic.active {
+      background: #9c27b0;
+      color: white;
+      box-shadow: 0 0 20px rgba(156, 39, 176, 0.7);
+    }
+
+    .rarity-btn.btn-legendary {
+      border-color: #ffc107;
+      color: #ff6f00;
+    }
+
+    .rarity-btn.btn-legendary.active {
+      background: linear-gradient(135deg, #ffc107, #ff6f00);
+      color: white;
+      box-shadow: 0 0 25px rgba(255, 193, 7, 0.8);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.2); }
+    }
+
+    /* Ornate Card */
+    .fantasy-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 3px solid var(--fantasy-primary);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 32px var(--fantasy-glow), inset 0 0 30px rgba(255, 255, 255, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fantasy-card::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg,
+        transparent 30%,
+        var(--fantasy-accent) 50%,
+        transparent 70%);
+      z-index: -1;
+      opacity: 0.5;
+    }
+
+    .fantasy-card h1 {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin-bottom: 0.5rem;
+      color: var(--fantasy-primary);
+      text-shadow: 0 2px 10px var(--fantasy-glow);
+    }
+
+    .fantasy-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--fantasy-primary);
+    }
+
+    .fantasy-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--fantasy-primary);
+    }
+
+    .fantasy-card p, .fantasy-card li {
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+      color: #4a4a4a;
+    }
+
+    .fantasy-card ul {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .pro { color: #4caf50; font-weight: 600; }
+    .con { color: #ff9800; font-weight: 600; }
+
+    /* Components Grid */
+    .components-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Message Bubble */
+    .message-bubble {
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid var(--fantasy-primary);
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 4px 16px var(--fantasy-glow);
+    }
+
+    .message-bubble.user {
+      background: var(--fantasy-accent);
+      border-color: var(--fantasy-primary);
+    }
+
+    .message-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--fantasy-primary);
+      margin-top: 0.5rem;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      font-family: var(--font-body);
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      border: 2px solid var(--fantasy-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--fantasy-primary);
+      color: white;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px var(--fantasy-glow);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--fantasy-primary);
+    }
+
+    /* Theme Badge */
+    .theme-badge {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 900;
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      background: rgba(255, 255, 255, 0.95);
+      border: 3px solid var(--fantasy-primary);
+      color: var(--fantasy-primary);
+      box-shadow: 0 0 30px var(--fantasy-glow);
+      text-align: center;
+      margin-top: 1rem;
+      text-shadow: 0 0 10px var(--fantasy-glow);
+    }
+
+    /* Input field */
+    .input-field {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid var(--fantasy-primary);
+      border-radius: 12px;
+      color: #2d1b4e;
+      margin-top: 1rem;
+    }
+
+    .input-field:focus {
+      outline: none;
+      box-shadow: 0 0 15px var(--fantasy-glow);
+    }
+  </style>
+</head>
+<body class="rarity-common">
+  <!-- Background Layers -->
+  <div class="background-layer-base"></div>
+  <div class="sparkles" id="sparkles"></div>
+  <div class="pattern-overlay"></div>
+
+  <!-- Content -->
+  <div class="container">
+    <!-- Rarity Switcher -->
+    <div class="rarity-switcher">
+      <h2>✨ Fantasy Realm Themes</h2>
+      <div class="switcher-buttons">
+        <button class="rarity-btn btn-common active" onclick="switchRarity('common')">Meadow</button>
+        <button class="rarity-btn btn-rare" onclick="switchRarity('rare')">Ocean</button>
+        <button class="rarity-btn btn-epic" onclick="switchRarity('epic')">Twilight</button>
+        <button class="rarity-btn btn-legendary" onclick="switchRarity('legendary')">Celestial</button>
+      </div>
+      <p style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: #757575;">
+        Each rarity tier transforms into a different fantasy realm aesthetic
+      </p>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="fantasy-card">
+      <h1>Option 7: Anime Fantasy</h1>
+      <p><strong>Tagline:</strong> "Isekai UI meets Shoujo Magic"</p>
+
+      <div style="background: linear-gradient(135deg, rgba(255, 182, 193, 0.3), rgba(221, 160, 221, 0.3)); border-left: 4px solid var(--fantasy-primary); border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+        <strong style="color: var(--fantasy-primary);">🌸 Inspired by:</strong> Genshin Impact UI, Sword Art Online, pastel fantasy RPGs, romantic visual novels
+      </div>
+
+      <h2>Description</h2>
+      <p>Light pastel backgrounds with ornate fantasy frames and magical sparkle effects. Each rarity tier represents a different fantasy realm (Meadow → Ocean → Twilight → Celestial). Soft, romantic aesthetic perfect for anime-inspired AI companions.</p>
+
+      <h2>Pros</h2>
+      <ul>
+        <li class="pro">✅ Unique Aesthetic (stands out from dark mode competition)</li>
+        <li class="pro">✅ Fantasy Theme Integration (meadow/ocean/twilight/celestial realms)</li>
+        <li class="pro">✅ Anime Appeal (targets anime/isekai fans specifically)</li>
+        <li class="pro">✅ Soft & Approachable (pastel colors reduce intimidation)</li>
+        <li class="pro">✅ Magical Delight (sparkles and ornate frames add wonder)</li>
+        <li class="pro">✅ Light Mode Excellence (rare in gacha, offers differentiation)</li>
+      </ul>
+
+      <h2>Cons</h2>
+      <ul>
+        <li class="con">⚠️ Niche Appeal (might alienate users who prefer dark/serious aesthetics)</li>
+        <li class="con">⚠️ Light Mode Battery (uses more power on OLED screens)</li>
+        <li class="con">⚠️ Contrast Challenges (light on light requires careful tuning)</li>
+        <li class="con">⚠️ Professional Perception (might feel "too cute" for serious AI conversations)</li>
+      </ul>
+
+      <h2>Research Insight</h2>
+      <p>Based on 2026 anime game UI trends, fantasy interfaces use ornate decorative frames, soft magical glow effects, and romantic color palettes (pink, lavender, mint, peach). This aesthetic dominates isekai games and visual novels, creating emotional connection through beauty and wonder.</p>
+    </div>
+
+    <!-- Sample Components -->
+    <div class="components-grid">
+      <!-- Chat Messages -->
+      <div class="fantasy-card">
+        <h3>Chat Messages</h3>
+        <div class="message-bubble">
+          <strong>Eeva:</strong> Welcome to my realm! I sense great potential within you, traveler.
+          <div class="message-meta">✨ 1.1s</div>
+        </div>
+        <div class="message-bubble user">
+          <strong>You:</strong> This fantasy aesthetic is amazing!
+        </div>
+        <input type="text" class="input-field" placeholder="Type your message...">
+      </div>
+
+      <!-- Current Theme Display -->
+      <div class="fantasy-card">
+        <h3>Current Realm</h3>
+        <div class="theme-badge" id="theme-display">Meadow Realm</div>
+        <p style="margin-top: 1rem; text-align: center; color: #757575; font-size: 0.875rem;">
+          Each realm has its own magical color palette
+        </p>
+      </div>
+
+      <!-- UI Elements -->
+      <div class="fantasy-card">
+        <h3>Fantasy UI Elements</h3>
+        <div class="button-group">
+          <button class="btn">Cast Spell</button>
+          <button class="btn btn-secondary">View Grimoire</button>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.875rem; color: #757575;">
+          Ornate borders and magical glow effects on all interactive elements
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Generate magical sparkles
+    const sparklesContainer = document.getElementById('sparkles');
+    for (let i = 0; i < 30; i++) {
+      const sparkle = document.createElement('div');
+      sparkle.className = 'sparkle';
+      sparkle.style.left = `${Math.random() * 100}%`;
+      sparkle.style.top = `${Math.random() * 100}%`;
+      sparkle.style.animationDelay = `${Math.random() * 3}s`;
+      sparklesContainer.appendChild(sparkle);
+    }
+
+    // Rarity switching
+    function switchRarity(rarity) {
+      const body = document.body;
+      const display = document.getElementById('theme-display');
+      const buttons = document.querySelectorAll('.rarity-btn');
+
+      // Update body class
+      body.className = `rarity-${rarity}`;
+
+      // Update display text
+      const themeNames = {
+        common: 'Meadow Realm',
+        rare: 'Ocean Realm',
+        epic: 'Twilight Realm',
+        legendary: 'Celestial Realm'
+      };
+      display.textContent = themeNames[rarity];
+
+      // Update active button
+      buttons.forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.btn-${rarity}`).classList.add('active');
+    }
+  </script>
+</body>
+</html>
