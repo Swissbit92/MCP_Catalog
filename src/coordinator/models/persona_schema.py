@@ -189,11 +189,79 @@ class ExampleDialogue(BaseModel):
     )
 
 
+class UnlockableLoreFragment(BaseModel):
+    """Lore fragment that unlocks at specific conversation milestones.
+
+    Part of the NEPHILIM progression system - rewards sustained engagement
+    with narrative content.
+    """
+    messages_required: int = Field(
+        ...,
+        ge=1,
+        description="Number of messages required to unlock this fragment"
+    )
+    fragment_id: str = Field(
+        default="",
+        description="Unique identifier for this fragment"
+    )
+    fragment_title: str = Field(
+        default="",
+        description="Title of the lore fragment"
+    )
+    fragment: str = Field(
+        ...,
+        min_length=1,
+        description="The lore fragment content"
+    )
+    rarity: str = Field(
+        default="common",
+        description="Fragment rarity: common, rare, epic, legendary"
+    )
+
+
+class PersonaRelationships(BaseModel):
+    """Defines how this persona views and relates to other personas.
+
+    Part of the NEPHILIM worldbuilding - creates inter-persona narrative depth.
+    """
+    # Dynamic relationships - key is persona key, value is description
+    # Using extra="allow" to permit arbitrary persona keys
+    class Config:
+        extra = "allow"
+
+
+class NephilimLore(BaseModel):
+    """Extended lore for NEPHILIM personas.
+
+    Contains origin story, role in the realm, and relationships with other Nephilim.
+    """
+    origin: str = Field(
+        default="",
+        description="Origin story - how this Nephilim came to be"
+    )
+    role_in_realm: str = Field(
+        default="",
+        description="Their function and place in the Nephilim Realm"
+    )
+    relationships: Dict[str, str] = Field(
+        default_factory=dict,
+        description="How they view/relate to other Nephilim (key: persona_key, value: description)"
+    )
+
+
 class PersonaCard(BaseModel):
     """Complete persona schema with validation.
 
     This is the main model for validating persona JSON files.
     All fields are validated on load to catch errors early.
+
+    NEPHILIM Extension (Phase 0):
+    - title: Short title (e.g., "The Primarch")
+    - full_title: Expanded acronym (e.g., "Ethereal Enlightened Virtual Archon")
+    - archetype: Mythological archetype (e.g., "The Oracle", "The Trickster")
+    - domain: Primary function domain (e.g., "Guide & Mentor")
+    - nephilim_lore: Extended backstory with relationships
+    - unlockable_lore: Progressive story fragments
     """
 
     # Required fields
@@ -220,6 +288,33 @@ class PersonaCard(BaseModel):
     coordinator_label: Optional[str] = Field(
         default=None,
         description="Backend selection dropdown label"
+    )
+
+    # NEPHILIM-specific fields (Phase 0)
+    title: str = Field(
+        default="",
+        description="Short title (e.g., 'The Primarch', 'The Sentinel')"
+    )
+    full_title: str = Field(
+        default="",
+        description="Expanded full title or acronym meaning"
+    )
+    archetype: str = Field(
+        default="",
+        description="Mythological archetype (e.g., 'The Oracle', 'The Trickster')"
+    )
+    domain: str = Field(
+        default="",
+        description="Primary function domain (e.g., 'Guide & Mentor - wisdom, life planning')"
+    )
+    nephilim_lore: Optional[NephilimLore] = Field(
+        default=None,
+        description="Extended NEPHILIM backstory with origin and relationships"
+    )
+    unlockable_lore: List[UnlockableLoreFragment] = Field(
+        default_factory=list,
+        max_length=10,
+        description="Progressive lore fragments unlocked at message milestones"
     )
 
     # Media assets (all optional with fallbacks)

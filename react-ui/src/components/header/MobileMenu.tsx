@@ -149,6 +149,13 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                   🏠 Home
                 </Link>
                 <Link
+                  to="/nephilim"
+                  className="block px-4 py-3 rounded-lg text-fuchsia-300 hover:text-white hover:bg-fuchsia-900/30 transition-all duration-200 font-medium border border-fuchsia-500/30"
+                  onClick={closeMobileMenu}
+                >
+                  ✨ NEPHILIM Realm
+                </Link>
+                <Link
                   to="/select"
                   className="block px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 font-medium"
                   onClick={closeMobileMenu}

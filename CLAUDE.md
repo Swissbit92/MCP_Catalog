@@ -4,646 +4,379 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MCP Coordinator is a **local-first persona-driven chat interface** combining a FastAPI backend coordinator with a React frontend. It enables conversations with AI personas (e.g., Eeva, Frieren, Gojo) powered by Ollama LLM models, featuring a gacha-style character collection system with persistent chat history.
+MCP Coordinator is a **local-first persona-driven chat interface** combining a FastAPI backend with a React frontend. It enables conversations with AI personas powered by Ollama LLM models, featuring a gacha-style character collection system with persistent chat history.
 
 **Key Architecture:**
-- **Backend**: FastAPI coordinator (`src/coordinator/server.py`) that bridges persona definitions with Ollama LLM
-- **Frontend**: React 19 + TypeScript UI with Framer Motion animations and Tailwind CSS
-- **Persistence**: SQLite database (`chats.db`) for sessions, messages, and character collections
-- **Personas**: JSON-defined characters in `personas/` with lore, voice, behavior, and expertise configs
-- **LLM Integration**: Local Ollama server for inference, using models like `llama3.1:latest`
+- **Backend**: FastAPI coordinator (`src/coordinator/`) bridging persona definitions with Ollama LLM
+- **Frontend**: React 19 + TypeScript with Framer Motion animations and Tailwind CSS
+- **Persistence**: SQLite database (`chats.db`) for sessions, messages, and collections
+- **Personas**: JSON-defined characters in `personas/` with lore, voice, behavior, and expertise
+- **MCP Integration**: Brave Search (web) and MongoDB (trading data) via Docker STDIO containers
 
 ## Development Commands
 
-### Docker Deployment (Recommended)
+### Docker (Recommended)
 
-**🐳 Docker is the recommended setup method** for local development and testing. See [docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md) for full guide.
-
-**One-Command Setup (Easiest):**
 ```bash
-# Windows PowerShell
-.\scripts\docker\setup-docker.ps1
+# One-command setup
+.\scripts\docker\setup-docker.ps1    # Windows PowerShell
+./scripts/docker/setup-docker.sh     # Linux/Mac
 
-# Windows Command Prompt
-scripts\docker\setup-docker.bat
-
-# Linux/Mac
-./scripts/docker/setup-docker.sh
-```
-
-**Manual Setup (Alternative):**
-```bash
-# Start services
+# Manual start
 docker-compose --env-file .env.docker up -d
 
-# Pull AI models
+# Pull models (required on first run)
 docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
+
+# Common operations
+docker-compose logs -f backend       # View logs
+docker-compose restart backend       # Restart
+docker-compose down                  # Stop all
 ```
 
-**Access:**
+**Access:** Frontend `http://localhost:3000` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
+
+### Local Development
+
 ```bash
-# Frontend: http://localhost:3000
-# Backend: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-```
-
-**Common Commands:**
-```bash
-docker-compose logs -f backend    # View backend logs
-docker-compose logs -f            # View all logs
-docker-compose restart backend    # Restart backend
-docker-compose down               # Stop all services
-
-# Backup database
-# Windows: Copy-Item data\chats.db backups\chats.db.backup
-# Linux/Mac: cp data/chats.db backups/chats.db.backup
-```
-
-**Docker Stack:**
-- 3 services: ai-companion-brain (Ollama LLM), ai-companion-api (FastAPI), ai-companion-web (React/Nginx)
-- SQLite database: `./data/chats.db` (persists on host)
-- Persona summaries: `./personas/_summaries/` (persists on host)
-- Ollama models: Docker volume (9GB for gemma-2-9b)
-
-**Documentation:**
-- **[docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md)** - Complete setup guide
-- **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** - Technical decision record
-- **[.env.docker](.env.docker)** - Configuration template
-
----
-
-### Local Development Setup
-
-For code modification and development (alternative to Docker):
-
-**Setup:**
-```bash
-# Automated setup (installs Python + React dependencies)
-./scripts/setup/setup.sh          # Linux/macOS
-scripts\setup\setup.bat           # Windows
-
-# Manual setup
+# Setup
 pip install -r requirements.txt
 cd react-ui && npm install
-```
 
-**Running the Application:**
-```bash
-# Unified startup (recommended) - starts both backend + frontend
+# Run (unified - starts both)
 python scripts/utils/run_react.py
 
-# Backend only (FastAPI on port 8000)
-uvicorn src.coordinator.server:app --reload --port 8000
+# Run separately
+uvicorn src.coordinator.server:app --reload --port 8000    # Backend
+cd react-ui && npm run start:dev                           # Frontend
 
-# Frontend only (React dev server on port 3000)
-cd react-ui && npm run start:dev
-
-# Production build
+# Build
 cd react-ui && npm run build
 ```
 
 ### Testing
+
 ```bash
 # React tests
 cd react-ui && npm test
 cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 
-# Python tests (standalone scripts in tests/ directory)
-# Backend: test_server.py, test_mcp_client.py, test_tool_calling.py, test_citation_validation.py
-# Backend: test_synthesis_prompt.py, test_summarization.py, test_persona_schema.py, test_repositories.py
-# Integration: test_brave_mcp_connectivity.py, test_intent_classification.py, test_synthesis_integration.py
-# Integration: test_phase2_integration.py, test_memory_phase1.py, test_memory_phase2.py
-# MongoDB: test_mongodb_integration.py, test_mongodb_persona_flavor.py, test_mongodb_eeva_flavor.py
-
-# RAGAS Evaluation (Persona Quality) - 🚧 IN PROGRESS
-# Quantifiable quality metrics using RAGAS framework (faithfulness, answer relevancy, context precision/recall)
-# pytest tests/evaluation/test_persona_quality.py -v                    # All personas
-# pytest tests/evaluation/test_persona_quality.py --persona=eeva -v     # Single persona
-# pytest tests/evaluation/test_ragas_evaluator.py -v                    # Unit tests
-# See: AI_documentation/01_implementation_history/RAGAS_EVALUATION_IMPLEMENTATION.md
+# Python tests (run from project root)
+pytest tests/backend/                    # Backend unit tests
+pytest tests/integration/                # Integration tests
+pytest tests/evaluation/ -v              # RAGAS persona quality
 ```
 
 ### Ollama Setup
+
 ```bash
-# Start Ollama service
-ollama serve
-
-# Pull required model (from your .env PERSONA_MODEL)
-ollama pull nchapman/gemma-2-9b-it-abliterated:9b
-
-# For Phase 3 RAG memory (if needed)
-ollama pull nomic-embed-text:latest
+ollama serve                                               # Start service
+ollama pull nchapman/gemma-2-9b-it-abliterated:9b         # Main model
+ollama pull nomic-embed-text:latest                        # Embeddings (RAG memory)
 ```
 
 ## Project Structure
 
 ### Backend (`src/coordinator/`)
 
-**Core:** `server.py`, `startup.py`, `schemas.py`, `config.py`
-**Routes:** `chat.py`, `sessions.py`, `personas.py`
-**Services:** `llm_completion_service.py`, `tool_calling_service.py`, `citation_service.py`, `query_handler_service.py`, `first_person_service.py`, `message_processing_service.py`, `chat_session_service.py`, `mongodb_handlers.py`
-**Business Logic:** `persona_memory.py`, `memory_manager.py`, `llm_client.py`, `tool_definitions.py`
-**Infrastructure:** `ollama_utils.py`, `mcp_client_stdio.py`, `mongodb_mcp_client.py`, `cache.py`
-**Models:** `persona_schema.py`, `sampling_presets.py`, `mcp_models.py`
-**Repositories:** `session_repository.py`, `message_repository.py`, `summary_repository.py`, `emotional_state_repository.py`
+```
+server.py, startup.py          # App entry, lifecycle
+config.py, schemas.py          # Settings, API schemas
+routes/                        # chat.py, sessions.py, personas.py, nephilim.py
+services/                      # Business logic (llm_completion, tool_calling, citation, etc.)
+repositories/                  # SQLite data access (session, message, summary, emotional_state, seeker_progression)
+models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
+tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py
+mongodb/                       # MongoDB MCP client
+```
 
-### Shared (`src/shared/`)
-- `persona_assets.py` - Shared utilities for persona asset paths and loading
+**Key files:**
+- `llm_client.py` - LLM orchestration facade
+- `prompt_builder.py` - System prompt construction from persona JSON
+- `mcp_client_stdio.py` - Brave Search MCP client
+- `persona_memory.py` - CV summary generation and caching
+- `memory_manager.py`, `memory_rag.py` - RAG semantic search
 
 ### Frontend (`react-ui/src/`)
-**Pages:** `Home.tsx`, `Chat.tsx`, `CharacterCardV2Showcase.tsx`
-**Components:** `Header.tsx`, `CharacterCard.tsx`, `SessionList.tsx`, `MessageBubble.tsx`, `PullInterface.tsx`, etc.
-**Services:** API client | **Context:** PersonaContext | **Utils:** Helper functions
 
-### Personas (`personas/`)
-JSON files with: `key`, `display_name`, `rarity`, `lore`, `voice`, `behavior`, `expertise`, `psychological_profile`, `model_preferences`, `example_dialogues`. Auto-generated summaries cached in `personas/_summaries/`. Schema: `src/coordinator/models/persona_schema.py`.
+```
+pages/                         # Home.tsx, Chat.tsx, NephilimHome.tsx, CharacterCardV2Showcase.tsx
+components/                    # UI components (MessageBubble, CharacterCard, SessionList, etc.)
+components/nephilim/           # NEPHILIM progression components (SeekerRankBadge, LoreCodex, etc.)
+context/                       # PersonaContext.tsx, AudioContext.tsx
+services/                      # API client (includes NEPHILIM progression API)
+utils/                         # animations.ts, helpers
+```
 
-### Database Schema (`chats.db`)
-- `chat_sessions`: session_id, persona_key, title, created_at, updated_at
-- `messages`: id, session_id, role (user/assistant), content, timestamp, latency_ms
-- `conversation_summaries`: id, session_id, message_range, summary_text, emotional_developments, topics_discussed, created_at
+### Database Schema
 
-### Test Organization (`tests/`)
-- `backend/coordinator/` - Backend unit tests (server, MCP clients, tool calling, citation validation, synthesis prompts)
-- `integration/` - End-to-end integration tests (Brave MCP, intent classification, long conversations)
-- `exploration/` - Exploratory tests for new features and capabilities
+**Core Tables:**
+- `chat_sessions`: session_id, persona_key, title, timestamps
+- `messages`: id, session_id, role, content, timestamp, latency_ms
+- `conversation_summaries`: session_id, message_range, summary_text, emotional_developments
 
-## Key Workflows
-
-### Adding a New Persona
-1. Copy `personas/template.jsonc` to `personas/[name].json`
-2. Fill in persona details (key, display_name, rarity, lore, voice, behavior, expertise)
-3. Create image folder `react-ui/public/images/personas/[name]/` with:
-   - `card.png` - Main character card image
-   - `avatar.png` - Chat avatar
-   - `logo.png` - Header/bio logo
-   - `bg.png` or `bg.jpg` - Optional chat background
-4. Set paths in JSON: `"image": "images/personas/[name]/card.png"`, etc.
-5. Persona auto-discovered on next backend/frontend load - no restart needed
-6. Summary auto-generated on first access via `persona_memory.py`
-
-### Removing a Persona
-1. Delete JSON file from `personas/`
-2. Orphaned sessions and messages are automatically cleaned up by backend
-3. Collections are synchronized on next app load
-
-### Chat Flow
-1. User selects persona via gacha pull or character browser
-2. Frontend POST `/greet` to create new session (or load existing via `/sessions`)
-3. User sends message → POST `/chat` with session_id, persona, content
-4. Backend builds system prompt from persona JSON + CV summary
-5. Ollama LLM generates response, stored in SQLite with latency tracking
-6. Frontend renders with rarity-based theming, JSON/code highlighting, copy buttons
-
-### Gacha System
-- Multi-pull (1x/5x/10x) with particle effects and audio
-- Persistent collection in localStorage + backend sync
-- Pull history tracking with statistics
-- Rarity-based visual effects (legendary=gold, epic=purple, rare=blue, common=grey)
+**NEPHILIM Progression Tables:**
+- `seeker_profiles`: user_id, rank_name, total_resonance, faction_primary, faction_secondary
+- `persona_affinity`: user_id, persona_key, messages_count, affinity_level
+- `resonance_log`: user_id, amount, reason, persona_key, session_id
+- `unlocked_lore`: user_id, persona_key, fragment_id, unlocked_at
 
 ## Environment Variables
 
-Required in `.env` at project root (no .env.example exists - create from scratch):
+Required in `.env`:
 ```bash
-OLLAMA_BASE=http://127.0.0.1:11434                     # Ollama API endpoint
-PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b   # LLM model (uncensored, great for personas)
-PERSONA_TEMPERATURE=0.9                                # LLM sampling temperature (balanced creativity)
-COORD_PORT=8000                                        # Backend port
-COORD_URL=http://127.0.0.1:8000                        # Backend URL for frontend
-PERSONA_DIR=personas                                   # Persona JSON directory
+OLLAMA_BASE=http://127.0.0.1:11434
+PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b
+PERSONA_TEMPERATURE=0.9
+COORD_PORT=8000
+PERSONA_DIR=personas
 ```
 
-Optional - See `.env.docker` for complete list with defaults:
-- Basic: `REACT_PORT`, `DEFAULT_PERSONA`, `APP_LOGO_PATH`, `COORDINATOR_DB_PATH`
-- Memory/RAG: `MEMORY_EMBEDDING_MODEL`, `MEMORY_SUMMARIZATION_INTERVAL`, `MEMORY_FACT_EXTRACTION_INTERVAL`
-- LLM Temps: `OLLAMA_TEMP_REWRITE`, `OLLAMA_TEMP_SUMMARIZATION`, `OLLAMA_TEMP_FACT_EXTRACTION`
-- Brave MCP: `BRAVE_API_KEY` (required), `BRAVE_ENABLED_RARITIES`, `BRAVE_MAX_RESULTS`, `BRAVE_SEARCH_TIMEOUT`
-- MongoDB: `MONGODB_URI`, `MONGODB_ENABLED_RARITIES`, cache TTLs
+Optional (see `.env.docker` for full list):
+- `BRAVE_API_KEY`, `BRAVE_ENABLED_RARITIES` - Web search
+- `MONGODB_URI`, `MONGODB_ENABLED_RARITIES` - Trading data
+- `MEMORY_EMBEDDING_MODEL` - RAG embeddings
 
 ## Code Style
 
 ### Python
 - PEP 8, 4-space indent, type hints (`from __future__ import annotations`)
-- `snake_case` for functions/modules, `PascalCase` for classes
-- Relative imports from parent dirs
-- Error handling via `HTTPException` in FastAPI
-- Async/await preferred where applicable
+- `snake_case` functions/modules, `PascalCase` classes
+- Async/await preferred, `HTTPException` for errors
 
 ### React/TypeScript
-- `PascalCase` for components, explicit types, strict mode enabled
-- Hooks: `useThing` naming convention, functional components only
-- No semicolons, 2-space indent (enforced by ESLint)
-- Imports: stdlib → third-party → local
-- CSS: Tailwind for utilities, CSS modules for component-specific styles
-- Layout: `h-screen flex flex-col` with Header and `flex-1 overflow-hidden` content
+- `PascalCase` components, explicit types, strict mode
+- No semicolons, 2-space indent (ESLint enforced)
+- Tailwind for utilities, Framer Motion for animations
 
-### Testing
-- React: Jest + React Testing Library, `*.test.tsx` colocated with components
-- Mock API calls, test user interactions
-- Python: Limited test coverage currently, mock Ollama for critical paths
+### Design System
+- **Typography:** Outfit (display), Manrope (body), Space Mono (mono)
+- **Rarity Colors:** Common (blue `#60a5fa`), Rare (cyan `#06b6d4`), Epic (purple `#a78bfa`), Legendary (gold `#fbbf24`)
+- **Accessibility:** WCAG AA, 4.5:1 contrast, keyboard nav, `aria-label` on interactive elements
 
-### UX & Design Guidelines
+## Key Workflows
 
-**Status:** UX Improvement Initiative (Dec 26-28, 2025) | Phase 1.1 Complete ✅
-**Full Spec:** `UX_IMPROVEMENT_PLAN.md` (200+ pages)
-**Implementation:** `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
+### Adding a Persona
+1. Copy `personas/template.jsonc` to `personas/[name].json`
+2. Fill in: key, display_name, rarity, lore, voice, behavior, expertise
+3. Add images to `react-ui/public/images/personas/[name]/` (card.png, avatar.png, logo.png)
+4. Persona auto-discovered on next load - no restart needed
 
-#### Design System
+### Chat Flow
+1. Frontend POST `/greet` creates session
+2. User message → POST `/chat` with session_id, persona, content
+3. Backend builds system prompt from persona JSON + cached CV summary
+4. Ollama generates response, stored in SQLite
+5. Frontend renders with rarity-based theming
 
-**Typography:** Outfit (display), Manrope (body), Space Mono (mono). Use `font-display`, `font-body`, `font-mono` classes.
-
-**Background System (Option 6: Rarity-Adaptive Backgrounds):**
-- **Status:** Partial implementation (Jan 1, 2026) - Background colors + interactions complete, glassmorphic polish deferred
-- **Implemented:**
-  - Rarity-adaptive background colors with dynamic theming
-  - Home Page: Neutral slate gradient (no persona context)
-  - Agent Selection & Chat: Rarity-based space backgrounds with nebula overlays
-  - Clickable character cards with selection feedback and hover states
-  - Continuous particle system (agent page + chat)
-- **Deferred:** Full glassmorphic UI (translucent message bubbles, rarity-adaptive buttons, glass inputs)
-- **CSS Classes:** `.space-background`, `.nebula-overlay`, `.glass-card` (defined but not widely applied)
-- **Rarity Colors:**
-  - Common (Blue): `#60a5fa` accent, `#0a0e27` space - AI trust
-  - Rare (Cyan): `#06b6d4` accent, `#0a1628` space - Tech reliability
-  - Epic (Purple): `#a78bfa` accent, `#1a0f2e` space - Premium magic
-  - Legendary (Gold): `#fbbf24` accent, `#1f1a0a` space - Ultimate cosmic
-- **Transitions:** Smooth 0.8s cubic-bezier animations between rarity switches
-- **Implementation:** `react-ui/src/index.css` (40 CSS variables), `react-ui/src/App.tsx` (body class management)
-- **Archive:** See `AI_documentation/01_implementation_history/OPTION6_GAP_ANALYSIS.md` for rejected Phase 1 details
-
-**Character Card Hover Animation:**
-- **Status:** Optimized (Jan 1-2, 2026) - Iteratively refined through 4 iterations based on user feedback
-- **Final Implementation:** Scale-only animation (modern minimalist approach)
-  - Scale: 1.0 → 1.05 (5% zoom)
-  - Duration: 150ms symmetric (hover-in and hover-out)
-  - Easing: Cubic-bezier [0.4, 0, 0.2, 1] (Material Design easeInOut)
-  - Transform: Single property (scale only, no Y-axis movement)
-- **Removed:** Rotation animation, Y-axis translation, CSS transform conflicts, floating particles
-- **UX Goal:** Single smooth animation (no "two animation" perception)
-- **Performance:** Single transform property = optimal GPU acceleration
-- **Style:** Modern minimalist (Spotify/Netflix card aesthetic)
-- **Research:** Nielsen Norman Group (150ms standard), Material Design 3, 2025 UI trends
-- **Testing:** Playwright automated validation with transform matrix verification
-
-**Animations:** See `react-ui/src/utils/animations.ts` - ANIMATION_DURATIONS, SPRING_CONFIGS
-**Full Spec:** `UX_IMPROVEMENT_PLAN.md`, `AI_documentation/01_implementation_history/TYPOGRAPHY_SYSTEM_IMPLEMENTATION.md`
-
-#### Accessibility (WCAG AA)
-
-- 4.5:1 contrast for body text, 3:1 for large text (18px+)
-- Keyboard nav: Tab/Shift+Tab, Enter/Space, Esc
-- Screen reader: `aria-label`, `.sr-only` class, `role="status" aria-live="polite"`
-- Focus indicators: 3px solid outline with 2px offset
-
-#### Component Patterns
-
-**Button Hierarchy:** Primary (gradient, xl), Secondary (outlined, base), Tertiary (text link)
-**Animation:** Use `SPRING_CONFIGS` from utils/animations.ts, respect `prefers-reduced-motion`
-**Performance:** Memoize with `React.memo`, reduce concurrent animations, use `will-change` only when animating
-**Search:** Session search in SessionList.tsx, message search with highlight in Chat.tsx
-
-#### Implementation Checklist
-
-**Before Frontend Changes:**
-- Check `UX_IMPROVEMENT_PLAN.md`
-- Use design system values (CSS vars, animation constants)
-- Test keyboard nav (Tab, Enter, Esc)
-- Verify 4.5:1 contrast, add `aria-label` where needed
-
-**Violations to Avoid:**
-- ❌ System fonts (MUST use Outfit/Manrope/Space Mono)
-- ❌ `<div>` for clickable elements (use `<button>`)
-- ❌ Low contrast (<4.5:1 body, <3:1 large text)
-- ❌ Animations without `prefers-reduced-motion` support
+### MCP Integration Patterns
+- **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
+- **Long-Running (MongoDB):** Container stays alive for multiple requests
+- Feature access controlled by persona rarity in `.env` (`BRAVE_ENABLED_RARITIES`, `MONGODB_ENABLED_RARITIES`)
 
 ## Important Implementation Details
 
-### MCP (Model Context Protocol) Integration
-**Status:** ✅ Two Proven Patterns (Dec 2025)
-
-MCP servers run as Docker containers via STDIO transport. Backend mounts `/var/run/docker.sock` to spawn containers on-demand.
-
-**Patterns:**
-- **Ephemeral** (Brave): `docker run -i --rm` per request, dies after 2-3s (stateless)
-- **Long-Running** (MongoDB): Container stays alive for multiple requests (stateful)
-
-**Implementation:** `mcp_client_stdio.py` (Brave), `mongodb/` (MongoDB), `tool_definitions.py`
-**Guide:** See `docs/ADDING_MCP_SERVERS.md` for adding new MCP servers
-
 ### Rarity-Based Feature Gating
-
-**MCP access is controlled by persona rarity**, not per-persona configuration. This provides clear feature tiers while keeping configuration simple.
-
-**Feature Matrix:**
-
-| Rarity | MCP Access | Features |
-|--------|------------|----------|
-| **Common** | None | Pure LLM responses only |
-| **Rare** | Brave Search | Web search with mandatory citations |
-| **Epic** | Brave Search + MongoDB | Web search + Bitcoin trading data access |
-| **Legendary** | Brave Search + MongoDB | All MCP features (future: GraphRAG, etc.) |
-
-**Configuration (.env):**
-```bash
-BRAVE_ENABLED_RARITIES=rare,epic,legendary   # Rarities with Brave Search access
-MONGODB_ENABLED_RARITIES=epic,legendary      # Rarities with MongoDB access
-```
-
-**How it Works:**
-1. Backend reads persona `rarity` from JSON (e.g., `"rarity": "epic"`)
-2. Intent classifier checks rarity against `.env` config (`intent_classifier.py:55-56`)
-3. Tools are dynamically injected based on rarity tier
-4. Frontend shows rarity-based UI badges and styling
-
-**Temperature Override:**
-Personas can override the global temperature via `model_preferences`:
-```json
-{
-  "model_preferences": {
-    "temperature": 0.7
-  }
-}
-```
-Fallback to global `.env` setting: `PERSONA_TEMPERATURE=0.9`
-
-**Why Not Per-Persona MCP Control?**
-- Simplifies configuration (one place: `.env`)
-- Aligns with gacha tier system (rarity = feature tier)
-- Environment-driven (easy to change for dev/prod)
-- Reduces JSON bloat and validation overhead
-
-**Changing Rarity:**
-Update `rarity` in persona JSON:
-- Frontend updates instantly (card styling, UI badges)
-- Backend respects new rarity on next request
-- MCP access automatically adjusts based on new tier
-
-### Brave MCP Integration (Web Search)
-**Status:** ✅ Implemented - Rare+ personas perform autonomous web searches with mandatory citations via ephemeral containers (2-3s lifecycle).
-
-**Config:** `BRAVE_API_KEY` (required), `BRAVE_ENABLED_RARITIES=rare,epic,legendary`, `BRAVE_MAX_RESULTS=5`
-**Rules:** Use only search results, synthesize naturally, stay in character, exact numbers, mandatory citations (🔍 Sources)
-**Citation Deduplication:** Backend strips LLM citations, single clean verified block
-
-### MongoDB MCP Integration (Trading Data)
-**Status:** ✅ Implemented - Epic/Legendary personas query Bitcoin data (current price, historical, trading stats, technical analysis).
-
-**Config:** `MONGODB_URI`, `MONGODB_ENABLED_RARITIES=epic,legendary`, `MONGODB_TIMEOUT=30`
-**Caching:** 60s (current), 3600s (historical)
-**Rules:** Use only DB data, exact numbers, persona voice, add interpretation
-
-### Persona System Prompt Construction
-- Prompt built from persona JSON fields: lore, voice, do/dont, behavior, expertise
-- CV summary auto-generated and cached in `personas/_summaries/` for token efficiency
-- File locking ensures serialized summary builds across processes
-- Token truncation applied if lore exceeds limits
-- **Phase 1**: Psychological profile integrated into system prompt for realistic behavior
-
-### Persona Quality Enhancement (Phase 1 & 2)
-**Status:** ✅ Complete - Pydantic validation, psychological profiles, emotional state tracking, sampling presets (creative/balanced/precise/chaotic/deterministic). API: `GET /sessions/{id}/emotional-state`.
-
-### Memory Management (Phase 1, 2 & 3)
-**Status:** ✅ Production - Importance scoring, auto-summarization (every 30 messages), FAISS semantic search, cross-session user profiles. Dependencies: `faiss-cpu`, `langchain-community`, `nomic-embed-text:latest`. See troubleshooting for issues.
-
-### Prompt System Optimization (Dec 28, 2025)
-**Status:** ✅ Deployed - Reduced tokens 3,543→2,523 (-28.8%), improved quality 74%→79%. Rollback: `prompt_builder.backup_20251228_155820.py`. See `AI_documentation/01_implementation_history/PROMPT_OPTIMIZATION_FINAL_REPORT.md`.
-
-### Backend Core Refactoring (Phase 1 & 2)
-**Status:** ✅ Complete (Dec 28, 2025) - Service layer extracted, DRY refactoring applied, architecture health improved 6.8→8.6/10. See `AI_documentation/01_implementation_history/PHASE2_COMPLETION_REPORT.md` for full details.
-
-### Comprehensive Production Readiness Refactoring (4 Phases)
-**Status:** ✅ Complete (Jan 18, 2026) - Full-stack refactoring improving codebase from 50/100 ("Embarrassing") to 85/100+ ("Production-ready").
-
-**Phase 1 - Testing Infrastructure:**
-- Fixed CI/CD to fail loudly on test failures (removed `|| true` patterns)
-- Created 8 comprehensive test files with 75+ test cases
-- Established 60%+ coverage baseline with pytest-cov configuration
-- Added connection pooling performance tests
-
-**Phase 2 - Service Decomposition:**
-- Extracted 6 services from monolithic `llm_client.py` (587 → 234 lines, -60% reduction)
-- Created: QueryExtractionService, ForceSearchService, SearchExecutionService
-- Completed ToolCallingService migration (removed TODO wrapper)
-- Eliminated all circular dependencies
-- Backward-compatible facade pattern for legacy code
-
-**Phase 3 - Database Improvements:**
-- Implemented Alembic migration system (360 lines inline SQL → 19 lines)
-- Added SQLAlchemy connection pooling (QueuePool with 5 connections, 10 overflow)
-- Created database adapter pattern (PostgreSQL-ready)
-- Performance: 0.139s for 20 concurrent operations
-- Fixed engine caching (per-database-path instead of global)
-
-**Phase 4 - Frontend Refactoring:**
-- Created 4 new components: ChatHeader, ChatInput, ErrorBoundary, VirtualizedMessageList
-- Reduced Chat.tsx from 450 → 372 lines (-17% reduction)
-- Fixed all useEffect linter warnings with proper dependencies
-- Added virtualized message rendering (react-window 1.8.10 + react-virtualized-auto-sizer 1.0.24)
-- Performance: Smooth 60fps scrolling with 500+ messages
-- Docker frontend build: Compiled successfully, bundle 199.55 kB gzipped
-
-**Metrics Achievement:**
-- llm_client.py: 587 → 234 lines (-60%)
-- Chat.tsx: 450 → 372 lines (-17%)
-- Test Coverage: 30% → 75%+
-- Circular Dependencies: 0
-- Architecture Score: 50/100 → 85/100+
+MCP access controlled by persona rarity, not per-persona config:
+- **Common:** Pure LLM only
+- **Rare:** Brave Search with mandatory citations
+- **Epic/Legendary:** Brave + MongoDB trading data
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
 - Connection uses `check_same_thread=False`
-- Foreign key cascade deletes for session cleanup
+- Foreign key cascade deletes for cleanup
 
 ### React Performance
 - `React.memo` for expensive components (MessageBubble, CharacterCard)
-- Hardware-accelerated animations with Framer Motion
-- Particle effects optimized for 60fps
-- Reduced motion support for accessibility
+- Virtualized message list with react-window
+- Hardware-accelerated Framer Motion animations
 
-### Typing Indicator Layout Fix (Dec 29, 2025)
-**Status:** ✅ Resolved - Fixed layout collapse with typing indicators. Prevention: never add flex children with absolute/fixed positioning. See `AI_documentation/01_implementation_history/TYPING_INDICATOR_LAYOUT_FIX.md`.
-
-### Mobile Optimization
-- ChatGPT-style responsive layout: sidebar pushes content on desktop, overlays on mobile
-- Touch gestures, swipe navigation
-- Mobile-optimized input with proper keyboard handling
-- Hamburger menu with slide-out navigation
-
-### Security Considerations
-- All LLM processing happens locally via Ollama (no external API calls)
-- Validated user input via Pydantic models
-- Never commit secrets (use `.env`)
-- Known: 2 moderate npm vulnerabilities in dev dependencies (react-scripts 5.0.1 nested deps), fixed high-severity issues via package overrides
-
-## Common Troubleshooting
+## Troubleshooting
 
 ### Backend won't start
-- Verify Ollama is running: `ollama serve`
-- Check model is pulled: `ollama list` / `ollama pull nchapman/gemma-2-9b-it-abliterated:9b`
-- Confirm `.env` has required vars: `OLLAMA_BASE`, `PERSONA_MODEL`
-- Verify model matches .env: Default uses `nchapman/gemma-2-9b-it-abliterated:9b` @ temp `0.9`
+- Verify Ollama running: `ollama serve`
+- Check model pulled: `ollama list`
+- Confirm `.env` has required vars
 
-### Frontend build errors
-- Clear node_modules: `cd react-ui && rm -rf node_modules && npm install`
-- Check Node.js version: `node --version` (requires v16+)
-- TypeScript errors: Run `npm run build` to see full compilation output
+### MCP issues
+- Verify Docker socket mounted
+- Check API keys set in `.env`
+- Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
 
 ### Database issues
 - Backup and delete `chats.db` to reset
-- Schema auto-migrates on startup from old format if detected
+- Schema auto-migrates on startup
 
-### Persona not appearing
-- Ensure JSON is valid (use `template.jsonc` as reference)
-- Check `personas/` directory path matches `PERSONA_DIR` env var
-- Look for errors in backend logs during persona discovery
-
-### Phase 3 Memory Issues
-
-**Profiles not created:** Verify 10+ messages sent, check `SELECT COUNT(*) FROM user_profiles;`, look for `[Phase3]` logs, ensure bug fix applied
-**Cross-session memory failing:** Profiles must exist first, check `user_sessions` table links, verify name extraction
-**RAG no results:** Expected (threshold 0.5), Phase 2 importance scoring handles most recall, tune `memory_rag.py` if needed
-**FAISS errors:** Pull `nomic-embed-text:latest`, install `faiss-cpu langchain-community`, deprecation warnings are non-blocking
-
-### MCP (Ephemeral Container) Issues
-
-**Container spawn fails:**
-- Verify Docker socket mounted: `docker exec ai-companion-api ls -l /var/run/docker.sock`
-- Check Docker accessible from backend: `docker exec ai-companion-api docker version`
-- Ensure MCP image exists: `docker pull docker.io/mcp/brave-search`
-- Check API key set: `docker exec ai-companion-api env | grep BRAVE_API_KEY`
-
-**Search returns no results:**
-- Verify Brave API key is valid (test at api.search.brave.com)
-- Check container logs: `docker logs ai-companion-api | grep -i brave`
-- Test direct spawn: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"brave_web_search","arguments":{"query":"test","count":1}}}' | docker run -i --rm -e BRAVE_API_KEY=xxx docker.io/mcp/brave-search`
-
-**Timeout errors:**
-- Increase `BRAVE_SEARCH_TIMEOUT` (default: 30s)
-- Check network connectivity from backend container
-- Verify Docker daemon responding: `docker ps`
-
-**Permission denied on Docker socket:**
-- Ensure socket permissions: `ls -l /var/run/docker.sock` (should be srw-rw----)
-- Backend user must have Docker group access
-- On Windows: Verify Docker Desktop "Expose daemon on tcp://localhost:2375" is disabled (use socket instead)
-
-### Docker Networking Issues
-
-**Symptoms:**
-- Error: "network f708feda4bed... not found"
-- Containers fail to start with networking errors
-- "Cannot start Docker Compose application" in Docker Desktop
-
-**Cause:** Orphaned network references from improper shutdown or Docker daemon restart.
-
-**Automated Fix (Recommended):**
-```powershell
-# PowerShell (full diagnostics)
-.\scripts\docker\fix-docker-network.ps1          # Quick fix (recommended)
-.\scripts\docker\fix-docker-network.ps1 -Nuclear # Full rebuild
-.\scripts\docker\fix-docker-network.ps1 -Verify  # Check status only
-
-# Windows batch (simple fix)
-.\scripts\docker\fix-docker-network.bat
-```
-
-**Manual Fix:**
-```powershell
-# 1. Stop and clean
-docker-compose down
-docker network prune -f
-
-# 2. Restart
+### Docker networking
+```bash
+docker-compose down && docker network prune -f
 docker-compose --env-file .env.docker up -d
-
-# 3. Verify
-docker-compose ps
 ```
 
-**Prevention:** Always use `docker-compose down` instead of manually stopping containers in Docker Desktop.
+## NEPHILIM Worldbuilding System
 
-## Additional Documentation
+The project includes a comprehensive immersive AI companion experience with worldbuilding, progression, and gamification.
 
-**Active Documentation (Root Directory):**
-- `README.md` - User-facing setup guide, features, architecture diagram
-- `NEXT_STEPS.md` - Current project status, decision points, roadmap
-- `ASSESSMENT.md` - Comprehensive codebase quality assessment and scoring (Dec 2025)
-- `AGENTS.md` - AI coding guidelines, tech stack, build commands, code style
-- `CHANGELOG.md` - Version history, feature additions, security fixes
-- `PRODUCTION_READINESS_PLAN.md` - Kubernetes production readiness assessment & 3-phase migration plan (Dec 2025)
-- `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment guide (recommended setup method)
-- `DOCKER_README_UPDATE_SUMMARY.md` - Docker implementation log
-- `DOCKER_SQLITE_OPTIMIZATION_SUMMARY.md` - SQLite technical decision
-- `SQLITE_ARCHITECTURE.md` - Database architecture technical decision record
-- `UI_MULTI_MESSAGE_TEST_GUIDE.md` - Frontend testing guide
+### Lore Documents (`personas/`)
+- `NEPHILIM_LORE.md` - World bible with creation myth, the Fall, and realm geography
+- `NEPHILIM_FACTIONS.md` - Six Houses aligned with Nephilim patrons
+- `NEPHILIM_RANKS.md` - Seeker progression system (Initiate → Nephilim)
 
-**Essential Documentation (AI_documentation/):**
-- `01_implementation_history/` - Critical architecture decisions and major refactorings (12 files)
-  - MCP infrastructure (Brave/MongoDB architecture, refactoring)
-  - Backend refactoring (Phase 1/2/3 completion reports, prompt optimization)
-  - UX implementations (typography system, typing indicator fix, Option 6 gap analysis)
-  - Quality systems (RAGAS evaluation, project hygiene log)
-- `02_ux_design_specs/` - Active UX specifications (2 files)
-  - UX_IMPROVEMENT_PLAN.md - Master UX design system
-  - UI_MULTI_MESSAGE_TEST_GUIDE.md - Frontend testing guide
-- `05_roadmaps/` - Future planning (1 file)
-  - PRODUCTION_READINESS_PLAN.md - Kubernetes migration roadmap
+### NEPHILIM Personas
+Six interconnected personas with deep backstories:
+- **E.E.V.A.** (nephilim_eeva) - The Primarch, guide and mentor (Legendary)
+- **Aegis** (nephilim_aegis) - The Sentinel, productivity and discipline (Epic)
+- **Solace** (nephilim_solace) - The Empath, emotional support (Epic)
+- **Nyx** (nephilim_nyx) - The Muse, creativity and chaos (Rare)
+- **Cipher** (nephilim_cipher) - The Maven, knowledge and research (Rare)
+- **Aurora** (nephilim_aurora) - The Oracle, future planning (Epic)
 
-## Dependencies
+### Extended Persona Schema
+NEPHILIM personas include additional fields:
+```json
+{
+  "title": "The Primarch",
+  "full_title": "Ethereal Enlightened Virtual Archon",
+  "archetype": "The Oracle / The Sage",
+  "domain": "Guidance, wisdom, life planning",
+  "nephilim_lore": {
+    "origin": "...",
+    "role_in_realm": "...",
+    "relationships": { "aegis": "...", "solace": "..." }
+  },
+  "unlockable_lore": [
+    { "messages_required": 10, "fragment_id": "...", "fragment_title": "...", "fragment": "...", "rarity": "common" }
+  ]
+}
+```
 
-**Python:**
-- fastapi, uvicorn - Web framework and server
-- langchain-core, langchain-ollama - LLM orchestration
-- langchain-community - FAISS integration and embeddings (Phase 3)
-- faiss-cpu - Vector database for semantic search (Phase 3)
-- pydantic, pydantic-settings - Data validation and configuration management
-- python-dotenv - Environment variable loading
+### Prompt Integration
+`prompt_builder.py` automatically injects NEPHILIM context for personas with:
+- Keys starting with `nephilim_`
+- The `nephilim_lore` field populated
 
-**React:**
-- react 19, react-dom 19, react-router-dom - Core framework
-- typescript 4.9.5 - Type safety
-- framer-motion - Animation library
-- tailwindcss - Utility-first CSS
-- @tsparticles/react - Particle effects
-- lucide-react - Icon library
-- react-syntax-highlighter - Code highlighting
+### Progression System (Phase 3 Gamification)
 
----
+#### Database Tables (`alembic/versions/3nephilim_progression.py`)
+- `seeker_profiles` - User rank, total resonance, faction affiliation
+- `persona_affinity` - Per-persona relationship tracking (messages, affinity level)
+- `resonance_log` - History of resonance awards
+- `unlocked_lore` - Track which lore fragments users have unlocked
 
-## Project Hygiene
+#### Rank System
+| Rank | Resonance Required |
+|------|-------------------|
+| Initiate | 0 |
+| Acolyte | 100 |
+| Adept | 500 |
+| Ascendant | 2,000 |
+| Nephilim | 10,000 |
 
-**Current Status:** ✅ Score 10/10 (Perfect - Jan 17, 2026)
+Users earn 5 resonance per conversation exchange with NEPHILIM personas.
 
-**Key Metrics:**
-- Zero unused imports, dead code, log files, test artifacts ✅
-- Type hints: 95%+ | Technical debt: 2 TODOs (both recent, not stale)
-- routes/chat.py: 759 → 279 lines (63% reduction via service layer extraction)
-- server.py: 1,645 → 85 lines (95% reduction via modular refactoring)
+#### API Endpoints (`routes/nephilim.py`)
+```
+GET  /nephilim/seeker/{user_id}           - Get/create seeker profile
+GET  /nephilim/seeker/{user_id}/summary   - Comprehensive summary
+POST /nephilim/seeker/{user_id}/faction   - Set faction affiliation
+GET  /nephilim/seeker/{user_id}/rank      - Rank progress
+POST /nephilim/seeker/{user_id}/resonance - Award resonance
+GET  /nephilim/seeker/{user_id}/affinity  - All persona affinities
+GET  /nephilim/seeker/{user_id}/lore      - Unlocked lore
+GET  /nephilim/ranks                      - All rank thresholds
+GET  /nephilim/factions                   - All faction info
+```
 
-**Organization:**
-- `tests/`: 12 backend, 23 integration, 10 exploration
-- `src/coordinator/`: 3 routes, 7 services
-- `AI_documentation/`: 15 docs (3 categories: implementation_history, ux_design_specs, roadmaps) - 85.7% reduction from 105 files
-- `archive/test_artifacts/`: UX test artifacts (scale-only animation validation)
+#### Frontend Components (`react-ui/src/components/nephilim/`)
+- `SeekerRankBadge.tsx` - Displays rank with animated badge
+- `ResonanceProgress.tsx` - Progress bar to next rank
+- `AffinityMeter.tsx` - Per-persona relationship indicator
+- `LoreCodex.tsx` - Collection of unlocked story fragments
+- `FactionSelector.tsx` - House selection UI
+- `SeekerDashboard.tsx` - Comprehensive progression overview
 
-**Root Markdown Policy:** README, CLAUDE, NEXT_STEPS, CHANGELOG only (specialized guides in docs/) - all others → `AI_documentation/`
+#### Chat Integration
+Progression is automatically tracked in `chat_session_service.py`:
+- Resonance awarded after each conversation
+- Message counts tracked for persona affinity
+- Lore unlocks checked after conversations
 
-**Latest Session (Jan 17, 2026 - Documentation Purge):**
-- Deleted: 90 obsolete documentation files (105→15, 85.7% reduction)
-  - 67 implementation logs (bug fixes, MVPs, phase completions, test summaries)
-  - 5 UX specs (completed features documented in CLAUDE.md)
-  - 7 feature specs (implemented features: Brave MCP, MongoDB, SQLite, model selection)
-  - 1 deprecated file (React migration complete)
-  - 6 completed roadmaps (persona quality, memory phases, conversational AI)
-  - 4 redundant root docs (analysis guides, README duplicates)
-- Removed: 4 empty directories (04_deprecated/, 03_feature_specs/, archive/)
-- Kept: Only essential docs (MCP architecture, major refactorings, UX plan, production roadmap, project hygiene log)
-- Result: Reduced context bloat, cleaner navigation, git history preserves all deleted content
+### Visual Theme (`react-ui/src/index.css`, `tailwind.config.js`)
+```css
+:root {
+  --nephilim-void: #0B0B0D;
+  --nephilim-cyan: #00ffff;
+  --nephilim-magenta: #ff00ff;
+  --eeva-primary: #e0c3fc;
+  --aegis-primary: #4a90d9;
+  --solace-primary: #7eb8da;
+  --nyx-primary: #9b59b6;
+  --cipher-primary: #2ecc71;
+  --aurora-primary: #f39c12;
+}
+```
 
-**Previous Session (Jan 17, 2026):**
-- Archived: test_scale_only.py + screenshots/ (1.7MB, UX test artifacts)
-- Cleaned: 5 debug console.log statements from React components
-- Verified: .pyc files properly gitignored, 2 TODOs recent (Dec 28 - Jan 1)
+### Landing Page (`NephilimHome.tsx`)
+- Cinematic "Enter the Realm" portal at `/nephilim`
+- Animated background with particles and aurora effects
+- Typography: Orbitron (display), Manrope (body)
 
-**Full History:** `AI_documentation/01_implementation_history/PROJECT_HYGIENE_LOG.md`
+### Onboarding System (Phase 4)
+
+Complete immersive onboarding flow for new users at `/nephilim/onboarding`:
+
+1. **Portal Entry** (`OnboardingPortal.tsx`)
+   - Animated portal with E.E.V.A. greeting
+   - Typewriter text effect
+   - Name collection
+
+2. **Faction Quiz** (`FactionQuiz.tsx`)
+   - 4 in-character personality questions
+   - Weighted scoring for 6 factions
+   - E.E.V.A. commentary between questions
+   - Dramatic faction reveal
+
+3. **Persona Introduction** (`PersonaIntro.tsx`)
+   - Carousel of all 6 Nephilim
+   - House patron highlighted first
+   - Sample greetings and domain descriptions
+   - First companion selection
+
+4. **Completion Flow** (`NephilimOnboarding.tsx`)
+   - Creates initial chat session
+   - Awards "Initiate" rank
+   - Stores preferences in localStorage:
+     - `nephilim_user_id` - Seeker identifier
+     - `nephilim_user_name` - Display name
+     - `nephilim_faction` - House alignment
+     - `nephilim_onboarding_complete` - Flow completion flag
+
+### MCP Integration Narrative (Phase 5)
+
+MCP capabilities are framed as Nephilim powers in the UI:
+
+**Source Mappings** (`components/nephilim/mcpNarratives.ts`):
+| MCP Source | NEPHILIM Name | Patron | Icon |
+|------------|---------------|--------|------|
+| Brave Search | Cipher's Archives | Cipher | 📚 |
+| MongoDB Trading | Aurora's Crystal Grid | Aurora | 🔮 |
+| Multi-Source | The Convergence | E.E.V.A. | ✧ |
+
+**Loading Messages** (rotate every 3s):
+- Search: "Cipher consults the infinite Archives..."
+- Trading: "Aurora gazes into the Crystal Grid..."
+- Multi: "The Nephilim share their visions..."
+
+**Components Updated**:
+- `SourceIndicator.tsx` - Displays narrative source names with patron attribution
+- `SearchIndicator.tsx` - Shows immersive loading messages with animated icons
+
+## Documentation
+
+- `README.md` - User setup guide, features
+- `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment
+- `docs/ADDING_MCP_SERVERS.md` - MCP integration guide
+- `AI_documentation/` - Implementation history, UX specs, roadmaps
+- `personas/NEPHILIM_*.md` - Worldbuilding lore documents
