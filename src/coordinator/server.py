@@ -25,6 +25,7 @@ from .startup import initialize_all, get_session_repo
 from .routes.chat import router as chat_router
 from .routes.sessions import router as sessions_router
 from .routes.personas import router as personas_router
+from .routes.nephilim import router as nephilim_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(sessions_router)
 app.include_router(personas_router)
+app.include_router(nephilim_router)
 
 
 # ----------------- Health & Debug Endpoints -----------------

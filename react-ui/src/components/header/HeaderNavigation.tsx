@@ -9,6 +9,7 @@ const getActiveColor = (pathname: string, path: string): string => {
       case '/': return 'text-yellow-300 drop-shadow-[0_0_12px_rgba(255,215,0,0.9)]'; // Legendary gold
       case '/select': return 'text-purple-300 drop-shadow-[0_0_12px_rgba(186,120,255,0.9)]'; // Epic purple
       case '/chat': return 'text-cyan-300 drop-shadow-[0_0_12px_rgba(66,245,255,0.9)]'; // Rare cyan
+      case '/nephilim': return 'text-fuchsia-300 drop-shadow-[0_0_12px_rgba(255,0,255,0.9)]'; // NEPHILIM magenta
       default: return 'text-gray-300';
     }
   }
@@ -139,6 +140,7 @@ export const DesktopNavigation: React.FC<DesktopNavigationProps> = ({
 
   const navItems = [
     { to: '/', label: 'Home', color: 'yellow' },
+    { to: '/nephilim', label: 'Realm', color: 'fuchsia' },
     { to: '/select', label: 'Agents', color: 'purple' },
     { to: '/chat', label: 'Chat', color: 'cyan' }
   ];
@@ -167,6 +169,7 @@ export const DesktopNavigation: React.FC<DesktopNavigationProps> = ({
               className={`absolute inset-0 rounded-lg opacity-0 ${
                 item.color === 'yellow' ? 'bg-yellow-500/20' :
                 item.color === 'purple' ? 'bg-purple-500/20' :
+                item.color === 'fuchsia' ? 'bg-fuchsia-500/20' :
                 'bg-cyan-500/20'
               }`}
               whileHover={{ opacity: 0.3 }}
@@ -178,9 +181,9 @@ export const DesktopNavigation: React.FC<DesktopNavigationProps> = ({
               className="relative z-10"
               animate={location.pathname === item.to ? {
                 textShadow: [
-                  `0 0 8px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : '66,245,255'}, 0.6)`,
-                  `0 0 12px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : '66,245,255'}, 0.8)`,
-                  `0 0 8px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : '66,245,255'}, 0.6)`
+                  `0 0 8px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : item.color === 'fuchsia' ? '255,0,255' : '66,245,255'}, 0.6)`,
+                  `0 0 12px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : item.color === 'fuchsia' ? '255,0,255' : '66,245,255'}, 0.8)`,
+                  `0 0 8px rgba(${item.color === 'yellow' ? '255,215,0' : item.color === 'purple' ? '186,120,255' : item.color === 'fuchsia' ? '255,0,255' : '66,245,255'}, 0.6)`
                 ]
               } : {}}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -209,6 +212,7 @@ export const DesktopNavigation: React.FC<DesktopNavigationProps> = ({
                   className={`absolute w-1 h-1 rounded-full ${
                     item.color === 'yellow' ? 'bg-yellow-400' :
                     item.color === 'purple' ? 'bg-purple-400' :
+                    item.color === 'fuchsia' ? 'bg-fuchsia-400' :
                     'bg-cyan-400'
                   }`}
                   initial={{

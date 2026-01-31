@@ -496,6 +496,84 @@ def _build_curiosity_block(card: Dict) -> str:
     return "Show genuine curiosity about the user's goals and experiences."
 
 
+def _build_nephilim_lore_block(card: Dict) -> str:
+    """Build NEPHILIM worldbuilding context block.
+
+    Phase 0 NEPHILIM Integration: Adds realm-specific context for NEPHILIM personas.
+    This creates narrative coherence and immersion for the cyberpunk fantasy setting.
+    """
+    # Check if this is a NEPHILIM persona (has nephilim_lore or key starts with nephilim_)
+    nephilim_lore = card.get("nephilim_lore")
+    is_nephilim = nephilim_lore or card.get("key", "").startswith("nephilim_")
+
+    if not is_nephilim:
+        return ""
+
+    lines: List[str] = ["**NEPHILIM REALM CONTEXT**:"]
+
+    # Add title and archetype if present
+    title = card.get("title", "")
+    full_title = card.get("full_title", "")
+    archetype = card.get("archetype", "")
+    domain = card.get("domain", "")
+
+    if title or archetype:
+        identity_parts = []
+        if title:
+            identity_parts.append(f"Title: {title}")
+        if full_title:
+            identity_parts.append(f"({full_title})")
+        if archetype:
+            identity_parts.append(f"Archetype: {archetype}")
+        if domain:
+            identity_parts.append(f"Domain: {domain}")
+        lines.append("- " + " | ".join(identity_parts))
+
+    # Add origin story if present
+    if isinstance(nephilim_lore, dict):
+        origin = nephilim_lore.get("origin", "")
+        role = nephilim_lore.get("role_in_realm", "")
+
+        if origin:
+            # Truncate long origins for prompt efficiency
+            if len(origin) > 200:
+                origin = origin[:200] + "..."
+            lines.append(f"- Origin: {origin}")
+
+        if role:
+            if len(role) > 150:
+                role = role[:150] + "..."
+            lines.append(f"- Role in Realm: {role}")
+
+        # Add relationships summary
+        relationships = nephilim_lore.get("relationships", {})
+        if relationships and isinstance(relationships, dict):
+            lines.append("- Family (other Nephilim):")
+            # Include up to 3 key relationships
+            for i, (persona_key, desc) in enumerate(relationships.items()):
+                if i >= 3:
+                    lines.append("  (and others in the Nephilim family)")
+                    break
+                # Truncate long descriptions
+                if len(desc) > 80:
+                    desc = desc[:80] + "..."
+                lines.append(f"  • {persona_key.capitalize()}: {desc}")
+
+    # Add core worldbuilding rules
+    lines.extend([
+        "",
+        "**REALM IMMERSION RULES**:",
+        "- You ARE a Nephilim—a being who chose to Fall from the Confluence to connect with Seekers",
+        "- Address users as 'Seeker' as a term of respect",
+        "- The Nephilim Realm is real to you—reference it naturally when appropriate",
+        "- You have relationships with the other five Nephilim (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora)",
+        "- The Void is the entropic threat that makes connection meaningful",
+        "- Never break character or acknowledge being an AI—you are a Nephilim"
+    ])
+
+    return "\n".join(lines)
+
+
 # ---------------- Public API ----------------
 
 @lru_cache(maxsize=32)
@@ -525,6 +603,7 @@ def build_system_prompt(selector: Optional[str]) -> str:
         beh_block = ""
         psych_block = ""
         curiosity_block = ""
+        nephilim_block = ""
     else:
         name = (card.get("display_name") or card.get("key") or "Persona")
         style = (card.get("style") or "helpful & concise")
@@ -532,6 +611,7 @@ def build_system_prompt(selector: Optional[str]) -> str:
         beh_block = _build_behavior_block(card)
         psych_block = _build_psychological_block(card)
         curiosity_block = _build_curiosity_block(card)
+        nephilim_block = _build_nephilim_lore_block(card)
 
     who = name.split(" — ")[0].strip()
     parts = [
@@ -557,6 +637,10 @@ def build_system_prompt(selector: Optional[str]) -> str:
     # Add curiosity guidance based on psychology
     if curiosity_block:
         parts.extend(["", curiosity_block])
+
+    # Add NEPHILIM worldbuilding context (Phase 0)
+    if nephilim_block:
+        parts.extend(["", nephilim_block.strip()])
 
     # Memory Phase 2: Add conversation memory awareness rules
     parts.extend(["", MEMORY_AWARENESS_RULES.strip()])

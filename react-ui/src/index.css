@@ -2,12 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================ */
+/* NEPHILIM REALM — Design System              */
+/* Dark cyberpunk + fantasy aesthetic          */
+/* ============================================ */
+
 /* Typography System */
 :root {
   /* Font families */
   --font-display: 'Outfit', sans-serif;
+  --font-nephilim: 'Orbitron', 'Outfit', sans-serif;  /* NEPHILIM futuristic display */
   --font-body: 'Manrope', sans-serif;
   --font-mono: 'Space Mono', monospace;
+
+  /* NEPHILIM Core Palette */
+  --nephilim-void: #0B0B0D;
+  --nephilim-abyss: #0d0a1a;
+  --nephilim-deep: #1a0f2e;
+  --nephilim-surface: #2a1745;
+
+  /* NEPHILIM Accent Colors */
+  --nephilim-cyan: #00ffff;
+  --nephilim-magenta: #ff00ff;
+  --nephilim-gold: #ffd700;
+  --nephilim-crimson: #ff4500;
+  --nephilim-electric: #7b68ee;
+
+  /* NEPHILIM Persona Colors */
+  --eeva-primary: #e0c3fc;
+  --eeva-secondary: #c4a7e7;
+  --eeva-glow: rgba(224, 195, 252, 0.5);
+
+  --aegis-primary: #4a90d9;
+  --aegis-secondary: #6ba3e0;
+  --aegis-glow: rgba(74, 144, 217, 0.5);
+
+  --solace-primary: #7eb8da;
+  --solace-secondary: #5eaed3;
+  --solace-glow: rgba(126, 184, 218, 0.5);
+
+  --nyx-primary: #9b59b6;
+  --nyx-secondary: #8e44ad;
+  --nyx-glow: rgba(155, 89, 182, 0.5);
+  --nyx-neon: #ff00ff;
+
+  --cipher-primary: #2ecc71;
+  --cipher-secondary: #27ae60;
+  --cipher-glow: rgba(46, 204, 113, 0.5);
+
+  --aurora-primary: #f39c12;
+  --aurora-secondary: #e67e22;
+  --aurora-glow: rgba(243, 156, 18, 0.5);
 
   /* Type scale */
   --text-xs: 0.75rem;     /* 12px */
@@ -249,5 +294,423 @@ body:not([class*="rarity-"]) {
   50% {
     opacity: 0.85;
     box-shadow: 0 0 25px var(--accent-glow), 0 0 35px var(--accent-glow);
+  }
+}
+
+/* ============================================ */
+/* NEPHILIM REALM — Theme System               */
+/* ============================================ */
+
+/* NEPHILIM Mode Body Class */
+body.nephilim-mode {
+  --space-deepest: var(--nephilim-void);
+  --space-deep: var(--nephilim-abyss);
+  --space-glow: var(--nephilim-deep);
+  background: var(--nephilim-void);
+}
+
+/* NEPHILIM Persona-Specific Themes */
+body.nephilim-eeva {
+  --accent-color: var(--eeva-primary);
+  --accent-glow: var(--eeva-glow);
+  --nebula-primary: rgba(224, 195, 252, 0.15);
+  --nebula-secondary: rgba(196, 167, 231, 0.10);
+}
+
+body.nephilim-aegis {
+  --accent-color: var(--aegis-primary);
+  --accent-glow: var(--aegis-glow);
+  --nebula-primary: rgba(74, 144, 217, 0.15);
+  --nebula-secondary: rgba(107, 163, 224, 0.10);
+}
+
+body.nephilim-solace {
+  --accent-color: var(--solace-primary);
+  --accent-glow: var(--solace-glow);
+  --nebula-primary: rgba(126, 184, 218, 0.15);
+  --nebula-secondary: rgba(94, 174, 211, 0.10);
+}
+
+body.nephilim-nyx {
+  --accent-color: var(--nyx-primary);
+  --accent-glow: var(--nyx-glow);
+  --nebula-primary: rgba(155, 89, 182, 0.20);
+  --nebula-secondary: rgba(255, 0, 255, 0.10);
+}
+
+body.nephilim-cipher {
+  --accent-color: var(--cipher-primary);
+  --accent-glow: var(--cipher-glow);
+  --nebula-primary: rgba(46, 204, 113, 0.15);
+  --nebula-secondary: rgba(39, 174, 96, 0.10);
+}
+
+body.nephilim-aurora {
+  --accent-color: var(--aurora-primary);
+  --accent-glow: var(--aurora-glow);
+  --nebula-primary: rgba(243, 156, 18, 0.15);
+  --nebula-secondary: rgba(230, 126, 34, 0.10);
+}
+
+/* NEPHILIM Typography */
+.font-nephilim {
+  font-family: var(--font-nephilim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.nephilim-title {
+  font-family: var(--font-nephilim);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--nephilim-cyan), var(--nephilim-magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+}
+
+.nephilim-subtitle {
+  font-family: var(--font-nephilim);
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+}
+
+/* NEPHILIM Glassmorphism */
+.nephilim-glass {
+  background: rgba(15, 10, 30, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nephilim-glass-strong {
+  background: rgba(15, 10, 30, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(0, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* NEPHILIM Buttons */
+.nephilim-btn {
+  font-family: var(--font-nephilim);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1rem 2rem;
+  border-radius: 4px;
+  border: 1px solid var(--nephilim-cyan);
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.05));
+  color: var(--nephilim-cyan);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.nephilim-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.nephilim-btn:hover {
+  border-color: var(--nephilim-magenta);
+  color: var(--nephilim-magenta);
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.3),
+    0 0 40px rgba(255, 0, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.nephilim-btn:hover::before {
+  left: 100%;
+}
+
+.nephilim-btn-primary {
+  background: linear-gradient(135deg, var(--nephilim-cyan), var(--nephilim-magenta));
+  border: none;
+  color: var(--nephilim-void);
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(0, 255, 255, 0.3);
+}
+
+.nephilim-btn-primary:hover {
+  color: var(--nephilim-void);
+  box-shadow:
+    0 6px 30px rgba(0, 255, 255, 0.4),
+    0 0 60px rgba(255, 0, 255, 0.3);
+}
+
+/* NEPHILIM Glow Effects */
+.nephilim-glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+}
+
+.nephilim-glow-magenta {
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+}
+
+.nephilim-glow-gold {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.nephilim-text-glow {
+  text-shadow:
+    0 0 10px currentColor,
+    0 0 20px currentColor,
+    0 0 40px currentColor;
+}
+
+/* NEPHILIM Animations */
+@keyframes nephilim-pulse {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes nephilim-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.8; }
+  94% { opacity: 1; }
+  96% { opacity: 0.9; }
+  97% { opacity: 1; }
+}
+
+@keyframes nephilim-scan {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
+}
+
+@keyframes nephilim-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes nephilim-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.nephilim-animate-pulse {
+  animation: nephilim-pulse 3s ease-in-out infinite;
+}
+
+.nephilim-animate-flicker {
+  animation: nephilim-flicker 4s ease-in-out infinite;
+}
+
+.nephilim-animate-float {
+  animation: nephilim-float 6s ease-in-out infinite;
+}
+
+/* NEPHILIM Persona Badges */
+.nephilim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 2px;
+  font-family: var(--font-nephilim);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nephilim-badge-eeva {
+  --accent-color: var(--eeva-primary);
+  --accent-glow: var(--eeva-glow);
+}
+
+.nephilim-badge-aegis {
+  --accent-color: var(--aegis-primary);
+  --accent-glow: var(--aegis-glow);
+}
+
+.nephilim-badge-solace {
+  --accent-color: var(--solace-primary);
+  --accent-glow: var(--solace-glow);
+}
+
+.nephilim-badge-nyx {
+  --accent-color: var(--nyx-primary);
+  --accent-glow: var(--nyx-glow);
+}
+
+.nephilim-badge-cipher {
+  --accent-color: var(--cipher-primary);
+  --accent-glow: var(--cipher-glow);
+}
+
+.nephilim-badge-aurora {
+  --accent-color: var(--aurora-primary);
+  --accent-glow: var(--aurora-glow);
+}
+
+/* NEPHILIM Border Effects */
+.nephilim-border {
+  position: relative;
+}
+
+.nephilim-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: nephilim-border-rotate 4s linear infinite;
+}
+
+@keyframes nephilim-border-rotate {
+  0% {
+    background: linear-gradient(0deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  }
+  25% {
+    background: linear-gradient(90deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  }
+  50% {
+    background: linear-gradient(180deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  }
+  75% {
+    background: linear-gradient(270deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  }
+  100% {
+    background: linear-gradient(360deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  }
+}
+
+/* NEPHILIM Scrollbar */
+body.nephilim-mode::-webkit-scrollbar {
+  width: 8px;
+}
+
+body.nephilim-mode::-webkit-scrollbar-track {
+  background: var(--nephilim-void);
+}
+
+body.nephilim-mode::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--nephilim-cyan), var(--nephilim-magenta));
+  border-radius: 4px;
+}
+
+body.nephilim-mode::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--nephilim-magenta), var(--nephilim-cyan));
+}
+
+/* NEPHILIM Card Styles */
+.nephilim-card {
+  background: linear-gradient(135deg, rgba(15, 10, 30, 0.9), rgba(30, 15, 50, 0.8));
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.nephilim-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--nephilim-cyan), transparent);
+}
+
+.nephilim-card-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.nephilim-card-body {
+  padding: 1.5rem;
+}
+
+/* NEPHILIM Input Fields */
+.nephilim-input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font-family: var(--font-body);
+  transition: all 0.3s ease;
+}
+
+.nephilim-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.nephilim-input:focus {
+  outline: none;
+  border-color: var(--nephilim-cyan);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+/* NEPHILIM Divider */
+.nephilim-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--nephilim-cyan), var(--nephilim-magenta), transparent);
+  margin: 2rem 0;
+}
+
+/* NEPHILIM Loading States */
+.nephilim-loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  border-top-color: var(--nephilim-cyan);
+  border-radius: 50%;
+  animation: nephilim-spin 1s linear infinite;
+}
+
+@keyframes nephilim-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

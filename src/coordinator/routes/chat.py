@@ -58,6 +58,7 @@ def _get_dependencies():
         get_user_profile_repo,
         get_episodic_memory_rag,
         get_fact_extractor,
+        get_seeker_progression_repo,
     )
     return {
         "brave_client": get_brave_client(),
@@ -71,6 +72,7 @@ def _get_dependencies():
         "user_profile_repo": get_user_profile_repo(),
         "episodic_memory_rag": get_episodic_memory_rag(),
         "fact_extractor": get_fact_extractor(),
+        "seeker_progression_repo": get_seeker_progression_repo(),
     }
 
 

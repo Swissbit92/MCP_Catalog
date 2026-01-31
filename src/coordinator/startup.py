@@ -34,6 +34,7 @@ from .repositories.message_repository import MessageRepository
 from .repositories.summary_repository import SummaryRepository
 from .repositories.emotional_state_repository import EmotionalStateRepository
 from .repositories.user_profile_repository import UserProfileRepository
+from .repositories.seeker_progression_repository import SeekerProgressionRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .services.mongodb_handlers import MongoDBService
 from .memory_rag import EpisodicMemoryRAG
@@ -56,6 +57,7 @@ _message_repo: Optional[MessageRepository] = None
 _summary_repo: Optional[SummaryRepository] = None
 _emotional_state_repo: Optional[EmotionalStateRepository] = None
 _user_profile_repo: Optional[UserProfileRepository] = None
+_seeker_progression_repo: Optional[SeekerProgressionRepository] = None
 
 # Memory Management (Phase 2)
 _memory_manager: Optional[MemoryManager] = None
@@ -121,6 +123,11 @@ def get_conversation_summarizer() -> ConversationSummarizer:
 def get_user_profile_repo() -> UserProfileRepository:
     """Get the user profile repository."""
     return _user_profile_repo
+
+
+def get_seeker_progression_repo() -> SeekerProgressionRepository:
+    """Get the NEPHILIM seeker progression repository."""
+    return _seeker_progression_repo
 
 
 def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
@@ -198,14 +205,15 @@ def init_mongodb_client():
 
 def init_repositories():
     """Initialize database repositories."""
-    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo, _user_profile_repo
+    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo, _user_profile_repo, _seeker_progression_repo
 
     _session_repo = SessionRepository(_DB_PATH)
     _message_repo = MessageRepository(_DB_PATH)
     _summary_repo = SummaryRepository(_DB_PATH)
     _emotional_state_repo = EmotionalStateRepository(_DB_PATH)
     _user_profile_repo = UserProfileRepository(_DB_PATH)
-    logger.info("Repositories initialized (Phase 1-3)")
+    _seeker_progression_repo = SeekerProgressionRepository(_DB_PATH)
+    logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression)")
 
 
 def init_memory_manager():

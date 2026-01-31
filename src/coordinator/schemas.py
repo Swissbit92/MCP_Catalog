@@ -136,3 +136,85 @@ class ResponseMetadata(BaseModel):
     # PHASE 2: Multi-message response fields
     is_multi_message: bool = False
     message_count: int = 1
+
+
+# ----------------- NEPHILIM Progression Schemas -----------------
+
+class SetFactionBody(BaseModel):
+    """Request body for setting seeker faction."""
+    faction_primary: str
+    faction_secondary: Optional[str] = None
+
+
+class AwardResonanceBody(BaseModel):
+    """Request body for awarding resonance."""
+    amount: int
+    reason: str
+    persona_key: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+class SeekerProfileResponse(BaseModel):
+    """Response containing seeker profile data."""
+    user_id: str
+    rank_name: str
+    total_resonance: int
+    faction_primary: Optional[str] = None
+    faction_secondary: Optional[str] = None
+    rank_achieved_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class RankProgressResponse(BaseModel):
+    """Response containing rank progress info."""
+    current_rank: str
+    current_resonance: int
+    next_rank: Optional[str] = None
+    resonance_needed: int
+    progress_percent: int
+
+
+class PersonaAffinityResponse(BaseModel):
+    """Response containing persona affinity data."""
+    user_id: str
+    persona_key: str
+    messages_count: int
+    affinity_level: int
+    first_conversation: Optional[str] = None
+    last_conversation: Optional[str] = None
+
+
+class UnlockedLoreResponse(BaseModel):
+    """Response containing unlocked lore fragment info."""
+    id: int
+    user_id: str
+    persona_key: str
+    fragment_id: str
+    unlocked_at: str
+
+
+class LoreFragmentContent(BaseModel):
+    """Full lore fragment with content."""
+    fragment_id: str
+    fragment_title: str
+    fragment: str
+    messages_required: int
+    rarity: str
+    unlocked: bool
+    unlocked_at: Optional[str] = None
+
+
+class SeekerSummaryResponse(BaseModel):
+    """Comprehensive seeker summary response."""
+    exists: bool
+    user_id: str
+    rank: Optional[str] = None
+    total_resonance: Optional[int] = None
+    faction_primary: Optional[str] = None
+    faction_secondary: Optional[str] = None
+    rank_progress: Optional[RankProgressResponse] = None
+    persona_affinities: List[PersonaAffinityResponse] = []
+    unlocked_lore_count: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

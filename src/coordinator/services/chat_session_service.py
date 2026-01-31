@@ -80,6 +80,7 @@ def handle_session_chat(
     user_profile_repo = deps["user_profile_repo"]
     episodic_memory_rag = deps["episodic_memory_rag"]
     fact_extractor = deps["fact_extractor"]
+    seeker_progression_repo = deps.get("seeker_progression_repo")
 
     # Get session info
     persona_key = session_repo.get_persona_key(session_id)
@@ -345,7 +346,97 @@ def handle_session_chat(
     except Exception as e:
         logger.error(f"[Phase3] Post-conversation updates failed: {e}")
 
+    # NEPHILIM Progression System - Track conversation progress for NEPHILIM personas
+    _track_nephilim_progression(
+        session_id=session_id,
+        persona_key=persona_key,
+        user_id=user_id,
+        seeker_progression_repo=seeker_progression_repo
+    )
+
     return response
+
+
+def _track_nephilim_progression(
+    session_id: str,
+    persona_key: str,
+    user_id: str | None,
+    seeker_progression_repo
+):
+    """
+    Track NEPHILIM progression for conversations with NEPHILIM personas.
+
+    Awards resonance points and tracks message counts for persona affinity.
+    Checks and unlocks lore fragments when thresholds are met.
+
+    Args:
+        session_id: Session identifier
+        persona_key: Persona key (checked for nephilim_ prefix)
+        user_id: User ID (if known from profile system)
+        seeker_progression_repo: Repository for seeker progression
+    """
+    # Only track for NEPHILIM personas
+    if not persona_key or not persona_key.startswith("nephilim_"):
+        return
+
+    if not seeker_progression_repo:
+        logger.debug("[NEPHILIM] Progression repo not available, skipping tracking")
+        return
+
+    # Use session_id as user_id if no profile user exists
+    effective_user_id = user_id or f"session_{session_id[:16]}"
+
+    try:
+        # Ensure seeker exists
+        seeker_progression_repo.get_or_create_seeker(effective_user_id)
+
+        # Increment message count for persona affinity
+        seeker_progression_repo.increment_messages(
+            user_id=effective_user_id,
+            persona_key=persona_key,
+            count=2  # User message + assistant response
+        )
+
+        # Award resonance for the conversation
+        # Base resonance: 5 points per exchange
+        result = seeker_progression_repo.award_resonance(
+            user_id=effective_user_id,
+            amount=5,
+            reason="Conversation exchange",
+            persona_key=persona_key,
+            session_id=session_id
+        )
+
+        if result.get("rank_changed"):
+            logger.info(
+                f"[NEPHILIM] Seeker {effective_user_id} ranked up! "
+                f"{result.get('previous_rank')} → {result.get('new_rank')}"
+            )
+        else:
+            logger.debug(
+                f"[NEPHILIM] Awarded 5 resonance to {effective_user_id}, "
+                f"total: {result.get('new_resonance')}"
+            )
+
+        # Check for lore unlocks
+        card = get_persona_card(persona_key)
+        if card:
+            fragments = card.get("unlockable_lore", [])
+            if fragments:
+                newly_unlocked = seeker_progression_repo.check_and_unlock_lore(
+                    user_id=effective_user_id,
+                    persona_key=persona_key,
+                    fragments=fragments
+                )
+                if newly_unlocked:
+                    for frag in newly_unlocked:
+                        logger.info(
+                            f"[NEPHILIM] Lore unlocked for {effective_user_id}: "
+                            f"'{frag.get('fragment_title')}' ({frag.get('rarity')})"
+                        )
+
+    except Exception as e:
+        logger.warning(f"[NEPHILIM] Progression tracking failed: {e}")
 
 
 def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
