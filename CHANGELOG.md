@@ -25,6 +25,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - UX: Smooth typing experience with no visual stuttering
 
 ### Added
+- **NEPHILIM Phase 6: Persona Filter Toggle** ✅ (Feb 1, 2026) - Added filter system to toggle between NEPHILIM and legacy personas:
+  - ✅ **PersonaFilterToggle Component**: New animated toggle with three modes (All ✦, NEPHILIM ⬡, Legacy ◇)
+  - ✅ **Filter Utilities**: `personaFilter.ts` with `isNephilimPersona()`, `filterPersonas()`, `getPersonaCounts()` functions
+  - ✅ **CharacterCardV2 Enhancement**: Added NEPHILIM badge display for matching personas
+  - ✅ **CharacterSelector Enhancement**: Gradient indicator bar on NEPHILIM persona thumbnails
+  - ✅ **CharacterCardV2Showcase Integration**: Filter toggle in page header with persona counts
+  - ✅ **Persistence**: Filter preference saved to localStorage (`persona_filter_mode`)
+  - ✅ **Playwright Tests**: 7 automated tests covering all filter functionality
+  - **Files Added**:
+    - `react-ui/src/components/PersonaFilterToggle.tsx` - Filter toggle component
+    - `react-ui/src/utils/personaFilter.ts` - Filter utility functions
+    - `react-ui/tests/phase6-filter.spec.ts` - Playwright test suite
+  - **Files Modified**:
+    - `react-ui/src/components/CharacterCardV2.tsx` - NEPHILIM badge support
+    - `react-ui/src/components/CharacterCardV2.module.css` - NEPHILIM styling
+    - `react-ui/src/components/CharacterSelector.tsx` - NEPHILIM indicator
+    - `react-ui/src/pages/CharacterCardV2Showcase.tsx` - Filter toggle integration
+  - **Impact**:
+    - UX: Users can now filter persona gallery by type (NEPHILIM vs legacy)
+    - Discoverability: Clear visual distinction between NEPHILIM and legacy personas
+    - Persistence: Filter preference remembered across sessions
+
 - **Project Reorganization: Scripts & Documentation Hierarchy** ✅ (Jan 18, 2026) - Comprehensive reorganization of scripts and documentation into logical directory structure:
   - ✅ **Scripts Organization**: Moved 14 scripts from root into categorized subdirectories
     - `scripts/docker/` - 7 Docker setup, validation, and troubleshooting scripts

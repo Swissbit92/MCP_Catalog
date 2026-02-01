@@ -11,6 +11,7 @@ interface CharacterCardV2Props {
   isSelected: boolean;
   personaKey: string;
   index?: number;
+  isNephilim?: boolean;
 }
 
 const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
@@ -21,10 +22,14 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
   onSelect,
   isSelected,
   personaKey,
-  index = 0
+  index = 0,
+  isNephilim = false
 }) => {
+  // Auto-detect NEPHILIM from personaKey if not explicitly set
+  const isNephilimCard = isNephilim || personaKey.startsWith('nephilim_');
   const rarityClass = styles[`rarity-${rarity.toLowerCase()}`];
   const selectedClass = isSelected ? styles['selected'] : '';
+  const nephilimClass = isNephilimCard ? styles['nephilim-card'] : '';
 
   // Physics setup for 3D tilt effects
   const cardRef = useRef<HTMLDivElement>(null);
@@ -121,7 +126,7 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
   return (
     <motion.div
       ref={cardRef}
-      className={`${styles['card-outer']} ${rarityClass} ${selectedClass}`}
+      className={`${styles['card-outer']} ${rarityClass} ${selectedClass} ${nephilimClass}`}
       style={{
         '--rarity-primary': colors.primary,
         '--rarity-secondary': colors.secondary,
@@ -187,6 +192,9 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
           <div className={styles['character-style']}>{style}</div>
           <div className={styles['rarity-indicator']}>
             <span className={styles['rarity-badge']}>{rarity}</span>
+            {isNephilimCard && (
+              <span className={styles['nephilim-badge']}>NEPHILIM</span>
+            )}
           </div>
         </div>
 

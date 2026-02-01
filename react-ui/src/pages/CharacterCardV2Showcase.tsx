@@ -6,8 +6,16 @@ import PullInterface from '../components/PullInterface';
 import CharacterCollection from '../components/CharacterCollection';
 import PullHistory from '../components/PullHistory';
 import EnergyParticles from '../components/EnergyParticles';
+import PersonaFilterToggle from '../components/PersonaFilterToggle';
 import { fetchPersonas } from '../services/api';
 import { usePersona } from '../context/PersonaContext';
+import {
+  PersonaFilterMode,
+  getFilterMode,
+  setFilterMode,
+  filterPersonas,
+  getPersonaCounts,
+} from '../utils/personaFilter';
 
 interface Persona {
   key: string;
@@ -31,8 +39,18 @@ const CharacterCardV2Showcase: React.FC = () => {
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>(initialTab);
+  const [personaFilter, setPersonaFilter] = useState<PersonaFilterMode>(getFilterMode());
   const { setSelectedPersona, selectedPersona } = usePersona();
   const navigate = useNavigate();
+
+  // Handle filter mode change
+  const handleFilterChange = (mode: PersonaFilterMode) => {
+    setPersonaFilter(mode);
+    setFilterMode(mode);
+  };
+
+  // Get persona counts for the toggle
+  const personaCounts = getPersonaCounts(personas);
 
   useEffect(() => {
     const getPersonas = async () => {
@@ -74,21 +92,24 @@ const CharacterCardV2Showcase: React.FC = () => {
     getPersonas();
   }, []);
 
-  // Filter personas based on search query
+  // Filter personas based on search query and persona filter mode
   React.useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredPersonas(personas);
-    } else {
+    // First apply persona type filter (NEPHILIM/legacy/all)
+    let filtered = filterPersonas(personas, personaFilter);
+
+    // Then apply search query filter
+    if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const filtered = personas.filter(persona =>
+      filtered = filtered.filter(persona =>
         persona.display_name.toLowerCase().includes(query) ||
         persona.style.toLowerCase().includes(query) ||
         persona.key.toLowerCase().includes(query) ||
         persona.rarity.toLowerCase().includes(query)
       );
-      setFilteredPersonas(filtered);
     }
-  }, [searchQuery, personas]);
+
+    setFilteredPersonas(filtered);
+  }, [searchQuery, personas, personaFilter]);
 
   // Card click - selection only (no navigation)
   const handleCardSelect = (personaKey: string) => {
@@ -136,10 +157,19 @@ const CharacterCardV2Showcase: React.FC = () => {
           <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
             Classic Character Cards
           </h1>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-4">
             Experience the timeless gacha-style character cards featuring your AI companions.
             Classic foil effects, elegant rarity theming, and smooth animations that started it all.
           </p>
+
+          {/* Persona Filter Toggle */}
+          <div className="flex justify-center mb-6">
+            <PersonaFilterToggle
+              mode={personaFilter}
+              onChange={handleFilterChange}
+              counts={personaCounts}
+            />
+          </div>
 
           {/* Tab Navigation */}
           <div className="flex justify-center mb-8">
