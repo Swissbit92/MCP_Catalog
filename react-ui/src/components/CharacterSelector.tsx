@@ -74,6 +74,11 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 persona.rarity === 'rare' ? 'bg-blue-400' : 'bg-gray-400'}
             `} />
 
+            {/* NEPHILIM Indicator */}
+            {persona.key.startsWith('nephilim_') && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500" />
+            )}
+
             {/* Selection Indicator */}
             {index === currentIndex && (
               <motion.div

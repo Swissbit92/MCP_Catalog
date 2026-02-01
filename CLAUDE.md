@@ -373,6 +373,38 @@ MCP capabilities are framed as Nephilim powers in the UI:
 - `SourceIndicator.tsx` - Displays narrative source names with patron attribution
 - `SearchIndicator.tsx` - Shows immersive loading messages with animated icons
 
+### Persona Filter Toggle (Phase 6)
+
+Filter system allowing users to switch between NEPHILIM and legacy persona views:
+
+**Components** (`react-ui/src/`):
+- `components/PersonaFilterToggle.tsx` - Animated toggle with three modes: All, NEPHILIM, Legacy
+- `utils/personaFilter.ts` - Filter utilities with localStorage persistence
+
+**Features**:
+- Toggle between All (✦), NEPHILIM (⬡), and Legacy (◇) personas
+- Counts displayed in each filter button
+- Filter preference persists across sessions via localStorage (`persona_filter_mode`)
+- Animated selection indicator using Framer Motion layoutId
+
+**Filter Logic** (`personaFilter.ts`):
+```typescript
+// NEPHILIM personas identified by key prefix
+isNephilimPersona(key: string) => key.startsWith('nephilim_')
+
+// Filter functions
+filterPersonas(personas, mode) // Returns filtered array
+getPersonaCounts(personas)     // Returns { nephilim, legacy, total }
+```
+
+**Enhanced Components**:
+- `CharacterCardV2.tsx` - NEPHILIM badge display for matching personas
+- `CharacterSelector.tsx` - Gradient indicator bar on NEPHILIM persona thumbnails
+- `CharacterCardV2Showcase.tsx` - Integrated filter toggle in header
+
+**Test Coverage** (`react-ui/tests/phase6-filter.spec.ts`):
+- 7 Playwright tests covering filter visibility, functionality, and persistence
+
 ## Documentation
 
 - `README.md` - User setup guide, features

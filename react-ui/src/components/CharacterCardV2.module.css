@@ -416,6 +416,66 @@
   transform-style: preserve-3d;
 }
 
+/* NEPHILIM Card Styling */
+.nephilim-card {
+  --nephilim-cyan: #00ffff;
+  --nephilim-magenta: #ff00ff;
+}
+
+.nephilim-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--nephilim-cyan), var(--nephilim-magenta), var(--nephilim-cyan));
+  z-index: -1;
+  animation: nephilim-border-glow 3s linear infinite;
+}
+
+.nephilim-card .glow-ring {
+  background: radial-gradient(circle,
+    rgba(0, 255, 255, 0.4) 0%,
+    rgba(255, 0, 255, 0.3) 50%,
+    transparent 70%);
+}
+
+.nephilim-card:hover .glow-ring {
+  opacity: 0.8;
+}
+
+.nephilim-badge {
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-weight: 700;
+  font-size: 0.65em;
+  border-radius: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #000;
+  background: linear-gradient(135deg, #00ffff, #ff00ff);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  animation: nephilim-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes nephilim-border-glow {
+  0%, 100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(30deg);
+  }
+}
+
+@keyframes nephilim-badge-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.7);
+  }
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   .foil-effect,
