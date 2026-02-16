@@ -6,7 +6,7 @@ version: '3.8'
 # This setup uses SQLite for simplicity and performance in single-user scenarios.
 # All data persists in ./data/ directory on your host machine.
 #
-# For production/multi-user deployments, see PRODUCTION_READINESS_PLAN.md
+# For production/multi-user deployments, consider PostgreSQL for multi-user deployments
 # =============================================================================
 
 services:
@@ -122,7 +122,7 @@ services:
       context: ./react-ui
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://localhost:8000
+        - REACT_APP_API_BASE_URL=http://localhost:8000
     container_name: ai-companion-web
     depends_on:
       backend:

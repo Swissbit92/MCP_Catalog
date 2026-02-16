@@ -409,6 +409,6 @@ getPersonaCounts(personas)     // Returns { nephilim, legacy, total }
 
 - `README.md` - User setup guide, features
 - `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment
-- `docs/ADDING_MCP_SERVERS.md` - MCP integration guide
-- `AI_documentation/` - Implementation history, UX specs, roadmaps
+- `docs/development/ADDING_MCP_SERVERS.md` - MCP integration guide
+- `docs/development/TESTING_GUIDE.md` - Testing guide
 - `personas/NEPHILIM_*.md` - Worldbuilding lore documents

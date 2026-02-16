@@ -1230,7 +1230,6 @@ When adding a new MCP server, ensure:
 
 - **[CLAUDE.md](../CLAUDE.md)** - Developer guide and project structure
 - **[README.md](../README.md)** - User-facing documentation
-- **[MCP_INFRASTRUCTURE_REFACTOR.md](../AI_documentation/01_implementation_history/MCP_INFRASTRUCTURE_REFACTOR.md)** - MCP architecture evolution
 
 ---
 

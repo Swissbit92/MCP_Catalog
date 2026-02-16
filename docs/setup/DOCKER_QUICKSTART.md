@@ -4,7 +4,7 @@ Get your MCP Coordinator running in Docker in under 10 minutes with this optimiz
 
 **Perfect for**: Local personal use, testing, development
 **Data storage**: SQLite database in `./data/chats.db` (persists on your machine)
-**Production deployment**: See `PRODUCTION_READINESS_PLAN.md` for PostgreSQL migration
+**Production deployment**: For production, consider PostgreSQL migration
 
 ---
 
@@ -547,7 +547,7 @@ docker-compose up -d --build
 
 ### For Production Deployment
 If you want to deploy this to the cloud for others to use:
-- See `PRODUCTION_READINESS_PLAN.md` for full migration guide
+- For production, consider PostgreSQL migration
 - Migrate to PostgreSQL (required for multi-user)
 - Follow Phase 1-3 implementation plan
 
