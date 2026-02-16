@@ -62,6 +62,11 @@ cd react-ui && npm run build
 cd react-ui && npm test
 cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 
+# Playwright E2E tests
+cd react-ui && npx playwright test                    # Run all E2E tests
+cd react-ui && npx playwright test --headed           # Run with browser visible
+cd react-ui && npx playwright test phase6-filter      # Run specific test file
+
 # Python tests (run from project root)
 pytest tests/backend/                    # Backend unit tests
 pytest tests/integration/                # Integration tests
@@ -87,7 +92,7 @@ routes/                        # chat.py, sessions.py, personas.py, nephilim.py
 services/                      # Business logic (llm_completion, tool_calling, citation, etc.)
 repositories/                  # SQLite data access (session, message, summary, emotional_state, seeker_progression)
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
-tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py
+tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
 mongodb/                       # MongoDB MCP client
 ```
 
@@ -101,12 +106,13 @@ mongodb/                       # MongoDB MCP client
 ### Frontend (`react-ui/src/`)
 
 ```
-pages/                         # Home.tsx, Chat.tsx, NephilimHome.tsx, CharacterCardV2Showcase.tsx
+pages/                         # Home.tsx, Chat.tsx, NephilimHome.tsx, NephilimOnboarding.tsx, CharacterCardV2Showcase.tsx
 components/                    # UI components (MessageBubble, CharacterCard, SessionList, etc.)
+components/header/             # HeaderNavigation.tsx, HeaderVisuals.tsx, MobileMenu.tsx
 components/nephilim/           # NEPHILIM progression components (SeekerRankBadge, LoreCodex, etc.)
 context/                       # PersonaContext.tsx, AudioContext.tsx
 services/                      # API client (includes NEPHILIM progression API)
-utils/                         # animations.ts, helpers
+utils/                         # animations.ts, helpers, personaFilter.ts
 ```
 
 ### Database Schema

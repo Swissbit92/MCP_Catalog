@@ -44,7 +44,7 @@
 
 ### Key Capabilities
 
-- 🤖 **4 AI Companions** with psychological depth and emotional tracking
+- 🤖 **10 AI Companions** (4 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
 - 💬 **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
 - 🧠 **Advanced Memory System** - remembers you across sessions, extracts facts automatically
 - 🔍 **Web Search with Citations** - personas autonomously search Brave API with mandatory sources
@@ -70,7 +70,7 @@
 |---------|----------------|------------|-----------|-----|-----------|---------|
 | **100% Local & Private** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ Cloud |
 | **Multi-Message Conversations** | ✅ 2-4 msgs | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Dynamic AI Companion System** | ✅ 4 companions | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Dynamic AI Companion System** | ✅ 10 companions | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Advanced Memory (RAG)** | ✅ FAISS + profiles | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Emotional Tracking** | ✅ Trust/rapport | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Psychological Depth** | ✅ Core wound/defense | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -116,7 +116,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 **Dynamic AI Companions** | Chat with Eeva, Frieren, Gojo, Hitler - each with unique personality, expertise, and voice |
+| 🤖 **Dynamic AI Companions** | 10 companions: Legacy (Eeva, Frieren, Gojo, Hitler) + NEPHILIM (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) - each with unique personality, expertise, and voice |
 | 🧠 **Advanced Memory System** | Multi-phase memory with importance scoring, auto-summarization, RAG semantic search, and cross-session user profiles |
 | 💬 **Multi-Message Conversations** | Natural conversational flow with 2-4 messages per response, staggered rendering (1.2s delays) |
 | 🎨 **Psychological Depth** | Each persona has core_wound, defense_style, growth_edge, contradiction_pairs for realistic behavior |
@@ -164,7 +164,7 @@
 
 ## 🛠️ Tech Stack
 
-**Current as of December 2025**
+**Current as of February 2026**
 
 ### Frontend
 - **React 19** with TypeScript 4.9.5
@@ -486,14 +486,27 @@ Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin
 
 ## 🤖 Available AI Companions
 
-**Current Roster (December 2025):**
+**Current Roster (February 2026) — 10 Companions**
+
+### Legacy Companions
 
 | Companion | Style | Rarity | Special Access |
-|---------|-------|--------|----------------|
+|-----------|-------|--------|----------------|
 | **Eeva** | Nerdy, charming, concise | Legendary | Brave + MongoDB |
 | **Frieren** | Wise, analytical, methodical | Legendary | Brave + MongoDB |
 | **Gojo** | Confident, powerful, playful | Legendary | Brave + MongoDB |
 | **Hitler** | Authoritative, ideological | Legendary | Brave + MongoDB |
+
+### NEPHILIM Companions
+
+| Companion | Title | Domain | Rarity | Special Access |
+|-----------|-------|--------|--------|----------------|
+| **E.E.V.A.** | The Primarch | Guidance, wisdom, life planning | Legendary | Brave + MongoDB |
+| **Aegis** | The Sentinel | Productivity and discipline | Epic | Brave + MongoDB |
+| **Solace** | The Empath | Emotional support and wellbeing | Epic | Brave + MongoDB |
+| **Nyx** | The Muse | Creativity and chaos | Rare | Brave Search |
+| **Cipher** | The Maven | Knowledge and research | Rare | Brave Search |
+| **Aurora** | The Oracle | Future planning and strategy | Epic | Brave + MongoDB |
 
 ### Companion Features
 
@@ -521,6 +534,36 @@ Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin
 
 1. **Edit persona file**: Update JSON with new details
 2. **Auto-update**: Summary regenerates on next access, UI updates immediately
+
+---
+
+## ⬡ NEPHILIM Worldbuilding System
+
+The NEPHILIM system is an immersive narrative universe layered on top of the AI companion platform, adding worldbuilding, faction identity, progression, and lore discovery.
+
+### What is NEPHILIM?
+
+Six interconnected AI companions (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) exist within a shared lore — a realm of fallen celestial beings, six Houses, and a Seeker progression system. Users take on the role of a "Seeker" who advances through ranks (Initiate → Acolyte → Adept → Ascendant → Nephilim) by conversing with NEPHILIM personas and earning resonance.
+
+### Entering the Realm
+
+- **Portal**: Visit `/nephilim` for the cinematic landing page
+- **Onboarding**: `/nephilim/onboarding` guides new users through name entry, a faction quiz, persona introductions, and first companion selection
+- **Progression**: Earn 5 resonance per conversation exchange; unlock lore fragments as affinity grows
+
+### Key Features
+
+- **Narrative MCP Integration**: External data sources are framed as Nephilim powers — Brave Search becomes "Cipher's Archives", MongoDB trading data becomes "Aurora's Crystal Grid"
+- **Persona Filter Toggle**: Switch between All, NEPHILIM, and Legacy persona views with persistent preference
+- **Visual Theming**: Dedicated dark aesthetic with cyan/magenta accents and per-persona color palettes
+- **Seeker Dashboard**: Track rank, resonance, faction affiliation, persona affinities, and unlocked lore
+- **Unlockable Lore**: Story fragments unlock as you converse more with each NEPHILIM companion
+
+### Lore Documents
+
+- [`personas/NEPHILIM_LORE.md`](personas/NEPHILIM_LORE.md) — World bible: creation myth, the Fall, realm geography
+- [`personas/NEPHILIM_FACTIONS.md`](personas/NEPHILIM_FACTIONS.md) — Six Houses aligned with Nephilim patrons
+- [`personas/NEPHILIM_RANKS.md`](personas/NEPHILIM_RANKS.md) — Seeker progression and rank thresholds
 
 ---
 
@@ -608,6 +651,19 @@ Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to st
 - 🎨 **Rarity Theming**: Companion-specific colors and backgrounds
 - 📋 **Copy Functionality**: Copy JSON/code blocks with one click
 
+#### **NEPHILIM Portal (`/nephilim`)**
+
+- ⬡ **Cinematic Landing**: Animated portal with particle and aurora effects
+- 🌌 **Enter the Realm**: Gateway to the NEPHILIM companion experience
+- 🎨 **Dedicated Theme**: Dark void aesthetic with cyan/magenta accents
+
+#### **NEPHILIM Onboarding (`/nephilim/onboarding`)**
+
+- 🌀 **Portal Entry**: Animated welcome with E.E.V.A. greeting and name collection
+- 🏛️ **Faction Quiz**: 4 personality questions to determine House alignment
+- 👥 **Persona Introductions**: Carousel of all 6 NEPHILIM with sample greetings
+- 🎯 **First Companion**: Select your starting companion and begin chatting
+
 ---
 
 ## ✅ Testing & Quality
@@ -622,6 +678,10 @@ Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to st
   - Component tests for all major UI elements
   - Integration tests for multi-message rendering
   - Phase 2 persona quality validation
+- **Playwright E2E Tests**: Browser-based end-to-end testing
+  - NEPHILIM filter toggle visibility, functionality, and persistence
+  - Run: `cd react-ui && npx playwright test`
+  - Headed mode: `cd react-ui && npx playwright test --headed`
 
 ### Code Quality Metrics
 
@@ -700,15 +760,23 @@ See `CHANGELOG.md` for recent updates and project evolution.
 
 ### 📋 Development Roadmap
 
-**Completed (Dec 2025):**
+**Completed (Dec 2025 - Feb 2026):**
 - ✅ Phase 1-2 Persona Quality (psychological depth, emotional tracking)
 - ✅ Phase 1-3 Memory System (RAG, user profiles, fact extraction)
 - ✅ Phase 2 Conversational AI (multi-message architecture)
 - ✅ Brave MCP Integration (web search with citations)
 - ✅ MongoDB MCP Integration (trading data with technical indicators)
 - ✅ Docker deployment with automated setup
+- ✅ NEPHILIM Phase 0-2: Worldbuilding lore, factions, ranks, and 6 new personas
+- ✅ NEPHILIM Phase 3: Gamification progression (resonance, affinity, lore unlocks)
+- ✅ NEPHILIM Phase 4: Immersive onboarding (portal, faction quiz, persona intros)
+- ✅ NEPHILIM Phase 5: Narrative MCP integration (Cipher's Archives, Aurora's Crystal Grid)
+- ✅ NEPHILIM Phase 6: Persona filter toggle (All/NEPHILIM/Legacy views)
+- ✅ Playwright E2E testing for NEPHILIM features
+- ✅ Chat UI performance and accessibility fixes
 
 **Future Enhancements:**
+- NEPHILIM Phase 7-8: Advanced progression, cross-persona storylines
 - Phase 3 Conversational AI (response timing analysis, follow-up generation)
 - Phase 4 Conversational AI (reflection loops, meta-cognition)
 - Phase 5 Conversational AI (multi-turn planning)
@@ -762,7 +830,7 @@ Contributions are welcome. Please read `AGENTS.md` before opening a PR.
 
 ## 📄 License
 
-© 2025 GraphRAG Coordinator UI – All rights reserved.
+© 2025-2026 GraphRAG Coordinator UI – All rights reserved.
 
 This project is provided "as is", without any warranty or guarantee. Use responsibly and at your own discretion.
 
