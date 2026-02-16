@@ -634,16 +634,10 @@ Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to st
   - 2 moderate dev-only issues (react-scripts nested deps)
   - Zero production vulnerabilities
   - Regular dependency updates
-- **Documentation**: 20+ docs in `AI_documentation/`
-  - Implementation summaries for all phases
-  - Roadmaps and feature specs
-  - Architectural decision records
-
 ### Production Readiness
 
 - **Docker Build**: Tested with automated validation scripts
 - **Model Validation**: Comparison testing (nchapman vs. alternatives)
-  - See `MODEL_SWITCH_VALIDATION_RESULTS.md`
 - **Performance**: 60fps animations, <500ms API responses
 - **Reliability**: 100% test pass rate, zero critical bugs
 - **Monitoring**: Comprehensive logging with structured formats
@@ -680,12 +674,6 @@ Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to st
 | **[docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md)** | Guide for integrating new MCP servers (ephemeral & long-running patterns) |
 | **[docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md)** | Testing setup, organization, and best practices |
 
-### Testing & Quality
-
-| Document | Description |
-|----------|-------------|
-| **[docs/testing/PYTEST_BASELINE_REPORT.md](docs/testing/PYTEST_BASELINE_REPORT.md)** | Pytest configuration and coverage baseline |
-
 ### Scripts & Utilities
 
 | Directory | Description |
@@ -696,23 +684,6 @@ Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to st
 | **[scripts/utils/](scripts/utils/)** | Python utilities (unified launcher, validation, cleanup) |
 
 See each directory's README.md for usage examples and detailed documentation.
-
-### Production & Scaling
-
-| Document | Description |
-|----------|-------------|
-| **[PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md)** | 3-phase migration plan for PostgreSQL/K8s (future) |
-| **[PHASE1_IMPLEMENTATION_PLAN.md](PHASE1_IMPLEMENTATION_PLAN.md)** | Detailed PostgreSQL migration guide (if needed) |
-
-### Feature Documentation
-
-| Document | Description |
-|----------|-------------|
-| **AI_documentation/** | Historical specs, implementation summaries, feature docs |
-| **AI_documentation/05_roadmaps/** | Memory enhancement, persona quality, conversational AI roadmaps |
-| **AI_documentation/01_implementation_history/** | Phase 1-3 completion summaries and validation results |
-| **MODEL_SWITCH_VALIDATION_RESULTS.md** | nchapman model selection rationale (Dec 2025) |
-| **MSG_TAG_ANALYSIS_RECOMMENDATION.md** | Multi-message architecture analysis |
 
 ---
 

@@ -7,8 +7,7 @@ Organized documentation for MCP Coordinator development and deployment.
 ```
 docs/
 ├── setup/          Setup and deployment guides
-├── development/    Development guides and MCP integration
-└── testing/        Testing documentation and reports
+└── development/    Development guides and MCP integration
 ```
 
 ## Setup & Deployment
@@ -88,27 +87,6 @@ pytest tests/evaluation/test_persona_quality.py -v
 pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 ```
 
-## Testing Reports
-
-### [testing/PYTEST_BASELINE_REPORT.md](testing/PYTEST_BASELINE_REPORT.md)
-
-**Baseline pytest configuration and coverage report**
-
-**Contents:**
-- pytest.ini configuration
-- Initial test coverage metrics
-- Test migration roadmap (unittest → pytest)
-- Coverage reporting setup
-
-**Generating reports:**
-```bash
-# Run with coverage
-pytest --cov=src/coordinator --cov-report=html --cov-report=term
-
-# View HTML report
-# Open htmlcov/index.html in browser
-```
-
 ## Root Documentation
 
 Essential documentation files in project root:
@@ -117,26 +95,7 @@ Essential documentation files in project root:
 |----------|-------------|
 | **[../README.md](../README.md)** | Main project overview and quick start |
 | **[../CLAUDE.md](../CLAUDE.md)** | AI coding guidelines and development commands |
-| **[../NEXT_STEPS.md](../NEXT_STEPS.md)** | Current status and roadmap |
 | **[../CHANGELOG.md](../CHANGELOG.md)** | Version history and feature additions |
-| **[../SQLITE_ARCHITECTURE.md](../SQLITE_ARCHITECTURE.md)** | Database architecture decision record |
-
-## AI Documentation
-
-Advanced architecture and implementation history:
-
-```
-../AI_documentation/
-├── 01_implementation_history/    Major refactorings and architecture decisions
-├── 02_ux_design_specs/           UX design system and specifications
-└── 05_roadmaps/                  Future planning and production readiness
-```
-
-**Key documents:**
-- `01_implementation_history/MCP_ARCHITECTURE.md` - MCP server design patterns
-- `01_implementation_history/PHASE2_COMPLETION_REPORT.md` - Backend refactoring summary
-- `02_ux_design_specs/UX_IMPROVEMENT_PLAN.md` - Design system (200+ pages)
-- `05_roadmaps/PRODUCTION_READINESS_PLAN.md` - Kubernetes migration roadmap
 
 ## Scripts
 

@@ -60,6 +60,9 @@ nul
 null
 NULL
 
+# Test results
+react-ui/test-results/
+
 # Persona summaries cache
 personas/_summaries/.lock
 personas/gwen_alt.json

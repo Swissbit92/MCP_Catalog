@@ -164,4 +164,4 @@ Current coverage (as of 2025-12-12):
 
 - [Pytest Documentation](https://docs.pytest.org/)
 - [React Testing Library](https://testing-library.com/react)
-- Project documentation in `AI_documentation/`
+- Project documentation in `docs/`

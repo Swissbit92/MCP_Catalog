@@ -62,7 +62,7 @@ def main():
     tester.print_report(report)
 
     # Save detailed report
-    report_dir = Path(__file__).parent.parent / "AI_documentation" / "01_implementation_history"
+    report_dir = Path(__file__).parent / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / "PROMPT_OPTIMIZATION_TEST_REPORT.json"
     tester.save_detailed_report(report, str(report_path))
