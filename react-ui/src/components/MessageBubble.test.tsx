@@ -86,7 +86,7 @@ describe('MessageBubble', () => {
       />
     );
 
-    const messageBubble = container.querySelector('[class*="bg-gray-100"]');
+    const messageBubble = container.querySelector('[class*="bg-white"]');
     expect(messageBubble).toBeInTheDocument();
   });
 
@@ -281,8 +281,9 @@ describe('MessageBubble', () => {
       />
     );
 
-    // Check that the persona indicator has the correct rarity styling
+    // Check that the persona indicator has the NEPHILIM-themed styling
     const indicator = screen.getByText('Legendary Persona');
-    expect(indicator).toHaveClass('bg-yellow-100', 'text-yellow-800');
+    expect(indicator.className).toContain('bg-white/10');
+    expect(indicator.className).toContain('text-cyan-300');
   });
 });
