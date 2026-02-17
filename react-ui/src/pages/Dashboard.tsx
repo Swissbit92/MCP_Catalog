@@ -9,7 +9,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <NephilimBackground particles skyline intensity={0.4}>
-      <div className="h-full overflow-auto">
+      <div className="min-h-full">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
           <h1 className="text-3xl font-nephilim text-nephilim-cyan mb-8 tracking-wider">
             Seeker&apos;s Sanctum
