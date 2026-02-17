@@ -192,7 +192,7 @@ const CharacterCardV2Showcase: React.FC = () => {
 
   return (
     <NephilimBackground particles={true} skyline={true} intensity={0.5}>
-      <div className="min-h-screen overflow-auto">
+      <div className="min-h-screen">
         <div className="relative z-10 max-w-[1600px] mx-auto px-4 py-8">
           {/* Header */}
           <div className="text-center mb-6">
