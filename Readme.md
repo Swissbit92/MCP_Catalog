@@ -251,6 +251,8 @@ chmod +x scripts/docker/setup-docker.sh
 
 **App will be ready at:** `http://localhost:3000`
 
+> **⚠️ Note:** Docker may still serve the legacy UI if not rebuilt after Phase 7. For the latest NEPHILIM UI, use local development setup below.
+
 ---
 
 ### Manual Setup (Alternative)
@@ -603,7 +605,32 @@ cp data/chats.db backups/chats.db.$(date +%Y%m%d)
 
 ### Local Development Usage
 
-#### **Option A: Unified Startup (Recommended)**
+#### **🎨 Phase 7 NEPHILIM UI (Latest)**
+
+**Run the new NEPHILIM UI with full glassmorphic styling, dark cyberpunk theme:**
+
+```bash
+# Terminal 1: Backend (FastAPI)
+python -m uvicorn src.coordinator.server:app --reload --port 8000
+
+# Terminal 2: Frontend (React dev server)
+cd react-ui
+PORT=3001 npx react-scripts start
+```
+
+**Access at:** `http://localhost:3001`
+
+> **✨ New in Phase 7:**
+> - Unified NEPHILIM dark theme (void `#0B0B0D` base)
+> - Glassmorphic components (`bg-white/[0.05] backdrop-blur-xl`)
+> - "Wanderers" concept for legacy personas
+> - Summoning Ritual system with 5-phase animation
+> - Seeker's Sanctum dashboard with constellation map
+> - Full WCAG AA accessibility compliance
+
+#### **📦 Legacy UI (Docker/Production)**
+
+**Option A: Unified Startup**
 
 ```bash
 python scripts/utils/run_react.py
@@ -611,7 +638,7 @@ python scripts/utils/run_react.py
 
 **🎯 This starts both backend and frontend automatically!**
 
-#### **Option B: Manual Startup**
+**Option B: Manual Startup**
 
 ```bash
 # Terminal 1: Backend
@@ -621,9 +648,11 @@ python run.py
 cd react-ui && npm start
 ```
 
+**Access at:** `http://localhost:3000`
+
 #### **Stopping the Application**
 
-Press `Ctrl+C` in the terminal running `python scripts/utils/run_react.py` to stop both services gracefully.
+Press `Ctrl+C` in the terminal(s) to stop services gracefully.
 
 ---
 
@@ -774,9 +803,10 @@ See `CHANGELOG.md` for recent updates and project evolution.
 - ✅ NEPHILIM Phase 6: Persona filter toggle (All/NEPHILIM/Legacy views)
 - ✅ Playwright E2E testing for NEPHILIM features
 - ✅ Chat UI performance and accessibility fixes
+- ✅ NEPHILIM Phase 7: Full UI transition — unified dark theme, glassmorphic chat, summoning ritual system, progression dashboard, WCAG AA accessibility
 
 **Future Enhancements:**
-- NEPHILIM Phase 7-8: Advanced progression, cross-persona storylines
+- NEPHILIM Phase 8: Advanced progression, cross-persona storylines
 - Phase 3 Conversational AI (response timing analysis, follow-up generation)
 - Phase 4 Conversational AI (reflection loops, meta-cognition)
 - Phase 5 Conversational AI (multi-turn planning)

@@ -476,6 +476,20 @@
   }
 }
 
+/* Wanderer Badge - void-surface styling for non-Nephilim personas */
+.wanderer-badge {
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-weight: 700;
+  font-size: 0.65em;
+  border-radius: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #E5E7EB;
+  background: linear-gradient(135deg, #24242C, #1C1C22);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   .foil-effect,

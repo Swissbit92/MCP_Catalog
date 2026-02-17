@@ -2,7 +2,13 @@
 /**
  * Persona Filter Utilities
  *
- * Utilities for filtering personas between NEPHILIM and legacy types.
+ * Utilities for filtering personas between Nephilim and Wanderer types.
+ * "Wanderers" is the frontend display label for non-Nephilim personas.
+ * Wanderers are beings who drifted into the realm from beyond the known planes --
+ * they are not bound to any House but walk their own path.
+ *
+ * Filter values ('all', 'nephilim', 'legacy') are kept for backward compatibility
+ * with localStorage persistence. The 'legacy' value maps to "Wanderers" in the UI.
  */
 
 export type PersonaFilterMode = 'all' | 'nephilim' | 'legacy';
@@ -10,14 +16,16 @@ export type PersonaFilterMode = 'all' | 'nephilim' | 'legacy';
 const STORAGE_KEY = 'persona_filter_mode';
 
 /**
- * Check if a persona key belongs to a NEPHILIM persona
+ * Check if a persona key belongs to a NEPHILIM persona.
+ * Wanderers (non-Nephilim) return false.
  */
 export const isNephilimPersona = (personaKey: string): boolean => {
   return personaKey.startsWith('nephilim_');
 };
 
 /**
- * Get the current filter mode from localStorage
+ * Get the current filter mode from localStorage.
+ * Returns 'all' by default, showing both Nephilim and Wanderers.
  */
 export const getFilterMode = (): PersonaFilterMode => {
   if (typeof window === 'undefined') return 'all';
@@ -29,7 +37,8 @@ export const getFilterMode = (): PersonaFilterMode => {
 };
 
 /**
- * Set the filter mode in localStorage
+ * Set the filter mode in localStorage.
+ * Accepts 'all', 'nephilim', or 'legacy' (Wanderers).
  */
 export const setFilterMode = (mode: PersonaFilterMode): void => {
   if (typeof window === 'undefined') return;
@@ -37,7 +46,10 @@ export const setFilterMode = (mode: PersonaFilterMode): void => {
 };
 
 /**
- * Filter an array of personas based on the current filter mode
+ * Filter an array of personas based on the current filter mode.
+ * - 'nephilim': shows only Nephilim personas
+ * - 'legacy': shows only Wanderer (non-Nephilim) personas
+ * - 'all': shows both Nephilim and Wanderers
  */
 export const filterPersonas = <T extends { key: string }>(
   personas: T[],
@@ -55,7 +67,8 @@ export const filterPersonas = <T extends { key: string }>(
 };
 
 /**
- * Get counts of personas by type
+ * Get counts of personas by type (Nephilim and Wanderers).
+ * Note: "legacy" key is kept for API/data compatibility; displayed as "Wanderers" in the UI.
  */
 export const getPersonaCounts = <T extends { key: string }>(
   personas: T[]

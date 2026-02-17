@@ -15,10 +15,10 @@ Provides endpoints for chat, greetings, persona CV summaries, and chat persisten
 from __future__ import annotations
 
 import logging
-import inspect
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import get_ollama_base, get_persona_model
 from .startup import initialize_all, get_session_repo
@@ -38,7 +38,7 @@ app = FastAPI(title="Local Coordinator (Chat-only)", version="0.6.0")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,22 +63,7 @@ def health():
         get_session_repo().get_all_sessions()
         return {"status": "ok", "model": model, "db": "ok"}
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
-
-@app.get("/debug/code-version")
-def code_version():
-    """Debug endpoint to verify which code version is running."""
-    from .routes.chat import chat_with_session
-    source = inspect.getsource(chat_with_session)
-    has_memory_loading = "db_messages = message_repo.get_messages_by_session" in source
-    has_modular_design = "deps = _get_dependencies()" in source
-    return {
-        "memory_loading_code_present": has_memory_loading,
-        "modular_design": has_modular_design,
-        "version": "0.6.0-modular",
-        "function_first_line": source.split('\n')[1][:100] if '\n' in source else "unknown"
-    }
+        return JSONResponse(status_code=503, content={"status": "error", "detail": str(e)})
 
 
 # ----------------- Initialization -----------------

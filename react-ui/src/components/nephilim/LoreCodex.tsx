@@ -148,7 +148,7 @@ export const LoreCodex: React.FC<LoreCodexProps> = ({
 
               {/* Unlock date */}
               {fragment.unlocked && fragment.unlocked_at && (
-                <p className="text-xs text-white/40 mt-2">
+                <p className="text-xs text-white/60 mt-2">
                   Unlocked {new Date(fragment.unlocked_at).toLocaleDateString()}
                 </p>
               )}

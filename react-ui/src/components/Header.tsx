@@ -1,220 +1,149 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { motion, Variants } from 'framer-motion';
-import { usePersona } from '../context/PersonaContext';
-import { useAudio } from '../context/AudioContext';
-import { HeaderBackground } from './header/HeaderVisuals';
-import { HeaderBranding, DesktopNavigation } from './header/HeaderNavigation';
-import { MobileMenu } from './header/MobileMenu';
+import React, { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { useAudio } from '../context/AudioContext'
+import { SeekerRankBadge } from './nephilim/SeekerRankBadge'
+import { getRankProgress } from '../services/api'
 
 const Header: React.FC = () => {
-  const location = useLocation();
-  const { selectedPersona, currentSession } = usePersona();
-  const { isMuted, toggleMute } = useAudio();
-  const [currentTheme, setCurrentTheme] = useState<'legendary' | 'epic' | 'rare'>('legendary');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation()
+  const { isMuted, toggleMute } = useAudio()
+  const [seekerRank, setSeekerRank] = useState('Initiate')
 
-  // Update theme based on current page and selected persona
+  // Get seeker info from localStorage
+  const seekerName = typeof window !== 'undefined'
+    ? localStorage.getItem('nephilim_user_name') || 'Seeker'
+    : 'Seeker'
+
+  // Fetch current rank from API on mount
   useEffect(() => {
-    let newTheme: 'legendary' | 'epic' | 'rare' = 'legendary';
-
-    // Priority: Selected persona > Current page
-    if (selectedPersona) {
-      switch (selectedPersona.rarity) {
-        case 'legendary':
-          newTheme = 'legendary';
-          break;
-        case 'epic':
-          newTheme = 'epic';
-          break;
-        case 'rare':
-          newTheme = 'rare';
-          break;
-        default:
-          newTheme = 'legendary';
-      }
-    } else {
-      // Fallback to page-based theming
-      switch (location.pathname) {
-        case '/':
-          newTheme = 'legendary';
-          break;
-        case '/select':
-          newTheme = 'epic';
-          break;
-        case '/chat':
-          newTheme = 'rare';
-          break;
-        default:
-          newTheme = 'legendary';
+    const userId = localStorage.getItem('nephilim_user_id') || 'default_seeker'
+    const fetchRank = async () => {
+      try {
+        const data = await getRankProgress(userId)
+        setSeekerRank(data.current_rank || 'Initiate')
+      } catch {
+        // Silently fall back to Initiate
       }
     }
+    fetchRank()
+  }, [])
 
-    setCurrentTheme(newTheme);
-  }, [location.pathname, selectedPersona]);
+  const desktopNavItems = [
+    { to: '/select', label: 'Companions' },
+    { to: '/dashboard', label: 'Dashboard' },
+  ]
 
-  // Get theme-based background animation
-  const getBackgroundAnimation = () => {
-    const themeColors = {
-      legendary: {
-        primary: 'rgba(255, 215, 0, 0.15)',
-        secondary: 'rgba(255, 240, 166, 0.08)',
-        accent: 'rgba(255, 208, 80, 0.12)'
-      },
-      epic: {
-        primary: 'rgba(186, 120, 255, 0.15)',
-        secondary: 'rgba(246, 212, 255, 0.08)',
-        accent: 'rgba(186, 120, 255, 0.12)'
-      },
-      rare: {
-        primary: 'rgba(66, 245, 255, 0.15)',
-        secondary: 'rgba(212, 246, 255, 0.08)',
-        accent: 'rgba(66, 245, 255, 0.12)'
-      }
-    };
+  const mobileNavItems = [
+    { to: '/chat', label: 'Chat', icon: '\u{1F4AC}' },
+    { to: '/', label: 'Realm', icon: '\u2B21' },
+    { to: '/select', label: 'Companions', icon: '\u2726' },
+    { to: '/dashboard', label: 'Profile', icon: '\u25C7' },
+  ]
 
-    const colors = themeColors[currentTheme];
-
-    return {
-      background: [
-        `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
-        `radial-gradient(circle at 80% 20%, ${colors.secondary}, transparent 50%)`,
-        `radial-gradient(circle at 40% 80%, ${colors.accent}, transparent 50%)`,
-        `radial-gradient(circle at 60% 30%, ${colors.primary}, transparent 50%)`,
-        `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
-      ]
-    };
-  };
-
-  // Animation variants
-  const containerVariants: Variants = {
-    hidden: { opacity: 0, y: -20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: -10 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.4 }
-    }
-  };
-
-  const navItemVariants: Variants = {
-    idle: { scale: 1 },
-    hover: { scale: 1.05 },
-    tap: { scale: 0.95 }
-  };
+  // Match both exact paths and prefix paths (e.g., /chat and /chat/session-id)
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
 
   return (
-    <motion.header
-      className="relative overflow-hidden"
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-    >
-      {/* Header Background with all visual effects */}
-      <HeaderBackground
-        currentTheme={currentTheme}
-        getBackgroundAnimation={getBackgroundAnimation}
-      />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          className="flex justify-between items-center h-16"
-          variants={containerVariants}
-        >
-          {/* Enhanced Logo/Branding Section */}
-          <HeaderBranding itemVariants={itemVariants} />
-
-          {/* Enhanced Navigation */}
-          <DesktopNavigation
-            itemVariants={itemVariants}
-            navItemVariants={navItemVariants}
-          />
-
-          {/* Audio Control and Mobile Menu */}
-          <motion.div
-            className="flex items-center space-x-2"
-            variants={itemVariants}
+    <>
+      {/* Desktop Top Bar */}
+      <header className="hidden md:block bg-[#0B0B0D]/95 backdrop-blur-xl border-b border-cyan-500/20 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+          {/* Left: Wordmark */}
+          <Link
+            to="/"
+            className="font-nephilim text-sm tracking-[0.15em] text-nephilim-cyan hover:text-cyan-300 transition-colors"
           >
-            {/* Audio Mute Button */}
-            <motion.button
-              className={`p-2 rounded-lg transition-colors duration-200 ${
-                isMuted
-                  ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
-                  : 'text-green-400 hover:text-green-300 hover:bg-green-900/20'
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={toggleMute}
-              aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
-              title={isMuted ? 'Unmute audio' : 'Mute audio'}
-            >
-              <motion.svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                animate={isMuted ? { opacity: 0.5 } : { opacity: 1 }}
-                transition={{ duration: 0.2 }}
+            NEPHILIM
+          </Link>
+
+          {/* Center: Navigation */}
+          <nav className="flex items-center gap-1" aria-label="Main navigation">
+            {desktopNavItems.map((item) => (
+              <Link
+                key={item.label}
+                to={item.to}
+                className={`relative px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                  isActive(item.to)
+                    ? 'text-cyan-300'
+                    : 'text-gray-300 hover:text-gray-200'
+                }`}
               >
-                {isMuted ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 7l4 4m0 0l-4 4m4-4H13" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 9a3 3 0 000 6m-3-3h6m-6 0v6a3 3 0 01-3 3H6a3 3 0 01-3-3V9a3 3 0 013-3h1.5a3 3 0 013 3z" />
+                {item.label}
+                {isActive(item.to) && (
+                  <motion.div
+                    layoutId="desktopActiveIndicator"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 bg-cyan-400 rounded-full"
+                    style={{ boxShadow: '0 0 8px rgba(0, 255, 255, 0.5)' }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
                 )}
-              </motion.svg>
-            </motion.button>
+              </Link>
+            ))}
+          </nav>
 
-            {/* Mobile Menu Button */}
-            <motion.button
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-slate-700/50 transition-colors duration-200 md:hidden"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Open mobile menu"
+          {/* Right: Rank, Audio, Name */}
+          <div className="flex items-center gap-3">
+            <SeekerRankBadge rank={seekerRank} size="sm" animated={false} />
+            <button
+              onClick={toggleMute}
+              className={`p-2 rounded-lg transition-colors ${
+                isMuted ? 'text-red-400 hover:text-red-300' : 'text-cyan-400 hover:text-cyan-300'
+              }`}
+              aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
             >
-              <motion.svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                animate={isMobileMenuOpen ? { rotate: 90 } : {
-                  rotate: [0, 90, 180, 270, 360],
-                }}
-                transition={isMobileMenuOpen ? { duration: 0.2 } : {
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "linear",
-                  delay: 2
-                }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </motion.svg>
-            </motion.button>
-          </motion.div>
-        </motion.div>
-      </div>
+              {isMuted ? '\u{1F507}' : '\u{1F50A}'}
+            </button>
+            <span className="text-sm text-gray-300 font-medium">{seekerName}</span>
+          </div>
+        </div>
+      </header>
 
-      {/* Mobile Menu Overlay */}
-      <MobileMenu
-        isMobileMenuOpen={isMobileMenuOpen}
-        setIsMobileMenuOpen={setIsMobileMenuOpen}
-        selectedPersona={selectedPersona}
-        currentSession={currentSession}
-        currentTheme={currentTheme}
-      />
-    </motion.header>
-  );
-};
+      {/* Mobile Bottom Tab Bar */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0B0D]/95 backdrop-blur-xl border-t border-cyan-500/20"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        aria-label="Mobile navigation"
+      >
+        <div className="flex items-center justify-around h-16">
+          {mobileNavItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.to}
+              className={`relative flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-2 py-1 transition-colors ${
+                isActive(item.to) ? 'text-cyan-300' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-xs mt-0.5 font-medium">{item.label}</span>
+              {isActive(item.to) && (
+                <motion.div
+                  layoutId="mobileActiveIndicator"
+                  className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-cyan-400"
+                  style={{ boxShadow: '0 0 6px rgba(0, 255, 255, 0.6)' }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              )}
+            </Link>
+          ))}
+          {/* Audio toggle as 5th tab */}
+          <button
+            onClick={toggleMute}
+            className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-2 py-1 transition-colors ${
+              isMuted ? 'text-red-400' : 'text-gray-400 hover:text-gray-200'
+            }`}
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+          >
+            <span className="text-lg">{isMuted ? '\u{1F507}' : '\u{1F50A}'}</span>
+            <span className="text-xs mt-0.5 font-medium">Audio</span>
+          </button>
+        </div>
+      </nav>
+    </>
+  )
+}
 
-export default Header;
+export default Header

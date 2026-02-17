@@ -92,41 +92,57 @@ def get_mongodb_service() -> Optional[MongoDBService]:
 
 def get_session_repo() -> SessionRepository:
     """Get the session repository."""
+    if _session_repo is None:
+        raise RuntimeError("SessionRepository not initialized — server startup incomplete")
     return _session_repo
 
 
 def get_message_repo() -> MessageRepository:
     """Get the message repository."""
+    if _message_repo is None:
+        raise RuntimeError("MessageRepository not initialized — server startup incomplete")
     return _message_repo
 
 
 def get_summary_repo() -> SummaryRepository:
     """Get the summary repository."""
+    if _summary_repo is None:
+        raise RuntimeError("SummaryRepository not initialized — server startup incomplete")
     return _summary_repo
 
 
 def get_emotional_state_repo() -> EmotionalStateRepository:
     """Get the emotional state repository."""
+    if _emotional_state_repo is None:
+        raise RuntimeError("EmotionalStateRepository not initialized — server startup incomplete")
     return _emotional_state_repo
 
 
 def get_memory_manager() -> MemoryManager:
     """Get the memory manager."""
+    if _memory_manager is None:
+        raise RuntimeError("MemoryManager not initialized — server startup incomplete")
     return _memory_manager
 
 
 def get_conversation_summarizer() -> ConversationSummarizer:
     """Get the conversation summarizer."""
+    if _conversation_summarizer is None:
+        raise RuntimeError("ConversationSummarizer not initialized — server startup incomplete")
     return _conversation_summarizer
 
 
 def get_user_profile_repo() -> UserProfileRepository:
     """Get the user profile repository."""
+    if _user_profile_repo is None:
+        raise RuntimeError("UserProfileRepository not initialized — server startup incomplete")
     return _user_profile_repo
 
 
 def get_seeker_progression_repo() -> SeekerProgressionRepository:
     """Get the NEPHILIM seeker progression repository."""
+    if _seeker_progression_repo is None:
+        raise RuntimeError("SeekerProgressionRepository not initialized — server startup incomplete")
     return _seeker_progression_repo
 
 

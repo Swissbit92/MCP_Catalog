@@ -1,55 +1,54 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { AlertTriangle } from 'lucide-react';
-import { Avatar2D } from './Avatar2D';
-import { RichContent } from './RichContent';
-import { SourceIndicator } from './SourceIndicator';
-import { Message as ApiMessage } from '../services/api';
+import React from 'react'
+import { motion } from 'framer-motion'
+import { AlertTriangle } from 'lucide-react'
+import { Avatar2D } from './Avatar2D'
+import { RichContent } from './RichContent'
+import { SourceIndicator } from './SourceIndicator'
+import { Message as ApiMessage } from '../services/api'
 
 export interface Message extends ApiMessage {
-  latency?: number; // Response time in milliseconds
-  status?: 'sending' | 'sent' | 'delivered' | 'failed';
-  retryCount?: number;
+  latency?: number
+  status?: 'sending' | 'sent' | 'delivered' | 'failed'
+  retryCount?: number
 }
 
 interface MessageBubbleProps {
-  message: Message;
-  personaAvatar?: string;
-  userAvatar?: string;
-  showTimestamp?: boolean;
-  onRetry?: (messageId: string) => void;
-  personaRarity?: string;
-  personaName?: string;
+  message: Message
+  personaAvatar?: string
+  userAvatar?: string
+  showTimestamp?: boolean
+  onRetry?: (messageId: string) => void
+  personaRarity?: string
+  personaName?: string
 }
 
 interface ParsedContent {
-  mainContent: string;
-  citationSection: string | null;
-  hasCitations: boolean;
+  mainContent: string
+  citationSection: string | null
+  hasCitations: boolean
 }
 
 /**
  * Parse message content to extract citation section
  */
 function parseMessageContent(content: string): ParsedContent {
-  // Look for citation markers (with or without emoji)
   const citationMarkers = [
     /🔍\s*\*\*Sources:\*\*/i,
     /🔍\s*Sources:/i,
     /\*\*Sources:\*\*/i,
     /\nSources:\n/i
-  ];
+  ]
 
   for (const marker of citationMarkers) {
-    const match = content.search(marker);
+    const match = content.search(marker)
     if (match !== -1) {
-      const mainContent = content.substring(0, match).trim();
-      const citationSection = content.substring(match).trim();
+      const mainContent = content.substring(0, match).trim()
+      const citationSection = content.substring(match).trim()
       return {
         mainContent,
         citationSection,
         hasCitations: true
-      };
+      }
     }
   }
 
@@ -57,7 +56,7 @@ function parseMessageContent(content: string): ParsedContent {
     mainContent: content,
     citationSection: null,
     hasCitations: false
-  };
+  }
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
@@ -69,12 +68,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   personaRarity,
   personaName,
 }) => {
-  const isUser = message.role === 'user';
+  const isUser = message.role === 'user'
 
-  // Parse content to extract citations
-  const parsed = React.useMemo(() => parseMessageContent(message.content), [message.content]);
-
-
+  const parsed = React.useMemo(() => parseMessageContent(message.content), [message.content])
 
   return (
     <motion.div
@@ -106,21 +102,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         <motion.div
           className={`px-4 py-3 rounded-2xl shadow-sm ${
             isUser
-              ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-br-md'
-              : 'bg-gray-100 text-gray-900 rounded-bl-md border border-gray-200'
+              ? 'bg-gradient-to-br from-cyan-600/80 to-blue-700/80 text-white rounded-br-md'
+              : 'bg-white/[0.08] backdrop-blur-lg text-gray-200 rounded-bl-md border-l-2 border-cyan-500/50'
           }`}
+          style={!isUser ? { textShadow: '0 0 20px rgba(0, 255, 255, 0.1)' } : undefined}
           whileHover={{ scale: 1.02 }}
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         >
           {/* Persona indicator for assistant messages */}
           {!isUser && personaName && (
             <div className="flex items-center gap-1 mb-2">
-              <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                personaRarity === 'legendary' ? 'bg-yellow-100 text-yellow-800' :
-                personaRarity === 'epic' ? 'bg-purple-100 text-purple-800' :
-                personaRarity === 'rare' ? 'bg-blue-100 text-blue-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+              <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-cyan-300">
                 {personaName}
               </div>
             </div>
@@ -131,17 +123,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
           {/* Citation section - styled differently */}
           {parsed.hasCitations && parsed.citationSection && (
-            <div className="mt-4 pt-3 border-t border-gray-300/50">
-              <RichContent content={parsed.citationSection} className="text-sm text-gray-700" />
+            <div className="mt-4 pt-3 border-t border-white/20">
+              <RichContent content={parsed.citationSection} className="text-sm text-gray-400" />
             </div>
           )}
 
           {/* Citation warning - if web search was used but citations are missing/invalid */}
           {!isUser && message.used_search && !parsed.hasCitations && message.citation_valid === false && (
-            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-yellow-200 bg-yellow-50 px-3 py-2 rounded-lg">
-              <AlertTriangle size={14} className="text-yellow-600 flex-shrink-0" />
-              <span className="text-xs text-yellow-800">
-                ⚠️ This response used web search but citations were not included
+            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-yellow-500/30 bg-yellow-500/10 px-3 py-2 rounded-lg">
+              <AlertTriangle size={14} className="text-yellow-400 flex-shrink-0" />
+              <span className="text-xs text-yellow-300">
+                This response used web search but citations were not included
               </span>
             </div>
           )}
@@ -156,7 +148,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         <div className={`mt-1 flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
           {/* Timestamp and Latency */}
           {(showTimestamp && message.timestamp) || message.latency ? (
-            <div className="text-xs text-gray-500 flex items-center gap-2">
+            <div className="text-xs text-gray-400 flex items-center gap-2">
               {showTimestamp && message.timestamp && (
                 <span>
                   {message.timestamp.toLocaleTimeString([], {
@@ -222,5 +214,5 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         </div>
       )}
     </motion.div>
-  );
-});
+  )
+})

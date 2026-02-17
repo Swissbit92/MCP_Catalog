@@ -1,61 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import CharacterCard from '../components/CharacterCard';
-import PullInterface from '../components/PullInterface';
-import CharacterCollection from '../components/CharacterCollection';
-import PullHistory from '../components/PullHistory';
-import EnergyParticles from '../components/EnergyParticles';
-import PersonaFilterToggle from '../components/PersonaFilterToggle';
-import { fetchPersonas } from '../services/api';
-import { usePersona } from '../context/PersonaContext';
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import CharacterCard from '../components/CharacterCard'
+import SummoningRitual from '../components/SummoningRitual'
+import BondsForged from '../components/BondsForged'
+import InvocationLog from '../components/InvocationLog'
+import NephilimBackground from '../components/NephilimBackground'
+import PersonaFilterToggle from '../components/PersonaFilterToggle'
+import { fetchPersonas } from '../services/api'
+import { usePersona } from '../context/PersonaContext'
 import {
+  isNephilimPersona,
   PersonaFilterMode,
   getFilterMode,
   setFilterMode,
   filterPersonas,
   getPersonaCounts,
-} from '../utils/personaFilter';
+} from '../utils/personaFilter'
 
 interface Persona {
-  key: string;
-  display_name: string;
-  style: string;
-  image: string;
-  avatar?: string;
-  bg?: string;
-  rarity: string;
-  coordinator_label?: string;
+  key: string
+  display_name: string
+  style: string
+  image: string
+  avatar?: string
+  bg?: string
+  rarity: string
+  coordinator_label?: string
   voice?: {
-    greeting: string;
-  };
+    greeting: string
+  }
+}
+
+// Staggered entrance animation variants
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.07 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.9 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: 'spring' as const, stiffness: 300, damping: 20 }
+  }
 }
 
 const CharacterCardV2Showcase: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') as 'cards' | 'pull' | 'collection' | 'history') || 'cards';
+  const [searchParams] = useSearchParams()
+  // Support both old and new tab names for backward compatibility
+  const TAB_ALIASES: Record<string, 'cards' | 'ritual' | 'bonds' | 'chronicle'> = {
+    cards: 'cards',
+    pull: 'ritual',
+    ritual: 'ritual',
+    collection: 'bonds',
+    bonds: 'bonds',
+    history: 'chronicle',
+    chronicle: 'chronicle',
+  }
+  const rawTab = searchParams.get('tab') || 'cards'
+  const initialTab = TAB_ALIASES[rawTab] || 'cards'
 
-  const [personas, setPersonas] = useState<Persona[]>([]);
-  const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'cards' | 'pull' | 'collection' | 'history'>(initialTab);
-  const [personaFilter, setPersonaFilter] = useState<PersonaFilterMode>(getFilterMode());
-  const { setSelectedPersona, selectedPersona } = usePersona();
-  const navigate = useNavigate();
+  const [personas, setPersonas] = useState<Persona[]>([])
+  const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState<'cards' | 'ritual' | 'bonds' | 'chronicle'>(initialTab)
+  const [personaFilter, setPersonaFilter] = useState<PersonaFilterMode>(getFilterMode())
+  const [hoveredPersona, setHoveredPersona] = useState<Persona | null>(null)
+  const { setSelectedPersona, selectedPersona } = usePersona()
+  const navigate = useNavigate()
+
+  // The persona to show in the preview panel: hovered takes priority, then selected
+  const previewPersona = hoveredPersona || selectedPersona as Persona | null
 
   // Handle filter mode change
   const handleFilterChange = (mode: PersonaFilterMode) => {
-    setPersonaFilter(mode);
-    setFilterMode(mode);
-  };
+    setPersonaFilter(mode)
+    setFilterMode(mode)
+  }
 
   // Get persona counts for the toggle
-  const personaCounts = getPersonaCounts(personas);
+  const personaCounts = getPersonaCounts(personas)
 
   useEffect(() => {
     const getPersonas = async () => {
       try {
-        const fetchedPersonas = await fetchPersonas();
+        const fetchedPersonas = await fetchPersonas()
         const mappedPersonas = fetchedPersonas.map(p => ({
           key: p.key,
           display_name: p.display_name || p.key,
@@ -66,283 +100,391 @@ const CharacterCardV2Showcase: React.FC = () => {
           rarity: p.rarity,
           coordinator_label: p.coordinator_label,
           voice: p.voice,
-        }));
+        }))
 
         // Startup synchronization: clean up localStorage for removed personas
-        const currentPersonaKeys = new Set(mappedPersonas.map(p => p.key));
-        const storedCollected = localStorage.getItem('collectedPersonas');
+        const currentPersonaKeys = new Set(mappedPersonas.map(p => p.key))
+        const storedCollected = localStorage.getItem('collectedPersonas')
         if (storedCollected) {
-          const collectedPersonas = JSON.parse(storedCollected);
-          const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key));
+          const collectedPersonas = JSON.parse(storedCollected)
+          const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key))
           if (validCollected.length !== collectedPersonas.length) {
-            localStorage.setItem('collectedPersonas', JSON.stringify(validCollected));
+            localStorage.setItem('collectedPersonas', JSON.stringify(validCollected))
           }
         }
 
-        setPersonas(mappedPersonas);
-        setFilteredPersonas(mappedPersonas);
+        setPersonas(mappedPersonas)
+        setFilteredPersonas(mappedPersonas)
       } catch (error) {
-        console.error('Failed to fetch personas:', error);
-        // Fallback to empty state if API fails
-        setPersonas([]);
-        setFilteredPersonas([]);
+        console.error('Failed to fetch personas:', error)
+        setPersonas([])
+        setFilteredPersonas([])
       }
-    };
+    }
 
-    getPersonas();
-  }, []);
+    getPersonas()
+  }, [])
 
   // Filter personas based on search query and persona filter mode
   React.useEffect(() => {
-    // First apply persona type filter (NEPHILIM/legacy/all)
-    let filtered = filterPersonas(personas, personaFilter);
+    // First apply persona type filter (Nephilim/Wanderers/all)
+    let filtered = filterPersonas(personas, personaFilter)
 
     // Then apply search query filter
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase()
       filtered = filtered.filter(persona =>
         persona.display_name.toLowerCase().includes(query) ||
         persona.style.toLowerCase().includes(query) ||
         persona.key.toLowerCase().includes(query) ||
         persona.rarity.toLowerCase().includes(query)
-      );
+      )
     }
 
-    setFilteredPersonas(filtered);
-  }, [searchQuery, personas, personaFilter]);
+    setFilteredPersonas(filtered)
+  }, [searchQuery, personas, personaFilter])
 
   // Card click - selection only (no navigation)
   const handleCardSelect = (personaKey: string) => {
-    const personaToSelect = personas.find(p => p.key === personaKey);
+    const personaToSelect = personas.find(p => p.key === personaKey)
     if (personaToSelect) {
-      setSelectedPersona(personaToSelect); // Updates context for background AND persists selection
+      setSelectedPersona(personaToSelect)
     }
-  };
+  }
 
   // Choose button - navigate to chat
   const handleChoose = (personaKey: string) => {
-    const personaToSelect = personas.find(p => p.key === personaKey);
+    const personaToSelect = personas.find(p => p.key === personaKey)
     if (personaToSelect) {
-      setSelectedPersona(personaToSelect);
-      navigate('/chat'); // Navigate to chat
+      setSelectedPersona(personaToSelect)
+      navigate('/chat')
     }
-  };
+  }
+
+  // Navigate to chat from preview panel
+  const handleBeginConversation = () => {
+    if (previewPersona) {
+      setSelectedPersona(previewPersona)
+      navigate('/chat')
+    }
+  }
+
+  // NEPHILIM glassmorphic tab button classes
+  const activeTabStyle = 'bg-white/[0.1] border border-cyan-500/50 text-cyan-300 shadow-lg'
+  const inactiveTabStyle = 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.05]'
+  const tabClass = (tab: string) =>
+    `px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+      activeTab === tab ? activeTabStyle : inactiveTabStyle
+    }`
 
   if (personas.length === 0) {
     return (
-      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
-        {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
-        <div className="absolute inset-0 space-background"></div>
-        <div className="absolute inset-0 nebula-overlay"></div>
-        <EnergyParticles isActive={true} />
-
-        <div className="relative z-10 text-center">
-          <div className="text-white text-xl mb-4">Loading Classic Cards...</div>
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
+      <NephilimBackground particles={true} skyline={false} intensity={0.4}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="relative z-10 text-center">
+            <div className="text-gray-200 text-xl mb-4">Loading Companions...</div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto"></div>
+          </div>
         </div>
-      </div>
-    );
+      </NephilimBackground>
+    )
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Deep space gradient background (Option 6: Glassmorphic + Rarity Hybrid) */}
-      <div className="absolute inset-0 space-background"></div>
-      <div className="absolute inset-0 nebula-overlay"></div>
-      <EnergyParticles isActive={true} />
+    <NephilimBackground particles={true} skyline={true} intensity={0.5}>
+      <div className="min-h-screen overflow-auto">
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <h1 className="text-4xl md:text-6xl font-nephilim text-cyan-300 mb-4 tracking-wider">
+              Companions
+            </h1>
+            <p className="text-xl text-gray-200 max-w-3xl mx-auto mb-4">
+              Choose your companion from the Nephilim and Wanderers who await your call.
+            </p>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-400 to-blue-400 mb-4">
-            Classic Character Cards
-          </h1>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-4">
-            Experience the timeless gacha-style character cards featuring your AI companions.
-            Classic foil effects, elegant rarity theming, and smooth animations that started it all.
-          </p>
-
-          {/* Persona Filter Toggle */}
-          <div className="flex justify-center mb-6">
-            <PersonaFilterToggle
-              mode={personaFilter}
-              onChange={handleFilterChange}
-              counts={personaCounts}
-            />
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-black/30 backdrop-blur-sm rounded-full p-1 border border-white/10">
-              <button
-                onClick={() => setActiveTab('cards')}
-                className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                  activeTab === 'cards'
-                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg'
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                Card Gallery
-              </button>
-              <button
-                onClick={() => setActiveTab('pull')}
-                className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                  activeTab === 'pull'
-                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg'
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                Gacha Pull
-              </button>
-              <button
-                onClick={() => setActiveTab('collection')}
-                className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                  activeTab === 'collection'
-                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg'
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                My Collection
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                  activeTab === 'history'
-                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg'
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                Pull History
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'cards' ? (
-            <motion.div
-              key="cards"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-
-        {/* Search Bar */}
-        <div className="flex justify-center mb-6">
-          <input
-            type="text"
-            placeholder="Search by name, style, or rarity..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="px-6 py-3 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent max-w-md w-full"
-          />
-        </div>
-
-        {/* Rarity Legend */}
-        <div className="flex flex-wrap justify-center gap-4 mb-6">
-          {[
-            { rarity: 'legendary', color: 'from-yellow-400 to-amber-600', label: 'Legendary' },
-            { rarity: 'epic', color: 'from-purple-400 to-pink-600', label: 'Epic' },
-            { rarity: 'rare', color: 'from-blue-400 to-cyan-600', label: 'Rare' },
-            { rarity: 'common', color: 'from-gray-400 to-slate-600', label: 'Common' }
-          ].map(({ rarity, color, label }) => (
-            <div key={rarity} className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
-              <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${color}`}></div>
-              <span className="text-white font-medium">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
-          {filteredPersonas.map((persona, index) => (
-            <CharacterCard
-              key={persona.key}
-              name={persona.display_name}
-              style={persona.style}
-              image={`/images/${persona.image}`}
-              rarity={persona.rarity}
-              onSelect={handleCardSelect}
-              onChoose={handleChoose}
-              isSelected={selectedPersona?.key === persona.key}
-              personaKey={persona.key}
-              index={index}
-            />
-          ))}
-        </div>
-
-        {/* Instructions */}
-        <div className="text-center mt-8">
-          <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 max-w-2xl mx-auto border border-white/10">
-            <h3 className="text-xl font-bold text-white mb-4">Interactive Features</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-              <div className="text-gray-300">
-                <div className="font-semibold text-yellow-400 mb-2">✨ Classic Foil Effects</div>
-                <div className="text-sm">Traditional card frames with elegant foil overlays and glint effects</div>
-              </div>
-              <div className="text-gray-300">
-                <div className="font-semibold text-purple-400 mb-2">🎯 Rarity Theming</div>
-                <div className="text-sm">Beautiful gradient colors and styling based on character rarity</div>
-              </div>
-              <div className="text-gray-300">
-                <div className="font-semibold text-blue-400 mb-2">🎮 Smooth Animations</div>
-                <div className="text-sm">Gentle hover effects with subtle lift and rotation animations</div>
-              </div>
-              <div className="text-gray-300">
-                <div className="font-semibold text-green-400 mb-2">🎨 Selection States</div>
-                <div className="text-sm">Clean selection highlighting with the classic "Choose" button</div>
-              </div>
-            </div>
-            <div className="mt-6 p-4 bg-black/30 rounded-lg">
-              <div className="text-sm text-gray-300">
-                <strong className="text-cyan-400">💡 Pro Tip:</strong> Hover over the cards to see the classic gacha animations!
-                Each card has its own personality with smooth entrance effects and elegant interactions.
-              </div>
-            </div>
-          </div>
-        </div>
-            </motion.div>
-          ) : activeTab === 'pull' ? (
-            <motion.div
-              key="pull"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <PullInterface onCharacterSelect={handleCardSelect} />
-            </motion.div>
-          ) : activeTab === 'collection' ? (
-            <motion.div
-              key="collection"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <CharacterCollection
-                onCharacterSelect={handleCardSelect}
-                onChoose={handleChoose}
-                selectedPersonaKey={selectedPersona?.key || null}
+            {/* Persona Filter Toggle */}
+            <div className="flex justify-center mb-6">
+              <PersonaFilterToggle
+                mode={personaFilter}
+                onChange={handleFilterChange}
+                counts={personaCounts}
               />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <PullHistory />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-};
+            </div>
 
-export default CharacterCardV2Showcase;
+            {/* Tab Navigation */}
+            <div className="flex justify-center mb-8">
+              <div className="bg-[#141418]/60 backdrop-blur-xl rounded-full p-1 border border-white/[0.1]">
+                <button onClick={() => setActiveTab('cards')} className={tabClass('cards')}>
+                  Companions
+                </button>
+                <button onClick={() => setActiveTab('ritual')} className={tabClass('ritual')}>
+                  Summoning Ritual
+                </button>
+                <button onClick={() => setActiveTab('bonds')} className={tabClass('bonds')}>
+                  Bonds Forged
+                </button>
+                <button onClick={() => setActiveTab('chronicle')} className={tabClass('chronicle')}>
+                  Invocation Chronicle
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            {activeTab === 'cards' ? (
+              <motion.div
+                key="cards"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Search Bar */}
+                <div className="flex justify-center mb-6">
+                  <input
+                    type="text"
+                    placeholder="Search by name, style, or rarity..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="px-6 py-3 rounded-full bg-[#141418] border border-white/[0.1] text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/30 max-w-md w-full"
+                  />
+                </div>
+
+                {/* Rarity Legend */}
+                <div className="flex flex-wrap justify-center gap-4 mb-6">
+                  {[
+                    { rarity: 'legendary', color: 'from-yellow-400 to-amber-600', label: 'Legendary' },
+                    { rarity: 'epic', color: 'from-purple-400 to-pink-600', label: 'Epic' },
+                    { rarity: 'rare', color: 'from-cyan-400 to-blue-600', label: 'Rare' },
+                    { rarity: 'common', color: 'from-gray-400 to-slate-600', label: 'Common' }
+                  ].map(({ rarity, color, label }) => (
+                    <div key={rarity} className="flex items-center gap-2 bg-[#141418]/80 backdrop-blur-sm rounded-full px-4 py-2 border border-white/[0.1]">
+                      <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${color}`}></div>
+                      <span className="text-gray-200 font-medium text-sm">{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Main Layout: Grid + Preview Panel */}
+                <div className="flex gap-6">
+                  {/* Cards Grid - 60% on desktop */}
+                  <div className="w-full md:w-[60%]">
+                    <motion.div
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center"
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="show"
+                      key={personaFilter + searchQuery}
+                    >
+                      {filteredPersonas.map((persona, index) => (
+                        <motion.div
+                          key={persona.key}
+                          variants={itemVariants}
+                          onMouseEnter={() => setHoveredPersona(persona)}
+                          onMouseLeave={() => setHoveredPersona(null)}
+                        >
+                          <CharacterCard
+                            name={persona.display_name}
+                            style={persona.style}
+                            image={`/images/${persona.image}`}
+                            rarity={persona.rarity}
+                            onSelect={handleCardSelect}
+                            onChoose={handleChoose}
+                            isSelected={selectedPersona?.key === persona.key}
+                            personaKey={persona.key}
+                            index={index}
+                          />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </div>
+
+                  {/* Live Preview Panel - 40% on desktop, hidden on mobile */}
+                  <div className="hidden md:block w-[40%]">
+                    <div className="sticky top-8">
+                      <AnimatePresence mode="wait">
+                        {previewPersona ? (
+                          <motion.div
+                            key={previewPersona.key}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.1] rounded-xl overflow-hidden"
+                          >
+                            {/* Preview Image */}
+                            <div className="relative w-full aspect-[3/4] overflow-hidden">
+                              <img
+                                src={`/images/${previewPersona.image}`}
+                                alt={previewPersona.display_name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/images/ui/default_avatar.png'
+                                }}
+                              />
+                              {/* Gradient overlay at bottom of image */}
+                              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0B0B0D] to-transparent" />
+                              {/* Rarity glow at top */}
+                              <div className={`absolute top-0 left-0 right-0 h-1 ${
+                                previewPersona.rarity === 'legendary' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
+                                previewPersona.rarity === 'epic' ? 'bg-gradient-to-r from-purple-400 to-fuchsia-500' :
+                                previewPersona.rarity === 'rare' ? 'bg-gradient-to-r from-cyan-400 to-blue-500' :
+                                'bg-gradient-to-r from-gray-400 to-gray-500'
+                              }`} />
+                            </div>
+
+                            {/* Preview Info */}
+                            <div className="p-6 -mt-12 relative z-10">
+                              {/* Type badge */}
+                              <div className="flex items-center gap-2 mb-2">
+                                {isNephilimPersona(previewPersona.key) ? (
+                                  <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded bg-gradient-to-r from-cyan-500/20 to-fuchsia-500/20 border border-cyan-400/30 text-cyan-400">
+                                    Nephilim
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded bg-white/[0.08] border border-white/[0.15] text-gray-300">
+                                    Wanderer
+                                  </span>
+                                )}
+                                <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded bg-white/[0.08] border border-white/[0.15] text-gray-400">
+                                  {previewPersona.rarity}
+                                </span>
+                              </div>
+
+                              {/* Name */}
+                              <h2 className="text-2xl font-nephilim text-gray-100 mb-1 tracking-wide">
+                                {previewPersona.display_name}
+                              </h2>
+
+                              {/* Style description */}
+                              <p className="text-gray-200 text-sm mb-3 leading-relaxed italic">
+                                {previewPersona.style}
+                              </p>
+
+                              {/* Domain / coordinator label */}
+                              {previewPersona.coordinator_label && (
+                                <div className="mb-4">
+                                  <div className="text-xs font-bold uppercase tracking-widest text-cyan-400/80 mb-1">Domain</div>
+                                  <p className="text-gray-200 text-sm">{previewPersona.coordinator_label}</p>
+                                </div>
+                              )}
+
+                              {/* Greeting preview */}
+                              {previewPersona.voice?.greeting && (
+                                <div className="mb-4 p-3 bg-white/[0.03] rounded-lg border border-white/[0.05]">
+                                  <div className="text-xs font-bold uppercase tracking-widest text-fuchsia-400/80 mb-1">Greeting</div>
+                                  <p className="text-gray-300 text-sm italic leading-relaxed">
+                                    &ldquo;{previewPersona.voice.greeting}&rdquo;
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* CTA Button */}
+                              <motion.button
+                                onClick={handleBeginConversation}
+                                className="w-full py-3 px-6 rounded-lg font-bold text-sm uppercase tracking-widest bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-black shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-shadow"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                Begin Conversation
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="empty-preview"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-xl p-8 text-center min-h-[400px] flex flex-col items-center justify-center"
+                          >
+                            <div className="text-4xl mb-4 opacity-30">⬡</div>
+                            <p className="text-gray-400 text-sm">
+                              Hover over a card to preview
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              or click to select a companion
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Companion Interactions Info */}
+                <div className="text-center mt-8">
+                  <div className="bg-[#141418]/80 backdrop-blur-xl rounded-2xl p-6 max-w-2xl mx-auto border border-white/[0.1]">
+                    <h3 className="text-xl font-bold text-gray-100 mb-4">Companion Interactions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                      <div className="text-gray-200">
+                        <div className="font-semibold text-cyan-300 mb-2">Holographic Foil</div>
+                        <div className="text-sm">Pointer-tracking 3D tilt with dynamic light effects on every card</div>
+                      </div>
+                      <div className="text-gray-200">
+                        <div className="font-semibold text-fuchsia-300 mb-2">Rarity Resonance</div>
+                        <div className="text-sm">Each companion radiates unique energy based on their rarity tier</div>
+                      </div>
+                      <div className="text-gray-200">
+                        <div className="font-semibold text-cyan-300 mb-2">Fluid Animations</div>
+                        <div className="text-sm">Spring-physics entrance effects with smooth hover interactions</div>
+                      </div>
+                      <div className="text-gray-200">
+                        <div className="font-semibold text-fuchsia-300 mb-2">Selection States</div>
+                        <div className="text-sm">Glowing selection aura with the invocation button</div>
+                      </div>
+                    </div>
+                    <div className="mt-6 p-4 bg-[#0B0B0D]/60 rounded-lg border border-white/[0.05]">
+                      <div className="text-sm text-gray-300">
+                        <strong className="text-cyan-400">Tip:</strong> Hover over the cards to activate holographic tracking.
+                        Each companion responds uniquely to your presence.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : activeTab === 'ritual' ? (
+              <motion.div
+                key="ritual"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <SummoningRitual onCharacterSelect={handleCardSelect} />
+              </motion.div>
+            ) : activeTab === 'bonds' ? (
+              <motion.div
+                key="bonds"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <BondsForged
+                  onCharacterSelect={handleCardSelect}
+                  onChoose={handleChoose}
+                  selectedPersonaKey={selectedPersona?.key || null}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="chronicle"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <InvocationLog />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </NephilimBackground>
+  )
+}
+
+export default CharacterCardV2Showcase
