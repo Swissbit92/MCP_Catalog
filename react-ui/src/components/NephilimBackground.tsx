@@ -231,47 +231,50 @@ const NephilimBackground: React.FC<NephilimBackgroundProps> = ({
   }, [persona])
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-nephilim-void">
-      {/* Base gradient */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(180deg, #0B0B0D 0%, #1a0f2e 50%, #0B0B0D 100%)',
-        }}
-      />
+    <>
+      {/* Fixed decorative background — no content here */}
+      <div className="fixed inset-0 overflow-hidden bg-nephilim-void pointer-events-none">
+        {/* Base gradient */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(180deg, #0B0B0D 0%, #1a0f2e 50%, #0B0B0D 100%)',
+          }}
+        />
 
-      {/* Aurora/nebula overlay */}
-      <AuroraOverlay persona={persona || undefined} intensity={intensity} />
+        {/* Aurora/nebula overlay */}
+        <AuroraOverlay persona={persona || undefined} intensity={intensity} />
 
-      {/* Grid overlay */}
-      <GridOverlay />
+        {/* Grid overlay */}
+        <GridOverlay />
 
-      {/* Scan lines */}
-      <ScanLines />
+        {/* Scan lines */}
+        <ScanLines />
 
-      {/* Floating particles */}
-      {particles && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {particleConfigs.map((config, i) => (
-            <Particle key={i} {...config} />
-          ))}
-        </div>
-      )}
+        {/* Floating particles */}
+        {particles && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {particleConfigs.map((config, i) => (
+              <Particle key={i} {...config} />
+            ))}
+          </div>
+        )}
 
-      {/* City skyline */}
-      {skyline && <Skyline />}
+        {/* City skyline */}
+        {skyline && <Skyline />}
 
-      {/* Vignette effect */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%)',
-        }}
-      />
+        {/* Vignette effect */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%)',
+          }}
+        />
+      </div>
 
-      {/* Content layer */}
+      {/* Scrollable content layer */}
       <div className="relative z-10 h-full">{children}</div>
-    </div>
+    </>
   )
 }
 
