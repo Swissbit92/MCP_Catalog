@@ -31,6 +31,7 @@ const Header: React.FC = () => {
 
   const desktopNavItems = [
     { to: '/select', label: 'Companions' },
+    { to: '/chat', label: 'Chat' },
     { to: '/dashboard', label: 'Dashboard' },
   ]
 
