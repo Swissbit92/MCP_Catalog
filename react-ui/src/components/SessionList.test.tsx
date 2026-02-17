@@ -3,6 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChatSession } from '../services/api';
 import SessionList from './SessionList';
 
+// Mock react-router-dom
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
+
 // Mock the APIs
 const mockFetchPersonas = jest.fn();
 jest.mock('../services/api', () => ({
@@ -108,7 +114,7 @@ describe('SessionList', () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Chat History')).toBeInTheDocument();
+      expect(screen.getByText('Memory Archives')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
@@ -299,7 +305,7 @@ describe('SessionList', () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Chat History')).toBeInTheDocument();
+      expect(screen.getByText('Memory Archives')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Your conversations')).toBeInTheDocument();
@@ -309,19 +315,16 @@ describe('SessionList', () => {
     const { container } = render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Chat History')).toBeInTheDocument();
+      expect(screen.getByText('Memory Archives')).toBeInTheDocument();
     });
 
     // Check that glassmorphism background layers are applied
     const sessionListContainer = container.firstChild as HTMLElement;
-    expect(sessionListContainer).toHaveClass('bg-gradient-to-b');
-    expect(sessionListContainer).toHaveClass('from-slate-900/95');
     expect(sessionListContainer).toHaveClass('backdrop-blur-xl');
 
-    // Check that header has proper styling
-    const header = screen.getByText('Chat History').closest('div');
-    expect(header).toHaveClass('border-b');
-    expect(header).toHaveClass('border-slate-700/50');
+    // Check that header section has border
+    const headerSection = screen.getByText('Memory Archives').closest('.relative');
+    expect(headerSection).toHaveClass('border-b');
   });
 
   it('applies dynamic background animations based on persona rarity', async () => {
@@ -334,15 +337,15 @@ describe('SessionList', () => {
       selectedPersona: { ...mockPersonas[0], rarity: 'legendary' },
     });
 
-    const { container } = render(<SessionList onSessionSelect={mockOnSessionSelect} />);
+    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
     await waitFor(() => {
       expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
     });
 
-    // Check that dynamic background animation div exists
-    const animatedBackground = container.querySelector('[class*="absolute inset-0 opacity-60"]');
-    expect(animatedBackground).toBeInTheDocument();
+    // Active session should have rarity-based background glow
+    const activeSession = screen.getByText('Chat with Eeva').closest('[class*="border-2"]');
+    expect(activeSession).toHaveClass('bg-yellow-500/10');
   });
 
   it('enhances active session with rarity-based glow effects', async () => {

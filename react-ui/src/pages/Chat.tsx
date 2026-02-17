@@ -339,37 +339,38 @@ const Chat: React.FC = () => {
 
         {/* Content container */}
         <div className="relative z-10 flex h-full w-full">
-          {/* Sidebar Overlay */}
+          {/* Desktop: always-visible sidebar */}
+          <div className="hidden md:block w-80 flex-shrink-0 h-full">
+            <SessionList onSessionSelect={handleSessionSelect} />
+          </div>
+
+          {/* Mobile: slide-in overlay sidebar */}
           <AnimatePresence>
             {isSidebarOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-                onClick={() => setIsSidebarOpen(false)}
-              />
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                  onClick={() => setIsSidebarOpen(false)}
+                />
+                <motion.div
+                  initial={{ x: -320 }}
+                  animate={{ x: 0 }}
+                  exit={{ x: -320 }}
+                  transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+                  className="fixed z-50 h-full w-80 md:hidden"
+                >
+                  <SessionList onSessionSelect={handleSessionSelect} />
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
 
-          {/* Sidebar */}
-          <motion.div
-            initial={{ x: -320 }}
-            animate={{
-              x: isSidebarOpen ? 0 : -320,
-              width: 320
-            }}
-            transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-            className="fixed z-50 h-full"
-          >
-            <SessionList onSessionSelect={handleSessionSelect} />
-          </motion.div>
-
           {/* Main Chat Area */}
           <div
-            className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 relative ${
-              isSidebarOpen ? 'md:ml-[320px]' : ''
-            }`}
+            className="flex-1 flex flex-col overflow-hidden relative"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
