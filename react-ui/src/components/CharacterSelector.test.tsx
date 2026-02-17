@@ -90,8 +90,8 @@ describe('CharacterSelector', () => {
     );
 
     const thumbnails = screen.getAllByRole('button');
-    expect(thumbnails[0]).toHaveClass('border-blue-400');
-    expect(thumbnails[1]).toHaveClass('border-slate-600/50');
+    expect(thumbnails[0]).toHaveClass('border-cyan-400');
+    expect(thumbnails[1]).toHaveClass('border-white/[0.1]');
   });
 
   it('calls onCharacterSelect when thumbnail is clicked', () => {

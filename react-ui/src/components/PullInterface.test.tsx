@@ -17,10 +17,12 @@ jest.mock('../services/api', () => ({
   clearSessionMessages: jest.fn(),
 }));
 
-// Mock tsparticles
-jest.mock('@tsparticles/react', () => ({
-  Particles: () => null,
-}));
+// Mock EnergyParticles to avoid tsparticles engine initialization in tests
+jest.mock('./EnergyParticles', () => {
+  return function MockEnergyParticles() {
+    return <div data-testid="energy-particles" />;
+  };
+});
 
 // Mock AudioContext
 jest.mock('../context/AudioContext', () => ({

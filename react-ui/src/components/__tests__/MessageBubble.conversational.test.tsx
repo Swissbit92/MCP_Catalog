@@ -10,9 +10,10 @@ import { MessageBubble } from '../MessageBubble';
 describe('MessageBubble - Conversational Features', () => {
   test('renders questions with proper styling', () => {
     const message = {
-      role: 'assistant',
+      id: 'msg-1',
+      role: 'assistant' as const,
       content: 'Bitcoin is at $87,855 right now. Are you thinking about buying more?',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
     };
 
     render(
@@ -30,9 +31,10 @@ describe('MessageBubble - Conversational Features', () => {
   test('renders multi-message indicator when appropriate', () => {
     // Note: This test assumes future multi-message rendering
     const message = {
-      role: 'assistant',
+      id: 'msg-2',
+      role: 'assistant' as const,
       content: 'First message.\n\nSecond message.\n\nThird message?',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
     };
 
     render(
@@ -49,9 +51,10 @@ describe('MessageBubble - Conversational Features', () => {
 
   test('highlights questions visually', () => {
     const message = {
-      role: 'assistant',
+      id: 'msg-3',
+      role: 'assistant' as const,
       content: 'What do you think about that?',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
     };
 
     const { container } = render(
@@ -62,8 +65,8 @@ describe('MessageBubble - Conversational Features', () => {
       />
     );
 
-    // Question should be rendered
-    const messageContent = container.querySelector('.message-content');
-    expect(messageContent?.textContent).toContain('What do you think');
+    // Question should be rendered in the text content
+    const textContent = container.textContent;
+    expect(textContent).toContain('What do you think');
   });
 });

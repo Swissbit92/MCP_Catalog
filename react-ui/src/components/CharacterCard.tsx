@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import styles from './CharacterCard.module.css'
+import LegendaryParticles from './LegendaryParticles'
 
 interface CharacterCardProps {
   name: string
@@ -16,10 +17,20 @@ interface CharacterCardProps {
 
 const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarity, onSelect, onChoose, isSelected, personaKey, index = 0 }) => {
   const rarityClass = styles[`rarity-${rarity.toLowerCase()}`]
+  const rarityLower = rarity.toLowerCase()
   const selectedClass = isSelected ? styles['selected'] : ''
   const cardRef = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const [spotlightPos, setSpotlightPos] = useState({ x: 50, y: 50 })
+
+  // Detect mobile for disabling canvas particles
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Motion values for mouse tracking
   const mouseX = useMotionValue(0)
@@ -49,6 +60,13 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
       x: ((e.clientX - rect.left) / rect.width) * 100,
       y: ((e.clientY - rect.top) / rect.height) * 100,
     })
+    // Set CSS custom properties for rarity effects
+    if (cardRef.current) {
+      const percentX = ((e.clientX - rect.left) / rect.width) * 100
+      const percentY = ((e.clientY - rect.top) / rect.height) * 100
+      cardRef.current.style.setProperty('--mouse-x', `${percentX}%`)
+      cardRef.current.style.setProperty('--mouse-y', `${percentY}%`)
+    }
   }, [mouseX, mouseY])
 
   const handleMouseEnter = useCallback(() => setIsHovered(true), [])
@@ -58,6 +76,10 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
     mouseX.set(0)
     mouseY.set(0)
     setSpotlightPos({ x: 50, y: 50 })
+    if (cardRef.current) {
+      cardRef.current.style.removeProperty('--mouse-x')
+      cardRef.current.style.removeProperty('--mouse-y')
+    }
   }, [mouseX, mouseY])
 
   const handleChooseClick = (e: React.MouseEvent) => {
@@ -85,6 +107,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
           rotateY: isHovered ? rotateY : 0,
           transformStyle: 'preserve-3d',
           transformOrigin: 'center center',
+          overflow: rarityLower === 'legendary' ? 'visible' : undefined,
         }}
         initial={{ opacity: 0, y: 20, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -113,6 +136,38 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
               background: `radial-gradient(circle at ${spotlightPos.x}% ${spotlightPos.y}%, rgba(255,255,255,0.15) 0%, transparent 60%)`,
             }}
           />
+        )}
+        {/* Spinning border for Rare/Epic/Legendary */}
+        {(rarityLower === 'rare' || rarityLower === 'epic' || rarityLower === 'legendary') && (
+          <div className={styles['border-spin']} />
+        )}
+
+        {/* Common: breathing border */}
+        {rarityLower === 'common' && (
+          <div className={styles['common-breathe']} />
+        )}
+
+        {/* Cursor glare for Common + Rare */}
+        {(rarityLower === 'common' || rarityLower === 'rare') && (
+          <div className={styles['cursor-glare']} />
+        )}
+
+        {/* Aurora orbs for Epic + Legendary */}
+        {(rarityLower === 'epic' || rarityLower === 'legendary') && (
+          <>
+            <div className={`${styles['aurora-orb']} ${styles['aurora-orb-1']}`} />
+            <div className={`${styles['aurora-orb']} ${styles['aurora-orb-2']}`} />
+            <div className={`${styles['aurora-orb']} ${styles['aurora-orb-3']}`} />
+          </>
+        )}
+
+        {/* Holographic foil for Epic */}
+        {rarityLower === 'epic' && <div className={styles['holo-foil']} />}
+
+        {/* Legendary foil + particles */}
+        {rarityLower === 'legendary' && <div className={styles['legendary-foil']} />}
+        {rarityLower === 'legendary' && !isMobile && (
+          <LegendaryParticles isHovered={isHovered} cardRef={cardRef} />
         )}
         <div className={styles['card-body']}>
           <img

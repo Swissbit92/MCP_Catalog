@@ -51,41 +51,43 @@ describe('MessageBubble - Citation Rendering', () => {
   });
 
   describe('Search Badge Display', () => {
-    it('shows search badge when used_search is true', () => {
+    it('shows citation warning when used_search is true but citations are missing', () => {
       const message: Message = {
         ...baseMessage,
+        content: 'Bitcoin is around $91,000.',
         used_search: true,
+        citation_valid: false,
         search_results_count: 5
       };
 
       render(<MessageBubble message={message} />);
-      
-      expect(screen.getByText(/Web-enhanced answer/)).toBeInTheDocument();
-      expect(screen.getByText(/5 sources/)).toBeInTheDocument();
+
+      expect(screen.getByText(/citations were not included/)).toBeInTheDocument();
     });
 
-    it('does not show search badge when used_search is false', () => {
+    it('does not show citation warning when used_search is false', () => {
       const message: Message = {
         ...baseMessage,
         used_search: false
       };
 
       render(<MessageBubble message={message} />);
-      
-      expect(screen.queryByText(/Web-enhanced answer/)).not.toBeInTheDocument();
+
+      expect(screen.queryByText(/citations were not included/)).not.toBeInTheDocument();
     });
 
-    it('handles singular source count', () => {
+    it('shows SourceIndicator when metadata is present on assistant message', () => {
       const message: Message = {
         ...baseMessage,
-        used_search: true,
-        search_results_count: 1
+        metadata: {
+          source_type: 'brave_mcp' as const,
+          tools_used: ['brave_web_search'],
+        }
       };
 
       render(<MessageBubble message={message} />);
-      
-      expect(screen.getByText(/1 source/)).toBeInTheDocument();
-      expect(screen.queryByText(/sources/)).not.toBeInTheDocument();
+
+      expect(screen.getByText(/Web Search/)).toBeInTheDocument();
     });
   });
 

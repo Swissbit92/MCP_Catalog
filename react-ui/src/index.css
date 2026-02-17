@@ -3,6 +3,30 @@
 @tailwind utilities;
 
 /* ============================================ */
+/* Rarity Card Effects — CSS Houdini Properties */
+/* ============================================ */
+
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@property --holo-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rarity-border-spin {
+  to { --border-angle: 360deg; }
+}
+
+@keyframes rarity-holo-spin {
+  to { --holo-angle: 360deg; }
+}
+
+/* ============================================ */
 /* NEPHILIM REALM — Design System              */
 /* Dark cyberpunk + fantasy aesthetic          */
 /* ============================================ */
