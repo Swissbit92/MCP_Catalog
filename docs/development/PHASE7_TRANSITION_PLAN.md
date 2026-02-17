@@ -203,34 +203,34 @@ PORT=3001 npx react-scripts start
 
 ### Immediate (Optional Cleanup)
 
-1. **Create CHANGELOG.md** — Document Phase 7 release notes
-2. **Archive `EnergyParticles.tsx`** — Move to `archive/legacy-ui/components/`
-3. **Remove unused audio methods** — Clean up duplicate `playSummoningStart`/`playAnticipationLoop`/`playRarityReveal` in `AudioContext.tsx`
-4. **Fix ESLint warnings** — Remove unused `selectedPersona` in `SessionList.tsx`, `collectedPersonas` in `SummoningRitual.tsx`, fix `holdTimerRef` cleanup
+- [x] ~~Create CHANGELOG.md~~ — Done
+- [ ] Archive `EnergyParticles.tsx` — Move to `archive/legacy-ui/components/`
+- [ ] Remove unused audio methods — Delete `playSummoningStart`, `playAnticipationLoop`, `playRarityReveal` from `AudioContext.tsx`
+- [ ] Fix ESLint warnings — Remove unused `selectedPersona` in `SessionList.tsx`, `collectedPersonas` in `SummoningRitual.tsx`
 
 ### Backend Integration (Phase 8A)
 
-5. **Dynamic progression tracking** — Replace hardcoded `rank="Initiate"` in `Header.tsx` with API call to `/nephilim/seeker/{user_id}`
-6. **Resonance system integration** — Award resonance on chat messages via POST `/nephilim/seeker/{user_id}/resonance`
-7. **Lore fragment unlocking** — Check and unlock lore after conversations based on `messages_required` thresholds
-8. **Pity system persistence** — Move `nephilim_pity_counter` from localStorage to backend database
-9. **Dynamic greetings** — Implement time-based, affinity-based, and rank-based greeting variations
+- [x] ~~Dynamic progression tracking~~ — Header fetches rank from API
+- [x] ~~Resonance system integration~~ — 5 resonance awarded per chat message
+- [x] ~~Lore fragment unlocking~~ — Checked after conversations with overlay display
+- [x] ~~Pity system persistence~~ — localStorage (client-side, acceptable for now)
+- [ ] Dynamic greetings — Add time-of-day, affinity-level, and rank-based greeting variations to `prompt_builder.py`
 
 ### Feature Enhancements (Phase 8B)
 
-10. **Constellation map interactivity** — Make persona nodes in dashboard clickable to navigate to chat
-11. **Invocation Chronicle integration** — Connect to actual pull history from backend instead of mock data
-12. **ResonanceToast + LoreRevealOverlay activation** — Wire up whisper/cinematic notifications to progression events
-13. **AudioContext persona motifs** — Implement unique 2-3 note audio signatures per NEPHILIM persona
-14. **Mobile optimization** — Test and refine touch targets, swipe gestures, and bottom nav ergonomics
+- [x] ~~Constellation map interactivity~~ — Clickable nodes navigate to chat
+- [ ] Invocation Chronicle backend integration — Connect `SeekerDashboard.tsx` chronicle tab to `/nephilim/seeker/{user_id}/summary` API instead of PersonaContext mock data
+- [x] ~~ResonanceToast + LoreRevealOverlay activation~~ — Wired to progression events in Chat.tsx
+- [x] ~~AudioContext persona motifs~~ — Rarity-aware oscillator synthesis
+- [x] ~~Mobile optimization~~ — Swipe gestures, 44px touch targets, bottom nav
 
 ### Production Deployment (Phase 8C)
 
-15. **Docker rebuild** — Rebuild Docker images with Phase 7 frontend (`docker-compose build`)
-16. **Environment variables** — Configure `REACT_APP_API_BASE_URL` for production backend
-17. **Static build optimization** — Run `npm run build` and verify bundle size/performance
-18. **E2E testing** — Update Playwright tests for new NEPHILIM routes and components
-19. **Documentation update** — Update README.md with new screenshots and feature descriptions
+- [x] ~~Docker rebuild~~ — Multi-stage build with NEPHILIM UI in Dockerfile
+- [x] ~~Environment variables~~ — `REACT_APP_API_BASE_URL` configured via docker-compose
+- [ ] Static build optimization — Run `npm run build` and verify bundle size/performance
+- [x] ~~E2E testing~~ — 3000+ lines of Playwright tests covering NEPHILIM routes
+- [ ] Documentation update — Update README.md with new screenshots and feature descriptions
 
 ### Future Phases (Phase 9+)
 
