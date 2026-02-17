@@ -23,7 +23,7 @@
 - [x] Rewrite `Header.tsx` as NEPHILIM nav (desktop top bar)
 - [x] Implement mobile bottom tab bar
 - [x] Update `App.tsx` visibility logic (hidden on `/`, `/onboarding`)
-- [x] NEPHILIM wordmark + nav links (Companions, Codex, Dashboard)
+- [x] NEPHILIM wordmark + nav links (Companions, Chat, Dashboard)
 - [x] SeekerRankBadge (compact) in header
 - [x] 44x44px minimum touch targets (WCAG 2.5.8)
 
