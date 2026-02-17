@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChatSession } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
@@ -48,6 +49,7 @@ const getRarityStyles = (rarity?: string) => {
 }
 
 const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
+  const navigate = useNavigate()
   const { sessions, currentSession, deleteSessionById, updateSessionTitle, selectedPersona } = usePersona()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -106,7 +108,19 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
     <div className="w-80 bg-[#0B0B0D]/95 backdrop-blur-xl border-r border-white/[0.1] flex flex-col h-full relative overflow-hidden">
       {/* Header */}
       <div className="relative p-4 border-b border-white/[0.1]">
-        <h2 className="text-lg font-semibold font-nephilim text-nephilim-cyan drop-shadow-lg">Memory Archives</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold font-nephilim text-nephilim-cyan drop-shadow-lg">Memory Archives</h2>
+          <button
+            onClick={() => navigate('/select')}
+            className="p-1.5 bg-white/[0.05] hover:bg-white/[0.12] border border-white/[0.1] hover:border-cyan-500/30 rounded-lg text-gray-400 hover:text-cyan-300 transition-all backdrop-blur-sm"
+            aria-label="New conversation"
+            title="New conversation"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
         <p className="text-xs text-gray-400 mt-1">Your conversations</p>
       </div>
 

@@ -26,10 +26,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <div className="bg-white/[0.05] backdrop-blur-xl border-b border-white/[0.1] px-4 md:px-6 py-4 shadow-sm flex-shrink-0">
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {/* Sidebar Toggle Button */}
+          {/* Sidebar Toggle Button — mobile only (desktop sidebar is always visible) */}
           <button
             onClick={onToggleSidebar}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 md:hidden"
             aria-label="Toggle sidebar"
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
