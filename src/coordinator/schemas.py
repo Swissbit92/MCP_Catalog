@@ -18,8 +18,8 @@ class ChatTurn(BaseModel):
 class ChatBody(BaseModel):
     """Request body for chat endpoint."""
     persona: Optional[str] = None
-    history: List[ChatTurn] = []
-    message: str
+    history: List[ChatTurn] = Field(default=[], max_length=100)
+    message: str = Field(..., max_length=10_000)
 
 
 class GreetBody(BaseModel):

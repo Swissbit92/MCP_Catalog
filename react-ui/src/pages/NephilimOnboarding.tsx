@@ -51,7 +51,7 @@ export const NephilimOnboarding: React.FC = () => {
       const completed = localStorage.getItem('nephilim_onboarding_complete')
       if (completed === 'true') {
         // Already onboarded, redirect to home
-        navigate('/nephilim')
+        navigate('/')
       }
     }
     checkOnboarding()

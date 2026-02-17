@@ -44,6 +44,7 @@
 .rarity-epic .card-frame{background:conic-gradient(from 180deg,#f6d4ff,#d09aff,#b974ff,#ff64f6,#f6d4ff);box-shadow:0 0 24px rgba(186,120,255,.4),inset 0 0 10px rgba(186,120,255,.3)}
 .rarity-rare .card-frame{background:conic-gradient(from 180deg,#d4f6ff,#9fe3ff,#6fd6ff,#42f5ff,#d4f6ff);box-shadow:0 0 22px rgba(66,245,255,.35),inset 0 0 10px rgba(66,245,255,.25)}
 .rarity-common .card-frame{background:conic-gradient(from 180deg,#f2f2f2,#ddd,#ccc,#eee,#f2f2f2);box-shadow:0 0 18px rgba(220,220,220,.25),inset 0 0 8px rgba(230,230,230,.2)}
+.card-spotlight{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;mix-blend-mode:overlay;transition:background .1s ease}
 .card-body{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;padding:10px;box-sizing:border-box;gap:4px;z-index:3}
 
 /* Card image area is 100% width × 80% height of the card. */
@@ -207,13 +208,24 @@
 
 .pull-instructions {
   text-align: center;
-  color: #666;
+  color: #9CA3AF;
   font-size: 1.1rem;
   max-width: 400px;
 }
 
 .pull-instructions h2 {
-  color: #333;
+  color: #E5E7EB;
   margin-bottom: 0.5rem;
   font-size: 1.5rem;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .card-foil { animation: none; }
+  .card-glint { animation: none; }
+  .card-back-shine { animation: none; }
+  .card-outer.selected::before { animation: none; opacity: 0.8; }
+  .card-outer { transition: none; }
+  .card-outer:hover { filter: none; }
+  .card-choose { transition: none; }
 }

@@ -293,7 +293,7 @@ export const OnboardingPortal: React.FC<OnboardingPortalProps> = ({
             </motion.div>
 
             {/* Skip option */}
-            <p className="text-center text-white/40 text-sm">
+            <p className="text-center text-white/60 text-sm">
               Press Enter to continue
             </p>
           </motion.div>

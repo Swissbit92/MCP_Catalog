@@ -714,3 +714,34 @@ body.nephilim-mode::-webkit-scrollbar-thumb:hover {
     transform: rotate(360deg);
   }
 }
+
+/* ============================================ */
+/* Accessibility                                */
+/* ============================================ */
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus Indicators — cyan ring for dark backgrounds */
+:focus-visible {
+  outline: 2px solid rgba(0, 255, 255, 0.8);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 255, 255, 0.3);
+}
+
+/* Forced colors mode fallback */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid Highlight;
+    box-shadow: none;
+  }
+}

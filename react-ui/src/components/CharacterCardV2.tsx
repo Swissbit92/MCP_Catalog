@@ -195,6 +195,9 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
             {isNephilimCard && (
               <span className={styles['nephilim-badge']}>NEPHILIM</span>
             )}
+            {!isNephilimCard && (
+              <span className={styles['wanderer-badge']}>WANDERER</span>
+            )}
           </div>
         </div>
 

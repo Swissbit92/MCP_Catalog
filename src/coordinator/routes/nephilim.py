@@ -336,6 +336,7 @@ def check_lore_unlocks(user_id: str, persona_key: str):
                 {
                     "fragment_id": f.get('fragment_id'),
                     "fragment_title": f.get('fragment_title'),
+                    "fragment": f.get('fragment', ''),
                     "rarity": f.get('rarity', 'common'),
                 }
                 for f in newly_unlocked

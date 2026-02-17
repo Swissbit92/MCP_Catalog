@@ -1,14 +1,17 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from 'react'
+import { motion } from 'framer-motion'
 
 interface TypingIndicatorProps {
-  className?: string;
+  className?: string
+  personaName?: string
 }
 
-export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = '' }) => {
+export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = '', personaName }) => {
+  const label = personaName ? `${personaName} is channeling...` : 'Assistant is typing...'
+
   return (
     <motion.div
-      className={`flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 shadow-sm max-w-fit ${className}`}
+      className={`flex items-center gap-3 px-4 py-3 bg-white/[0.08] backdrop-blur-lg rounded-2xl border border-white/[0.1] shadow-sm max-w-fit ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -16,7 +19,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
     >
       <div className="flex items-center gap-1">
         <motion.div
-          className="w-2.5 h-2.5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-sm"
+          className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-400 to-fuchsia-400 rounded-full shadow-sm"
           animate={{
             y: [0, -10, 0],
             scale: [1, 1.2, 1],
@@ -28,7 +31,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
           }}
         />
         <motion.div
-          className="w-2.5 h-2.5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-sm"
+          className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-400 to-fuchsia-400 rounded-full shadow-sm"
           animate={{
             y: [0, -10, 0],
             scale: [1, 1.2, 1],
@@ -41,7 +44,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
           }}
         />
         <motion.div
-          className="w-2.5 h-2.5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-sm"
+          className="w-2.5 h-2.5 bg-gradient-to-r from-cyan-400 to-fuchsia-400 rounded-full shadow-sm"
           animate={{
             y: [0, -10, 0],
             scale: [1, 1.2, 1],
@@ -54,7 +57,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ className = ''
           }}
         />
       </div>
-      <span className="text-sm text-gray-600 font-medium">Assistant is typing...</span>
+      <span className="text-sm text-gray-400 font-medium">{label}</span>
     </motion.div>
-  );
-};
+  )
+}

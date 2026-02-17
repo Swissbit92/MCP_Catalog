@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ChatSession } from '../services/api';
-import { usePersona } from '../context/PersonaContext';
-import { fetchPersonas } from '../services/api';
+import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { ChatSession } from '../services/api'
+import { usePersona } from '../context/PersonaContext'
+import { fetchPersonas } from '../services/api'
 
 interface SessionListProps {
-  onSessionSelect: (session: ChatSession) => void;
+  onSessionSelect: (session: ChatSession) => void
 }
 
 // Rarity-based color schemes matching the app's design system
@@ -18,7 +18,7 @@ const getRarityStyles = (rarity?: string) => {
         text: 'text-yellow-600',
         hover: 'hover:bg-yellow-500/20',
         accent: 'bg-yellow-500',
-      };
+      }
     case 'epic':
       return {
         border: 'border-purple-400/50',
@@ -26,7 +26,7 @@ const getRarityStyles = (rarity?: string) => {
         text: 'text-purple-600',
         hover: 'hover:bg-purple-500/20',
         accent: 'bg-purple-500',
-      };
+      }
     case 'rare':
       return {
         border: 'border-cyan-400/50',
@@ -34,7 +34,7 @@ const getRarityStyles = (rarity?: string) => {
         text: 'text-cyan-600',
         hover: 'hover:bg-cyan-500/20',
         accent: 'bg-cyan-500',
-      };
+      }
     case 'common':
     default:
       return {
@@ -43,166 +43,92 @@ const getRarityStyles = (rarity?: string) => {
         text: 'text-gray-600',
         hover: 'hover:bg-gray-500/20',
         accent: 'bg-gray-500',
-      };
+      }
   }
-};
-
-// Dynamic background animation function (matching header)
-const getBackgroundAnimation = (rarity?: string) => {
-  const themeColors = {
-    legendary: {
-      primary: 'rgba(255, 215, 0, 0.08)',
-      secondary: 'rgba(255, 240, 166, 0.05)',
-      accent: 'rgba(255, 208, 80, 0.06)'
-    },
-    epic: {
-      primary: 'rgba(186, 120, 255, 0.08)',
-      secondary: 'rgba(246, 212, 255, 0.05)',
-      accent: 'rgba(186, 120, 255, 0.06)'
-    },
-    rare: {
-      primary: 'rgba(66, 245, 255, 0.08)',
-      secondary: 'rgba(212, 246, 255, 0.05)',
-      accent: 'rgba(66, 245, 255, 0.06)'
-    },
-    common: {
-      primary: 'rgba(156, 163, 175, 0.08)',
-      secondary: 'rgba(209, 213, 219, 0.05)',
-      accent: 'rgba(156, 163, 175, 0.06)'
-    }
-  };
-
-  const colors = themeColors[rarity as keyof typeof themeColors] || themeColors.common;
-
-  return {
-    background: [
-      `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
-      `radial-gradient(circle at 80% 20%, ${colors.secondary}, transparent 50%)`,
-      `radial-gradient(circle at 40% 80%, ${colors.accent}, transparent 50%)`,
-      `radial-gradient(circle at 60% 30%, ${colors.primary}, transparent 50%)`,
-      `radial-gradient(circle at 20% 50%, ${colors.primary}, transparent 50%)`,
-    ]
-  };
-};
+}
 
 const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
-  const { sessions, currentSession, deleteSessionById, updateSessionTitle, selectedPersona } = usePersona();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [personas, setPersonas] = useState<any[]>([]);
+  const { sessions, currentSession, deleteSessionById, updateSessionTitle, selectedPersona } = usePersona()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [personas, setPersonas] = useState<any[]>([])
 
   // Load personas for session display
   useEffect(() => {
     const loadPersonas = async () => {
       try {
-        const fetchedPersonas = await fetchPersonas();
+        const fetchedPersonas = await fetchPersonas()
         const processedPersonas = fetchedPersonas.map(p => ({
           key: p.key,
           display_name: p.display_name || p.key,
           image: p.image.replace('images/', ''),
           avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
           rarity: p.rarity,
-        }));
-        setPersonas(processedPersonas);
+        }))
+        setPersonas(processedPersonas)
       } catch (error) {
-        console.error('Failed to load personas for session list:', error);
+        console.error('Failed to load personas for session list:', error)
       }
-    };
-    loadPersonas();
-  }, []);
+    }
+    loadPersonas()
+  }, [])
 
   // Get persona info for a session
   const getPersonaForSession = (personaKey: string) => {
-    return personas.find(p => p.key === personaKey);
-  };
+    return personas.find(p => p.key === personaKey)
+  }
 
   const handleEditStart = (session: ChatSession) => {
-    setEditingId(session.id);
-    setEditTitle(session.title);
-  };
+    setEditingId(session.id)
+    setEditTitle(session.title)
+  }
 
   const handleEditSave = async () => {
     if (editingId && editTitle.trim()) {
-      await updateSessionTitle(editingId, editTitle.trim());
+      await updateSessionTitle(editingId, editTitle.trim())
     }
-    setEditingId(null);
-    setEditTitle('');
-  };
+    setEditingId(null)
+    setEditTitle('')
+  }
 
   const handleEditCancel = () => {
-    setEditingId(null);
-    setEditTitle('');
-  };
+    setEditingId(null)
+    setEditTitle('')
+  }
 
   const handleDelete = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to delete this chat session?')) {
-      await deleteSessionById(sessionId);
+      await deleteSessionById(sessionId)
     }
-  };
-
-  // Get current theme based on selected persona
-  const currentTheme = selectedPersona?.rarity || 'common';
+  }
 
   return (
-    <div className="w-80 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 flex flex-col h-full relative overflow-hidden">
-      {/* Enhanced glassmorphism background with multiple layers */}
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl"></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-800/80 to-slate-900/80 backdrop-blur-lg"></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 via-slate-800/60 to-slate-900/60 backdrop-blur-md"></div>
-
-      {/* Dynamic theme-based background animation - HIGHLY VISIBLE */}
-      <motion.div
-        className="absolute inset-0 opacity-60"
-        animate={getBackgroundAnimation()}
-        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-        key={currentTheme} // Force re-animation when theme changes
-      ></motion.div>
-
-      {/* HIGHLY VISIBLE animated border */}
-      <motion.div
-        className="absolute bottom-0 left-0 right-0 h-1"
-        animate={{
-          background: [
-            "linear-gradient(to right, transparent, rgba(255, 215, 0, 0.8), transparent)",
-            "linear-gradient(to right, transparent, rgba(186, 120, 255, 0.8), transparent)",
-            "linear-gradient(to right, transparent, rgba(66, 245, 255, 0.8), transparent)",
-            "linear-gradient(to right, transparent, rgba(255, 215, 0, 0.8), transparent)",
-          ],
-          boxShadow: [
-            "0 0 10px rgba(255, 215, 0, 0.5)",
-            "0 0 10px rgba(186, 120, 255, 0.5)",
-            "0 0 10px rgba(66, 245, 255, 0.5)",
-            "0 0 10px rgba(255, 215, 0, 0.5)",
-          ]
-        }}
-        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-      ></motion.div>
-
+    <div className="w-80 bg-[#0B0B0D]/95 backdrop-blur-xl border-r border-white/[0.1] flex flex-col h-full relative overflow-hidden">
       {/* Header */}
-      <div className="relative p-4 border-b border-slate-700/50">
-        <h2 className="text-lg font-semibold text-white drop-shadow-lg">Chat History</h2>
-        <p className="text-xs text-gray-300 mt-1 drop-shadow-md">Your conversations</p>
+      <div className="relative p-4 border-b border-white/[0.1]">
+        <h2 className="text-lg font-semibold font-nephilim text-nephilim-cyan drop-shadow-lg">Memory Archives</h2>
+        <p className="text-xs text-gray-400 mt-1">Your conversations</p>
       </div>
 
       {/* Sessions List */}
       <div className="relative flex-1 overflow-y-auto p-2">
         {sessions.length === 0 ? (
-          <div className="relative p-6 text-center text-gray-300">
-            <div className="text-4xl mb-2 drop-shadow-lg">💬</div>
-            <p className="font-medium drop-shadow-md">No conversations yet</p>
-            <p className="text-sm mt-1 drop-shadow-sm">Start chatting with a character!</p>
+          <div className="relative p-6 text-center text-gray-400">
+            <div className="text-4xl mb-2">&#x25C7;</div>
+            <p className="font-medium">No conversations yet</p>
+            <p className="text-sm mt-1">Start chatting with a character!</p>
           </div>
         ) : (
           sessions.map((session) => {
-            const persona = getPersonaForSession(session.persona_key);
-            const rarityStyles = getRarityStyles(persona?.rarity);
-            const isActive = currentSession?.id === session.id;
+            const persona = getPersonaForSession(session.persona_key)
+            const rarityStyles = getRarityStyles(persona?.rarity)
+            const isActive = currentSession?.id === session.id
 
             return (
               <motion.div
                 key={session.id}
-                className={`relative mx-2 my-1 p-3 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 cursor-pointer transition-all duration-100 backdrop-blur-sm overflow-hidden ${
-                  isActive ? `${rarityStyles.bg} ${rarityStyles.border} border-2 shadow-lg` : 'bg-slate-800/20'
+                className={`relative mx-2 my-1 p-3 rounded-lg border border-white/[0.08] hover:bg-white/[0.05] cursor-pointer transition-all duration-100 backdrop-blur-sm overflow-hidden ${
+                  isActive ? `${rarityStyles.bg} ${rarityStyles.border} border-2 shadow-lg` : 'bg-white/[0.03]'
                 }`}
                 onClick={() => onSessionSelect(session)}
                 whileHover={{ scale: 1.02, transition: { duration: 0.1 } }}
@@ -257,7 +183,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                         } : {}}
                         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                       >
-                        <span className="text-lg relative z-10">🎭</span>
+                        <span className="text-lg relative z-10">&#x1F3AD;</span>
                         {/* Rarity glow ring */}
                         <div className={`absolute inset-0 rounded-lg ${rarityStyles.border} border-2 opacity-60 scale-110`} />
                       </motion.div>
@@ -274,24 +200,24 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
                             onKeyPress={(e) => {
-                              if (e.key === 'Enter') handleEditSave();
-                              if (e.key === 'Escape') handleEditCancel();
+                              if (e.key === 'Enter') handleEditSave()
+                              if (e.key === 'Escape') handleEditCancel()
                             }}
-                             className="flex-1 px-3 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+                             className="flex-1 px-3 py-2 text-sm bg-white/[0.05] border border-white/[0.1] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent text-gray-200 placeholder-gray-500"
                             placeholder="Enter session title..."
                             autoFocus
                           />
                         </div>
                         <div className="flex gap-2">
                            <button
-                             onClick={(e) => { e.stopPropagation(); handleEditSave(); }}
+                             onClick={(e) => { e.stopPropagation(); handleEditSave() }}
                              className="px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                            >
                              Save
                            </button>
                            <button
-                             onClick={(e) => { e.stopPropagation(); handleEditCancel(); }}
-                             className="px-3 py-1 text-xs bg-slate-600 text-white rounded-md hover:bg-slate-700 transition-colors"
+                             onClick={(e) => { e.stopPropagation(); handleEditCancel() }}
+                             className="px-3 py-1 text-xs bg-white/10 text-gray-300 rounded-md hover:bg-white/20 transition-colors"
                            >
                              Cancel
                            </button>
@@ -300,7 +226,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                     ) : (
                       <>
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-medium text-white truncate flex-1 drop-shadow-md">
+                          <h3 className="text-sm font-medium text-gray-200 truncate flex-1">
                             {session.title}
                           </h3>
                            {persona && (
@@ -321,12 +247,12 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                         </div>
 
                         {persona && (
-                          <p className="text-xs text-gray-300 mb-1 truncate drop-shadow-sm">
+                          <p className="text-xs text-gray-400 mb-1 truncate">
                             with {persona.display_name}
                           </p>
                         )}
 
-                        <div className="flex items-center justify-between text-xs text-gray-400">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>{session.message_count} messages</span>
                           <span>{new Date(session.updated_at).toLocaleDateString()}</span>
                         </div>
@@ -338,8 +264,8 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                   {editingId !== session.id && (
                     <div className="flex gap-1 flex-shrink-0">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleEditStart(session); }}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-slate-700/50 rounded-md transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleEditStart(session) }}
+                        className="p-2 text-gray-500 hover:text-gray-200 hover:bg-white/10 rounded-md transition-colors"
                         title="Rename conversation"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,8 +273,8 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                         </svg>
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(session.id); }}
-                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-md transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(session.id) }}
+                        className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded-md transition-colors"
                         title="Delete conversation"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,12 +285,12 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                   )}
                 </div>
               </motion.div>
-            );
+            )
           })
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SessionList;
+export default SessionList

@@ -46,8 +46,8 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden
               border-2 transition-all duration-300
               ${index === currentIndex
-                ? 'border-blue-400 shadow-lg shadow-blue-400/30 scale-110'
-                : 'border-slate-600/50 hover:border-slate-500/70 hover:scale-105'
+                ? 'border-cyan-400 shadow-lg shadow-cyan-400/30 scale-110'
+                : 'border-white/[0.1] hover:border-white/[0.2] hover:scale-105'
               }
               ${isTransitioning ? 'opacity-60 cursor-not-allowed' : ''}
             `}
@@ -84,7 +84,7 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute inset-0 bg-blue-400/20 border-2 border-blue-400 rounded-lg"
+                className="absolute inset-0 bg-cyan-400/20 border-2 border-cyan-400 rounded-lg"
               />
             )}
           </motion.button>
@@ -93,7 +93,7 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
       {/* Character Counter - Always visible, no fade animation */}
       <div className="text-center mt-4">
-        <span className="text-slate-400 text-sm">
+        <span className="text-gray-300 text-sm">
           {currentIndex + 1} of {personas.length}
         </span>
       </div>

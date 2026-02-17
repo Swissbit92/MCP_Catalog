@@ -64,6 +64,15 @@ BRAVE_SEARCH_TOOL = {
 BRAVE_ENABLED_RARITIES=rare,epic,legendary
 ```
 
+### [development/PHASE7_TRANSITION_PLAN.md](development/PHASE7_TRANSITION_PLAN.md)
+
+**Phase 7 NEPHILIM UI Transition tracking document**
+
+**Contents:**
+- Sub-phase checklist (7A-7G) with completion status
+- Decisions log and deviations
+- Route consolidation, navigation, character selection, summoning ritual, chat redesign, dashboard, accessibility
+
 ### [development/TESTING_GUIDE.md](development/TESTING_GUIDE.md)
 
 **Testing setup and best practices**

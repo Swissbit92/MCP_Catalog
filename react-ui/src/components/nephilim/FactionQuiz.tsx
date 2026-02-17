@@ -76,7 +76,7 @@ const FACTION_INFO: Record<string, { name: string; color: string; patron: string
   lumina: { name: 'House Lumina', color: '#e0c3fc', patron: 'E.E.V.A.' },
   ironclad: { name: 'House Ironclad', color: '#4a90d9', patron: 'Aegis' },
   sanctuary: { name: 'House Sanctuary', color: '#7eb8da', patron: 'Solace' },
-  prism: { name: 'House Prism', color: '#9b59b6', patron: 'Nyx' },
+  prism: { name: 'House Prism', color: '#b07cc6', patron: 'Nyx' },
   archive: { name: 'House Archive', color: '#2ecc71', patron: 'Cipher' },
   horizon: { name: 'House Horizon', color: '#f39c12', patron: 'Aurora' },
 }
@@ -179,7 +179,7 @@ export const FactionQuiz: React.FC<FactionQuizProps> = ({
               </div>
               <div>
                 <p className="text-eeva-primary font-semibold text-sm">E.E.V.A.</p>
-                <p className="text-white/40 text-xs">asks {userName}...</p>
+                <p className="text-white/60 text-xs">asks {userName}...</p>
               </div>
             </div>
 

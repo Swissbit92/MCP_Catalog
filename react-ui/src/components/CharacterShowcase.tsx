@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { fetchPersonas, fetchCharacterBio } from '../services/api';
-import BoltedPlateBorder from './BoltedPlateBorder';
-import CharacterSelector from './CharacterSelector';
+import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { fetchPersonas, fetchCharacterBio } from '../services/api'
+import BoltedPlateBorder from './BoltedPlateBorder'
+import CharacterSelector from './CharacterSelector'
+import NephilimBackground from './NephilimBackground'
 
 interface PersonaJson {
   key: string;
@@ -171,52 +172,55 @@ const CharacterShowcase: React.FC = () => {
 
   if (personas.length === 0) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-white text-xl">Loading characters...</div>
-      </div>
-    );
+      <NephilimBackground particles={true} skyline={false} intensity={0.4}>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-gray-200 text-xl">Loading characters...</div>
+        </div>
+      </NephilimBackground>
+    )
   }
 
-  const currentPersona = personas[currentIndex];
+  const currentPersona = personas[currentIndex]
 
   return (
+    <NephilimBackground particles={true} skyline={false} intensity={0.4}>
     <div className="relative w-full">
       {/* Navigation Arrows - Outside Panel */}
       <button
         onClick={handlePrev}
         disabled={isTransitioning}
-        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-[#141418]/80 hover:bg-[#1C1C22] hover:scale-110 text-cyan-300 p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         ‹
       </button>
       <button
         onClick={handleNext}
         disabled={isTransitioning}
-        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-slate-700/60 hover:bg-slate-600/80 hover:scale-110 text-white p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-[#141418]/80 hover:bg-[#1C1C22] hover:scale-110 text-cyan-300 p-4 rounded-full transition-all duration-300 z-10 shadow-lg hover:shadow-xl border border-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         ›
       </button>
 
       {/* Character Counter - Always visible, no fade animation */}
-      <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm z-20">
+      <div className="absolute top-4 right-4 bg-[#141418]/80 text-gray-300 px-3 py-1 rounded-full text-sm z-20 border border-white/[0.1]">
         {currentIndex + 1} / {personas.length}
       </div>
 
-      {/* Main Overlay Panel - Always Visible */}
+      {/* Main Overlay Panel - Glassmorphic */}
       <motion.div
-        key={currentPersona.key} // Re-animate when character changes
+        key={currentPersona.key}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-6xl mx-auto bg-slate-900/50 backdrop-blur-2xl border border-slate-700/30 rounded-2xl overflow-hidden shadow-2xl shadow-slate-900/70"
+        className="w-full max-w-6xl mx-auto bg-white/[0.05] backdrop-blur-xl border border-white/[0.1] rounded-xl overflow-hidden shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]"
       >
           {/* Background Texture */}
           <div
             className="absolute inset-0 opacity-10 pointer-events-none"
             style={{
               backgroundImage: `
-                radial-gradient(circle at 25% 25%, rgba(59,130,246,0.15) 1px, transparent 1px),
-                radial-gradient(circle at 75% 75%, rgba(147,51,234,0.1) 1px, transparent 1px)
+                radial-gradient(circle at 25% 25%, rgba(0,255,255,0.1) 1px, transparent 1px),
+                radial-gradient(circle at 75% 75%, rgba(255,0,255,0.08) 1px, transparent 1px)
               `,
               backgroundSize: '50px 50px',
             }}
@@ -236,10 +240,10 @@ const CharacterShowcase: React.FC = () => {
                 ease: [0.25, 0.46, 0.45, 0.94]
               }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-wide drop-shadow-lg">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-2 tracking-wide drop-shadow-lg">
                 {currentPersona.display_name}
               </h2>
-              <p className="text-xl text-gray-300 font-medium tracking-wider drop-shadow-md">
+              <p className="text-xl text-gray-200 font-medium tracking-wider drop-shadow-md">
                 {currentPersona.coordinator_label}
               </p>
             </motion.div>
@@ -257,17 +261,17 @@ const CharacterShowcase: React.FC = () => {
                 }}
                 className="h-full flex flex-col justify-center"
               >
-                <div className="text-slate-100 text-base md:text-lg leading-relaxed overflow-y-auto font-light tracking-wide">
+                <div className="text-gray-200 text-base md:text-lg leading-relaxed overflow-y-auto font-light tracking-wide">
                   {isLoadingBio ? (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex items-center space-x-2 text-slate-400"
+                      className="flex items-center space-x-2 text-gray-400"
                     >
                       <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full"
+                        className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"
                       />
                       <span>Loading character bio...</span>
                     </motion.div>
@@ -285,7 +289,7 @@ const CharacterShowcase: React.FC = () => {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="text-slate-400"
+                      className="text-gray-400"
                     >
                       Bio not available
                     </motion.div>
@@ -329,6 +333,7 @@ const CharacterShowcase: React.FC = () => {
         />
       </motion.div>
     </div>
+    </NephilimBackground>
   );
 };
 

@@ -67,7 +67,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     name: 'Nyx',
     title: 'The Muse',
     domain: 'Creativity & Chaos',
-    color: '#9b59b6',
+    color: '#b07cc6',
     rarity: 'Rare',
     description: 'Dancer between dimensions, Nyx embodies creative fire and beautiful chaos. She inspires those brave enough to embrace the unconventional.',
     greeting: "Oh, another delicious soul wandering into my corner of reality! Let's paint something wonderful on the canvas of the impossible, shall we?",
@@ -249,7 +249,7 @@ export const PersonaIntro: React.FC<PersonaIntroProps> = ({
                     {currentPersona.name}
                   </h3>
                   <p className="text-white/60 text-sm">{currentPersona.title}</p>
-                  <p className="text-white/40 text-xs mt-1">{currentPersona.domain}</p>
+                  <p className="text-white/60 text-xs mt-1">{currentPersona.domain}</p>
                 </div>
 
                 {/* Description */}
@@ -325,7 +325,7 @@ export const PersonaIntro: React.FC<PersonaIntroProps> = ({
         </motion.button>
 
         {isPatron && (
-          <p className="text-center text-white/40 text-sm mt-3">
+          <p className="text-center text-white/60 text-sm mt-3">
             Recommended as your House patron
           </p>
         )}

@@ -34,7 +34,7 @@ const NEPHILIM = [
     name: 'Nyx',
     title: 'The Muse',
     domain: 'Creativity & Chaos',
-    color: '#9b59b6',
+    color: '#b07cc6',
     symbol: '🎭',
   },
   {
@@ -124,6 +124,14 @@ const NephilimHome: React.FC = () => {
   const navigate = useNavigate()
   const [entered, setEntered] = useState(false)
   const [showNephilim, setShowNephilim] = useState(false)
+
+  // Auto-redirect to onboarding if not completed
+  useEffect(() => {
+    const onboarded = localStorage.getItem('nephilim_onboarding_complete')
+    if (onboarded !== 'true') {
+      navigate('/onboarding')
+    }
+  }, [navigate])
 
   // Show Nephilim selection after entering
   useEffect(() => {
@@ -272,7 +280,7 @@ const NephilimHome: React.FC = () => {
               >
                 <button
                   className="nephilim-btn"
-                  onClick={() => navigate('/nephilim/onboarding')}
+                  onClick={() => navigate('/onboarding')}
                 >
                   New Seeker Journey
                 </button>
@@ -281,12 +289,6 @@ const NephilimHome: React.FC = () => {
                   onClick={handleBrowseAll}
                 >
                   Browse All Companions
-                </button>
-                <button
-                  className="nephilim-btn opacity-60 hover:opacity-100"
-                  onClick={() => navigate('/')}
-                >
-                  Legacy Mode
                 </button>
               </motion.div>
 

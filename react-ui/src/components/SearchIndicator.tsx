@@ -54,7 +54,7 @@ const NEPHILIM_COLORS: Record<string, string> = {
   nephilim_eeva: '#e0c3fc',
   nephilim_aegis: '#4a90d9',
   nephilim_solace: '#7eb8da',
-  nephilim_nyx: '#9b59b6',
+  nephilim_nyx: '#b07cc6',
   nephilim_cipher: '#2ecc71',
   nephilim_aurora: '#f39c12',
 };

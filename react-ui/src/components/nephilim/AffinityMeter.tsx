@@ -130,7 +130,7 @@ export const AffinityMeter: React.FC<AffinityMeterProps> = ({
       {/* Description */}
       {showDetails && !compact && (
         <div className="mt-2 text-center">
-          <span className="text-xs text-white/40 italic">
+          <span className="text-xs text-white/60 italic">
             "{levelInfo.description}"
           </span>
         </div>

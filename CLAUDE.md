@@ -37,23 +37,31 @@ docker-compose down                  # Stop all
 
 **Access:** Frontend `http://localhost:3000` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
 
-### Local Development
+> **⚠️ Note:** Docker serves legacy UI unless rebuilt. For Phase 7 NEPHILIM UI, use local development.
+
+### Local Development (Phase 7 NEPHILIM UI)
 
 ```bash
 # Setup
 pip install -r requirements.txt
 cd react-ui && npm install
 
-# Run (unified - starts both)
-python scripts/utils/run_react.py
+# Run Phase 7 NEPHILIM UI (Terminal 1)
+python -m uvicorn src.coordinator.server:app --reload --port 8000
 
-# Run separately
-uvicorn src.coordinator.server:app --reload --port 8000    # Backend
-cd react-ui && npm run start:dev                           # Frontend
+# Run Phase 7 NEPHILIM UI (Terminal 2)
+cd react-ui && PORT=3001 npx react-scripts start
+
+# Access at http://localhost:3001
+
+# Run Legacy UI (unified - starts both on port 3000)
+python scripts/utils/run_react.py
 
 # Build
 cd react-ui && npm run build
 ```
+
+**CORS Configuration:** `src/coordinator/server.py:41` allows `localhost:3000` and `localhost:3001`
 
 ### Testing
 
@@ -106,9 +114,8 @@ mongodb/                       # MongoDB MCP client
 ### Frontend (`react-ui/src/`)
 
 ```
-pages/                         # Home.tsx, Chat.tsx, NephilimHome.tsx, NephilimOnboarding.tsx, CharacterCardV2Showcase.tsx
-components/                    # UI components (MessageBubble, CharacterCard, SessionList, etc.)
-components/header/             # HeaderNavigation.tsx, HeaderVisuals.tsx, MobileMenu.tsx
+pages/                         # Chat.tsx, NephilimHome.tsx, NephilimOnboarding.tsx, CharacterCardV2Showcase.tsx, Dashboard.tsx
+components/                    # UI components (Header, MessageBubble, CharacterCard, SessionList, etc.)
 components/nephilim/           # NEPHILIM progression components (SeekerRankBadge, LoreCodex, etc.)
 context/                       # PersonaContext.tsx, AudioContext.tsx
 services/                      # API client (includes NEPHILIM progression API)
@@ -410,6 +417,35 @@ getPersonaCounts(personas)     // Returns { nephilim, legacy, total }
 
 **Test Coverage** (`react-ui/tests/phase6-filter.spec.ts`):
 - 7 Playwright tests covering filter visibility, functionality, and persistence
+
+### Phase 7 — Full NEPHILIM UI Transition
+
+Unified the entire frontend under the NEPHILIM aesthetic:
+- **7A**: Route consolidation — NEPHILIM as default at `/`, legacy routes removed
+- **7B**: NEPHILIM navigation — desktop top bar + mobile bottom tab bar
+- **7C**: Character selection overhaul — Wanderer badges, holographic cards, void theme
+- **7D**: Summoning Ritual system — five-phase animation replacing gacha pull
+- **7E**: Chat interface redesign — glassmorphism, ambient orbs, void theme
+- **7F**: Dashboard & Progression Hub — tabbed Seeker's Sanctum page
+- **7G**: Accessibility fixes (WCAG AA), dead code cleanup, documentation
+
+**Key concepts:**
+- Legacy personas are "Wanderers" (frontend-only label, no JSON changes)
+- `NephilimBackground` component used across all pages
+- Glassmorphism recipe: `bg-white/[0.05] backdrop-blur-xl border border-white/[0.1]`
+- Text minimum: `text-white/60` (never `/40` for WCAG AA)
+
+**Route map:**
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | NephilimHome | Landing portal |
+| `/onboarding` | NephilimOnboarding | New user flow |
+| `/select` | CharacterCardV2Showcase | Companion selection |
+| `/chat` | Chat | Chat interface |
+| `/chat/:sessionId` | Chat | Chat with specific session |
+| `/dashboard` | Dashboard | Seeker's Sanctum |
+
+**Tracking:** `docs/development/PHASE7_TRANSITION_PLAN.md`
 
 ## Documentation
 
