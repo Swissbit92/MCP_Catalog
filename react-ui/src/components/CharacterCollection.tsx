@@ -58,15 +58,15 @@ const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSe
           </div>
           <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-purple-400">{collectionStats.legendary}</div>
-            <div className="text-sm text-gray-400">Legendary</div>
+            <div className="text-sm text-gray-400">Archon</div>
           </div>
           <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-blue-400">{collectionStats.epic}</div>
-            <div className="text-sm text-gray-400">Epic</div>
+            <div className="text-sm text-gray-400">Warden</div>
           </div>
           <div className="glass-card rounded-lg px-4 py-2">
             <div className="text-2xl font-bold text-green-400">{collectionStats.rare}</div>
-            <div className="text-sm text-gray-400">Rare</div>
+            <div className="text-sm text-gray-400">Sage</div>
           </div>
         </div>
       </div>

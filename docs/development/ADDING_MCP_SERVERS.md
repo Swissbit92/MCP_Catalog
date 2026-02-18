@@ -17,7 +17,7 @@ This guide explains how to integrate new Model Context Protocol (MCP) servers in
 - [Step-by-Step Examples](#step-by-step-examples)
 - [Testing Your MCP Integration](#testing-your-mcp-integration)
 - [Troubleshooting](#troubleshooting)
-- [Rarity-Based Feature Gating](#rarity-based-feature-gating)
+- [Celestial Order & Per-Persona MCP Access](#celestial-order--per-persona-mcp-access)
 - [Best Practices](#best-practices)
 
 ---
@@ -593,7 +593,7 @@ Add to `.env` and `.env.docker`:
 YOUR_API_KEY=your_api_key_here
 YOUR_MCP_IMAGE=docker.io/mcp/your-service
 YOUR_MCP_TIMEOUT=30
-YOUR_ENABLED_RARITIES=epic,legendary  # For rarity-based gating
+YOUR_ENABLED_RARITIES=warden,archon  # Fallback rarity-based gating (used when mcp_access not set on persona)
 ```
 
 Update `src/coordinator/config.py`:
@@ -606,7 +606,7 @@ class Settings(BaseSettings):
     your_api_key: Optional[str] = Field(None, env="YOUR_API_KEY")
     your_mcp_image: str = Field("docker.io/mcp/your-service", env="YOUR_MCP_IMAGE")
     your_mcp_timeout: int = Field(30, env="YOUR_MCP_TIMEOUT")
-    your_enabled_rarities: str = Field("epic,legendary", env="YOUR_ENABLED_RARITIES")
+    your_enabled_rarities: str = Field("warden,archon", env="YOUR_ENABLED_RARITIES")
 ```
 
 ### Step 7: Register in Startup
@@ -657,16 +657,36 @@ YOUR_MCP_TOOLS = [
     }
 ]
 
-def get_tools_for_persona(persona_key: str, rarity: str) -> List[Dict[str, Any]]:
-    """Get available tools based on persona rarity."""
+def get_tools_for_persona(
+    persona_key: str,
+    rarity: str,
+    mcp_access: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Get available tools based on per-persona mcp_access field (primary)
+    or celestial order / rarity-based env var fallback.
+
+    Args:
+        persona_key: The persona's unique key (e.g. "nephilim_eeva")
+        rarity: The persona's celestial order tier ("wanderer", "sage", "warden", "archon")
+        mcp_access: Optional list of MCP sources from the persona's mcp_access field.
+                    When present, takes priority over rarity-based gating.
+                    Example: ["brave", "mongodb"]
+    """
     tools = []
 
     # ... existing tool logic ...
 
-    # Your MCP tools (Epic+ personas)
-    your_enabled_rarities = os.getenv("YOUR_ENABLED_RARITIES", "epic,legendary").split(",")
-    if rarity.lower() in your_enabled_rarities:
-        tools.extend(YOUR_MCP_TOOLS)
+    # Your MCP tools — per-persona access (primary) with rarity-based fallback
+    if mcp_access is not None:
+        # Per-persona field takes priority (set in persona JSON as "mcp_access": ["your_mcp"])
+        if "your_mcp" in mcp_access:
+            tools.extend(YOUR_MCP_TOOLS)
+    else:
+        # Fallback: celestial-order-based gating via env var
+        your_enabled_rarities = os.getenv("YOUR_ENABLED_RARITIES", "warden,archon").split(",")
+        if rarity.lower() in your_enabled_rarities:
+            tools.extend(YOUR_MCP_TOOLS)
 
     return tools
 ```
@@ -765,7 +785,7 @@ class WeatherMCPOperations:
 **Configuration:**
 ```bash
 WEATHER_API_KEY=xxx
-WEATHER_ENABLED_RARITIES=rare,epic,legendary
+WEATHER_ENABLED_RARITIES=sage,warden,archon  # Fallback when mcp_access not set on persona
 ```
 
 **Tool Definition:**
@@ -1007,66 +1027,121 @@ volumes:
 
 ---
 
-## Rarity-Based Feature Gating
+## Celestial Order & Per-Persona MCP Access
 
-MCP access is controlled by persona rarity, not per-persona configuration.
+MCP access is now controlled **per-persona** via the `mcp_access` field in the persona's JSON file. The rarity/celestial-order env vars (`BRAVE_ENABLED_RARITIES`, `MONGODB_ENABLED_RARITIES`) serve as a fallback when a persona does not define `mcp_access` explicitly.
+
+### Celestial Order Tiers
+
+| Order | Old Name | Access Level (default fallback) |
+|-------|----------|---------------------------------|
+| **Wanderer** | Common | Pure LLM responses only |
+| **Sage** | Rare | LLM + Brave Search (fallback default) |
+| **Warden** | Epic | LLM + Brave + MCP tools (fallback default) |
+| **Archon** | Legendary | LLM + All MCP servers (fallback default) |
+
+### Per-Persona Access Matrix (Primary)
+
+The `mcp_access` field in each persona's JSON overrides the tier-based fallback:
+
+| Persona | Order | `mcp_access` |
+|---------|-------|--------------|
+| E.E.V.A. | Archon | `["brave", "mongodb"]` |
+| Aegis | Warden | `["brave"]` |
+| Aurora | Warden | `["brave", "mongodb"]` |
+| Solace | Warden | `["brave"]` |
+| Cipher | Sage | `["brave", "mongodb"]` |
+| Nyx | Sage | `[]` (none) |
+| Legacy / Wanderer personas | Wanderer | not set (fallback: none) |
 
 ### How It Works
+
+The `get_tools_for_persona` function accepts an optional `mcp_access` parameter. When the persona JSON includes `mcp_access`, that list is passed in and takes priority. When it is absent, the function falls back to the rarity/order-based env var logic.
 
 ```python
 # src/coordinator/tool_definitions.py
 
-def get_tools_for_persona(persona_key: str, rarity: str) -> List[Dict[str, Any]]:
-    """Dynamically inject tools based on rarity."""
+def get_tools_for_persona(
+    persona_key: str,
+    rarity: str,
+    mcp_access: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Dynamically inject tools based on per-persona mcp_access (primary)
+    or celestial-order-based env var fallback.
+
+    Args:
+        persona_key: The persona's unique key (e.g. "nephilim_eeva")
+        rarity: The persona's celestial order tier ("wanderer", "sage", "warden", "archon")
+        mcp_access: Optional list from the persona JSON mcp_access field.
+                    When present, takes priority over rarity-based gating.
+    """
     tools = []
 
-    # Brave Search (Rare+)
-    brave_rarities = os.getenv("BRAVE_ENABLED_RARITIES", "rare,epic,legendary").split(",")
+    # --- Primary: per-persona mcp_access field ---
+    if mcp_access is not None:
+        if "brave" in mcp_access:
+            tools.extend(BRAVE_TOOLS)
+        if "mongodb" in mcp_access:
+            tools.extend(MONGODB_TOOLS)
+        return tools
+
+    # --- Fallback: celestial-order env var gating ---
+    brave_rarities = os.getenv("BRAVE_ENABLED_RARITIES", "sage,warden,archon").split(",")
     if rarity.lower() in brave_rarities:
         tools.extend(BRAVE_TOOLS)
 
-    # MongoDB (Epic+)
-    mongodb_rarities = os.getenv("MONGODB_ENABLED_RARITIES", "epic,legendary").split(",")
+    mongodb_rarities = os.getenv("MONGODB_ENABLED_RARITIES", "warden,archon").split(",")
     if rarity.lower() in mongodb_rarities:
         tools.extend(MONGODB_TOOLS)
-
-    # Your MCP (Custom)
-    your_rarities = os.getenv("YOUR_ENABLED_RARITIES", "legendary").split(",")
-    if rarity.lower() in your_rarities:
-        tools.extend(YOUR_TOOLS)
 
     return tools
 ```
 
-### Feature Tiers
+### Adding mcp_access to a Persona JSON
 
-| Rarity | Access Level |
-|--------|--------------|
-| **Common** | Pure LLM responses only |
-| **Rare** | LLM + Brave Search |
-| **Epic** | LLM + Brave + MongoDB |
-| **Legendary** | LLM + All MCP servers |
+```json
+{
+  "key": "nephilim_cipher",
+  "rarity": "sage",
+  "mcp_access": ["brave", "mongodb"],
+  ...
+}
+```
+
+Personas without `mcp_access` defined (including all Wanderer/legacy personas) fall back to the celestial-order-based env var logic.
 
 ### Configuration
 
 ```bash
-# .env
-BRAVE_ENABLED_RARITIES=rare,epic,legendary
-MONGODB_ENABLED_RARITIES=epic,legendary
-YOUR_MCP_ENABLED_RARITIES=legendary  # Only legendary personas get access
+# .env — fallback for personas without mcp_access field
+BRAVE_ENABLED_RARITIES=sage,warden,archon
+MONGODB_ENABLED_RARITIES=warden,archon
+YOUR_MCP_ENABLED_RARITIES=archon  # Only Archon-tier personas get access via fallback
 ```
 
-### Testing Rarity Gating
+### Testing MCP Access
 
 ```python
-# Test that Common personas don't get MCP tools
+# Test per-persona mcp_access field (primary path)
 from src.coordinator.tool_definitions import get_tools_for_persona
 
-common_tools = get_tools_for_persona("hitler", "common")
-assert len(common_tools) == 0  # No MCP tools
+# Cipher: Sage with explicit mcp_access overriding the fallback
+cipher_tools = get_tools_for_persona("nephilim_cipher", "sage", mcp_access=["brave", "mongodb"])
+assert any(t["function"]["name"] == "brave_web_search" for t in cipher_tools)
+assert any(t["function"]["name"].startswith("mongodb") for t in cipher_tools)
 
-legendary_tools = get_tools_for_persona("eeva", "legendary")
-assert len(legendary_tools) > 0  # Has MCP tools
+# Nyx: Sage with empty mcp_access — no tools despite sage tier
+nyx_tools = get_tools_for_persona("nephilim_nyx", "sage", mcp_access=[])
+assert len(nyx_tools) == 0
+
+# Wanderer (legacy): no mcp_access field — falls back to order-based gating → no tools
+wanderer_tools = get_tools_for_persona("legacy_persona", "wanderer")
+assert len(wanderer_tools) == 0
+
+# E.E.V.A.: Archon with full mcp_access
+eeva_tools = get_tools_for_persona("nephilim_eeva", "archon", mcp_access=["brave", "mongodb"])
+assert len(eeva_tools) > 0
 ```
 
 ---
@@ -1187,7 +1262,7 @@ Brief description of what this MCP does.
 
 ## Configuration
 - `YOUR_API_KEY`: Required API key
-- `YOUR_ENABLED_RARITIES`: Rarities with access
+- `YOUR_ENABLED_RARITIES`: Celestial order tiers with fallback access (used when persona has no mcp_access field)
 
 ## Tools
 - `your_tool_name`: Description
@@ -1216,7 +1291,7 @@ When adding a new MCP server, ensure:
 - [ ] Created tool definitions in `tool_definitions.py`
 - [ ] Implemented tool handlers in `services/`
 - [ ] Integrated into `routes/chat.py`
-- [ ] Added rarity-based gating
+- [ ] Added per-persona MCP access (mcp_access field) or rarity-based gating
 - [ ] Wrote unit tests
 - [ ] Wrote integration tests
 - [ ] Tested via API (curl)

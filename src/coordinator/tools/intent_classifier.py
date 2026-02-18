@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from enum import Enum
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 from .keywords import (
     NO_SEARCH_KEYWORDS,
@@ -38,22 +38,36 @@ class ToolCall:
         }
 
 
-def classify_query_intent(query: str, persona_rarity: str) -> QueryIntent:
+def classify_query_intent(
+    query: str,
+    persona_rarity: str,
+    mcp_access: Optional[List[str]] = None,
+) -> QueryIntent:
     """
     Layer 1: Fast keyword-based intent classification for MCP routing.
 
     Args:
         query: User query string
         persona_rarity: Persona rarity level (common, rare, epic, legendary)
+        mcp_access: Optional explicit list of allowed MCP services from the persona
+                    JSON ``mcp_access`` field (e.g. ``["brave_search", "mongodb"]``).
+                    When provided this takes priority over ``persona_rarity``-based
+                    gating entirely.
 
     Returns:
         QueryIntent enum indicating which MCP(s) to use
     """
     query_lower = query.lower()
 
-    # Check rarity permissions
-    can_use_mongodb = persona_rarity.lower() in {"epic", "legendary"}
-    can_use_brave = persona_rarity.lower() in {"rare", "epic", "legendary"}
+    # Determine MCP permissions — per-persona mcp_access takes priority
+    if mcp_access is not None:
+        # Per-persona MCP access (from persona JSON mcp_access field)
+        can_use_brave = "brave_search" in mcp_access
+        can_use_mongodb = "mongodb" in mcp_access
+    else:
+        # Fallback to rarity-based access for personas without mcp_access field
+        can_use_mongodb = persona_rarity.lower() in {"epic", "legendary"}
+        can_use_brave = persona_rarity.lower() in {"rare", "epic", "legendary"}
 
     # Check for definition/math keywords (NO MCP needed)
     # But allow queries that are asking for prices/values/opinions/web data despite having "what is/are"

@@ -43,7 +43,7 @@ docs/
 - MCP server architecture (ephemeral vs long-running)
 - Docker container configuration
 - Tool definition and schema
-- Rarity-based feature gating
+- Per-persona MCP access (Celestial Order)
 - Intent classification integration
 - Citation and response synthesis
 
@@ -60,8 +60,11 @@ BRAVE_SEARCH_TOOL = {
     "input_schema": {...}
 }
 
-# Enable for rarities in .env
-BRAVE_ENABLED_RARITIES=rare,epic,legendary
+# Primary: set mcp_access field on the persona JSON
+# { "mcp_access": ["brave", "mongodb"] }
+
+# Fallback env var (used when persona has no mcp_access field)
+BRAVE_ENABLED_RARITIES=sage,warden,archon
 ```
 
 ### [development/PHASE7_TRANSITION_PLAN.md](development/PHASE7_TRANSITION_PLAN.md)

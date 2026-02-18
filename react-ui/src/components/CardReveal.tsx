@@ -1,12 +1,13 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import CharacterCard from './CharacterCard'
+import { getDisplayOrder } from '../utils/celestialOrder'
 
-const RARITY_COLORS: Record<string, string> = {
-  common: '#C0C0C0',
-  rare: '#00BFFF',
-  epic: '#DA70D6',
-  legendary: '#FFD700',
+const ORDER_COLORS: Record<string, string> = {
+  wanderer: '#C0C0C0',
+  sage: '#00BFFF',
+  warden: '#DA70D6',
+  archon: '#FFD700',
 }
 
 interface Persona {
@@ -15,6 +16,7 @@ interface Persona {
   style: string
   image: string
   rarity: string
+  celestial_order?: string
   voice?: {
     greeting: string
   }
@@ -33,7 +35,8 @@ const CardReveal: React.FC<CardRevealProps> = ({
   isRevealing,
   onRevealComplete
 }) => {
-  const rarityColor = RARITY_COLORS[persona.rarity] || RARITY_COLORS.common
+  const order = getDisplayOrder(persona)
+  const rarityColor = ORDER_COLORS[order] || ORDER_COLORS.wanderer
 
   return (
     <div className="card-reveal-container relative">
@@ -106,6 +109,7 @@ const CardReveal: React.FC<CardRevealProps> = ({
           style={persona.style}
           image={`/images/${persona.image}`}
           rarity={persona.rarity}
+          celestial_order={persona.celestial_order}
           onSelect={onSelect}
           isSelected={false}
         />

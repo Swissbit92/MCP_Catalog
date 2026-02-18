@@ -273,16 +273,16 @@ describe('SessionList', () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
     await waitFor(() => {
-      expect(screen.getByText('legendary')).toBeInTheDocument();
-      expect(screen.getByText('epic')).toBeInTheDocument();
+      expect(screen.getByText('Archon')).toBeInTheDocument();
+      expect(screen.getByText('Warden')).toBeInTheDocument();
     });
 
-    // Check that rarity badges have correct styling
-    const legendaryBadge = screen.getByText('legendary');
-    expect(legendaryBadge).toHaveClass('bg-yellow-500/10', 'text-yellow-600');
+    // Check that order badges have correct styling
+    const archonBadge = screen.getByText('Archon');
+    expect(archonBadge).toHaveClass('bg-yellow-500/10', 'text-yellow-600');
 
-    const epicBadge = screen.getByText('epic');
-    expect(epicBadge).toHaveClass('bg-purple-500/10', 'text-purple-600');
+    const wardenBadge = screen.getByText('Warden');
+    expect(wardenBadge).toHaveClass('bg-purple-500/10', 'text-purple-600');
   });
 
   it('displays improved action buttons with SVG icons', async () => {
@@ -380,11 +380,11 @@ describe('SessionList', () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
     await waitFor(() => {
-      expect(screen.getByText('legendary')).toBeInTheDocument();
+      expect(screen.getByText('Archon')).toBeInTheDocument();
     });
 
     // Rarity badge should have enhanced styling
-    const rarityBadge = screen.getByText('legendary');
+    const rarityBadge = screen.getByText('Archon');
     expect(rarityBadge).toHaveClass('font-medium');
   });
 });

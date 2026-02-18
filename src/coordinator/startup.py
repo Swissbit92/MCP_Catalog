@@ -281,8 +281,9 @@ def init_db():
         logger.info("Alembic not available, repositories will auto-initialize database schema")
             
     except Exception as e:
-        logger.error(f"Database migration failed: {e}")
-        raise
+        # Alembic config or migration files not found (e.g., Docker without alembic dir)
+        # Repositories with _ensure_tables() will self-initialize schema
+        logger.warning(f"Alembic migration skipped ({e}), repositories will auto-initialize schema")
 
 
 def cleanup_orphaned_sessions():

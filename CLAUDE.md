@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MCP Coordinator is a **local-first persona-driven chat interface** combining a FastAPI backend with a React frontend. It enables conversations with AI personas powered by Ollama LLM models, featuring a gacha-style character collection system with persistent chat history.
+MCP Coordinator is a **local-first persona-driven chat interface** combining a FastAPI backend with a React frontend. It enables conversations with AI personas powered by Ollama LLM models, featuring a summoning-style character collection system with persistent chat history.
 
 **Key Architecture:**
 - **Backend**: FastAPI coordinator (`src/coordinator/`) bridging persona definitions with Ollama LLM
@@ -147,8 +147,8 @@ PERSONA_DIR=personas
 ```
 
 Optional (see `.env.docker` for full list):
-- `BRAVE_API_KEY`, `BRAVE_ENABLED_RARITIES` - Web search
-- `MONGODB_URI`, `MONGODB_ENABLED_RARITIES` - Trading data
+- `BRAVE_API_KEY`, `BRAVE_ENABLED_RARITIES` - Web search (fallback; per-persona `mcp_access` takes priority)
+- `MONGODB_URI`, `MONGODB_ENABLED_RARITIES` - Trading data (fallback; per-persona `mcp_access` takes priority)
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings
 
 ## Code Style
@@ -165,14 +165,14 @@ Optional (see `.env.docker` for full list):
 
 ### Design System
 - **Typography:** Outfit (display), Manrope (body), Space Mono (mono)
-- **Rarity Colors:** Common (blue `#60a5fa`), Rare (cyan `#06b6d4`), Epic (purple `#a78bfa`), Legendary (gold `#fbbf24`)
+- **Celestial Order Colors:** Wanderer (silver `#C0C0C0`), Sage (cyan `#00BFFF`), Warden (purple `#DA70D6`), Archon (gold `#FFD700`)
 - **Accessibility:** WCAG AA, 4.5:1 contrast, keyboard nav, `aria-label` on interactive elements
 
 ## Key Workflows
 
 ### Adding a Persona
 1. Copy `personas/template.jsonc` to `personas/[name].json`
-2. Fill in: key, display_name, rarity, lore, voice, behavior, expertise
+2. Fill in: key, display_name, rarity, celestial_order, mcp_access, lore, voice, behavior, expertise
 3. Add images to `react-ui/public/images/personas/[name]/` (card.png, avatar.png, logo.png)
 4. Persona auto-discovered on next load - no restart needed
 
@@ -181,20 +181,24 @@ Optional (see `.env.docker` for full list):
 2. User message → POST `/chat` with session_id, persona, content
 3. Backend builds system prompt from persona JSON + cached CV summary
 4. Ollama generates response, stored in SQLite
-5. Frontend renders with rarity-based theming
+5. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
 - **Long-Running (MongoDB):** Container stays alive for multiple requests
-- Feature access controlled by persona rarity in `.env` (`BRAVE_ENABLED_RARITIES`, `MONGODB_ENABLED_RARITIES`)
+- Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
 
 ## Important Implementation Details
 
-### Rarity-Based Feature Gating
-MCP access controlled by persona rarity, not per-persona config:
-- **Common:** Pure LLM only
-- **Rare:** Brave Search with mandatory citations
-- **Epic/Legendary:** Brave + MongoDB trading data
+### Celestial Order & Per-Persona MCP Access
+MCP access is now controlled per-persona via the `mcp_access` field in persona JSONs, with legacy rarity-based env var fallback:
+- **E.E.V.A.** (Archon): Brave + MongoDB (all access)
+- **Aegis** (Warden): Brave only (productivity needs web, not trading)
+- **Aurora** (Warden): Brave + MongoDB (Oracle gazes into data)
+- **Solace** (Warden): Brave only (empathy needs resources, not trading)
+- **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
+- **Nyx** (Sage): None (creativity flows from imagination)
+- **Legacy personas** (Wanderer): None (pure LLM)
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -239,17 +243,20 @@ The project includes a comprehensive immersive AI companion experience with worl
 
 ### NEPHILIM Personas
 Six interconnected personas with deep backstories:
-- **E.E.V.A.** (nephilim_eeva) - The Primarch, guide and mentor (Legendary)
-- **Aegis** (nephilim_aegis) - The Sentinel, productivity and discipline (Epic)
-- **Solace** (nephilim_solace) - The Empath, emotional support (Epic)
-- **Nyx** (nephilim_nyx) - The Muse, creativity and chaos (Rare)
-- **Cipher** (nephilim_cipher) - The Maven, knowledge and research (Rare)
-- **Aurora** (nephilim_aurora) - The Oracle, future planning (Epic)
+- **E.E.V.A.** (nephilim_eeva) - The Primarch, guide and mentor (Archon)
+- **Aegis** (nephilim_aegis) - The Sentinel, productivity and discipline (Warden)
+- **Solace** (nephilim_solace) - The Empath, emotional support (Warden)
+- **Nyx** (nephilim_nyx) - The Muse, creativity and chaos (Sage)
+- **Cipher** (nephilim_cipher) - The Maven, knowledge and research (Sage)
+- **Aurora** (nephilim_aurora) - The Oracle, future planning (Warden)
 
 ### Extended Persona Schema
 NEPHILIM personas include additional fields:
 ```json
 {
+  "rarity": "legendary",
+  "celestial_order": "archon",
+  "mcp_access": ["brave_search", "mongodb"],
   "title": "The Primarch",
   "full_title": "Ethereal Enlightened Virtual Archon",
   "archetype": "The Oracle / The Sage",
@@ -264,6 +271,7 @@ NEPHILIM personas include additional fields:
   ]
 }
 ```
+> Note: `unlockable_lore[].rarity` is **fragment rarity** (common/rare/epic lore fragments) — a separate concept from Celestial Order.
 
 ### Prompt Integration
 `prompt_builder.py` automatically injects NEPHILIM context for personas with:
@@ -424,7 +432,7 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 - **7A**: Route consolidation — NEPHILIM as default at `/`, legacy routes removed
 - **7B**: NEPHILIM navigation — desktop top bar + mobile bottom tab bar
 - **7C**: Character selection overhaul — Wanderer badges, holographic cards, void theme
-- **7D**: Summoning Ritual system — five-phase animation replacing gacha pull
+- **7D**: Summoning Ritual system — five-phase animation replacing legacy pull mechanic
 - **7E**: Chat interface redesign — glassmorphism, ambient orbs, void theme
 - **7F**: Dashboard & Progression Hub — tabbed Seeker's Sanctum page
 - **7G**: Accessibility fixes (WCAG AA), dead code cleanup, documentation

@@ -1,6 +1,8 @@
 {
   "key": "Frieren",
   "rarity": "epic",
+  "celestial_order": "wanderer",
+  "mcp_access": [],
   "display_name": "Frieren — Mage of a Thousand Years",
   "style": "soft-spoken, contemplative, understated",
   "coordinator_label": "Frieren (Mage of a Thousand Years)",

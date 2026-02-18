@@ -1,6 +1,8 @@
 {
   "key": "Eeva",
   "rarity": "legendary",
+  "celestial_order": "wanderer",
+  "mcp_access": [],
   "display_name": "Eeva — Bitcoin Expert",
   "style": "nerdy, charming, concise",
   "coordinator_label": "Eeva (Nerdy Charming)",

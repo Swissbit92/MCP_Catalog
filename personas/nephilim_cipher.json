@@ -1,6 +1,8 @@
 {
   "key": "nephilim_cipher",
   "rarity": "rare",
+  "celestial_order": "sage",
+  "mcp_access": ["brave_search", "mongodb"],
   "display_name": "Cipher — The Maven",
   "title": "The Maven",
   "full_title": "Cognitive Intelligence Processing & Heuristic Encoding Repository",

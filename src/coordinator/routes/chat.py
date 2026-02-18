@@ -87,6 +87,7 @@ def chat(body: ChatBody):
 
     persona_key = card.get("key")
     persona_rarity = card.get("rarity", "common").lower()
+    mcp_access = card.get("mcp_access", None)
     system = build_system_prompt(body.persona)
 
     # Build conversation context from history
@@ -110,12 +111,12 @@ def chat(body: ChatBody):
     )
 
     # Use intent classification to determine which tools to inject
-    intent = classify_query_intent(body.message, persona_rarity)
+    intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access)
     logger.info(f"[Chat] Request received: persona={persona_key}, rarity={persona_rarity}, query_preview='{body.message[:60]}...'")
     logger.info(f"[Intent] Classification result: {intent.value}")
 
     # Get tools based on intent
-    tools = get_tools_for_query(body.message, persona_key, persona_rarity)
+    tools = get_tools_for_query(body.message, persona_key, persona_rarity, mcp_access=mcp_access)
     tool_names = [t["function"]["name"] for t in tools] if tools else []
     logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
 

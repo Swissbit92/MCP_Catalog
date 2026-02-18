@@ -9,6 +9,8 @@ const mockPersonas = [
     display_name: 'Eeva — Bitcoin Expert',
     coordinator_label: 'Cryptocurrency Analyst',
     rarity: 'legendary',
+    celestial_order: 'archon',
+    mcp_access: ['brave_search', 'mongodb'],
     image_path: 'eeva_card.png'
   },
   {
@@ -16,6 +18,8 @@ const mockPersonas = [
     display_name: 'Frieren',
     coordinator_label: 'Ancient Mage',
     rarity: 'epic',
+    celestial_order: 'warden',
+    mcp_access: [],
     image_path: 'frieren_card.png'
   }
 ];

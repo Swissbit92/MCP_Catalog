@@ -27,6 +27,10 @@ faiss-cpu==1.13.1
 # Evaluation & Quality Metrics
 ragas==0.2.3
 
+# Database Migrations
+alembic==1.15.2
+sqlalchemy==2.0.41
+
 # Note: This project requires Node.js and npm for the React UI
 # Install Node.js from: https://nodejs.org/
 # After installing Node.js, run: cd react-ui && npm install

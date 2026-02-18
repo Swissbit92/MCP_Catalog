@@ -69,7 +69,7 @@
 - [x] Promote `SeekerDashboard.tsx` to page-level
 - [x] Implement Seeker Profile tab
 - [x] Implement Bonds Forged constellation map (hexagonal SVG)
-- [x] Implement Lore Codex tab (rarity-styled fragments)
+- [x] Implement Lore Codex tab (order-styled fragments)
 - [x] Implement Invocation Chronicle tab
 - [x] Contextual revelation (hide Codex until first fragment)
 
@@ -122,7 +122,7 @@
 | 2026-02-16 | Always apply nephilim-mode body class | Unified visual experience |
 | 2026-02-16 | Original PullInterface/PullHistory/CharacterCollection kept alongside new files | Backward compatibility, archival reference |
 | 2026-02-16 | Tab name backward compatibility via alias map | URLs with old tab names (`?tab=pull`) still work |
-| 2026-02-16 | Pity system uses localStorage (`nephilim_pity_counter`) | No backend changes needed for client-side gacha |
+| 2026-02-16 | Pity system uses localStorage (`nephilim_pity_counter`) | No backend changes needed for client-side summoning |
 | 2026-02-16 | AudioContext expanded (not replaced) | Original methods preserved for backward compat |
 
 ## Blockers

@@ -25,11 +25,27 @@ logger = logging.getLogger(__name__)
 
 
 class Rarity(str, Enum):
-    """Persona rarity levels for gacha system and feature gating."""
+    """Legacy rarity tier. Prefer CelestialOrder for new code."""
     COMMON = "common"
     RARE = "rare"
     EPIC = "epic"
     LEGENDARY = "legendary"
+
+
+class CelestialOrder(str, Enum):
+    """Celestial Order tier — the canonical per-persona classification.
+
+    Replaces rarity-based MCP gating with explicit per-persona access control.
+    Maps to legacy Rarity values for backward compatibility:
+      ARCHON  ↔ legendary  (Gold)
+      WARDEN  ↔ epic        (Purple)
+      SAGE    ↔ rare        (Cyan)
+      WANDERER ↔ common     (Silver)
+    """
+    ARCHON = "archon"
+    WARDEN = "warden"
+    SAGE = "sage"
+    WANDERER = "wanderer"
 
 
 class VoiceProfile(BaseModel):
@@ -276,6 +292,17 @@ class PersonaCard(BaseModel):
     rarity: Rarity = Field(
         default=Rarity.COMMON,
         description="Persona rarity for gacha system"
+    )
+    celestial_order: Optional[str] = Field(
+        default=None,
+        description="Celestial Order tier (archon, warden, sage, wanderer). "
+                    "Takes priority over rarity for display and MCP gating when present."
+    )
+    mcp_access: Optional[List[str]] = Field(
+        default=None,
+        description="Explicit list of MCP services this persona can use "
+                    "(e.g. ['brave_search', 'mongodb']). "
+                    "When set, overrides rarity-based MCP gating entirely."
     )
     display_name: str = Field(
         default="",

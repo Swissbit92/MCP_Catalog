@@ -21,6 +21,7 @@ import {
   type LoreFragment
 } from '../../services/api'
 import { usePersona } from '../../context/PersonaContext'
+import { rarityToOrder, formatOrderLabel } from '../../utils/celestialOrder'
 import { SeekerRankBadge } from './SeekerRankBadge'
 import { ResonanceProgress } from './ResonanceProgress'
 import { AffinityMeter } from './AffinityMeter'
@@ -406,16 +407,16 @@ const ChronicleStats: React.FC = () => {
           <div className="text-xs text-gray-200/60">Total Invocations</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-yellow-400">{pullStats.legendaryCount}</div>
-          <div className="text-xs text-gray-200/60">Legendary</div>
+          <div className="text-2xl font-bold text-yellow-400">{pullStats.archonCount}</div>
+          <div className="text-xs text-gray-200/60">Archon</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-purple-400">{pullStats.epicCount}</div>
-          <div className="text-xs text-gray-200/60">Epic</div>
+          <div className="text-2xl font-bold text-purple-400">{pullStats.wardenCount}</div>
+          <div className="text-xs text-gray-200/60">Warden</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-cyan-400">{pullStats.rareCount}</div>
-          <div className="text-xs text-gray-200/60">Rare</div>
+          <div className="text-2xl font-bold text-cyan-400">{pullStats.sageCount}</div>
+          <div className="text-xs text-gray-200/60">Sage</div>
         </div>
       </div>
     </div>
@@ -495,7 +496,7 @@ const ChronicleHistory: React.FC = () => {
                 <div className={`text-sm font-semibold ${RARITY_TEXT[record.rarity] || 'text-gray-300'}`}>
                   {PERSONA_NAMES[record.personaKey] || record.personaKey}
                 </div>
-                <div className="text-xs text-white/60 capitalize">{record.rarity}</div>
+                <div className="text-xs text-white/60">{formatOrderLabel(rarityToOrder(record.rarity || 'common'))}</div>
               </div>
             </div>
             <div className="text-xs text-white/60">{formatTime(record.timestamp)}</div>

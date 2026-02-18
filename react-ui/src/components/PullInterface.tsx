@@ -337,10 +337,10 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
               )}
             </motion.div>
 
-            {/* Rarity-based Celebration Effects */}
+            {/* Order-based Celebration Effects */}
             {pulledCharacter && (
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {/* Legendary Celebration */}
+                {/* Archon Celebration */}
                 {pulledCharacter.rarity === 'legendary' && (
                   <>
                     <motion.div
@@ -389,7 +389,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
                   </>
                 )}
 
-                {/* Epic Celebration */}
+                {/* Warden Celebration */}
                 {pulledCharacter.rarity === 'epic' && (
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}
@@ -409,7 +409,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
                   </motion.div>
                 )}
 
-                {/* Rare Celebration */}
+                {/* Sage Celebration */}
                 {pulledCharacter.rarity === 'rare' && (
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}

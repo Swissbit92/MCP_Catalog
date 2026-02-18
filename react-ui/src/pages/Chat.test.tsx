@@ -140,12 +140,18 @@ describe('Chat', () => {
       display_name: 'Eeva',
       coordinator_label: 'Eeva',
       image: 'eeva.png',
+      rarity: 'legendary',
+      celestial_order: 'archon',
+      mcp_access: ['brave_search', 'mongodb'],
     },
     {
       key: 'frieren',
       display_name: 'Frieren',
       coordinator_label: 'Frieren',
       image: 'frieren.png',
+      rarity: 'epic',
+      celestial_order: 'warden',
+      mcp_access: [],
     },
   ];
 
@@ -611,6 +617,8 @@ describe('Chat', () => {
       ...mockPersonas[0],
       bg: 'images/personas/eeva/bg.png',
       rarity: 'legendary',
+      celestial_order: 'archon',
+      mcp_access: ['brave_search', 'mongodb'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -638,6 +646,8 @@ describe('Chat', () => {
     const personaWithRarity = {
       ...mockPersonas[0],
       rarity: 'legendary',
+      celestial_order: 'archon',
+      mcp_access: ['brave_search', 'mongodb'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -667,6 +677,8 @@ describe('Chat', () => {
       ...mockPersonas[0],
       bg: 'personas/eeva/bg.png',
       rarity: 'legendary',
+      celestial_order: 'archon',
+      mcp_access: ['brave_search', 'mongodb'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -698,6 +710,8 @@ describe('Chat', () => {
     const personaWithRarity = {
       ...mockPersonas[0],
       rarity: 'legendary',
+      celestial_order: 'archon',
+      mcp_access: ['brave_search', 'mongodb'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -728,6 +742,8 @@ describe('Chat', () => {
     const personaWithoutBg = {
       ...mockPersonas[0],
       rarity: 'legendary',
+      celestial_order: 'archon',
+      mcp_access: ['brave_search', 'mongodb'],
     };
 
     mockUsePersona.mockReturnValue({

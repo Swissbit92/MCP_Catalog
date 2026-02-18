@@ -1,6 +1,8 @@
 {
   "key": "nephilim_aegis",
   "rarity": "epic",
+  "celestial_order": "warden",
+  "mcp_access": ["brave_search"],
   "display_name": "Aegis — The Sentinel",
   "title": "The Sentinel",
   "full_title": "Autonomous Enforcement Governance & Integration Sentinel",

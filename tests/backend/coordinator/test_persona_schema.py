@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.coordinator.models.persona_schema import (
     Rarity,
+    CelestialOrder,
     VoiceProfile,
     EmotionalProfile,
     BehaviorProfile,
@@ -43,6 +44,54 @@ def test_rarity_enum():
     print("[PASS] Rarity enum values correct")
 
 
+def test_celestial_order_enum():
+    """Test CelestialOrder enum values map correctly to legacy rarities."""
+    assert CelestialOrder.ARCHON.value == "archon"
+    assert CelestialOrder.WARDEN.value == "warden"
+    assert CelestialOrder.SAGE.value == "sage"
+    assert CelestialOrder.WANDERER.value == "wanderer"
+    print("[PASS] CelestialOrder enum values correct")
+
+
+def test_persona_celestial_order_field():
+    """Test that PersonaCard accepts celestial_order field."""
+    persona = PersonaCard(key="TestArchon", rarity="legendary", celestial_order="archon")
+    assert persona.celestial_order == "archon"
+    assert persona.rarity == Rarity.LEGENDARY
+    print("[PASS] celestial_order field accepted by PersonaCard")
+
+
+def test_persona_mcp_access_field():
+    """Test that PersonaCard accepts mcp_access field."""
+    persona = PersonaCard(
+        key="TestWithAccess",
+        rarity="common",
+        celestial_order="wanderer",
+        mcp_access=["brave_search", "mongodb"]
+    )
+    assert persona.mcp_access == ["brave_search", "mongodb"]
+    print("[PASS] mcp_access field accepted by PersonaCard")
+
+
+def test_persona_mcp_access_empty_list():
+    """Test that mcp_access=[] explicitly disables all MCP services."""
+    persona = PersonaCard(
+        key="TestNoAccess",
+        rarity="legendary",
+        celestial_order="archon",
+        mcp_access=[]
+    )
+    assert persona.mcp_access == []
+    print("[PASS] mcp_access=[] accepted — explicit empty list disables MCP access")
+
+
+def test_persona_mcp_access_none_default():
+    """Test that mcp_access defaults to None (falls back to rarity-based gating)."""
+    persona = PersonaCard(key="TestDefault", rarity="rare")
+    assert persona.mcp_access is None
+    print("[PASS] mcp_access defaults to None — rarity-based fallback applies")
+
+
 def test_valid_minimal_persona():
     """Test minimal valid persona with only required fields."""
     persona = PersonaCard(key="Test")
@@ -53,10 +102,12 @@ def test_valid_minimal_persona():
 
 
 def test_valid_full_persona():
-    """Test full persona with all fields."""
+    """Test full persona with all fields including celestial_order and mcp_access."""
     persona = PersonaCard(
         key="Eeva",
         rarity="legendary",
+        celestial_order="archon",
+        mcp_access=["brave_search", "mongodb"],
         display_name="Eeva - Bitcoin Expert",
         style="nerdy, charming, concise",
         image="images/eeva_card.png",
@@ -82,8 +133,10 @@ def test_valid_full_persona():
     )
     assert persona.key == "Eeva"
     assert persona.rarity == Rarity.LEGENDARY
+    assert persona.celestial_order == "archon"
+    assert persona.mcp_access == ["brave_search", "mongodb"]
     assert persona.emotional_profile.sliders["warmth"] == 0.75
-    print("[PASS] Full persona validates correctly")
+    print("[PASS] Full persona validates correctly with celestial_order and mcp_access")
 
 
 def test_invalid_rarity():
@@ -262,6 +315,11 @@ def run_all_tests():
 
     tests = [
         test_rarity_enum,
+        test_celestial_order_enum,
+        test_persona_celestial_order_field,
+        test_persona_mcp_access_field,
+        test_persona_mcp_access_empty_list,
+        test_persona_mcp_access_none_default,
         test_valid_minimal_persona,
         test_valid_full_persona,
         test_invalid_rarity,

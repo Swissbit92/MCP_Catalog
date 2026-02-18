@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { usePersona } from '../context/PersonaContext';
+import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder';
 
 const PullHistory: React.FC = () => {
   const { pullHistory, pullStats } = usePersona();
@@ -51,8 +52,8 @@ const PullHistory: React.FC = () => {
             <div className="text-sm text-gray-400">Gems Spent</div>
           </div>
           <div className="bg-black/30 backdrop-blur-sm rounded-lg p-4 border border-white/10">
-            <div className="text-2xl font-bold text-blue-400">{pullStats.legendaryCount + pullStats.epicCount + pullStats.rareCount}</div>
-            <div className="text-sm text-gray-400">Rare+ Pulls</div>
+            <div className="text-2xl font-bold text-blue-400">{pullStats.archonCount + pullStats.wardenCount + pullStats.sageCount}</div>
+            <div className="text-sm text-gray-400">Sage+ Pulls</div>
           </div>
           <div className="bg-black/30 backdrop-blur-sm rounded-lg p-4 border border-white/10">
             <div className="text-2xl font-bold text-green-400">{pullStats.bestStreak}</div>
@@ -62,27 +63,27 @@ const PullHistory: React.FC = () => {
 
         {/* Rarity Breakdown */}
         <div className="mt-6 bg-black/30 backdrop-blur-sm rounded-lg p-6 border border-white/10">
-          <h3 className="text-xl font-bold text-white mb-4">Rarity Breakdown</h3>
+          <h3 className="text-xl font-bold text-white mb-4">Order Breakdown</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-3xl mb-2">🌟</div>
-              <div className="text-xl font-bold text-yellow-400">{pullStats.legendaryCount}</div>
-              <div className="text-sm text-gray-400">Legendary</div>
+              <div className="text-xl font-bold text-yellow-400">{pullStats.archonCount}</div>
+              <div className="text-sm text-gray-400">Archon</div>
             </div>
             <div className="text-center">
               <div className="text-3xl mb-2">💎</div>
-              <div className="text-xl font-bold text-purple-400">{pullStats.epicCount}</div>
-              <div className="text-sm text-gray-400">Epic</div>
+              <div className="text-xl font-bold text-purple-400">{pullStats.wardenCount}</div>
+              <div className="text-sm text-gray-400">Warden</div>
             </div>
             <div className="text-center">
               <div className="text-3xl mb-2">🔥</div>
-              <div className="text-xl font-bold text-blue-400">{pullStats.rareCount}</div>
-              <div className="text-sm text-gray-400">Rare</div>
+              <div className="text-xl font-bold text-blue-400">{pullStats.sageCount}</div>
+              <div className="text-sm text-gray-400">Sage</div>
             </div>
             <div className="text-center">
               <div className="text-3xl mb-2">⚪</div>
-              <div className="text-xl font-bold text-gray-400">{pullStats.commonCount}</div>
-              <div className="text-sm text-gray-400">Common</div>
+              <div className="text-xl font-bold text-gray-400">{pullStats.wandererCount}</div>
+              <div className="text-sm text-gray-400">Wanderer</div>
             </div>
           </div>
         </div>
@@ -114,8 +115,8 @@ const PullHistory: React.FC = () => {
                     <div className={`font-semibold ${getRarityColor(record.rarity)}`}>
                       {record.personaKey}
                     </div>
-                    <div className="text-sm text-gray-400 capitalize">
-                      {record.rarity} • {record.pullCount}x pull
+                    <div className="text-sm text-gray-400">
+                      {formatOrderLabel(rarityToOrder(record.rarity))} • {record.pullCount}x pull
                     </div>
                   </div>
                 </div>

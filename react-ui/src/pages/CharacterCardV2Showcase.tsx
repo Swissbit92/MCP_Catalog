@@ -17,6 +17,7 @@ import {
   filterPersonas,
   getPersonaCounts,
 } from '../utils/personaFilter'
+import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder'
 
 interface Persona {
   key: string
@@ -137,7 +138,8 @@ const CharacterCardV2Showcase: React.FC = () => {
         persona.display_name.toLowerCase().includes(query) ||
         persona.style.toLowerCase().includes(query) ||
         persona.key.toLowerCase().includes(query) ||
-        persona.rarity.toLowerCase().includes(query)
+        persona.rarity.toLowerCase().includes(query) ||
+        formatOrderLabel(rarityToOrder(persona.rarity || 'common')).toLowerCase().includes(query)
       )
     }
 
@@ -245,20 +247,20 @@ const CharacterCardV2Showcase: React.FC = () => {
                 <div className="flex justify-center mb-6">
                   <input
                     type="text"
-                    placeholder="Search by name, style, or rarity..."
+                    placeholder="Search by name, style, or order..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="px-6 py-3 rounded-full bg-[#141418] border border-white/[0.1] text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/30 max-w-md w-full"
                   />
                 </div>
 
-                {/* Rarity Legend */}
+                {/* Order Legend */}
                 <div className="flex flex-wrap justify-center gap-4 mb-6">
                   {[
-                    { rarity: 'legendary', color: 'from-yellow-400 to-amber-600', label: 'Legendary' },
-                    { rarity: 'epic', color: 'from-purple-400 to-pink-600', label: 'Epic' },
-                    { rarity: 'rare', color: 'from-cyan-400 to-blue-600', label: 'Rare' },
-                    { rarity: 'common', color: 'from-gray-400 to-slate-600', label: 'Common' }
+                    { rarity: 'legendary', color: 'from-yellow-400 to-amber-600', label: 'Archon' },
+                    { rarity: 'epic', color: 'from-purple-400 to-pink-600', label: 'Warden' },
+                    { rarity: 'rare', color: 'from-cyan-400 to-blue-600', label: 'Sage' },
+                    { rarity: 'common', color: 'from-gray-400 to-slate-600', label: 'Wanderer' }
                   ].map(({ rarity, color, label }) => (
                     <div key={rarity} className="flex items-center gap-2 bg-[#141418]/80 backdrop-blur-sm rounded-full px-4 py-2 border border-white/[0.1]">
                       <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${color}`}></div>
@@ -349,7 +351,7 @@ const CharacterCardV2Showcase: React.FC = () => {
                                   </span>
                                 )}
                                 <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded bg-white/[0.08] border border-white/[0.15] text-gray-400">
-                                  {previewPersona.rarity}
+                                  {formatOrderLabel(rarityToOrder(previewPersona.rarity || 'common'))}
                                 </span>
                               </div>
 
@@ -424,8 +426,8 @@ const CharacterCardV2Showcase: React.FC = () => {
                         <div className="text-sm">Pointer-tracking 3D tilt with dynamic light effects on every card</div>
                       </div>
                       <div className="text-gray-200">
-                        <div className="font-semibold text-fuchsia-300 mb-2">Rarity Resonance</div>
-                        <div className="text-sm">Each companion radiates unique energy based on their rarity tier</div>
+                        <div className="font-semibold text-fuchsia-300 mb-2">Order Resonance</div>
+                        <div className="text-sm">Each companion radiates unique energy based on their Celestial Order</div>
                       </div>
                       <div className="text-gray-200">
                         <div className="font-semibold text-cyan-300 mb-2">Fluid Animations</div>

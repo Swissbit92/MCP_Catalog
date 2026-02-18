@@ -15,10 +15,10 @@ describe('API Service', () => {
 
   it('fetchPersonas should return a list of personas from API', async () => {
     const mockPersonas = [
-      { key: 'Eeva', display_name: 'Eeva — Bitcoin Expect', style: 'nerdy, charming, concise', rarity: 'legendary', image: 'images/personas/eeva/card.png' },
-      { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', image: 'images/personas/frieren/card.png' },
-      { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', image: 'images/personas/gojo/card.png' },
-      { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', image: 'images/personas/hitler/card.png' },
+      { key: 'Eeva', display_name: 'Eeva — Bitcoin Expect', style: 'nerdy, charming, concise', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search', 'mongodb'], image: 'images/personas/eeva/card.png' },
+      { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', celestial_order: 'warden', mcp_access: [], image: 'images/personas/frieren/card.png' },
+      { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search'], image: 'images/personas/gojo/card.png' },
+      { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', celestial_order: 'wanderer', mcp_access: [], image: 'images/personas/hitler/card.png' },
     ];
 
     (fetch as jest.Mock).mockImplementationOnce(() =>
@@ -53,8 +53,8 @@ describe('API Service', () => {
 
   it('fetchPersonas should handle personas with missing optional fields', async () => {
     const mockPersonas = [
-      { key: 'minimal', display_name: 'Minimal Persona' }, // Missing style, rarity, etc.
-      { key: 'full', display_name: 'Full Persona', style: 'confident', rarity: 'legendary', voice: { greeting: 'Hi!' } }
+      { key: 'minimal', display_name: 'Minimal Persona' }, // Missing style, rarity, celestial_order, etc.
+      { key: 'full', display_name: 'Full Persona', style: 'confident', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search', 'mongodb'], voice: { greeting: 'Hi!' } }
     ];
 
     (fetch as jest.Mock).mockImplementationOnce(() =>
@@ -287,6 +287,9 @@ describe('API Service', () => {
           key: 'eeva',
           display_name: 'Eeva',
           style: 'friendly',
+          rarity: 'legendary',
+          celestial_order: 'archon',
+          mcp_access: ['brave_search', 'mongodb'],
         },
         session: {
           id: '1',

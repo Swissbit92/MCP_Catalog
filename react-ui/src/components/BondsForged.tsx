@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { usePersona } from '../context/PersonaContext'
 import { fetchPersonas } from '../services/api'
+import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder'
 
 interface BondsForgedProps {
   onCharacterSelect: (personaKey: string) => void
@@ -150,7 +151,7 @@ const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, 
                           {persona.display_name || persona.key}
                         </div>
                         <div className="flex items-center justify-between mt-0.5">
-                          <div className="text-xs text-gray-500 capitalize">{persona.rarity}</div>
+                          <div className="text-xs text-gray-500">{formatOrderLabel(rarityToOrder(persona.rarity || 'common'))}</div>
                           {bondLevel > 1 && (
                             <div className="text-xs text-fuchsia-400">
                               Bond Lv. {bondLevel}

@@ -1,12 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import styles from './CharacterCardV2.module.css';
+import { getDisplayOrder, formatOrderLabel, orderToRarityClass } from '../utils/celestialOrder';
 
 interface CharacterCardV2Props {
   name: string;
   style: string;
   image: string;
   rarity: string;
+  celestial_order?: string;
   onSelect: (key: string) => void;
   isSelected: boolean;
   personaKey: string;
@@ -19,6 +21,7 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
   style,
   image,
   rarity,
+  celestial_order,
   onSelect,
   isSelected,
   personaKey,
@@ -27,7 +30,9 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
 }) => {
   // Auto-detect NEPHILIM from personaKey if not explicitly set
   const isNephilimCard = isNephilim || personaKey.startsWith('nephilim_');
-  const rarityClass = styles[`rarity-${rarity.toLowerCase()}`];
+  // Resolve order from celestial_order or rarity mapping, then map to CSS rarity class
+  const order = getDisplayOrder({ celestial_order, rarity });
+  const rarityClass = styles[`rarity-${orderToRarityClass(order)}`];
   const selectedClass = isSelected ? styles['selected'] : '';
   const nephilimClass = isNephilimCard ? styles['nephilim-card'] : '';
 
@@ -87,31 +92,31 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
     onSelect(personaKey);
   };
 
-  // Rarity-based color schemes for dynamic styling
-  const getRarityColors = (rarity: string) => {
-    switch (rarity.toLowerCase()) {
-      case 'legendary':
+  // Order-based color schemes for dynamic styling (same colors, order keys)
+  const getOrderColors = (ord: string) => {
+    switch (ord.toLowerCase()) {
+      case 'archon':
         return {
           primary: '#FFD700',
           secondary: '#FFA500',
           glow: 'rgba(255, 215, 0, 0.8)',
           gradient: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)'
         };
-      case 'epic':
+      case 'warden':
         return {
           primary: '#DA70D6',
           secondary: '#9370DB',
           glow: 'rgba(218, 112, 214, 0.8)',
           gradient: 'linear-gradient(135deg, #DA70D6 0%, #9370DB 50%, #8A2BE2 100%)'
         };
-      case 'rare':
+      case 'sage':
         return {
           primary: '#00BFFF',
           secondary: '#1E90FF',
           glow: 'rgba(0, 191, 255, 0.8)',
           gradient: 'linear-gradient(135deg, #00BFFF 0%, #1E90FF 50%, #0000FF 100%)'
         };
-      default: // common
+      default: // wanderer
         return {
           primary: '#C0C0C0',
           secondary: '#A9A9A9',
@@ -121,7 +126,7 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
     }
   };
 
-  const colors = getRarityColors(rarity);
+  const colors = getOrderColors(order);
 
   return (
     <motion.div
@@ -191,7 +196,7 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
           <div className={styles['character-name']}>{name}</div>
           <div className={styles['character-style']}>{style}</div>
           <div className={styles['rarity-indicator']}>
-            <span className={styles['rarity-badge']}>{rarity}</span>
+            <span className={styles['rarity-badge']}>{formatOrderLabel(order)}</span>
             {isNephilimCard && (
               <span className={styles['nephilim-badge']}>NEPHILIM</span>
             )}

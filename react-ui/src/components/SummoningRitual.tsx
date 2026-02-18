@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fetchPersonas } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { useAudio } from '../context/AudioContext'
+import { orderToRarityClass, rarityToOrder } from '../utils/celestialOrder'
 
 interface Persona {
   key: string
@@ -21,25 +22,25 @@ interface SummoningRitualProps {
   onCharacterSelect: (personaKey: string) => void
 }
 
-const RARITY_WEIGHTS = {
-  common: 50,
-  rare: 30,
-  epic: 15,
-  legendary: 5,
+const ORDER_WEIGHTS = {
+  wanderer: 50,
+  sage: 30,
+  warden: 15,
+  archon: 5,
 }
 
-const RARITY_COLORS: Record<string, string> = {
-  common: '#C0C0C0',
-  rare: '#00BFFF',
-  epic: '#DA70D6',
-  legendary: '#FFD700',
+const ORDER_COLORS: Record<string, string> = {
+  wanderer: '#C0C0C0',
+  sage: '#00BFFF',
+  warden: '#DA70D6',
+  archon: '#FFD700',
 }
 
-const RARITY_LABELS: Record<string, string> = {
-  common: 'Common',
-  rare: 'Rare',
-  epic: 'Epic',
-  legendary: 'Legendary',
+const ORDER_LABELS: Record<string, string> = {
+  wanderer: 'Wanderer',
+  sage: 'Sage',
+  warden: 'Warden',
+  archon: 'Archon',
 }
 
 const SOFT_PITY_THRESHOLD = 5
@@ -59,7 +60,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
   const [holdProgress, setHoldProgress] = useState(0)
   const [pulledCharacter, setPulledCharacter] = useState<Persona | null>(null)
   const [isDuplicate, setIsDuplicate] = useState(false)
-  const [revealedRarity, setRevealedRarity] = useState<string | null>(null)
+  const [revealedOrder, setRevealedOrder] = useState<string | null>(null)
   const [allPersonas, setAllPersonas] = useState<Persona[]>([])
   const [nameRevealIndex, setNameRevealIndex] = useState(0)
 
@@ -118,36 +119,38 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
     return HARD_PITY_THRESHOLD - pityCounter
   }, [pityCounter])
 
-  const selectWeightedRarity = useCallback((): string => {
-    const weights = { ...RARITY_WEIGHTS }
+  const selectWeightedOrder = useCallback((): string => {
+    const weights = { ...ORDER_WEIGHTS }
 
     // Soft pity: boost rarer weights after threshold
     if (pityCounter >= SOFT_PITY_THRESHOLD) {
       const pityBonus = (pityCounter - SOFT_PITY_THRESHOLD + 1) * 5
-      weights.rare += pityBonus
-      weights.epic += Math.floor(pityBonus / 2)
-      weights.legendary += Math.floor(pityBonus / 3)
-      weights.common = Math.max(10, weights.common - pityBonus)
+      weights.sage += pityBonus
+      weights.warden += Math.floor(pityBonus / 2)
+      weights.archon += Math.floor(pityBonus / 3)
+      weights.wanderer = Math.max(10, weights.wanderer - pityBonus)
     }
 
     const totalWeight = Object.values(weights).reduce((sum, w) => sum + w, 0)
     let roll = Math.random() * totalWeight
 
-    for (const [rarity, weight] of Object.entries(weights)) {
+    for (const [order, weight] of Object.entries(weights)) {
       roll -= weight
-      if (roll <= 0) return rarity
+      if (roll <= 0) return order
     }
-    return 'common'
+    return 'wanderer'
   }, [pityCounter])
 
   const selectPersona = useCallback((): Persona | null => {
     if (allPersonas.length === 0) return null
 
     const isHardPity = pityCounter >= HARD_PITY_THRESHOLD - 1
-    const rarity = selectWeightedRarity()
+    const selectedOrder = selectWeightedOrder()
+    // Map order back to rarity string for persona filtering
+    const rarityForFilter = orderToRarityClass(selectedOrder)
 
-    // Filter by rarity
-    let candidates = allPersonas.filter(p => p.rarity === rarity)
+    // Filter by rarity (persona data still stores rarity)
+    let candidates = allPersonas.filter(p => p.rarity === rarityForFilter)
     if (candidates.length === 0) {
       candidates = allPersonas
     }
@@ -169,7 +172,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
 
     const randomIndex = Math.floor(Math.random() * candidates.length)
     return candidates[randomIndex]
-  }, [allPersonas, pityCounter, selectWeightedRarity, isCollected])
+  }, [allPersonas, pityCounter, selectWeightedOrder, isCollected])
 
   const runSummoningSequence = useCallback(async () => {
     const character = selectPersona()
@@ -186,7 +189,8 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
     await new Promise(resolve => setTimeout(resolve, anticipationDuration))
 
     // Phase 3: Rarity Gate (0.8s)
-    setRevealedRarity(character.rarity)
+    const order = rarityToOrder(character.rarity)
+    setRevealedOrder(order)
     setPhase('rarity_gate')
     playRarityRevealSound(character.rarity)
     await new Promise(resolve => setTimeout(resolve, 800))
@@ -270,7 +274,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
   const handleReset = useCallback(() => {
     setPhase('idle')
     setPulledCharacter(null)
-    setRevealedRarity(null)
+    setRevealedOrder(null)
     setIsDuplicate(false)
     setHoldProgress(0)
     setNameRevealIndex(0)
@@ -295,7 +299,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
     }
   }, [])
 
-  const rarityColor = revealedRarity ? RARITY_COLORS[revealedRarity] : RARITY_COLORS.common
+  const rarityColor = revealedOrder ? ORDER_COLORS[revealedOrder] : ORDER_COLORS.wanderer
   const circumference = 2 * Math.PI * 58
 
   return (
@@ -603,7 +607,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
           )}
 
           {/* RARITY GATE PHASE */}
-          {phase === 'rarity_gate' && revealedRarity && (
+          {phase === 'rarity_gate' && revealedOrder && (
             <motion.div
               key="rarity-gate"
               className="relative flex flex-col items-center justify-center"
@@ -655,7 +659,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
               >
-                {RARITY_LABELS[revealedRarity]}
+                {ORDER_LABELS[revealedOrder]}
               </motion.div>
             </motion.div>
           )}
@@ -705,7 +709,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                   transition={{ duration: 1, ease: 'easeInOut' }}
                 />
 
-                {/* Rarity border glow */}
+                {/* Order border glow */}
                 <div
                   className="absolute inset-0 rounded-xl pointer-events-none"
                   style={{
@@ -743,8 +747,8 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
             >
               {/* Particle burst */}
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {[...Array(revealedRarity === 'legendary' ? 30 : revealedRarity === 'epic' ? 20 : 12)].map((_, i) => {
-                  const angle = (i / (revealedRarity === 'legendary' ? 30 : revealedRarity === 'epic' ? 20 : 12)) * Math.PI * 2
+                {[...Array(revealedOrder === 'archon' ? 30 : revealedOrder === 'warden' ? 20 : 12)].map((_, i) => {
+                  const angle = (i / (revealedOrder === 'archon' ? 30 : revealedOrder === 'warden' ? 20 : 12)) * Math.PI * 2
                   const distance = 150 + Math.random() * 200
                   return (
                     <motion.div
@@ -770,8 +774,8 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                   )
                 })}
 
-                {/* Legendary cosmic rings */}
-                {revealedRarity === 'legendary' && (
+                {/* Archon cosmic rings */}
+                {revealedOrder === 'archon' && (
                   <>
                     {[0, 0.3, 0.6].map((delay, i) => (
                       <motion.div
@@ -829,7 +833,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                 animate={{ opacity: 0.8 }}
                 transition={{ delay: 0.4 }}
               >
-                {RARITY_LABELS[pulledCharacter.rarity]}
+                {revealedOrder ? ORDER_LABELS[revealedOrder] : ORDER_LABELS.wanderer}
               </motion.div>
 
               {/* Bond status */}
@@ -897,24 +901,24 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
           </h3>
           <div className="flex items-center justify-between text-sm mb-3">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RARITY_COLORS.common }} />
-              <span className="text-gray-400">Common:</span>
-              <span className="text-gray-200">{RARITY_WEIGHTS.common}%</span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ORDER_COLORS.wanderer }} />
+              <span className="text-gray-400">Wanderer:</span>
+              <span className="text-gray-200">{ORDER_WEIGHTS.wanderer}%</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RARITY_COLORS.rare }} />
-              <span className="text-gray-400">Rare:</span>
-              <span className="text-gray-200">{RARITY_WEIGHTS.rare}%</span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ORDER_COLORS.sage }} />
+              <span className="text-gray-400">Sage:</span>
+              <span className="text-gray-200">{ORDER_WEIGHTS.sage}%</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RARITY_COLORS.epic }} />
-              <span className="text-gray-400">Epic:</span>
-              <span className="text-gray-200">{RARITY_WEIGHTS.epic}%</span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ORDER_COLORS.warden }} />
+              <span className="text-gray-400">Warden:</span>
+              <span className="text-gray-200">{ORDER_WEIGHTS.warden}%</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RARITY_COLORS.legendary }} />
-              <span className="text-gray-400">Legendary:</span>
-              <span className="text-gray-200">{RARITY_WEIGHTS.legendary}%</span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ORDER_COLORS.archon }} />
+              <span className="text-gray-400">Archon:</span>
+              <span className="text-gray-200">{ORDER_WEIGHTS.archon}%</span>
             </div>
           </div>
           <div className="text-xs text-gray-500 border-t border-white/[0.05] pt-2">

@@ -50,6 +50,83 @@ class SeekerProgressionRepository(BaseRepository):
     persona affinities, and lore unlocks.
     """
 
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize with database path and ensure tables exist."""
+        super().__init__(db_path)
+        self._ensure_tables()
+
+    def _ensure_tables(self):
+        """Create NEPHILIM progression tables if they don't exist.
+
+        Safety net matching emotional_state_repository.py pattern so the
+        progression system works even without Alembic migrations.
+        Schema matches alembic/versions/3nephilim_progression.py exactly.
+        """
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS seeker_profiles (
+                user_id TEXT NOT NULL PRIMARY KEY,
+                rank_name TEXT DEFAULT 'Initiate',
+                total_resonance INTEGER DEFAULT 0,
+                faction_primary TEXT,
+                faction_secondary TEXT,
+                rank_achieved_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS persona_affinity (
+                user_id TEXT NOT NULL,
+                persona_key TEXT NOT NULL,
+                messages_count INTEGER DEFAULT 0,
+                affinity_level INTEGER DEFAULT 0,
+                last_conversation TEXT,
+                first_conversation TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, persona_key),
+                FOREIGN KEY (user_id) REFERENCES seeker_profiles(user_id) ON DELETE CASCADE
+            )
+        """)
+
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS resonance_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                persona_key TEXT,
+                session_id TEXT,
+                timestamp TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES seeker_profiles(user_id) ON DELETE CASCADE
+            )
+        """)
+
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS unlocked_lore (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                persona_key TEXT NOT NULL,
+                fragment_id TEXT NOT NULL,
+                unlocked_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES seeker_profiles(user_id) ON DELETE CASCADE,
+                UNIQUE (user_id, persona_key, fragment_id)
+            )
+        """)
+
+        # Indexes matching the Alembic migration
+        self._execute("CREATE INDEX IF NOT EXISTS idx_seeker_profiles_rank ON seeker_profiles(rank_name)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_seeker_profiles_faction ON seeker_profiles(faction_primary)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_persona_affinity_user ON persona_affinity(user_id)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_persona_affinity_persona ON persona_affinity(persona_key)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_resonance_log_user ON resonance_log(user_id)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_resonance_log_timestamp ON resonance_log(timestamp)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_unlocked_lore_user ON unlocked_lore(user_id)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_unlocked_lore_persona ON unlocked_lore(persona_key)")
+
+        logger.debug("[SeekerProgression] Tables ensured")
+
     # ─────────────────────────────────────────────────────────────
     # Seeker Profile Operations
     # ─────────────────────────────────────────────────────────────
