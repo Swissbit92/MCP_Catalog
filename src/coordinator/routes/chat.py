@@ -32,6 +32,7 @@ from ..tool_definitions import (
     classify_query_intent,
     get_tools_for_query,
 )
+from ..tools.intent_classifier import QueryIntent
 from ..services.first_person_service import post_process_first_person
 from ..services.query_handler_service import QueryHandlerService
 from ..services.message_processing_service import (
@@ -110,6 +111,27 @@ def chat(body: ChatBody):
         model_context_window=get_model_context_window()
     )
 
+    # Pre-check: active wallet creation flow bypasses intent classification
+    # (mid-flow messages like wallet names and passwords won't match NEEDS_WALLET keywords)
+    from ..services.query_handler_service import _wallet_flows
+    _active_flow_session = getattr(body, "session_id", None)
+    if _wallet_flows.get(_active_flow_session) and "solana_wallet" in (mcp_access or []):
+        handler = QueryHandlerService(
+            brave_client=deps.get("brave_client"),
+            mongodb_service=deps.get("mongodb_service"),
+        )
+        return handler.handle_wallet_query(
+            message=body.message,
+            system_prompt=system,
+            user_compiled=user_compiled,
+            wallet_tools=[],
+            metadata=metadata,
+            persona_name=persona_name,
+            persona_card=card,
+            session_id=_active_flow_session,
+            user_id=getattr(body, "user_id", "default_user"),
+        )
+
     # Use intent classification to determine which tools to inject
     intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access)
     logger.info(f"[Chat] Request received: persona={persona_key}, rarity={persona_rarity}, query_preview='{body.message[:60]}...'")
@@ -129,6 +151,27 @@ def chat(body: ChatBody):
     )
 
     persona_name = card.get("display_name") or card.get("key") or "Persona"
+
+    # Route wallet intent before MongoDB/Brave checks
+    if intent == QueryIntent.NEEDS_WALLET:
+        from ..startup import get_wallet_repo, get_jupiter_ops, get_wallet_execution_service, get_strategy_service
+        handler = QueryHandlerService(
+            brave_client=deps.get("brave_client"),
+            mongodb_service=deps.get("mongodb_service"),
+        )
+        user_id = body.user_id if hasattr(body, "user_id") else "default_user"
+        session_id = body.session_id if hasattr(body, "session_id") else None
+        return handler.handle_wallet_query(
+            message=body.message,
+            system_prompt=system,
+            user_compiled=user_compiled,
+            wallet_tools=tools,
+            metadata=metadata,
+            persona_name=persona_name,
+            persona_card=card,
+            session_id=session_id,
+            user_id=user_id,
+        )
 
     if not tools:
         # No tools needed - regular LLM completion

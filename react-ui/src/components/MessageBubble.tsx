@@ -4,7 +4,9 @@ import { AlertTriangle } from 'lucide-react'
 import { Avatar2D } from './Avatar2D'
 import { RichContent } from './RichContent'
 import { SourceIndicator } from './SourceIndicator'
-import { Message as ApiMessage } from '../services/api'
+import { Message as ApiMessage, confirmTrade, cancelTrade, approveStrategy, rejectStrategy } from '../services/api'
+import TradeProposalCard from './TradeProposalCard'
+import StrategyApprovalCard from './StrategyApprovalCard'
 
 export interface Message extends ApiMessage {
   latency?: number
@@ -143,6 +145,42 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             <SourceIndicator metadata={message.metadata} />
           )}
         </motion.div>
+
+        {/* Wallet proposal cards — rendered below the text bubble for assistant messages */}
+        {!isUser && (() => {
+          const proposalType = message.metadata?.proposal_type
+          const proposal = (message.metadata as any)?.proposal
+
+          if (proposalType === 'trade_proposal' && proposal) {
+            return (
+              <TradeProposalCard
+                proposal={proposal}
+                onConfirm={async (proposalId: string) => {
+                  await confirmTrade(proposalId)
+                }}
+                onCancel={(proposalId: string) => {
+                  cancelTrade(proposalId).catch(() => {/* fire-and-forget */})
+                }}
+              />
+            )
+          }
+
+          if (proposalType === 'strategy_proposal' && proposal) {
+            return (
+              <StrategyApprovalCard
+                proposal={proposal}
+                onApprove={async (proposalId: string, strategyConfig: any) => {
+                  await approveStrategy(proposalId, strategyConfig)
+                }}
+                onReject={(proposalId: string) => {
+                  rejectStrategy(proposalId).catch(() => {/* fire-and-forget */})
+                }}
+              />
+            )
+          }
+
+          return null
+        })()}
 
         {/* Timestamp, Latency, and Status */}
         <div className={`mt-1 flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>

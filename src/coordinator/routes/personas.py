@@ -12,8 +12,11 @@ from ..persona_memory import (
     get_or_build_cv_summary,
     _load_all_cards_cached
 )
+from ..startup import cleanup_orphaned_sessions
 
 router = APIRouter(tags=["personas"])
+
+_last_persona_keys: set = set()
 
 
 @router.get("/personas")
@@ -21,6 +24,11 @@ def list_personas():
     """Return list of available personas with metadata."""
     try:
         cards = _load_all_cards_cached()
+        global _last_persona_keys
+        current_keys = {c.get("key") for c in cards if c.get("key")}
+        if current_keys != _last_persona_keys:
+            _last_persona_keys = current_keys
+            cleanup_orphaned_sessions()
         personas = []
         for card in cards:
             personas.append({
@@ -36,10 +44,7 @@ def list_personas():
                 "bg": card.get("bg"),
                 "voice": card.get("voice"),
             })
-        return JSONResponse(
-            content=personas,
-            headers={"Cache-Control": "max-age=30"},
-        )
+        return JSONResponse(content=personas)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list personas: {e}")
 

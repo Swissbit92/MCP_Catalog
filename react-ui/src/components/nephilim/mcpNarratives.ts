@@ -59,6 +59,36 @@ export const NEPHILIM_SOURCE_NARRATIVES: Record<string, NephilimSourceNarrative>
     accessingMessage: 'Drawing upon inner wisdom...',
     completedMessage: 'Insight revealed',
   },
+  wallet_mcp: {
+    patron: 'E.E.V.A.',
+    patronKey: 'nephilim_eeva',
+    narrativeName: "E.E.V.A.'s Solana Nexus",
+    icon: '⚡',
+    color: '#FFD700',
+    description: 'Solana wallet & Jupiter DEX operations',
+    accessingMessage: 'E.E.V.A. channels the Solana streams...',
+    completedMessage: 'The Nexus responds',
+  },
+  wallet_proposal: {
+    patron: 'E.E.V.A.',
+    patronKey: 'nephilim_eeva',
+    narrativeName: 'Trade Proposal',
+    icon: '⚡',
+    color: '#FFD700',
+    description: 'Awaiting your confirmation',
+    accessingMessage: 'E.E.V.A. prepares the transaction...',
+    completedMessage: 'Proposal ready for confirmation',
+  },
+  wallet_flow: {
+    patron: 'E.E.V.A.',
+    patronKey: 'nephilim_eeva',
+    narrativeName: 'Wallet Setup',
+    icon: '🔑',
+    color: '#FFD700',
+    description: 'Guided wallet creation',
+    accessingMessage: 'E.E.V.A. prepares your vault...',
+    completedMessage: 'Wallet ritual complete',
+  },
 }
 
 // Tool-specific narrative mappings
@@ -87,6 +117,35 @@ export const NEPHILIM_TOOL_NARRATIVES: Record<string, NephilimToolNarrative> = {
   bitcoin_portfolio_analysis: {
     narrativeName: 'Portfolio Scrying',
     action: 'scrying portfolio health',
+  },
+  // Jupiter Wallet tools
+  wallet_get_balances: {
+    narrativeName: 'Vault Scan',
+    action: 'scanning your vault holdings',
+  },
+  wallet_create_guided: {
+    narrativeName: 'Vault Ritual',
+    action: 'initiating wallet creation ritual',
+  },
+  solana_get_quote: {
+    narrativeName: 'Exchange Vision',
+    action: 'reading Jupiter exchange rates',
+  },
+  solana_rsi_check: {
+    narrativeName: 'Signal Reading',
+    action: 'reading momentum signals',
+  },
+  solana_propose_swap: {
+    narrativeName: 'Trade Proposal',
+    action: 'preparing a trade proposal',
+  },
+  solana_propose_strategy: {
+    narrativeName: 'Strategy Ritual',
+    action: 'designing an autonomous strategy',
+  },
+  solana_trade_history: {
+    narrativeName: 'Trade Chronicle',
+    action: 'consulting the trade chronicle',
   },
 }
 
@@ -156,6 +215,9 @@ export const getSourceNarrative = (
       brave_mcp: { label: 'Web Search (Brave MCP)', description: 'Web search results', icon: '🔍', color: '#3b82f6' },
       mongodb_mcp: { label: 'Trading Data (MongoDB MCP)', description: 'Market data', icon: '📊', color: '#22c55e' },
       multi_mcp: { label: 'Multi-Source Analysis', description: 'Combined sources', icon: '🔗', color: '#f97316' },
+      wallet_mcp: { label: 'Jupiter Wallet MCP', description: 'Solana wallet operations', icon: '⚡', color: '#FFD700' },
+      wallet_proposal: { label: 'Trade Proposal', description: 'Pending confirmation', icon: '⚡', color: '#FFD700' },
+      wallet_flow: { label: 'Wallet Setup', description: 'Guided wallet creation', icon: '🔑', color: '#FFD700' },
     }
     return standardLabels[sourceType] || standardLabels.llm
   }

@@ -11,15 +11,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 interface OnboardingPortalProps {
   onEnter: (userName: string) => void
+  initialName?: string
   className?: string
 }
 
 export const OnboardingPortal: React.FC<OnboardingPortalProps> = ({
   onEnter,
+  initialName = '',
   className = ''
 }) => {
   const [stage, setStage] = useState<'portal' | 'greeting' | 'name'>('portal')
-  const [userName, setUserName] = useState('')
+  const [userName, setUserName] = useState(initialName)
   const [typedText, setTypedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
 
