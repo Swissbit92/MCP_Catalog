@@ -27,7 +27,8 @@ test('renders character card with name, style, image, rarity, and handles select
   const name = 'Test Character';
   const style = 'Test Style';
   const image = '/images/test_image.png';
-  const rarity = 'Legendary';
+  const rarity = 'legendary';
+  const celestial_order = 'archon';
   const personaKey = 'test-character';
   const onSelect = jest.fn();
 
@@ -37,6 +38,7 @@ test('renders character card with name, style, image, rarity, and handles select
       style={style}
       image={image}
       rarity={rarity}
+      celestial_order={celestial_order}
       onSelect={onSelect}
       isSelected={false}
       personaKey={personaKey}
@@ -46,7 +48,8 @@ test('renders character card with name, style, image, rarity, and handles select
   const characterName = screen.getByText(name);
   const characterStyle = screen.getByText(style);
   const characterImage = screen.getByAltText(name);
-  const characterRarity = screen.getByText(rarity);
+  // Display text now shows Celestial Order label: Archon instead of Legendary
+  const characterRarity = screen.getByText('Archon');
   const chooseButton = screen.getByRole('button', { name: /choose/i });
 
   expect(characterName).toBeInTheDocument();
@@ -64,7 +67,8 @@ test('applies selected class when isSelected is true', () => {
   const name = 'Test Character';
   const style = 'Test Style';
   const image = '/images/test_image.png';
-  const rarity = 'Legendary';
+  const rarity = 'legendary';
+  const celestial_order = 'archon';
   const personaKey = 'test-character';
   const onSelect = jest.fn();
 
@@ -74,6 +78,7 @@ test('applies selected class when isSelected is true', () => {
       style={style}
       image={image}
       rarity={rarity}
+      celestial_order={celestial_order}
       onSelect={onSelect}
       isSelected={true}
       personaKey={personaKey}

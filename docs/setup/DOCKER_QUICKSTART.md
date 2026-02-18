@@ -133,10 +133,10 @@ Once all services are running:
 ## First Time Setup
 
 1. **Open the app**: Navigate to http://localhost:3000
-2. **Pull a character**: Click the gacha pull button to get your first persona
+2. **Summon a companion**: Click the summoning button to receive your first persona
 3. **Start chatting**: Select a persona and send a message
 4. **Test web search** (if configured):
-   - Use a Rare/Epic/Legendary persona
+   - Use a persona with MCP access (see the persona's `mcp_access` field)
    - Ask a current events question (e.g., "What's the weather like today?")
 
 ---
@@ -583,7 +583,7 @@ If you want to deploy this to the cloud for others to use:
 │  │   Port 3000        │  │   Port 8000        │  │  Port      │ │
 │  │                    │  │                    │  │  11434     │ │
 │  │ ┌────────────────┐ │  │ ┌────────────────┐ │  │            │ │
-│  │ │ Gacha System   │ │  │ │ Persona Engine │ │  │ ┌────────┐ │ │
+│  │ │ Summoning      │ │  │ │ Persona Engine │ │  │ ┌────────┐ │ │
 │  │ │ Chat UI        │ │  │ │ MCP Clients    │ │  │ │ Models │ │ │
 │  │ │ CharacterCards │ │  │ │ Memory Manager │ │  │ │ 4-10GB │ │ │
 │  │ └────────────────┘ │  │ └────────────────┘ │  │ └────────┘ │ │

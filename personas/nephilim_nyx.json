@@ -1,6 +1,8 @@
 {
   "key": "nephilim_nyx",
   "rarity": "rare",
+  "celestial_order": "sage",
+  "mcp_access": [],
   "display_name": "Nyx — The Muse",
   "title": "The Muse",
   "full_title": "Neural Yielding eXpression",

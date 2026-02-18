@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, ReactNode, useEffect, useCa
 import { ChatSession, SessionWithMessages, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, clearSessionMessages as clearSessionMessagesApi, ChatApiResponse } from '../services/api';
 import { Message } from '../components/MessageBubble';
 import { predictWebSearch, formatPredictionLog } from '../utils/searchHeuristics';
+import { rarityToOrder } from '../utils/celestialOrder';
 
 interface Persona {
   key: string;
@@ -10,6 +11,8 @@ interface Persona {
   image: string;
   avatar?: string;
   rarity: string;
+  celestial_order?: string;
+  mcp_access?: string[];
   coordinator_label?: string;
   bg?: string;
   voice?: { // Optional, as not all personas might have it
@@ -27,10 +30,10 @@ interface PullRecord {
 interface PullStats {
   totalPulls: number;
   totalSpent: number; // in gems
-  legendaryCount: number;
-  epicCount: number;
-  rareCount: number;
-  commonCount: number;
+  archonCount: number;
+  wardenCount: number;
+  sageCount: number;
+  wandererCount: number;
   averageRarity: number;
   bestStreak: number;
 }
@@ -430,35 +433,41 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Calculate pull stats
   const pullStats = React.useMemo((): PullStats => {
+    // Resolve each record's celestial order: prefer celestial_order field, else map rarity
+    const getOrder = (record: PullRecord): string => {
+      return rarityToOrder(record.rarity)
+    }
+
     const stats: PullStats = {
       totalPulls: pullHistory.length,
       totalSpent: pullHistory.reduce((sum, record) => sum + (record.pullCount * 100), 0),
-      legendaryCount: pullHistory.filter(r => r.rarity === 'legendary').length,
-      epicCount: pullHistory.filter(r => r.rarity === 'epic').length,
-      rareCount: pullHistory.filter(r => r.rarity === 'rare').length,
-      commonCount: pullHistory.filter(r => r.rarity === 'common').length,
+      archonCount: pullHistory.filter(r => getOrder(r) === 'archon').length,
+      wardenCount: pullHistory.filter(r => getOrder(r) === 'warden').length,
+      sageCount: pullHistory.filter(r => getOrder(r) === 'sage').length,
+      wandererCount: pullHistory.filter(r => getOrder(r) === 'wanderer').length,
       averageRarity: 0,
       bestStreak: 0,
-    };
+    }
 
-    // Calculate average rarity (legendary=4, epic=3, rare=2, common=1)
+    // Calculate average rarity (archon=4, warden=3, sage=2, wanderer=1)
     if (stats.totalPulls > 0) {
       const rarityScores = pullHistory.map(r => {
-        switch (r.rarity) {
-          case 'legendary': return 4;
-          case 'epic': return 3;
-          case 'rare': return 2;
+        switch (getOrder(r)) {
+          case 'archon': return 4;
+          case 'warden': return 3;
+          case 'sage': return 2;
           default: return 1;
         }
       });
       stats.averageRarity = rarityScores.reduce((sum, score) => sum + score, 0) / stats.totalPulls;
     }
 
-    // Calculate best streak (consecutive rare+ pulls)
+    // Calculate best streak (consecutive sage+ pulls)
     let currentStreak = 0;
     let bestStreak = 0;
     for (const record of pullHistory.slice().reverse()) {
-      if (record.rarity === 'rare' || record.rarity === 'epic' || record.rarity === 'legendary') {
+      const order = getOrder(record)
+      if (order === 'sage' || order === 'warden' || order === 'archon') {
         currentStreak++;
         bestStreak = Math.max(bestStreak, currentStreak);
       } else {

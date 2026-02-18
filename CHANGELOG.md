@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Celestial Order Remap (Feb 2026)
+- **Celestial Order System**: Replaced gacha rarity vocabulary with lore-aligned Celestial Order tiers:
+  - Legendary → Archon (Gold) — E.E.V.A.
+  - Epic → Warden (Purple) — Aegis, Aurora, Solace
+  - Rare → Sage (Cyan) — Cipher, Nyx
+  - Common → Wanderer (Silver) — Legacy personas
+- **Per-Persona MCP Access**: MCP tool access now controlled per-persona via `mcp_access` field in persona JSONs, replacing rarity-based tier gating:
+  - Cipher (Sage) now has Brave + MongoDB access (was Brave-only under rarity gating)
+  - Nyx (Sage) now has no MCP tools (was Brave under rarity gating)
+  - Aegis and Solace (Warden) now have Brave-only access (were Brave + MongoDB under rarity gating)
+- **Backend**: Added `CelestialOrder` enum, `mcp_access` parameter to intent_classifier and tool_utils, per-persona override in routes
+- **Frontend**: New `celestialOrder.ts` utility, all display labels show Archon/Warden/Sage/Wanderer, CSS classes unchanged (`rarity-*`)
+- **Tests**: 10 new backend tests for mcp_access logic, all frontend test mocks updated with celestial_order field
+- **Documentation**: Updated CLAUDE.md, README.md, and development docs
+
 ### Fixed
 - **Chat UI Performance & Accessibility Bug Fixes** ✅ (Jan 19, 2026) - Fixed two critical UX issues in the chat interface:
   - ✅ **Issue #1 - Input Text Visibility**: Fixed low contrast making typed characters barely visible

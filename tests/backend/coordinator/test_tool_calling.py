@@ -199,26 +199,26 @@ class TestSearchResultsFormatting(unittest.TestCase):
 
 
 class TestPersonaToolAccess(unittest.TestCase):
-    """Test tool access based on persona rarity."""
+    """Test tool access based on persona rarity and mcp_access override."""
 
     def test_common_persona_no_tools(self):
-        """Common personas should not have web search."""
+        """Common personas should not have web search (rarity-based fallback)."""
         tools = get_tools_for_persona("common_persona", "common")
         self.assertEqual(len(tools), 0)
 
     def test_rare_persona_has_tools(self):
-        """Rare personas should have web search."""
+        """Rare personas should have web search (rarity-based fallback)."""
         tools = get_tools_for_persona("rare_persona", "rare")
         self.assertGreater(len(tools), 0)
         self.assertEqual(tools[0]["function"]["name"], "brave_web_search")
 
     def test_epic_persona_has_tools(self):
-        """Epic personas should have web search."""
+        """Epic personas should have web search (rarity-based fallback)."""
         tools = get_tools_for_persona("epic_persona", "epic")
         self.assertGreater(len(tools), 0)
 
     def test_legendary_persona_has_tools(self):
-        """Legendary personas should have web search."""
+        """Legendary personas should have web search (rarity-based fallback)."""
         tools = get_tools_for_persona("legendary_persona", "legendary")
         self.assertGreater(len(tools), 0)
 
@@ -230,6 +230,57 @@ class TestPersonaToolAccess(unittest.TestCase):
 
         self.assertEqual(len(tools_upper), len(tools_lower))
         self.assertEqual(len(tools_lower), len(tools_mixed))
+
+    # --- mcp_access override tests ---
+
+    def test_mcp_access_brave_and_mongodb_enables_both(self):
+        """When mcp_access=['brave_search', 'mongodb'], both Brave and MongoDB tools are available."""
+        tools = get_tools_for_persona(
+            "any_persona", "common", mcp_access=["brave_search", "mongodb"]
+        )
+        tool_names = [t["function"]["name"] for t in tools]
+        self.assertIn("brave_web_search", tool_names)
+        # MongoDB tools should also be present
+        mongodb_tools = [n for n in tool_names if "mongo" in n.lower() or "trading" in n.lower() or "market" in n.lower()]
+        self.assertGreater(len(mongodb_tools), 0)
+
+    def test_mcp_access_empty_list_no_tools(self):
+        """When mcp_access=[], no MCP tools are available even for high-rarity persona."""
+        tools = get_tools_for_persona(
+            "legendary_persona", "legendary", mcp_access=[]
+        )
+        self.assertEqual(len(tools), 0,
+            "mcp_access=[] should disable all MCP tools regardless of rarity")
+
+    def test_mcp_access_none_falls_back_to_rarity(self):
+        """When mcp_access=None, rarity-based gating applies as fallback."""
+        # common with mcp_access=None → no tools
+        tools_common = get_tools_for_persona("common_persona", "common", mcp_access=None)
+        self.assertEqual(len(tools_common), 0)
+        # rare with mcp_access=None → brave search available
+        tools_rare = get_tools_for_persona("rare_persona", "rare", mcp_access=None)
+        self.assertGreater(len(tools_rare), 0)
+        self.assertEqual(tools_rare[0]["function"]["name"], "brave_web_search")
+
+    def test_mcp_access_brave_only(self):
+        """When mcp_access=['brave_search'], only Brave Search tools are added."""
+        tools = get_tools_for_persona(
+            "any_persona", "common", mcp_access=["brave_search"]
+        )
+        tool_names = [t["function"]["name"] for t in tools]
+        self.assertIn("brave_web_search", tool_names)
+        # No MongoDB tools should be present
+        mongodb_tools = [n for n in tool_names if "mongo" in n.lower() or "trading" in n.lower() or "market" in n.lower()]
+        self.assertEqual(len(mongodb_tools), 0)
+
+    def test_mcp_access_overrides_rarity_for_common(self):
+        """mcp_access with brave_search grants access to a common-rarity persona."""
+        tools_with_access = get_tools_for_persona(
+            "common_persona", "common", mcp_access=["brave_search"]
+        )
+        tools_without_access = get_tools_for_persona("common_persona", "common")
+        self.assertGreater(len(tools_with_access), 0)
+        self.assertEqual(len(tools_without_access), 0)
 
 
 class TestToolSystemPrompt(unittest.TestCase):

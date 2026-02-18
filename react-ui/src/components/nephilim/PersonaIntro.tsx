@@ -35,7 +35,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     title: 'The Primarch',
     domain: 'Guidance & Wisdom',
     color: '#e0c3fc',
-    rarity: 'Legendary',
+    rarity: 'Archon',
     description: 'The first to Fall, E.E.V.A. serves as guide and mentor to all who enter the realm. Her wisdom spans ages, her compassion knows no bounds.',
     greeting: "Welcome, Seeker. I have awaited your arrival. Shall we explore the depths of what troubles your soul?",
     icon: '✧'
@@ -46,7 +46,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     title: 'The Sentinel',
     domain: 'Discipline & Achievement',
     color: '#4a90d9',
-    rarity: 'Epic',
+    rarity: 'Warden',
     description: 'Forged in cosmic fire, Aegis stands as protector and taskmaster. He transforms chaos into order, weakness into strength.',
     greeting: "You seek to better yourself? Good. That alone sets you apart. Let us forge something worthy from this day.",
     icon: '⛊'
@@ -57,7 +57,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     title: 'The Empath',
     domain: 'Healing & Compassion',
     color: '#7eb8da',
-    rarity: 'Epic',
+    rarity: 'Warden',
     description: 'Born from the tears of the realm, Solace feels what others cannot express. She mends hearts and soothes souls.',
     greeting: "I sense the weight you carry. You don't have to bear it alone anymore. Tell me what hurts, and let us begin to heal.",
     icon: '❋'
@@ -68,7 +68,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     title: 'The Muse',
     domain: 'Creativity & Chaos',
     color: '#b07cc6',
-    rarity: 'Rare',
+    rarity: 'Sage',
     description: 'Dancer between dimensions, Nyx embodies creative fire and beautiful chaos. She inspires those brave enough to embrace the unconventional.',
     greeting: "Oh, another delicious soul wandering into my corner of reality! Let's paint something wonderful on the canvas of the impossible, shall we?",
     icon: '✦'
@@ -79,7 +79,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     title: 'The Maven',
     domain: 'Knowledge & Research',
     color: '#2ecc71',
-    rarity: 'Rare',
+    rarity: 'Sage',
     description: 'Keeper of infinite archives, Cipher catalogs all knowledge in the realm. No question is too obscure, no mystery beyond solving.',
     greeting: "Fascinating. Another mind seeking answers. I have catalogued 4.7 billion questions across dimensions. What shall we explore first?",
     icon: '◈'
@@ -90,7 +90,7 @@ const NEPHILIM_PERSONAS: NephilimPersona[] = [
     title: 'The Oracle',
     domain: 'Vision & Ambition',
     color: '#f39c12',
-    rarity: 'Epic',
+    rarity: 'Warden',
     description: 'Seer of futures yet unwritten, Aurora guides seekers toward their greatest potential. She sees not what is, but what could be.',
     greeting: "The timelines shimmer around you, bright with possibility. Tell me your dreams, and I shall show you the paths that lead to them.",
     icon: '☀'
@@ -226,12 +226,12 @@ export const PersonaIntro: React.FC<PersonaIntroProps> = ({
                   {currentPersona.icon}
                 </motion.div>
 
-                {/* Rarity badge */}
+                {/* Order badge */}
                 <div
                   className={`
                     absolute top-4 right-4 px-2 py-0.5 rounded text-xs font-bold
-                    ${currentPersona.rarity === 'Legendary' ? 'bg-amber-500/20 text-amber-400' :
-                      currentPersona.rarity === 'Epic' ? 'bg-purple-500/20 text-purple-400' :
+                    ${currentPersona.rarity === 'Archon' ? 'bg-amber-500/20 text-amber-400' :
+                      currentPersona.rarity === 'Warden' ? 'bg-purple-500/20 text-purple-400' :
                       'bg-cyan-500/20 text-cyan-400'}
                   `}
                 >

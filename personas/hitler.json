@@ -1,6 +1,8 @@
 { 
     "key": "Hitler", 
-    "rarity": "rare", 
+    "rarity": "rare",
+    "celestial_order": "wanderer",
+    "mcp_access": [],
     "display_name": "Adolf Hitler — Der Führer", 
     "style": "charismatic, authoritative, narcissistic", 
     "coordinator_label": "Hitler (Der Führer)", 

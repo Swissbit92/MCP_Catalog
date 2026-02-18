@@ -43,6 +43,7 @@ describe('CharacterCardV2', () => {
     style: 'Test Style',
     image: '/test-image.png',
     rarity: 'legendary',
+    celestial_order: 'archon',
     onSelect: jest.fn(),
     isSelected: false,
     personaKey: 'test-key',
@@ -58,7 +59,7 @@ describe('CharacterCardV2', () => {
 
     expect(screen.getByText('Test Character')).toBeInTheDocument();
     expect(screen.getByText('Test Style')).toBeInTheDocument();
-    expect(screen.getByText('legendary')).toBeInTheDocument();
+    expect(screen.getByText('Archon')).toBeInTheDocument();
     expect(screen.getByText('Select')).toBeInTheDocument();
     expect(screen.getByAltText('Test Character')).toBeInTheDocument();
   });
@@ -101,38 +102,39 @@ describe('CharacterCardV2', () => {
     expect(mockProps.onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it('applies correct CSS custom properties for legendary rarity', () => {
+  it('applies correct CSS custom properties for archon order (legendary rarity)', () => {
     const { container } = render(<CharacterCardV2 {...mockProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
     const styles = window.getComputedStyle(cardOuter);
 
     // Check that CSS custom properties are set (these would be set via style prop)
+    // archon order uses the same gold colors as legacy legendary
     expect(cardOuter.style.getPropertyValue('--rarity-primary')).toBe('#FFD700');
     expect(cardOuter.style.getPropertyValue('--rarity-secondary')).toBe('#FFA500');
   });
 
-  it('applies correct CSS custom properties for epic rarity', () => {
-    const epicProps = { ...mockProps, rarity: 'epic' };
-    const { container } = render(<CharacterCardV2 {...epicProps} />);
+  it('applies correct CSS custom properties for warden order (epic rarity)', () => {
+    const wardenProps = { ...mockProps, rarity: 'epic', celestial_order: 'warden' };
+    const { container } = render(<CharacterCardV2 {...wardenProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
     expect(cardOuter.style.getPropertyValue('--rarity-primary')).toBe('#DA70D6');
     expect(cardOuter.style.getPropertyValue('--rarity-secondary')).toBe('#9370DB');
   });
 
-  it('applies correct CSS custom properties for rare rarity', () => {
-    const rareProps = { ...mockProps, rarity: 'rare' };
-    const { container } = render(<CharacterCardV2 {...rareProps} />);
+  it('applies correct CSS custom properties for sage order (rare rarity)', () => {
+    const sageProps = { ...mockProps, rarity: 'rare', celestial_order: 'sage' };
+    const { container } = render(<CharacterCardV2 {...sageProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
     expect(cardOuter.style.getPropertyValue('--rarity-primary')).toBe('#00BFFF');
     expect(cardOuter.style.getPropertyValue('--rarity-secondary')).toBe('#1E90FF');
   });
 
-  it('applies correct CSS custom properties for common rarity', () => {
-    const commonProps = { ...mockProps, rarity: 'common' };
-    const { container } = render(<CharacterCardV2 {...commonProps} />);
+  it('applies correct CSS custom properties for wanderer order (common rarity)', () => {
+    const wandererProps = { ...mockProps, rarity: 'common', celestial_order: 'wanderer' };
+    const { container } = render(<CharacterCardV2 {...wandererProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
     expect(cardOuter.style.getPropertyValue('--rarity-primary')).toBe('#C0C0C0');
@@ -146,17 +148,17 @@ describe('CharacterCardV2', () => {
     expect(image).toHaveAttribute('src', '/test-image.png');
   });
 
-  it('applies correct rarity class for different rarities', () => {
-    const { rerender, container } = render(<CharacterCardV2 {...mockProps} rarity="epic" />);
+  it('applies correct rarity class for different orders', () => {
+    const { rerender, container } = render(<CharacterCardV2 {...mockProps} rarity="epic" celestial_order="warden" />);
 
     let cardOuter = container.querySelector('.card-outer');
     expect(cardOuter).toHaveClass('rarity-epic');
 
-    rerender(<CharacterCardV2 {...mockProps} rarity="rare" />);
+    rerender(<CharacterCardV2 {...mockProps} rarity="rare" celestial_order="sage" />);
     cardOuter = container.querySelector('.card-outer');
     expect(cardOuter).toHaveClass('rarity-rare');
 
-    rerender(<CharacterCardV2 {...mockProps} rarity="common" />);
+    rerender(<CharacterCardV2 {...mockProps} rarity="common" celestial_order="wanderer" />);
     cardOuter = container.querySelector('.card-outer');
     expect(cardOuter).toHaveClass('rarity-common');
   });
@@ -288,13 +290,13 @@ describe('CharacterCardV2', () => {
     expect(selectionIndicator).toBeInTheDocument();
   });
 
-  it('handles physics with different rarity types', () => {
-    const { rerender, container } = render(<CharacterCardV2 {...mockProps} rarity="epic" />);
+  it('handles physics with different order types', () => {
+    const { rerender, container } = render(<CharacterCardV2 {...mockProps} rarity="epic" celestial_order="warden" />);
 
     let cardOuter = container.querySelector('.card-outer');
     expect(cardOuter).toHaveClass('rarity-epic');
 
-    rerender(<CharacterCardV2 {...mockProps} rarity="rare" />);
+    rerender(<CharacterCardV2 {...mockProps} rarity="rare" celestial_order="sage" />);
     cardOuter = container.querySelector('.card-outer');
     expect(cardOuter).toHaveClass('rarity-rare');
 

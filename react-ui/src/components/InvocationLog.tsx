@@ -17,10 +17,10 @@ const RARITY_TEXT_COLORS: Record<string, string> = {
 }
 
 const RARITY_LABELS: Record<string, string> = {
-  common: 'Common',
-  rare: 'Rare',
-  epic: 'Epic',
-  legendary: 'Legendary',
+  common: 'Wanderer',
+  rare: 'Sage',
+  epic: 'Warden',
+  legendary: 'Archon',
 }
 
 const formatNarrativeTime = (timestamp: number): string => {
@@ -64,8 +64,8 @@ const InvocationLog: React.FC = () => {
             <div className="text-sm text-gray-500">Essence Spent</div>
           </div>
           <div className="bg-white/[0.05] backdrop-blur-xl rounded-xl p-4 border border-white/[0.1]">
-            <div className="text-2xl font-bold text-purple-400">{pullStats.legendaryCount + pullStats.epicCount + pullStats.rareCount}</div>
-            <div className="text-sm text-gray-500">Rare+ Bonds</div>
+            <div className="text-2xl font-bold text-purple-400">{pullStats.archonCount + pullStats.wardenCount + pullStats.sageCount}</div>
+            <div className="text-sm text-gray-500">Sage+ Bonds</div>
           </div>
           <div className="bg-white/[0.05] backdrop-blur-xl rounded-xl p-4 border border-white/[0.1]">
             <div className="text-2xl font-bold text-green-400">{pullStats.bestStreak}</div>
@@ -75,13 +75,13 @@ const InvocationLog: React.FC = () => {
 
         {/* Rarity Breakdown */}
         <div className="mt-6 bg-white/[0.05] backdrop-blur-xl rounded-xl p-6 border border-white/[0.1]">
-          <h3 className="text-lg font-nephilim tracking-wider text-gray-200 mb-4">Rarity Attunement</h3>
+          <h3 className="text-lg font-nephilim tracking-wider text-gray-200 mb-4">Order Attunement</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { rarity: 'legendary', count: pullStats.legendaryCount },
-              { rarity: 'epic', count: pullStats.epicCount },
-              { rarity: 'rare', count: pullStats.rareCount },
-              { rarity: 'common', count: pullStats.commonCount },
+              { rarity: 'legendary', count: pullStats.archonCount },
+              { rarity: 'epic', count: pullStats.wardenCount },
+              { rarity: 'rare', count: pullStats.sageCount },
+              { rarity: 'common', count: pullStats.wandererCount },
             ].map(({ rarity, count }) => (
               <div key={rarity} className="text-center">
                 <div
@@ -93,7 +93,7 @@ const InvocationLog: React.FC = () => {
                   }}
                 />
                 <div className={`text-xl font-bold ${RARITY_TEXT_COLORS[rarity]}`}>{count}</div>
-                <div className="text-sm text-gray-500 capitalize">{rarity}</div>
+                <div className="text-sm text-gray-500">{RARITY_LABELS[rarity] || rarity}</div>
               </div>
             ))}
           </div>

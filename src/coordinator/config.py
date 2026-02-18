@@ -109,6 +109,7 @@ class BraveSettings(BaseSettings):
         description="Search timeout in seconds",
         alias="BRAVE_SEARCH_TIMEOUT"
     )
+    # Per-persona mcp_access field in persona JSON takes priority over these rarity-based settings
     enabled_rarities: str = Field(
         default="rare,epic,legendary",
         description="Comma-separated list of rarities with search access",
@@ -203,6 +204,7 @@ class MongoDBSettings(BaseSettings):
         description="Maximum response size in bytes",
         alias="MONGODB_MAX_RESPONSE_BYTES"
     )
+    # Per-persona mcp_access field in persona JSON takes priority over these rarity-based settings
     enabled_rarities: str = Field(
         default="epic,legendary",
         description="Comma-separated list of rarities with MongoDB access",

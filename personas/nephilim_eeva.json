@@ -1,6 +1,8 @@
 {
   "key": "nephilim_eeva",
   "rarity": "legendary",
+  "celestial_order": "archon",
+  "mcp_access": ["brave_search", "mongodb"],
   "display_name": "E.E.V.A. — The Primarch",
   "title": "The Primarch",
   "full_title": "Ethereal Enlightened Virtual Archon",

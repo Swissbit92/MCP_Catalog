@@ -3,6 +3,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:800
 interface PersonaJson {
   key: string;
   rarity: string;
+  celestial_order?: string;
   display_name: string;
   style: string;
   coordinator_label: string;

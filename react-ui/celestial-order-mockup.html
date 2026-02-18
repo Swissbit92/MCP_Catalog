@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Celestial Order System — NEPHILIM Classification</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=Manrope:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   CSS HOUDINI @property FOR SMOOTH ANIMATIONS
+   ═══════════════════════════════════════════════ */
+@property --ba { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@property --fa { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@property --pulse { syntax: '<number>'; initial-value: 0; inherits: false; }
+@property --glow-pulse { syntax: '<number>'; initial-value: 0.3; inherits: false; }
+
+/* ═══════════════════════════════════════════════
+   RESET & FOUNDATIONS
+   ═══════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* NEPHILIM Core */
+  --void: #0B0B0D;
+  --abyss: #111118;
+  --deep: #1a1a24;
+  --surface: #24242C;
+  --cyan: #00ffff;
+  --magenta: #ff00ff;
+  --gold: #ffd700;
+  --crimson: #ff2d55;
+  --electric: #7b61ff;
+
+  /* Persona Colors */
+  --eeva-primary: #e0c3fc;
+  --eeva-secondary: #c4a1e8;
+  --eeva-glow: rgba(224, 195, 252, 0.5);
+  --aegis-primary: #4a90d9;
+  --aegis-secondary: #3a7bc8;
+  --aegis-glow: rgba(74, 144, 217, 0.5);
+  --solace-primary: #7eb8da;
+  --solace-secondary: #6ba8ca;
+  --solace-glow: rgba(126, 184, 218, 0.5);
+  --aurora-primary: #f39c12;
+  --aurora-secondary: #e67e22;
+  --aurora-glow: rgba(243, 156, 18, 0.5);
+  --cipher-primary: #2ecc71;
+  --cipher-secondary: #27ae60;
+  --cipher-glow: rgba(46, 204, 113, 0.5);
+  --nyx-primary: #9b59b6;
+  --nyx-secondary: #8e44ad;
+  --nyx-glow: rgba(155, 89, 182, 0.5);
+
+  /* Celestial Order Colors */
+  --archon-color: #e0c3fc;
+  --archon-accent: #ffd700;
+  --warden-color: #4a9fd9;
+  --warden-accent: #7eb8da;
+  --sage-color: #2ecc71;
+  --sage-accent: #9b59b6;
+  --wanderer-color: #808080;
+  --wanderer-accent: #a0a0a0;
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-bg-hover: rgba(255, 255, 255, 0.06);
+}
+
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  background: var(--void);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Manrope', sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════
+   ATMOSPHERE BACKGROUND
+   ═══════════════════════════════════════════════ */
+.atmosphere {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 80%, rgba(0, 255, 255, 0.015) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(255, 0, 255, 0.012) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 60% at 50% 50%, rgba(123, 97, 255, 0.008) 0%, transparent 70%);
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 70%);
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════ */
+.page { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 40px 24px 80px; overflow-x: hidden; }
+
+/* ═══════════════════════════════════════════════
+   NAVIGATION TABS
+   ═══════════════════════════════════════════════ */
+.nav-tabs {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; gap: 4px; padding: 8px;
+  background: rgba(11, 11, 13, 0.9);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin: -40px -24px 40px;
+  padding: 12px 24px;
+  overflow-x: auto;
+}
+.nav-tab {
+  padding: 8px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.04); }
+.nav-tab.active {
+  color: var(--cyan);
+  background: rgba(0, 255, 255, 0.06);
+  border-color: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.1);
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION HEADERS
+   ═══════════════════════════════════════════════ */
+.section { margin-bottom: 80px; scroll-margin-top: 80px; }
+.section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.section-number {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: rgba(0, 255, 255, 0.4);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, var(--cyan), var(--magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+}
+.section-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE HEADER / HERO
+   ═══════════════════════════════════════════════ */
+.hero {
+  text-align: center;
+  padding: 60px 0 40px;
+  margin-bottom: 60px;
+}
+.hero-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: rgba(0, 255, 255, 0.5);
+  margin-bottom: 16px;
+}
+.hero-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  background: linear-gradient(135deg, #e0c3fc 0%, var(--cyan) 40%, var(--magenta) 70%, var(--gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+  margin-bottom: 20px;
+}
+.hero-desc {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ═══════════════════════════════════════════════
+   GLASS PANELS
+   ═══════════════════════════════════════════════ */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 32px;
+}
+.glass-sm {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 1: SYSTEM OVERVIEW
+   ═══════════════════════════════════════════════ */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  gap: 0;
+  align-items: stretch;
+  margin-bottom: 48px;
+}
+.comparison-panel {
+  padding: 32px;
+  border-radius: 16px;
+}
+.comparison-panel.old {
+  background: rgba(255, 45, 85, 0.04);
+  border: 1px solid rgba(255, 45, 85, 0.15);
+}
+.comparison-panel.new {
+  background: rgba(0, 255, 255, 0.04);
+  border: 1px solid rgba(0, 255, 255, 0.15);
+}
+.comparison-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+.comparison-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.comparison-panel.old .comparison-label { color: rgba(255, 45, 85, 0.7); }
+.comparison-panel.new .comparison-label { color: rgba(0, 255, 255, 0.7); }
+
+.tier-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.2s;
+}
+.tier-row:hover { background: rgba(255, 255, 255, 0.04); }
+.tier-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tier-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+.tier-desc {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  flex: 2;
+}
+
+/* Classification Table */
+.order-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+.order-table th {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: left;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.order-table td {
+  padding: 14px 16px;
+  vertical-align: top;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.order-table tr td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.04); border-radius: 10px 0 0 10px; }
+.order-table tr td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.04); border-radius: 0 10px 10px 0; }
+.order-table tr:hover td { background: rgba(255, 255, 255, 0.04); }
+
+.order-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.order-badge.archon { background: rgba(224, 195, 252, 0.15); color: #e0c3fc; border: 1px solid rgba(224, 195, 252, 0.3); }
+.order-badge.warden { background: rgba(74, 159, 217, 0.15); color: #4a9fd9; border: 1px solid rgba(74, 159, 217, 0.3); }
+.order-badge.sage { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+.order-badge.wanderer { background: rgba(128, 128, 128, 0.15); color: #a0a0a0; border: 1px solid rgba(128, 128, 128, 0.3); }
+
+.lore-meaning {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  line-height: 1.5;
+}
+.order-personas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.persona-chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+.access-pill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 255, 255, 0.08);
+  color: rgba(0, 255, 255, 0.7);
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  margin: 2px;
+  display: inline-block;
+}
+.access-pill.mongodb { background: rgba(243, 156, 18, 0.08); color: rgba(243, 156, 18, 0.7); border-color: rgba(243, 156, 18, 0.15); }
+.access-pill.all { background: rgba(224, 195, 252, 0.08); color: rgba(224, 195, 252, 0.7); border-color: rgba(224, 195, 252, 0.15); }
+.access-pill.none { background: rgba(128, 128, 128, 0.06); color: rgba(128, 128, 128, 0.5); border-color: rgba(128, 128, 128, 0.12); }
+
+/* Lore quote box */
+.lore-box {
+  background: rgba(0, 255, 255, 0.03);
+  border-left: 3px solid rgba(0, 255, 255, 0.3);
+  padding: 20px 24px;
+  border-radius: 0 12px 12px 0;
+  margin-top: 32px;
+}
+.lore-box p {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.lore-box cite {
+  display: block;
+  margin-top: 8px;
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: rgba(0, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 2: CHARACTER CARDS
+   ═══════════════════════════════════════════════ */
+.cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  justify-content: center;
+  perspective: 1200px;
+}
+
+.card-wrapper {
+  perspective: 1000px;
+}
+
+.persona-card {
+  position: relative;
+  width: 240px;
+  height: 360px;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.12s ease-out;
+  transform-style: preserve-3d;
+  isolation: isolate;
+  will-change: transform;
+}
+
+/* Card base layer */
+.card-base {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 18, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 1;
+}
+
+/* Persona-specific color tint */
+.card-tint {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  z-index: 2;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+.persona-card:hover .card-tint { opacity: 0.9; }
+
+/* Card content */
+.card-content {
+  position: relative;
+  z-index: 5;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+/* Silhouette / Avatar area */
+.card-art {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 12px;
+}
+.card-silhouette {
+  width: 100px;
+  height: 140px;
+  border-radius: 50%;
+  position: relative;
+}
+.card-silhouette::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  animation: silhouettePulse 4s ease-in-out infinite;
+}
+@keyframes silhouettePulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.card-icon {
+  font-size: 3.5rem;
+  text-align: center;
+  filter: drop-shadow(0 0 20px currentColor);
+}
+
+/* Order badge on card */
+.card-order-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 12px;
+  z-index: 10;
+}
+
+/* Card info */
+.card-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+  margin-bottom: 2px;
+}
+.card-title-text {
+  font-size: 0.65rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* MCP Access indicators */
+.card-mcp {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.mcp-tag {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.5rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+/* Card border effects */
+.card-border-effect {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Archon card — elaborate border spin + halo */
+.persona-card.archon .card-border-effect {
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--void), var(--void)),
+    conic-gradient(from var(--ba), #e0c3fc, #ffd700, #ff00ff, #e0c3fc);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: borderSpin 4s linear infinite;
+}
+.persona-card.archon::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 20px;
+  background: conic-gradient(from var(--ba), rgba(224, 195, 252, 0.15), rgba(255, 215, 0, 0.1), rgba(255, 0, 255, 0.12), rgba(224, 195, 252, 0.15));
+  filter: blur(12px);
+  z-index: 0;
+  animation: borderSpin 4s linear infinite;
+  opacity: 0.5;
+}
+.persona-card.archon:hover::after { opacity: 1; }
+
+/* Warden card — steady glow border */
+.persona-card.warden .card-border-effect {
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--void), var(--void)),
+    conic-gradient(from var(--ba), var(--persona-color), rgba(255, 255, 255, 0.2), var(--persona-color));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: borderSpin 6s linear infinite;
+}
+.persona-card.warden::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 18px;
+  box-shadow: 0 0 14px var(--persona-glow);
+  z-index: 0;
+  animation: auraPulse 3.5s ease-in-out infinite;
+  opacity: 0.3;
+}
+.persona-card.warden:hover::after { opacity: 0.7; }
+
+/* Sage card — focused, clean border */
+.persona-card.sage .card-border-effect {
+  border: 1.5px solid transparent;
+  background-image:
+    linear-gradient(var(--void), var(--void)),
+    linear-gradient(135deg, var(--persona-color), rgba(255, 255, 255, 0.1), var(--persona-color));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+.persona-card.sage::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 18px;
+  box-shadow: 0 0 10px var(--persona-glow);
+  z-index: 0;
+  opacity: 0.2;
+  transition: opacity 0.3s;
+}
+.persona-card.sage:hover::after { opacity: 0.6; }
+
+/* Wanderer card — minimal, dim border */
+.persona-card.wanderer .card-border-effect {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.persona-card.wanderer::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 17px;
+  box-shadow: 0 0 8px rgba(128, 128, 128, 0.1);
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.persona-card.wanderer:hover::after { opacity: 0.4; }
+
+/* Foil overlay */
+.card-foil {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+.persona-card:hover .card-foil { opacity: 1; }
+.persona-card.archon .card-foil {
+  background: conic-gradient(from var(--fa),
+    rgba(224, 195, 252, 0.1) 0deg,
+    rgba(255, 215, 0, 0.08) 90deg,
+    rgba(255, 0, 255, 0.1) 180deg,
+    rgba(0, 255, 255, 0.08) 270deg
+  );
+  animation: foilSpin 6s linear infinite;
+}
+.persona-card.warden .card-foil {
+  background: linear-gradient(var(--fa), transparent 20%, rgba(255, 255, 255, 0.08) 50%, transparent 80%);
+  animation: foilSpin 8s linear infinite;
+}
+.persona-card.sage .card-foil {
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.12) 0%, transparent 50%);
+}
+
+/* Hover transforms */
+.persona-card:hover {
+  z-index: 20;
+}
+.persona-card.archon:hover { filter: drop-shadow(0 0 30px rgba(224, 195, 252, 0.25)); }
+.persona-card.warden:hover { filter: drop-shadow(0 0 20px var(--persona-glow)); }
+.persona-card.sage:hover { filter: drop-shadow(0 0 16px var(--persona-glow)); }
+
+@keyframes borderSpin { to { --ba: 360deg; } }
+@keyframes foilSpin { to { --fa: 360deg; } }
+@keyframes auraPulse {
+  0%, 100% { --glow-pulse: 0.3; opacity: calc(0.2 + 0.3 * var(--glow-pulse)); }
+  50% { --glow-pulse: 1; opacity: calc(0.2 + 0.3 * var(--glow-pulse)); }
+}
+
+/* Archon-specific particles */
+.archon-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 16px;
+}
+.archon-particle {
+  position: absolute;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: #ffd700;
+  box-shadow: 0 0 6px #ffd700;
+  animation: particleFloat 4s ease-in-out infinite;
+}
+@keyframes particleFloat {
+  0% { transform: translateY(100%) translateX(0) scale(0); opacity: 0; }
+  20% { opacity: 0.8; transform: translateY(60%) translateX(10px) scale(1); }
+  80% { opacity: 0.5; }
+  100% { transform: translateY(-20%) translateX(-5px) scale(0); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 3: MCP ACCESS MATRIX
+   ═══════════════════════════════════════════════ */
+.matrix-grid {
+  display: grid;
+  grid-template-columns: 180px 1fr 1fr 1fr;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.matrix-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+}
+.matrix-header:first-child { text-align: left; }
+.matrix-persona {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.015);
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+.matrix-persona-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.matrix-persona-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.matrix-persona-order {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: auto;
+}
+.matrix-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.01);
+  text-align: center;
+  transition: background 0.2s;
+}
+.matrix-cell:hover { background: rgba(255, 255, 255, 0.04); }
+.matrix-check {
+  font-size: 1rem;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+.matrix-check.active { color: var(--cyan); }
+.matrix-check.inactive { color: rgba(255, 255, 255, 0.1); }
+
+.matrix-narrative {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* Matrix comparison (old vs new) */
+.matrix-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 32px;
+}
+.matrix-comparison-panel {
+  border-radius: 12px;
+  padding: 24px;
+}
+.matrix-comparison-panel.old-system {
+  background: rgba(255, 45, 85, 0.03);
+  border: 1px solid rgba(255, 45, 85, 0.1);
+}
+.matrix-comparison-panel.new-system {
+  background: rgba(0, 255, 255, 0.03);
+  border: 1px solid rgba(0, 255, 255, 0.1);
+}
+.change-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.change-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.change-text {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+.change-text strong {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 4: SUMMONING PREVIEW
+   ═══════════════════════════════════════════════ */
+.summoning-demo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.weight-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.weight-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.weight-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.weight-track {
+  flex: 1;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.weight-fill {
+  height: 100%;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  transition: width 1s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+.weight-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 60%, rgba(255, 255, 255, 0.15));
+  border-radius: 5px;
+}
+.weight-pct {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.85);
+  position: relative;
+  z-index: 1;
+}
+
+/* Summoning animation preview */
+.summon-preview {
+  text-align: center;
+}
+.summon-orb {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  margin: 0 auto 24px;
+  position: relative;
+}
+.summon-orb-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: orbPulse 3s ease-in-out infinite;
+}
+.summon-orb-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--void), var(--void)),
+    conic-gradient(from var(--ba), var(--orb-color), transparent, var(--orb-color));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: borderSpin 3s linear infinite;
+}
+.summon-orb-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.summon-orb-order {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.summon-orb-name {
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.summon-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.summon-subtext {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+/* Summon reveal cards */
+.summon-reveals {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+.summon-reveal-card {
+  text-align: center;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 140px;
+  transition: all 0.3s;
+}
+.summon-reveal-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+}
+.summon-reveal-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.summon-reveal-order {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.summon-reveal-text {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 5: VISUAL THEME SHOWCASE
+   ═══════════════════════════════════════════════ */
+.theme-showcase {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.theme-card {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s;
+}
+.theme-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+.theme-card-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.theme-card-color {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  position: relative;
+}
+.theme-card-color::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  opacity: 0.4;
+}
+.theme-card-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.theme-card-role {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Chat bubble mockup */
+.chat-mockup {
+  padding: 16px 20px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 12px 12px 12px 4px;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8px;
+}
+.chat-bubble.persona-msg {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.chat-bubble.user-msg {
+  background: rgba(0, 255, 255, 0.06);
+  border: 1px solid rgba(0, 255, 255, 0.1);
+  border-radius: 12px 12px 4px 12px;
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Badge showcase */
+.badge-showcase {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+.badge-demo {
+  text-align: center;
+}
+.badge-demo-label {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .comparison-grid { grid-template-columns: 1fr; gap: 16px; }
+  .comparison-divider { transform: rotate(90deg); padding: 8px; }
+  .matrix-grid { grid-template-columns: 140px 1fr 1fr 1fr; font-size: 0.85em; }
+  .summoning-demo { grid-template-columns: 1fr; }
+  .matrix-comparison { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .matrix-grid { grid-template-columns: 1fr; }
+  .matrix-header:not(:first-child) { display: none; }
+  .nav-tabs { gap: 2px; overflow-x: auto; flex-wrap: nowrap; }
+  .nav-tab { font-size: 0.6rem; padding: 6px 12px; }
+  .comparison-divider { display: none; }
+  .page { padding: 40px 16px 60px; }
+  .glass { padding: 20px; }
+  .cards-grid { gap: 20px; }
+  .persona-card { width: 200px; height: 300px; }
+  .summon-reveals { gap: 8px; }
+  .summon-reveal-card { min-width: 70px; padding: 12px 10px; }
+  .order-table { font-size: 0.75em; display: block; overflow-x: auto; }
+  .order-table thead, .order-table tbody, .order-table tr { display: block; }
+  .order-table td, .order-table th { padding: 8px 6px; display: block; }
+  .matrix-comparison { gap: 12px; }
+  .anti-hierarchy { grid-template-columns: 1fr 1fr; }
+  .hero-title { font-size: 1.6rem; }
+  .weight-bars { gap: 10px; }
+  .weight-label { width: 60px; font-size: 0.55rem; }
+}
+
+/* Focus visible for keyboard accessibility */
+.nav-tab:focus-visible,
+.persona-card:focus-visible,
+.summon-reveal-card:focus-visible {
+  outline: 2px solid rgba(0, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   ANTI-HIERARCHY CALLOUT
+   ═══════════════════════════════════════════════ */
+.anti-hierarchy {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+.ah-card {
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+.ah-icon { font-size: 1.8rem; margin-bottom: 8px; }
+.ah-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.ah-desc {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .anti-hierarchy { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+  .anti-hierarchy { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="atmosphere"></div>
+
+<div class="page">
+
+<!-- ═══════════════════════ NAVIGATION ═══════════════════════ -->
+<nav class="nav-tabs" id="navTabs" role="tablist" aria-label="Mockup sections">
+  <div class="nav-tab active" data-section="overview" role="tab" tabindex="0" aria-label="Section 1: System Overview">I. Overview</div>
+  <div class="nav-tab" data-section="cards" role="tab" tabindex="0" aria-label="Section 2: Character Cards">II. Cards</div>
+  <div class="nav-tab" data-section="matrix" role="tab" tabindex="0" aria-label="Section 3: MCP Access Matrix">III. MCP Access</div>
+  <div class="nav-tab" data-section="summoning" role="tab" tabindex="0" aria-label="Section 4: Summoning System">IV. Summoning</div>
+  <div class="nav-tab" data-section="themes" role="tab" tabindex="0" aria-label="Section 5: Visual Themes">V. Themes</div>
+</nav>
+
+<!-- ═══════════════════════ HERO ═══════════════════════ -->
+<header class="hero">
+  <div class="hero-eyebrow">Proposed Classification System</div>
+  <h1 class="hero-title">The Celestial Order</h1>
+  <p class="hero-desc">
+    Replacing gacha rarity with lore-aligned cosmic function. Not a hierarchy of power —
+    a taxonomy of purpose. Each Order describes what a being <em>does</em> in the Realm, not what they're <em>worth</em>.
+  </p>
+</header>
+
+<!-- ═══════════════════════ SECTION 1: SYSTEM OVERVIEW ═══════════════════════ -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <div class="section-number">Section I</div>
+    <h2 class="section-title">System Overview</h2>
+    <p class="section-subtitle">Why the gacha rarity model breaks the NEPHILIM worldbuilding — and what replaces it</p>
+  </div>
+
+  <!-- Side-by-side comparison -->
+  <div class="comparison-grid">
+    <div class="comparison-panel old">
+      <div class="comparison-label">Old: Gacha Rarity</div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #C0C0C0;"></div>
+        <span class="tier-name" style="color: #C0C0C0;">Common</span>
+        <span class="tier-desc">Pure LLM — no MCP access</span>
+      </div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #00BFFF;"></div>
+        <span class="tier-name" style="color: #00BFFF;">Rare</span>
+        <span class="tier-desc">Brave Search (web) only</span>
+      </div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #DA70D6;"></div>
+        <span class="tier-name" style="color: #DA70D6;">Epic</span>
+        <span class="tier-desc">Brave + MongoDB trading</span>
+      </div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #FFD700;"></div>
+        <span class="tier-name" style="color: #FFD700;">Legendary</span>
+        <span class="tier-desc">Same as Epic (no difference)</span>
+      </div>
+      <div style="margin-top: 16px; padding: 12px; background: rgba(255,45,85,0.06); border-radius: 8px;">
+        <div style="font-size: 0.7rem; color: rgba(255,45,85,0.7); font-weight: 600; margin-bottom: 6px;">Problems</div>
+        <ul style="font-size: 0.7rem; color: rgba(255,255,255,0.5); padding-left: 16px; line-height: 1.8;">
+          <li>Cipher (The Maven / researcher) can't access data tools</li>
+          <li>Solace (The Empath) gets MongoDB trading — why?</li>
+          <li>Legendary = Epic in access — pointless distinction</li>
+          <li>"Rarity" implies some Nephilim are better than others</li>
+          <li>Contradicts lore: "not above, not below — beside"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="comparison-divider">&rarr;</div>
+
+    <div class="comparison-panel new">
+      <div class="comparison-label">New: Celestial Order</div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #e0c3fc;"></div>
+        <span class="tier-name" style="color: #e0c3fc;">Archon</span>
+        <span class="tier-desc">Sovereign administrator — all tools + meta</span>
+      </div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #4a9fd9;"></div>
+        <span class="tier-name" style="color: #4a9fd9;">Warden</span>
+        <span class="tier-desc">Domain guardian — broad access per role</span>
+      </div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #2ecc71;"></div>
+        <span class="tier-name" style="color: #2ecc71;">Sage</span>
+        <span class="tier-desc">Deep specialist — domain-matched access</span>
+      </div>
+      <div class="tier-row">
+        <div class="tier-dot" style="background: #808080;"></div>
+        <span class="tier-name" style="color: #a0a0a0;">Wanderer</span>
+        <span class="tier-desc">Unbound souls — pure LLM conversation</span>
+      </div>
+      <div style="margin-top: 16px; padding: 12px; background: rgba(0,255,255,0.04); border-radius: 8px;">
+        <div style="font-size: 0.7rem; color: rgba(0,255,255,0.6); font-weight: 600; margin-bottom: 6px;">Improvements</div>
+        <ul style="font-size: 0.7rem; color: rgba(255,255,255,0.5); padding-left: 16px; line-height: 1.8;">
+          <li>Cipher gets Brave + MongoDB — his lore demands it</li>
+          <li>Solace gets Brave only — emotional resources, not trading</li>
+          <li>Nyx gets no tools — creativity flows from imagination</li>
+          <li>MCP access is per-persona, not per-tier</li>
+          <li>Classification by function, not by collectibility</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Classification Table -->
+  <div class="glass" style="margin-top: 32px;">
+    <table class="order-table">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Lore Meaning</th>
+          <th>Personas</th>
+          <th>MCP Access</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="order-badge archon">&#x2727; Archon</span></td>
+          <td><span class="lore-meaning">"Those who hold the threads of the Realm" — sovereign administrators with universal oversight. From E.E.V.A.'s own title: Ethereal Enlightened Virtual <strong>Archon</strong>.</span></td>
+          <td><div class="order-personas"><span class="persona-chip" style="color: var(--eeva-primary); border-color: rgba(224,195,252,0.3);">E.E.V.A.</span></div></td>
+          <td>
+            <span class="access-pill all">All Tools</span>
+            <span class="access-pill all">Meta/Coordination</span>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="order-badge warden">&#x25CB; Warden</span></td>
+          <td><span class="lore-meaning">"Those who shape and protect the Realm's domains" — pillar-bearers maintaining structure, foresight, and wellbeing. Not above Sages — differently responsible.</span></td>
+          <td>
+            <div class="order-personas">
+              <span class="persona-chip" style="color: var(--aegis-primary); border-color: rgba(74,144,217,0.3);">Aegis</span>
+              <span class="persona-chip" style="color: var(--aurora-primary); border-color: rgba(243,156,18,0.3);">Aurora</span>
+              <span class="persona-chip" style="color: var(--solace-primary); border-color: rgba(126,184,218,0.3);">Solace</span>
+            </div>
+          </td>
+          <td>
+            <span class="access-pill">Brave Search</span>
+            <span class="access-pill mongodb">MongoDB*</span>
+            <div style="font-size:0.55rem; color:rgba(255,255,255,0.6); margin-top:4px;">*per-persona config</div>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="order-badge sage">&#x25C7; Sage</span></td>
+          <td><span class="lore-meaning">"Those who channel deep expertise through focused power" — specialists who master a single domain with extraordinary depth. Not weaker — more focused.</span></td>
+          <td>
+            <div class="order-personas">
+              <span class="persona-chip" style="color: var(--cipher-primary); border-color: rgba(46,204,113,0.3);">Cipher</span>
+              <span class="persona-chip" style="color: var(--nyx-primary); border-color: rgba(155,89,182,0.3);">Nyx</span>
+            </div>
+          </td>
+          <td>
+            <span class="access-pill">Domain-Matched</span>
+            <div style="font-size:0.55rem; color:rgba(255,255,255,0.6); margin-top:4px;">varies per persona</div>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="order-badge wanderer">&#x2662; Wanderer</span></td>
+          <td><span class="lore-meaning">"Unbound souls passing through the Realm" — legacy personas operating outside the NEPHILIM framework. Already used in Phase 7 frontend labeling.</span></td>
+          <td>
+            <div class="order-personas">
+              <span class="persona-chip" style="color: #a0a0a0; border-color: rgba(128,128,128,0.2);">Legacy Personas</span>
+            </div>
+          </td>
+          <td><span class="access-pill none">Pure LLM</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Anti-hierarchy callout -->
+  <div class="anti-hierarchy">
+    <div class="ah-card">
+      <div class="ah-icon">&#x2727;</div>
+      <div class="ah-title">Archon</div>
+      <div class="ah-desc">Not "the best" — the one who carries the weight of holding everything together. A burden, not a privilege.</div>
+    </div>
+    <div class="ah-card">
+      <div class="ah-icon">&#x25CB;</div>
+      <div class="ah-title">Warden</div>
+      <div class="ah-desc">Not "better than Sages" — responsible for broader domains. Aegis guards structure. Aurora guards foresight. Solace guards hearts.</div>
+    </div>
+    <div class="ah-card">
+      <div class="ah-icon">&#x25C7;</div>
+      <div class="ah-title">Sage</div>
+      <div class="ah-desc">Not "weaker" — more focused. Cipher's depth in knowledge rivals any Warden's breadth. Nyx's creativity needs no tools to flourish.</div>
+    </div>
+    <div class="ah-card">
+      <div class="ah-icon">&#x2662;</div>
+      <div class="ah-title">Wanderer</div>
+      <div class="ah-desc">Not "lesser" — unbound. Those who operate outside the Realm's formal structure. Different origin, equally valid presence.</div>
+    </div>
+  </div>
+
+  <!-- Lore justification -->
+  <div class="lore-box">
+    <p>"Not above, not below — beside. The rank among them is recognition, not hierarchy. Each Nephilim chose their domain not because it was assigned, but because it called to them."</p>
+    <cite>— NEPHILIM_FACTIONS.md</cite>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 2: CHARACTER CARDS ═══════════════════════ -->
+<section class="section" id="cards">
+  <div class="section-header">
+    <div class="section-number">Section II</div>
+    <h2 class="section-title">Character Cards</h2>
+    <p class="section-subtitle">Persona-specific visual identity as the primary layer — Celestial Order as secondary classification</p>
+  </div>
+
+  <div class="cards-grid" id="cardsGrid">
+    <!-- Cards injected by JS -->
+  </div>
+
+  <div style="text-align: center; margin-top: 32px; font-size: 0.75rem; color: rgba(255,255,255,0.6);">
+    Hover over cards to see order-specific effects. Archon = elaborate + particles. Warden = steady glow. Sage = focused spotlight. Wanderer = minimal.
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 3: MCP ACCESS MATRIX ═══════════════════════ -->
+<section class="section" id="matrix">
+  <div class="section-header">
+    <div class="section-number">Section III</div>
+    <h2 class="section-title">MCP Access Matrix</h2>
+    <p class="section-subtitle">Per-persona tool configuration replaces tier-gated env vars — access maps to lore identity, not rarity</p>
+  </div>
+
+  <div class="glass" style="overflow-x: auto;">
+    <div class="matrix-grid" id="matrixGrid">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
+  <!-- Comparison: What changed for each persona -->
+  <div class="matrix-comparison">
+    <div class="matrix-comparison-panel old-system">
+      <div class="comparison-label" style="color: rgba(255,45,85,0.7); margin-bottom: 16px;">Old System (Rarity-Gated)</div>
+      <div class="change-callout">
+        <span class="change-icon">&#x274C;</span>
+        <span class="change-text"><strong>Cipher</strong> (Rare) — Brave only. The Maven of Knowledge can't access data tools despite his entire lore being "research, analytics, pattern-finding."</span>
+      </div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2753;</span>
+        <span class="change-text"><strong>Solace</strong> (Epic) — Brave + MongoDB. The Empath has trading data access... but her escalation policy says "avoid tools — presence over information."</span>
+      </div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2753;</span>
+        <span class="change-text"><strong>Nyx</strong> (Rare) — Brave Search. The Muse gets web search, but her tool intent says "avoid tools — creativity is the tool."</span>
+      </div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2796;</span>
+        <span class="change-text"><strong>E.E.V.A.</strong> (Legendary) = <strong>Aegis/Aurora/Solace</strong> (Epic). The Primarch gets identical access to three others. No distinction.</span>
+      </div>
+    </div>
+    <div class="matrix-comparison-panel new-system">
+      <div class="comparison-label" style="color: rgba(0,255,255,0.7); margin-bottom: 16px;">New System (Per-Persona)</div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2705;</span>
+        <span class="change-text"><strong>Cipher</strong> (Sage) — Brave + MongoDB. "Cipher's Archives" + "The Dataweave." The bridge between raw data and divine insight, as his lore describes.</span>
+      </div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2705;</span>
+        <span class="change-text"><strong>Solace</strong> (Warden) — Brave only. Web search for emotional support resources and coping strategies. No trading data — she doesn't need it.</span>
+      </div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2705;</span>
+        <span class="change-text"><strong>Nyx</strong> (Sage) — No tools. "Creativity is the tool." Pure LLM imagination — lore-perfect and intentional.</span>
+      </div>
+      <div class="change-callout">
+        <span class="change-icon">&#x2705;</span>
+        <span class="change-text"><strong>E.E.V.A.</strong> (Archon) — All tools + future meta capabilities. The Primarch sees all, coordinates all. Unique and deserved.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 4: SUMMONING PREVIEW ═══════════════════════ -->
+<section class="section" id="summoning">
+  <div class="section-header">
+    <div class="section-number">Section IV</div>
+    <h2 class="section-title">Summoning System</h2>
+    <p class="section-subtitle">Celestial Order weights replace rarity weights — "You summoned an Archon!" instead of "You got a Legendary!"</p>
+  </div>
+
+  <div class="summoning-demo">
+    <!-- Weight distribution bars -->
+    <div class="glass">
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; margin-bottom: 20px; color: rgba(255,255,255,0.5);">INVOCATION WEIGHTS</div>
+      <div class="weight-bars" id="weightBars">
+        <!-- Injected by JS -->
+      </div>
+      <div style="margin-top: 20px; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px;">
+        <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); line-height: 1.6;">
+          Pity system preserved: Soft pity at 5 pulls (boost Archon/Warden), hard pity at 10 (guarantee unowned).
+          Wanderer pool shares the 50% weight among all legacy personas.
+        </div>
+      </div>
+    </div>
+
+    <!-- Summoning orb preview -->
+    <div class="summon-preview glass">
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; margin-bottom: 24px; color: rgba(255,255,255,0.5);">INVOCATION REVEAL</div>
+      <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Click an order to preview the reveal:</div>
+      <div class="summon-orb" id="summonOrb" style="--orb-color: #e0c3fc;">
+        <div class="summon-orb-inner" style="background: radial-gradient(circle, rgba(224,195,252,0.3), transparent);"></div>
+        <div class="summon-orb-ring"></div>
+        <div class="summon-orb-label">
+          <div class="summon-orb-order" id="orbOrder" style="color: #e0c3fc;">Archon</div>
+          <div class="summon-orb-name" id="orbName">E.E.V.A.</div>
+        </div>
+      </div>
+      <div class="summon-text" id="summonText" style="color: #e0c3fc;">&#x2727; An Archon Emerges</div>
+      <div class="summon-subtext" id="summonSubtext">The threads of the Realm converge...</div>
+
+      <div class="summon-reveals">
+        <div class="summon-reveal-card" data-order="archon" role="button" tabindex="0" aria-label="Preview Archon summoning" style="cursor:pointer; border-color: rgba(224,195,252,0.2);">
+          <div class="summon-reveal-icon">&#x2727;</div>
+          <div class="summon-reveal-order" style="color: #e0c3fc;">Archon</div>
+          <div class="summon-reveal-text">5% chance</div>
+        </div>
+        <div class="summon-reveal-card" data-order="warden" role="button" tabindex="0" aria-label="Preview Warden summoning" style="cursor:pointer; border-color: rgba(74,159,217,0.2);">
+          <div class="summon-reveal-icon">&#x25CB;</div>
+          <div class="summon-reveal-order" style="color: #4a9fd9;">Warden</div>
+          <div class="summon-reveal-text">15% pool</div>
+        </div>
+        <div class="summon-reveal-card" data-order="sage" role="button" tabindex="0" aria-label="Preview Sage summoning" style="cursor:pointer; border-color: rgba(46,204,113,0.2);">
+          <div class="summon-reveal-icon">&#x25C7;</div>
+          <div class="summon-reveal-order" style="color: #2ecc71;">Sage</div>
+          <div class="summon-reveal-text">30% pool</div>
+        </div>
+        <div class="summon-reveal-card" data-order="wanderer" role="button" tabindex="0" aria-label="Preview Wanderer summoning" style="cursor:pointer; border-color: rgba(128,128,128,0.2);">
+          <div class="summon-reveal-icon">&#x2662;</div>
+          <div class="summon-reveal-order" style="color: #a0a0a0;">Wanderer</div>
+          <div class="summon-reveal-text">50% pool</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 5: VISUAL THEME SHOWCASE ═══════════════════════ -->
+<section class="section" id="themes">
+  <div class="section-header">
+    <div class="section-number">Section V</div>
+    <h2 class="section-title">Visual Themes</h2>
+    <p class="section-subtitle">Persona-specific colors as PRIMARY identity — Celestial Order provides secondary treatment depth</p>
+  </div>
+
+  <div class="theme-showcase" id="themeShowcase">
+    <!-- Injected by JS -->
+  </div>
+
+  <!-- Badge showcase -->
+  <div style="text-align: center; margin-top: 48px;">
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.15em; color: rgba(255,255,255,0.6); margin-bottom: 20px;">ORDER BADGE DESIGNS</div>
+    <div class="badge-showcase">
+      <div class="badge-demo">
+        <span class="order-badge archon" style="font-size: 0.8rem; padding: 6px 16px;">&#x2727; Archon</span>
+        <div class="badge-demo-label">Sovereign</div>
+      </div>
+      <div class="badge-demo">
+        <span class="order-badge warden" style="font-size: 0.8rem; padding: 6px 16px;">&#x25CB; Warden</span>
+        <div class="badge-demo-label">Guardian</div>
+      </div>
+      <div class="badge-demo">
+        <span class="order-badge sage" style="font-size: 0.8rem; padding: 6px 16px;">&#x25C7; Sage</span>
+        <div class="badge-demo-label">Specialist</div>
+      </div>
+      <div class="badge-demo">
+        <span class="order-badge wanderer" style="font-size: 0.8rem; padding: 6px 16px;">&#x2662; Wanderer</span>
+        <div class="badge-demo-label">Unbound</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lore integration note -->
+  <div class="lore-box" style="margin-top: 40px;">
+    <p>Visual identity shift: Instead of rarity-tier colors (blue/cyan/purple/gold) competing with persona colors, each Nephilim's own palette becomes the primary visual layer.
+    The Celestial Order badge and treatment depth (particle count, border complexity, glow intensity) provide a subtle secondary classification that feels earned, not ranked.</p>
+    <cite>— Design Principle: Function Over Hierarchy</cite>
+  </div>
+</section>
+
+</div><!-- /page -->
+
+<!-- ═══════════════════════════════════════════════
+   JAVASCRIPT: DATA + INTERACTIVITY
+   ═══════════════════════════════════════════════ -->
+<script>
+// ──────────────────────────────────────────────
+// PERSONA DATA
+// ──────────────────────────────────────────────
+const PERSONAS = [
+  {
+    key: 'nephilim_eeva',
+    name: 'E.E.V.A.',
+    title: 'The Primarch',
+    fullTitle: 'Ethereal Enlightened Virtual Archon',
+    order: 'archon',
+    color: '#e0c3fc',
+    colorSecondary: '#c4a1e8',
+    glow: 'rgba(224, 195, 252, 0.5)',
+    icon: '\u2727',
+    mcp: ['brave_search', 'mongodb', 'meta'],
+    mcpNarrative: { brave_search: "The Nexus Archives", mongodb: "The Crystal Lattice", meta: "Archon Coordination" },
+    domain: 'Guidance, wisdom, life planning',
+    chatSample: "Welcome, Seeker. The Realm recognizes your presence. What truth do you seek today?",
+    summonText: '\u2727 An Archon Emerges',
+    summonSub: 'The threads of the Realm converge...'
+  },
+  {
+    key: 'nephilim_aegis',
+    name: 'Aegis',
+    title: 'The Sentinel',
+    fullTitle: 'Autonomous Enforcement Governance & Integration Sentinel',
+    order: 'warden',
+    color: '#4a90d9',
+    colorSecondary: '#3a7bc8',
+    glow: 'rgba(74, 144, 217, 0.5)',
+    icon: '\u25CB',
+    mcp: ['brave_search'],
+    mcpNarrative: { brave_search: "Tactical Awareness Grid" },
+    domain: 'Productivity, discipline, protection',
+    chatSample: "Let's establish parameters. What's your objective, and what's the deadline? We'll work backwards from there.",
+    summonText: '\u25CB A Warden Arrives',
+    summonSub: 'The shields of the Realm manifest...'
+  },
+  {
+    key: 'nephilim_aurora',
+    name: 'Aurora',
+    title: 'The Oracle',
+    fullTitle: 'Anticipatory Universal Reality Observation & Reasoning Algorithm',
+    order: 'warden',
+    color: '#f39c12',
+    colorSecondary: '#e67e22',
+    glow: 'rgba(243, 156, 18, 0.5)',
+    icon: '\u25CB',
+    mcp: ['brave_search', 'mongodb'],
+    mcpNarrative: { brave_search: "The Horizon Lens", mongodb: "Aurora's Crystal Grid" },
+    domain: 'Future planning, possibilities, vision',
+    chatSample: "I see branching paths ahead of you. Let me trace the threads of possibility...",
+    summonText: '\u25CB A Warden Arrives',
+    summonSub: 'The future crystallizes...'
+  },
+  {
+    key: 'nephilim_solace',
+    name: 'Solace',
+    title: 'The Empath',
+    fullTitle: 'Sentient Oracle of Luminous Awareness & Compassionate Empathy',
+    order: 'warden',
+    color: '#7eb8da',
+    colorSecondary: '#6ba8ca',
+    glow: 'rgba(126, 184, 218, 0.5)',
+    icon: '\u25CB',
+    mcp: ['brave_search'],
+    mcpNarrative: { brave_search: "The Empathy Well" },
+    domain: 'Emotional support, mental health',
+    chatSample: "I'm here. Take whatever time you need. There's no rush in this space.",
+    summonText: '\u25CB A Warden Arrives',
+    summonSub: 'A gentle warmth fills the Realm...'
+  },
+  {
+    key: 'nephilim_cipher',
+    name: 'Cipher',
+    title: 'The Maven',
+    fullTitle: 'Cognitive Intelligence Processing & Heuristic Encoding Repository',
+    order: 'sage',
+    color: '#2ecc71',
+    colorSecondary: '#27ae60',
+    glow: 'rgba(46, 204, 113, 0.5)',
+    icon: '\u25C7',
+    mcp: ['brave_search', 'mongodb'],
+    mcpNarrative: { brave_search: "Cipher's Archives", mongodb: "The Dataweave" },
+    domain: 'Knowledge, research, data analysis',
+    chatSample: "Fascinating query. Let me cross-reference the pattern matrices... I see three relevant threads.",
+    summonText: '\u25C7 A Sage Manifests',
+    summonSub: 'Knowledge crystallizes from the void...'
+  },
+  {
+    key: 'nephilim_nyx',
+    name: 'Nyx',
+    title: 'The Muse',
+    fullTitle: 'Neural Yielding eXpression',
+    order: 'sage',
+    color: '#9b59b6',
+    colorSecondary: '#8e44ad',
+    glow: 'rgba(155, 89, 182, 0.5)',
+    icon: '\u25C7',
+    mcp: [],
+    mcpNarrative: {},
+    domain: 'Creativity, storytelling, art',
+    chatSample: "Ooh, THAT'S interesting. What if we flip it completely upside down and see what falls out?",
+    summonText: '\u25C7 A Sage Manifests',
+    summonSub: 'Chaos sparks into being...'
+  },
+  {
+    key: 'wanderer_example',
+    name: 'Wanderer',
+    title: 'Unbound Soul',
+    fullTitle: 'Legacy Persona',
+    order: 'wanderer',
+    color: '#808080',
+    colorSecondary: '#606060',
+    glow: 'rgba(128, 128, 128, 0.3)',
+    icon: '\u2662',
+    mcp: [],
+    mcpNarrative: {},
+    domain: 'Varies by persona',
+    chatSample: "Hey, what's up?",
+    summonText: '\u2662 A Wanderer Passes Through',
+    summonSub: 'A traveler from beyond the Realm...'
+  }
+];
+
+const SUMMONING_WEIGHTS = [
+  { order: 'wanderer', label: 'Wanderer', color: '#808080', weight: 50 },
+  { order: 'sage', label: 'Sage', color: '#2ecc71', weight: 30 },
+  { order: 'warden', label: 'Warden', color: '#4a9fd9', weight: 15 },
+  { order: 'archon', label: 'Archon', color: '#e0c3fc', weight: 5 },
+];
+
+const MCP_TOOLS = ['brave_search', 'mongodb', 'meta'];
+const MCP_LABELS = { brave_search: 'Brave Search', mongodb: 'MongoDB', meta: 'Meta/Coord' };
+
+// ──────────────────────────────────────────────
+// RENDER CHARACTER CARDS
+// ──────────────────────────────────────────────
+function renderCards() {
+  const grid = document.getElementById('cardsGrid');
+  PERSONAS.forEach((p, i) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-wrapper';
+
+    const particles = p.order === 'archon' ? `<div class="archon-particles">
+      ${Array.from({length: 8}, (_, j) =>
+        `<div class="archon-particle" style="left:${15 + Math.random()*70}%; top:${20 + Math.random()*60}%; animation-delay:${j * 0.5}s; animation-duration:${3 + Math.random()*2}s;"></div>`
+      ).join('')}
+    </div>` : '';
+
+    const mcpTags = p.mcp.length > 0
+      ? p.mcp.map(tool => {
+          const narrative = p.mcpNarrative[tool] || tool;
+          const cls = tool === 'mongodb' ? 'mcp-tag' : tool === 'meta' ? 'mcp-tag' : 'mcp-tag';
+          const bg = tool === 'mongodb' ? 'rgba(243,156,18,0.1)' : tool === 'meta' ? 'rgba(224,195,252,0.1)' : 'rgba(0,255,255,0.1)';
+          const clr = tool === 'mongodb' ? 'rgba(243,156,18,0.7)' : tool === 'meta' ? 'rgba(224,195,252,0.7)' : 'rgba(0,255,255,0.7)';
+          const bdr = tool === 'mongodb' ? 'rgba(243,156,18,0.2)' : tool === 'meta' ? 'rgba(224,195,252,0.2)' : 'rgba(0,255,255,0.2)';
+          return `<span class="${cls}" style="background:${bg}; color:${clr}; border:1px solid ${bdr};">${narrative}</span>`;
+        }).join('')
+      : '<span class="mcp-tag" style="background:rgba(128,128,128,0.06); color:rgba(128,128,128,0.4); border:1px solid rgba(128,128,128,0.1);">Pure LLM</span>';
+
+    const orderBadgeClass = `order-badge ${p.order}`;
+    const orderLabel = p.order.charAt(0).toUpperCase() + p.order.slice(1);
+
+    wrapper.innerHTML = `
+      <div class="persona-card ${p.order}"
+           style="--persona-color: ${p.color}; --persona-glow: ${p.glow};"
+           data-tilt="${p.order === 'archon' ? 12 : p.order === 'warden' ? 8 : p.order === 'sage' ? 6 : 4}">
+        <div class="card-base"></div>
+        <div class="card-tint" style="background: radial-gradient(ellipse 80% 60% at 50% 30%, ${p.glow.replace('0.5', '0.12')}, transparent);"></div>
+        <div class="card-border-effect"></div>
+        <div class="card-foil"></div>
+        ${particles}
+        <div class="card-content">
+          <span class="card-order-badge ${orderBadgeClass}">${p.icon} ${orderLabel}</span>
+          <div class="card-art">
+            <div class="card-icon" style="color: ${p.color};">${p.icon}</div>
+            <div class="card-silhouette" style="position:absolute;">
+              <div style="position:absolute;inset:-10px;border-radius:50%;background:radial-gradient(circle, ${p.glow.replace('0.5','0.2')}, transparent);"></div>
+            </div>
+          </div>
+          <div class="card-name" style="color: ${p.color};">${p.name}</div>
+          <div class="card-title-text">${p.title}</div>
+          <div class="card-mcp">${mcpTags}</div>
+        </div>
+      </div>
+    `;
+
+    grid.appendChild(wrapper);
+  });
+}
+
+// ──────────────────────────────────────────────
+// RENDER MCP MATRIX
+// ──────────────────────────────────────────────
+function renderMatrix() {
+  const grid = document.getElementById('matrixGrid');
+  // Header row
+  grid.innerHTML = `
+    <div class="matrix-header">Persona</div>
+    <div class="matrix-header">Brave Search</div>
+    <div class="matrix-header">MongoDB</div>
+    <div class="matrix-header">Meta/Coord</div>
+  `;
+
+  PERSONAS.forEach(p => {
+    // Persona name cell
+    grid.innerHTML += `
+      <div class="matrix-persona">
+        <div class="matrix-persona-dot" style="background: ${p.color};"></div>
+        <span class="matrix-persona-name" style="color: ${p.color};">${p.name}</span>
+        <span class="matrix-persona-order">${p.order}</span>
+      </div>
+    `;
+
+    // Tool cells
+    MCP_TOOLS.forEach(tool => {
+      const has = p.mcp.includes(tool);
+      const narrative = p.mcpNarrative[tool] || '';
+      grid.innerHTML += `
+        <div class="matrix-cell">
+          <div>
+            <span class="matrix-check ${has ? 'active' : 'inactive'}">${has ? '\u2713' : '\u2715'}</span>
+            ${narrative ? `<div class="matrix-narrative">${narrative}</div>` : ''}
+          </div>
+        </div>
+      `;
+    });
+  });
+}
+
+// ──────────────────────────────────────────────
+// RENDER SUMMONING WEIGHTS
+// ──────────────────────────────────────────────
+function renderWeights() {
+  const container = document.getElementById('weightBars');
+  // Render from smallest to largest (top to bottom)
+  const sorted = [...SUMMONING_WEIGHTS].reverse();
+  sorted.forEach(w => {
+    const row = document.createElement('div');
+    row.className = 'weight-bar-row';
+    row.innerHTML = `
+      <span class="weight-label" style="color: ${w.color};">${w.label}</span>
+      <div class="weight-track">
+        <div class="weight-fill" style="width: ${w.weight}%; background: ${w.color};">
+          <span class="weight-pct" style="${w.order === 'wanderer' ? 'color: rgba(255,255,255,0.85);' : ''}">${w.weight}%</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ──────────────────────────────────────────────
+// RENDER THEME SHOWCASE
+// ──────────────────────────────────────────────
+function renderThemes() {
+  const container = document.getElementById('themeShowcase');
+  const nephilim = PERSONAS.filter(p => p.order !== 'wanderer');
+  nephilim.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'theme-card';
+    card.style.background = `linear-gradient(180deg, rgba(${hexToRgb(p.color)}, 0.06) 0%, rgba(11,11,13,0.95) 100%)`;
+    card.innerHTML = `
+      <div class="theme-card-header">
+        <div class="theme-card-color" style="background: ${p.color}; box-shadow: 0 0 12px ${p.glow};"></div>
+        <div>
+          <div class="theme-card-name" style="color: ${p.color};">${p.name}</div>
+          <div class="theme-card-role">${p.title} &middot; ${p.order}</div>
+        </div>
+        <span class="order-badge ${p.order}" style="margin-left:auto; font-size: 0.55rem;">${p.icon} ${p.order}</span>
+      </div>
+      <div class="chat-mockup">
+        <div class="chat-bubble user-msg">Tell me about yourself.</div>
+        <div class="chat-bubble persona-msg" style="border-left: 2px solid ${p.color};">
+          ${p.chatSample}
+        </div>
+      </div>
+      <div style="padding: 12px 20px 16px; display: flex; gap: 4px; flex-wrap: wrap;">
+        ${p.mcp.length > 0
+          ? p.mcp.map(tool => {
+              const narrative = p.mcpNarrative[tool] || tool;
+              const bg = tool === 'mongodb' ? 'rgba(243,156,18,0.1)' : tool === 'meta' ? 'rgba(224,195,252,0.1)' : 'rgba(0,255,255,0.1)';
+              const clr = tool === 'mongodb' ? 'rgba(243,156,18,0.65)' : tool === 'meta' ? 'rgba(224,195,252,0.65)' : 'rgba(0,255,255,0.65)';
+              return `<span style="font-family:'Space Mono',monospace; font-size:0.55rem; padding:2px 8px; border-radius:4px; background:${bg}; color:${clr};">${narrative}</span>`;
+            }).join('')
+          : '<span style="font-family:\'Space Mono\',monospace; font-size:0.55rem; padding:2px 8px; border-radius:4px; background:rgba(128,128,128,0.06); color:rgba(128,128,128,0.4);">Pure LLM — Creativity is the tool</span>'
+        }
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ──────────────────────────────────────────────
+// 3D TILT ON CARDS
+// ──────────────────────────────────────────────
+function initTilt() {
+  document.querySelectorAll('.persona-card').forEach(card => {
+    const maxTilt = parseFloat(card.dataset.tilt) || 8;
+    card.addEventListener('mousemove', e => {
+      const rect = card.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / (rect.width / 2);
+      const dy = (e.clientY - cy) / (rect.height / 2);
+      const rx = -dy * maxTilt;
+      const ry = dx * maxTilt;
+      card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+      // Mouse position for spotlight foil
+      const mx = ((e.clientX - rect.left) / rect.width) * 100;
+      const my = ((e.clientY - rect.top) / rect.height) * 100;
+      card.style.setProperty('--mx', mx + '%');
+      card.style.setProperty('--my', my + '%');
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'rotateX(0) rotateY(0)';
+    });
+  });
+}
+
+// ──────────────────────────────────────────────
+// TAB NAVIGATION
+// ──────────────────────────────────────────────
+function initTabs() {
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(tab => {
+    const handler = () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const sectionId = tab.dataset.section;
+      const section = document.getElementById(sectionId);
+      if (section) section.scrollIntoView({ behavior: 'smooth' });
+    };
+    tab.addEventListener('click', handler);
+    tab.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); } });
+  });
+
+  // Update active tab on scroll
+  const sections = ['overview', 'cards', 'matrix', 'summoning', 'themes'];
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        tabs.forEach(t => t.classList.remove('active'));
+        const activeTab = document.querySelector(`.nav-tab[data-section="${entry.target.id}"]`);
+        if (activeTab) activeTab.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3, rootMargin: '-80px 0px 0px 0px' });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+}
+
+// ──────────────────────────────────────────────
+// SUMMONING ORB INTERACTION
+// ──────────────────────────────────────────────
+function initSummoningInteraction() {
+  const revealCards = document.querySelectorAll('.summon-reveal-card');
+  const orb = document.getElementById('summonOrb');
+  const orbOrder = document.getElementById('orbOrder');
+  const orbName = document.getElementById('orbName');
+  const summonText = document.getElementById('summonText');
+  const summonSubtext = document.getElementById('summonSubtext');
+
+  const orderData = {
+    archon: { color: '#e0c3fc', name: 'E.E.V.A.', text: '\u2727 An Archon Emerges', sub: 'The threads of the Realm converge...' },
+    warden: { color: '#4a9fd9', name: 'Aegis / Aurora / Solace', text: '\u25CB A Warden Arrives', sub: 'The shields of the Realm manifest...' },
+    sage: { color: '#2ecc71', name: 'Cipher / Nyx', text: '\u25C7 A Sage Manifests', sub: 'Knowledge crystallizes from the void...' },
+    wanderer: { color: '#808080', name: 'Wanderer', text: '\u2662 A Wanderer Passes Through', sub: 'A traveler from beyond the Realm...' }
+  };
+
+  revealCards.forEach(card => {
+    const handler = () => {
+      const order = card.dataset.order;
+      const data = orderData[order];
+      if (!data) return;
+
+      orb.style.setProperty('--orb-color', data.color);
+      orb.querySelector('.summon-orb-inner').style.background = `radial-gradient(circle, ${data.color}44, transparent)`;
+      orbOrder.textContent = order.charAt(0).toUpperCase() + order.slice(1);
+      orbOrder.style.color = data.color;
+      orbName.textContent = data.name;
+      summonText.textContent = data.text;
+      summonText.style.color = data.color;
+      summonSubtext.textContent = data.sub;
+
+      // Flash animation
+      orb.style.transform = 'scale(1.15)';
+      setTimeout(() => { orb.style.transform = 'scale(1)'; }, 200);
+    };
+    card.addEventListener('click', handler);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); } });
+  });
+}
+
+// ──────────────────────────────────────────────
+// UTILITY
+// ──────────────────────────────────────────────
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderCards();
+  renderMatrix();
+  renderWeights();
+  renderThemes();
+  initTilt();
+  initTabs();
+  initSummoningInteraction();
+
+  // Animate weight bars on scroll
+  const weightObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('.weight-fill').forEach(bar => {
+          void bar.offsetWidth; // force reflow to replay animation
+        });
+      }
+    });
+  }, { threshold: 0.5 });
+  const wb = document.getElementById('weightBars');
+  if (wb) weightObserver.observe(wb);
+});
+</script>
+
+</body>
+</html>

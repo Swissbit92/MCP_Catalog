@@ -49,7 +49,7 @@
 - 🧠 **Advanced Memory System** - remembers you across sessions, extracts facts automatically
 - 🔍 **Web Search with Citations** - personas autonomously search Brave API with mandatory sources
 - 📊 **Real-Time Trading Data** - Bitcoin prices, technical indicators (RSI, MACD), DCA stats via MongoDB
-- 🎲 **Gacha Collection System** - pull cards, build collections, unlock personas
+- 🎲 **Summoning Collection System** - pull cards, build collections, unlock personas
 - 💾 **100% Local & Private** - all conversations stay on your device (no data transmission)
 - 🐳 **One-Command Docker Setup** - automated script handles everything
 
@@ -76,7 +76,7 @@
 | **Psychological Depth** | ✅ Core wound/defense | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Web Search Integration** | ✅ Brave API | ✅ Plugins | ❌ | ❌ | ✅ Plugins | ✅ Bing |
 | **Live Data (MongoDB)** | ✅ Bitcoin/trading | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Gacha/Gamification** | ✅ Collection system | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Summoning/Gamification** | ✅ Collection system | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **One-Command Setup** | ✅ Docker script | ⚠️ Manual | ✅ GUI installer | ✅ GUI installer | ⚠️ Manual | N/A |
 | **Citation Validation** | ✅ Mandatory | ❌ | ❌ | ❌ | ❌ | ⚠️ Optional |
 | **Persistent Chat** | ✅ SQLite | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -91,7 +91,7 @@
 3. **Advanced Memory** - Only solution with RAG semantic search + automatic user profile building across sessions
 4. **Live Data Integration** - Real-time Bitcoin prices and technical indicators via MongoDB MCP
 5. **Transparent Data Sources** - Mandatory citations for web search, visible source tags (pure LLM/Brave/MongoDB) on every message
-6. **Gamified UX** - Gacha collection system makes discovering personas engaging
+6. **Gamified UX** - Summoning collection system makes discovering personas engaging
 
 ### 📊 When to Choose MCP Coordinator?
 
@@ -129,8 +129,8 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🔍 **Brave Web Search** | Rare/Epic/Legendary personas autonomously search the web with mandatory citation validation |
-| 🗄️ **MongoDB MCP Integration** | Epic/Legendary personas query real-time Bitcoin prices, technical indicators (RSI, MACD, Bollinger Bands), and DCA trading stats |
+| 🔍 **Brave Web Search** | Personas with web search access autonomously search the web with mandatory citation validation |
+| 🗄️ **MongoDB MCP Integration** | Personas with data access query real-time Bitcoin prices, technical indicators (RSI, MACD, Bollinger Bands), and DCA trading stats |
 | 📈 **Live Trading Data** | Historical price data (2016-present), hourly charts (6 months), technical analysis signals |
 | 🔗 **Smart Caching** | TTL-based cache (60s current price, 3600s historical) for optimal performance |
 | 📚 **Synthesis Prompts** | Anti-hallucination prompts ensure accurate data usage and persona flavor retention |
@@ -139,8 +139,8 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🎯 **Advanced Gacha System** | Classic character pulls with 1x/5x/10x multi-pull, particle effects, and audio feedback |
-| 💎 **Classic Card Collection** | Elegant collectible cards with foil effects, smooth animations, and rarity-based styling |
+| 🎯 **Summoning Ritual System** | Classic character pulls with 1x/5x/10x multi-pull, particle effects, and audio feedback |
+| 💎 **Classic Card Collection** | Elegant collectible cards with foil effects, smooth animations, and order-based styling |
 | 🔊 **Audio Integration** | Synthesized sound effects for pulls, reveals, and celebrations with mute controls |
 | 📊 **Collection Management** | Persistent character collection with statistics, pull history, and organized display |
 | 💬 **Persistent Chat History** | Conversations saved across sessions with automatic cleanup of orphaned chats |
@@ -187,8 +187,8 @@
 - **LangChain** for LLM orchestration
 
 ### Integrations
-- **Brave Search API** for web search (Rare+ personas)
-- **MongoDB Atlas** for Bitcoin trading data (Epic+ personas)
+- **Brave Search API** for web search (personas with web search access)
+- **MongoDB Atlas** for Bitcoin trading data (personas with data access)
 - **Docker + Docker Compose** for deployment
 
 ---
@@ -407,7 +407,7 @@ COORDINATOR_DB_PATH=chats.db
 
 # Optional: Brave Search API
 BRAVE_API_KEY=
-BRAVE_ENABLED_RARITIES=rare,epic,legendary
+BRAVE_ENABLED_RARITIES=rare,epic,legendary  # Fallback tier filter; per-persona mcp_access field takes priority
 
 # Optional: MongoDB MCP
 MONGODB_URI=
@@ -434,7 +434,7 @@ MEMORY_FACT_EXTRACTION_INTERVAL=10
                            🧠  MCP Coordinator
                    ╔═══════════════════════════════════════╗
                    ║         React Frontend (19)           ║
-                   ║   (Gacha System • Multi-Message UI)   ║
+                   ║   (Summoning System • Multi-Message UI)   ║
                    ╚═══════════════════════════════════════╝
                                    │  🔗  HTTP / CORS
                                    ▼
@@ -448,7 +448,7 @@ MEMORY_FACT_EXTRACTION_INTERVAL=10
   ╔═══════════╗     ╔═══════════╗      ╔═══════════╗     ╔═══════════╗
   ║ 🔍 Brave  ║     ║ 🗄️ MongoDB ║      ║ 💾 SQLite ║     ║ 🧠 FAISS  ║
   ║  Search   ║     ║    MCP     ║      ║  Database ║     ║  Vectors  ║
-  ║ (Rare+)   ║     ║ (Epic+)    ║      ║  (Chats)  ║     ║ (Memory)  ║
+  ║(web search)║    ║(data access)║      ║  (Chats)  ║     ║ (Memory)  ║
   ╚═══════════╝     ╚═══════════╝      ╚═══════════╝     ╚═══════════╝
                                    │
                                    ▼
@@ -463,8 +463,8 @@ MEMORY_FACT_EXTRACTION_INTERVAL=10
 
 - **React Frontend**: TypeScript 4.9.5, Framer Motion animations, mobile-optimized
 - **FastAPI Backend**: Persona routing, MCP client orchestration, LLM integration
-- **Brave Search**: Web search with citation validation (Rare/Epic/Legendary)
-- **MongoDB MCP**: Bitcoin trading data with technical indicators (Epic/Legendary)
+- **Brave Search**: Web search with citation validation (E.E.V.A., Aegis, Solace, Cipher, Aurora)
+- **MongoDB MCP**: Bitcoin trading data with technical indicators (E.E.V.A., Aurora, Cipher)
 - **SQLite**: Persistent chat history, sessions, summaries, user profiles
 - **FAISS**: Vector database for semantic memory search (Phase 3)
 - **Ollama**: Local LLM server with nchapman model + nomic embeddings
@@ -482,7 +482,7 @@ Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin
 - Choosing the right pattern for your use case
 - Step-by-step implementation guide with examples
 - Testing, troubleshooting, and best practices
-- Rarity-based feature gating configuration
+- Per-persona MCP access configuration (Celestial Order)
 
 ---
 
@@ -492,23 +492,23 @@ Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin
 
 ### Legacy Companions
 
-| Companion | Style | Rarity | Special Access |
-|-----------|-------|--------|----------------|
-| **Eeva** | Nerdy, charming, concise | Legendary | Brave + MongoDB |
-| **Frieren** | Wise, analytical, methodical | Legendary | Brave + MongoDB |
-| **Gojo** | Confident, powerful, playful | Legendary | Brave + MongoDB |
-| **Hitler** | Authoritative, ideological | Legendary | Brave + MongoDB |
+| Companion | Style | Order | Special Access |
+|-----------|-------|-------|----------------|
+| **Eeva** | Nerdy, charming, concise | Wanderer | None |
+| **Frieren** | Wise, analytical, methodical | Wanderer | None |
+| **Gojo** | Confident, powerful, playful | Wanderer | None |
+| **Hitler** | Authoritative, ideological | Wanderer | None |
 
 ### NEPHILIM Companions
 
-| Companion | Title | Domain | Rarity | Special Access |
-|-----------|-------|--------|--------|----------------|
-| **E.E.V.A.** | The Primarch | Guidance, wisdom, life planning | Legendary | Brave + MongoDB |
-| **Aegis** | The Sentinel | Productivity and discipline | Epic | Brave + MongoDB |
-| **Solace** | The Empath | Emotional support and wellbeing | Epic | Brave + MongoDB |
-| **Nyx** | The Muse | Creativity and chaos | Rare | Brave Search |
-| **Cipher** | The Maven | Knowledge and research | Rare | Brave Search |
-| **Aurora** | The Oracle | Future planning and strategy | Epic | Brave + MongoDB |
+| Companion | Title | Domain | Order | Special Access |
+|-----------|-------|--------|-------|----------------|
+| **E.E.V.A.** | The Primarch | Guidance, wisdom, life planning | Archon | Brave + MongoDB |
+| **Aegis** | The Sentinel | Productivity and discipline | Warden | Brave |
+| **Solace** | The Empath | Emotional support and wellbeing | Warden | Brave |
+| **Nyx** | The Muse | Creativity and chaos | Sage | None |
+| **Cipher** | The Maven | Knowledge and research | Sage | Brave + MongoDB |
+| **Aurora** | The Oracle | Future planning and strategy | Warden | Brave + MongoDB |
 
 ### Companion Features
 
@@ -516,7 +516,7 @@ Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin
 - **Emotional Tracking**: Companions track trust_level, rapport, current_mood per session
 - **Example Dialogues**: 50 training examples (10-15 per companion) teach correct voice
 - **Custom Sampling**: Per-companion temperature and sampling presets (creative, balanced, precise)
-- **Special Access**: All current companions are Legendary with full Brave + MongoDB access
+- **Celestial Order**: MCP access is configured per-persona via the `mcp_access` field, not per tier
 
 ### Managing AI Companions
 
@@ -660,14 +660,14 @@ Press `Ctrl+C` in the terminal(s) to stop services gracefully.
 
 #### **Home Page (`/`)**
 
-- 🎲 **Try Your Luck**: Navigate to Gacha Pull for companion pulls
+- 🎲 **Try Your Luck**: Navigate to Summoning Ritual for companion pulls
 - 📚 **Browse All Agents**: View all available AI companions
 - 🎨 **Sophisticated UI**: Glassmorphism effects, animated particles
 
 #### **Agent Selection (`/select`)**
 
-- 🎴 **Card Gallery**: Browse with search and rarity filtering
-- 🎲 **Gacha Pull**: 1x/5x/10x pulls with audio and particle effects
+- 🎴 **Card Gallery**: Browse with search and order filtering
+- 🎲 **Summoning Ritual**: 1x/5x/10x pulls with audio and particle effects
 - 📚 **My Collection**: View collected companions with stats
 - 📊 **Pull History**: Track pulling statistics
 - 🎯 **Choose Agents**: Click "Choose" to jump to chat
@@ -677,7 +677,7 @@ Press `Ctrl+C` in the terminal(s) to stop services gracefully.
 - 💬 **Start Conversations**: Chat with selected AI companion
 - 🔄 **Switch Sessions**: Use sidebar to change chats
 - 💾 **Export Chats**: Save conversations as JSON
-- 🎨 **Rarity Theming**: Companion-specific colors and backgrounds
+- 🎨 **Celestial Order Theming**: Companion-specific colors and backgrounds
 - 📋 **Copy Functionality**: Copy JSON/code blocks with one click
 
 #### **NEPHILIM Portal (`/nephilim`)**

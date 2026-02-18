@@ -134,33 +134,51 @@ def format_search_results_for_llm(results: List[Any], max_results: int = 5) -> s
     return formatted
 
 
-def get_tools_for_persona(persona_key: str, persona_rarity: str) -> List[Dict[str, Any]]:
+def get_tools_for_persona(
+    persona_key: str,
+    persona_rarity: str,
+    mcp_access: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
     """
-    Get available tools based on persona rarity (static approach).
+    Get available tools based on persona rarity or explicit mcp_access (static approach).
 
     NOTE: For intent-based routing, use get_tools_for_query() instead.
 
     Args:
         persona_key: Persona identifier (e.g., "Eeva", "Frieren")
         persona_rarity: Persona rarity level ("common", "rare", "epic", "legendary")
+        mcp_access: Optional explicit list of allowed MCP services from the persona
+                    JSON ``mcp_access`` field.  When provided, overrides rarity gating.
 
     Returns:
         List of tool definitions
     """
     tools = []
 
-    # Brave MCP: rare, epic, legendary
-    if persona_rarity.lower() in {"rare", "epic", "legendary"}:
-        tools.append(get_brave_search_tool())
-
-    # MongoDB MCP: epic, legendary only
-    if persona_rarity.lower() in {"epic", "legendary"}:
-        tools.extend(get_mongodb_tools())
+    if mcp_access is not None:
+        # Per-persona MCP access (from persona JSON mcp_access field)
+        if "brave_search" in mcp_access:
+            tools.append(get_brave_search_tool())
+        if "mongodb" in mcp_access:
+            tools.extend(get_mongodb_tools())
+    else:
+        # Fallback to rarity-based access for personas without mcp_access field
+        # Brave MCP: rare, epic, legendary
+        if persona_rarity.lower() in {"rare", "epic", "legendary"}:
+            tools.append(get_brave_search_tool())
+        # MongoDB MCP: epic, legendary only
+        if persona_rarity.lower() in {"epic", "legendary"}:
+            tools.extend(get_mongodb_tools())
 
     return tools
 
 
-def get_tools_for_query(query: str, persona_key: str, persona_rarity: str) -> List[Dict[str, Any]]:
+def get_tools_for_query(
+    query: str,
+    persona_key: str,
+    persona_rarity: str,
+    mcp_access: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
     """
     Layer 2: Dynamic tool injection based on query intent.
 
@@ -170,11 +188,13 @@ def get_tools_for_query(query: str, persona_key: str, persona_rarity: str) -> Li
         query: User query string
         persona_key: Persona identifier
         persona_rarity: Persona rarity level
+        mcp_access: Optional explicit list of allowed MCP services from the persona
+                    JSON ``mcp_access`` field.  When provided, overrides rarity gating.
 
     Returns:
         List of tool definitions relevant to this specific query
     """
-    intent = classify_query_intent(query, persona_rarity)
+    intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
 
     tools = []
 

@@ -33,6 +33,8 @@ def list_personas():
                 "display_name": card.get("display_name") or card.get("key"),
                 "style": card.get("style", ""),
                 "rarity": card.get("rarity", "common"),
+                "celestial_order": card.get("celestial_order", card.get("rarity", "common")),
+                "mcp_access": card.get("mcp_access", []),
                 "coordinator_label": card.get("coordinator_label"),
                 "image": card.get("image"),
                 "avatar": card.get("avatar"),

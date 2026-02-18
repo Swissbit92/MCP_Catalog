@@ -3,6 +3,8 @@
 **Completed:** 2026-02-17
 **Status:** Production-ready with all gatekeeper reviews passed
 
+> **Note (Feb 2026):** The Celestial Order remap supersedes the rarity vocabulary used in this document. Where this document references "rarity tiers" or "rarity-based" behavior, the current system uses Celestial Order tiers: Archon (was Legendary), Warden (was Epic), Sage (was Rare), Wanderer (was Common). Code identifiers such as `rarity_gate` and CSS class names (`rarity-*`) are unchanged. See the CHANGELOG for the full Celestial Order remap entry.
+
 ---
 
 ## 🎉 What Was Delivered

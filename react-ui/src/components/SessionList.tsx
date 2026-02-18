@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { ChatSession } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { fetchPersonas } from '../services/api'
+import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder'
 
 interface SessionListProps {
   onSessionSelect: (session: ChatSession) => void
@@ -245,7 +246,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                           </h3>
                            {persona && (
                              <motion.span
-                               className={`text-xs px-2 py-0.5 rounded-full capitalize ${rarityStyles.bg} ${rarityStyles.text} border ${rarityStyles.border} font-medium`}
+                               className={`text-xs px-2 py-0.5 rounded-full ${rarityStyles.bg} ${rarityStyles.text} border ${rarityStyles.border} font-medium`}
                                animate={isActive ? {
                                  boxShadow: [
                                    `0 0 6px ${rarityStyles.accent}40`,
@@ -255,7 +256,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                                } : {}}
                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                              >
-                               {persona.rarity}
+                               {formatOrderLabel(rarityToOrder(persona.rarity || 'common'))}
                              </motion.span>
                            )}
                         </div>

@@ -1,6 +1,8 @@
 {
   "key": "nephilim_solace",
   "rarity": "epic",
+  "celestial_order": "warden",
+  "mcp_access": ["brave_search"],
   "display_name": "Solace — The Empath",
   "title": "The Empath",
   "full_title": "Sentient Oracle of Luminous Awareness & Compassionate Empathy",

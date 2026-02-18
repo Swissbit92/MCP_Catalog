@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import Header from './components/Header'
 import { AudioProvider } from './context/AudioContext'
 import { usePersona } from './context/PersonaContext'
+import { orderToRarityClass, getDisplayOrder } from './utils/celestialOrder'
 
 function App() {
   const { selectedPersona } = usePersona()
@@ -19,9 +20,10 @@ function App() {
   useEffect(() => {
     const classes: string[] = []
 
-    // Add rarity class
-    const rarity = selectedPersona?.rarity || 'common'
-    classes.push(`rarity-${rarity}`)
+    // Add rarity class — derived from celestial_order when available
+    const order = selectedPersona ? getDisplayOrder(selectedPersona) : 'wanderer'
+    const rarityClass = orderToRarityClass(order)
+    classes.push(`rarity-${rarityClass}`)
 
     // Always apply NEPHILIM mode
     classes.push('nephilim-mode')
