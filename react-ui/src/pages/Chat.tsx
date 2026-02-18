@@ -432,7 +432,7 @@ const Chat: React.FC = () => {
                 {/* Indicators */}
                 <AnimatePresence mode="wait">
                   {isSearching && !initializingSession && toolType !== 'none' && (
-                    <div className="fixed bottom-24 left-4 md:left-6 z-50 pointer-events-none">
+                    <div className="absolute bottom-4 left-4 md:left-6 z-50 pointer-events-none">
                       <ToolIndicator
                         toolType={toolType}
                         personaName={selectedPersona?.display_name}
@@ -441,7 +441,7 @@ const Chat: React.FC = () => {
                     </div>
                   )}
                   {!isSearching && loading && !initializingSession && (
-                    <div className="fixed bottom-24 left-4 md:left-6 z-50 pointer-events-none">
+                    <div className="absolute bottom-4 left-4 md:left-6 z-50 pointer-events-none">
                       <TypingIndicator personaName={selectedPersona.display_name} />
                     </div>
                   )}
