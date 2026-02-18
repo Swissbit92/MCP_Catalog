@@ -10,7 +10,8 @@ test.describe('NEPHILIM OAuth Auth Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Clear all storage and cookies before each test
     await page.context().clearCookies()
-    await page.evaluate(() => localStorage.clear())
+    // localStorage is only accessible after a navigation — guard against about:blank
+    await page.evaluate(() => { try { localStorage.clear() } catch {} })
   })
 
   test('1. Unauthenticated user visiting /chat redirects to /login', async ({ page }) => {
@@ -134,7 +135,7 @@ test.describe('NEPHILIM OAuth Auth Flow', () => {
 
     for (const route of protectedRoutes) {
       await page.context().clearCookies()
-      await page.evaluate(() => localStorage.clear())
+      await page.evaluate(() => { try { localStorage.clear() } catch {} })
 
       await page.goto(`http://localhost:3001${route}`)
       await page.waitForLoadState('domcontentloaded')

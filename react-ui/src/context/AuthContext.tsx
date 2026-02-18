@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { setAuthCallbacks } from '../services/api'
 
 export interface AuthUser {
   sub: string
@@ -31,13 +32,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const initialized = useRef(false)
+  // Ref so auth callbacks always see the latest token without stale closures
+  const accessTokenRef = useRef<string | null>(null)
 
   const setAuth = useCallback((token: string, userData: AuthUser) => {
+    accessTokenRef.current = token
     setAccessToken(token)
     setUser(userData)
   }, [])
 
   const clearAuth = useCallback(() => {
+    accessTokenRef.current = null
     setAccessToken(null)
     setUser(null)
   }, [])
@@ -103,6 +108,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     clearAuth()
   }, [clearAuth])
+
+  // Register auth callbacks so fetchWithAuth in api.ts can auto-refresh on 401
+  // Uses accessTokenRef so callbacks always see the latest token, not stale closures
+  useEffect(() => {
+    setAuthCallbacks(
+      () => accessTokenRef.current,
+      async () => {
+        const ok = await refreshToken()
+        return ok ? accessTokenRef.current : null
+      },
+      () => { logout().catch(() => {}) }
+    )
+  }, [refreshToken, logout])
 
   return (
     <AuthContext.Provider value={{
