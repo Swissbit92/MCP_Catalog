@@ -713,38 +713,45 @@ body::before {
    Hover: Aurora intensifies, card lifts, holo sheen
    ═══════════════════════════════════════════════ */
 .card-arcane-tempest {
-  /* Aurora orbs container */
+  /* Aurora orbs live in .arcane-wrap, not inside this composited element */
 }
 
-.card-arcane-tempest .aurora-orb {
+/* Wrapper that holds orbs outside the card's GPU compositing layer */
+.arcane-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.arcane-wrap .aurora-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(30px);
-  z-index: -3;
+  background: transparent;
   pointer-events: none;
+  /* box-shadow guaranteed to paint outside element bounds, unaffected by compositing */
+  z-index: 3;
 }
-.card-arcane-tempest .aurora-orb-1 {
-  width: 120px;
-  height: 120px;
-  background: rgba(167, 139, 250, 0.2);
-  top: -20px;
-  left: -30px;
-  animation: auroraOrb1 8s ease-in-out infinite;
-}
-.card-arcane-tempest .aurora-orb-2 {
-  width: 100px;
-  height: 100px;
-  background: rgba(192, 132, 252, 0.15);
-  bottom: -15px;
-  right: -25px;
-  animation: auroraOrb2 10s ease-in-out infinite;
-}
-.card-arcane-tempest .aurora-orb-3 {
+.arcane-wrap .aurora-orb-1 {
   width: 80px;
   height: 80px;
-  background: rgba(139, 92, 246, 0.12);
-  top: 40%;
-  left: 50%;
+  box-shadow: 0 0 70px 40px rgba(167, 139, 250, 0.55);
+  top: -10px;
+  left: -20px;
+  animation: auroraOrb1 8s ease-in-out infinite;
+}
+.arcane-wrap .aurora-orb-2 {
+  width: 70px;
+  height: 70px;
+  box-shadow: 0 0 60px 35px rgba(192, 132, 252, 0.45);
+  bottom: -10px;
+  right: -15px;
+  animation: auroraOrb2 10s ease-in-out infinite;
+}
+.arcane-wrap .aurora-orb-3 {
+  width: 60px;
+  height: 60px;
+  box-shadow: 0 0 50px 30px rgba(139, 92, 246, 0.35);
+  top: 35%;
+  left: 15%;
   animation: auroraOrb3 7s ease-in-out infinite;
 }
 
@@ -805,9 +812,9 @@ body::before {
               0 0 40px rgba(167, 139, 250, 0.15);
 }
 
-.card-arcane-tempest:hover .aurora-orb-1 { animation-duration: 4s; }
-.card-arcane-tempest:hover .aurora-orb-2 { animation-duration: 5s; }
-.card-arcane-tempest:hover .aurora-orb-3 { animation-duration: 3.5s; }
+.arcane-wrap:hover .aurora-orb-1 { animation-duration: 4s; }
+.arcane-wrap:hover .aurora-orb-2 { animation-duration: 5s; }
+.arcane-wrap:hover .aurora-orb-3 { animation-duration: 3.5s; }
 
 .card-arcane-tempest .card-info .name { color: #c4b5fd; }
 .card-arcane-tempest .rarity-stars { color: #a78bfa; }
@@ -864,7 +871,7 @@ body::before {
   position: absolute;
   inset: -20px;
   pointer-events: none;
-  z-index: -1;
+  z-index: 3;
 }
 .card-phantom-edge .wisp {
   position: absolute;
@@ -1216,7 +1223,7 @@ body::before {
   position: absolute;
   inset: -24px;
   pointer-events: none;
-  z-index: -1;
+  z-index: 3;
 }
 .card-nephilim-conv .wisp {
   position: absolute;
@@ -1669,17 +1676,19 @@ body::before {
 
     <!-- 7. Arcane Tempest -->
     <div class="card-demo">
-      <div class="card card-arcane-tempest" data-tilt>
+      <div class="arcane-wrap">
         <div class="aurora-orb aurora-orb-1"></div>
         <div class="aurora-orb aurora-orb-2"></div>
         <div class="aurora-orb aurora-orb-3"></div>
-        <div class="card-inner">
-          <div class="card-image" style="background: linear-gradient(135deg, #1a0a2e 0%, #1f1145 50%, #2a1555 100%);">
-            <div class="rarity-stars">&#9733; &#9733; &#9733;</div>
-          </div>
-          <div class="card-info">
-            <div class="name">Solace</div>
-            <div class="title">The Empath</div>
+        <div class="card card-arcane-tempest" data-tilt>
+          <div class="card-inner">
+            <div class="card-image" style="background: linear-gradient(135deg, #1a0a2e 0%, #1f1145 50%, #2a1555 100%);">
+              <div class="rarity-stars">&#9733; &#9733; &#9733;</div>
+            </div>
+            <div class="card-info">
+              <div class="name">Solace</div>
+              <div class="title">The Empath</div>
+            </div>
           </div>
         </div>
       </div>
