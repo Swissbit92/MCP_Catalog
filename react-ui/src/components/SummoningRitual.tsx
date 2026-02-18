@@ -47,7 +47,7 @@ const SOFT_PITY_THRESHOLD = 5
 const HARD_PITY_THRESHOLD = 10
 
 const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) => {
-  const { addToCollection, addPullRecord, isCollected, collectedPersonas } = usePersona()
+  const { addToCollection, addPullRecord, isCollected } = usePersona()
   const {
     playCommitSound,
     playAnticipationSound,
@@ -292,8 +292,9 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current)
+      const timer = holdTimerRef.current
+      if (timer) {
+        clearInterval(timer)
       }
     }
   }, [])
