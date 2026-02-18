@@ -73,7 +73,6 @@ cd react-ui && npm test -- --testNamePattern="MessageBubble" --watchAll=false
 # Playwright E2E tests
 cd react-ui && npx playwright test                    # Run all E2E tests
 cd react-ui && npx playwright test --headed           # Run with browser visible
-cd react-ui && npx playwright test phase6-filter      # Run specific test file
 
 # Python tests (run from project root)
 pytest tests/backend/                    # Backend unit tests
@@ -119,7 +118,7 @@ components/                    # UI components (Header, MessageBubble, Character
 components/nephilim/           # NEPHILIM progression components (SeekerRankBadge, LoreCodex, etc.)
 context/                       # PersonaContext.tsx, AudioContext.tsx
 services/                      # API client (includes NEPHILIM progression API)
-utils/                         # animations.ts, helpers, personaFilter.ts
+utils/                         # animations.ts, helpers, celestialOrder.ts
 ```
 
 ### Database Schema
@@ -202,7 +201,7 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - **Solace** (Warden): Brave only (empathy needs resources, not trading)
 - **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
 - **Nyx** (Sage): None (creativity flows from imagination)
-- **Legacy personas** (Wanderer): None (pure LLM)
+- **Wanderer personas** (Gojo, Frieren, Gwen, etc.): None (pure LLM)
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -397,38 +396,6 @@ MCP capabilities are framed as Nephilim powers in the UI:
 **Components Updated**:
 - `SourceIndicator.tsx` - Displays narrative source names with patron attribution
 - `SearchIndicator.tsx` - Shows immersive loading messages with animated icons
-
-### Persona Filter Toggle (Phase 6)
-
-Filter system allowing users to switch between NEPHILIM and legacy persona views:
-
-**Components** (`react-ui/src/`):
-- `components/PersonaFilterToggle.tsx` - Animated toggle with three modes: All, NEPHILIM, Legacy
-- `utils/personaFilter.ts` - Filter utilities with localStorage persistence
-
-**Features**:
-- Toggle between All (✦), NEPHILIM (⬡), and Legacy (◇) personas
-- Counts displayed in each filter button
-- Filter preference persists across sessions via localStorage (`persona_filter_mode`)
-- Animated selection indicator using Framer Motion layoutId
-
-**Filter Logic** (`personaFilter.ts`):
-```typescript
-// NEPHILIM personas identified by key prefix
-isNephilimPersona(key: string) => key.startsWith('nephilim_')
-
-// Filter functions
-filterPersonas(personas, mode) // Returns filtered array
-getPersonaCounts(personas)     // Returns { nephilim, legacy, total }
-```
-
-**Enhanced Components**:
-- `CharacterCardV2.tsx` - NEPHILIM badge display for matching personas
-- `CharacterSelector.tsx` - Gradient indicator bar on NEPHILIM persona thumbnails
-- `CharacterCardV2Showcase.tsx` - Integrated filter toggle in header
-
-**Test Coverage** (`react-ui/tests/phase6-filter.spec.ts`):
-- 7 Playwright tests covering filter visibility, functionality, and persistence
 
 ### Phase 7 — Full NEPHILIM UI Transition
 
