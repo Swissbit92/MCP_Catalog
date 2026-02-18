@@ -170,6 +170,12 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
       {/* Dynamic Glow Ring */}
       <div className={styles['glow-ring']} />
 
+      {/* Void Rift: Holographic overlay (warden + sage hover) */}
+      <div className={styles['holo-layer']} />
+
+      {/* Void Rift: Chromatic aberration layer (warden + sage hover) */}
+      <div className={styles['chromatic-layer']} />
+
       {/* Card Content */}
       <div className={styles['card-body']}>
         {/* Character Image with Holographic Overlay */}
