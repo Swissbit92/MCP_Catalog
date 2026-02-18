@@ -155,6 +155,40 @@
   to { --border-angle: 360deg; }
 }
 
+/* ── Void Rift: Sage holo overlay + chromatic (on top of Azure Stream) ── */
+.order-sage .holo-layer {
+  background: linear-gradient(
+    125deg,
+    transparent 15%,
+    rgba(6, 182, 212, 0.10) 28%,
+    rgba(34, 211, 238, 0.38) 40%,
+    rgba(6, 182, 212, 0.50) 50%,
+    rgba(34, 211, 238, 0.38) 60%,
+    rgba(6, 182, 212, 0.10) 72%,
+    transparent 85%
+  );
+  mix-blend-mode: screen;
+}
+
+.order-sage:hover .holo-layer {
+  opacity: 1;
+}
+
+.order-sage .chromatic-layer {
+  background: linear-gradient(
+    to right,
+    rgba(0, 80, 255, 0.48) 0px,
+    rgba(0, 80, 255, 0.0) 10px,
+    transparent calc(100% - 10px),
+    rgba(0, 220, 200, 0.0) calc(100% - 10px),
+    rgba(0, 220, 200, 0.48) 100%
+  );
+}
+
+.order-sage:hover .chromatic-layer {
+  opacity: 1;
+}
+
 .order-wanderer .holo-bg-layer-1 {
   background: linear-gradient(135deg,
     rgba(192, 192, 192, 0.12) 0%,
@@ -162,6 +196,96 @@
     rgba(128, 128, 128, 0.06) 50%,
     rgba(192, 192, 192, 0.1) 75%,
     rgba(169, 169, 169, 0.12) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════
+   VOID RIFT EFFECT — Warden (purple)
+   Idle: Rotating purple conic border via glow-ring
+   Hover: Holographic overlay + chromatic aberration
+   ══════════════════════════════════════════════════════════ */
+
+/* Inner border accent */
+.order-warden {
+  border: 1px solid rgba(167, 139, 250, 0.25);
+}
+
+/* Spinning conic border via glow-ring */
+.order-warden .glow-ring {
+  background: conic-gradient(
+    from var(--border-angle),
+    rgba(167, 139, 250, 0.08),
+    rgba(167, 139, 250, 0.52),
+    rgba(192, 132, 252, 0.68),
+    rgba(139, 92, 246, 0.52),
+    rgba(167, 139, 250, 0.08)
+  );
+  opacity: 0.55;
+  animation: warden-border-spin 4s linear infinite;
+}
+
+.order-warden:hover .glow-ring,
+.order-warden.selected .glow-ring {
+  opacity: 0.85;
+}
+
+@keyframes warden-border-spin {
+  to { --border-angle: 360deg; }
+}
+
+/* Holo overlay on hover */
+.order-warden .holo-layer {
+  background: linear-gradient(
+    125deg,
+    transparent 15%,
+    rgba(167, 139, 250, 0.10) 28%,
+    rgba(192, 132, 252, 0.38) 40%,
+    rgba(139, 92, 246, 0.50) 50%,
+    rgba(192, 132, 252, 0.38) 60%,
+    rgba(167, 139, 250, 0.10) 72%,
+    transparent 85%
+  );
+  mix-blend-mode: screen;
+}
+
+.order-warden:hover .holo-layer {
+  opacity: 1;
+}
+
+/* Chromatic aberration on hover */
+.order-warden .chromatic-layer {
+  background: linear-gradient(
+    to right,
+    rgba(255, 0, 100, 0.48) 0px,
+    rgba(255, 0, 100, 0.0) 10px,
+    transparent calc(100% - 10px),
+    rgba(0, 100, 255, 0.0) calc(100% - 10px),
+    rgba(0, 100, 255, 0.48) 100%
+  );
+}
+
+.order-warden:hover .chromatic-layer {
+  opacity: 1;
+}
+
+/* ── Base styles for Void Rift overlay layers (all orders) ── */
+.holo-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity 0.5s ease;
+}
+
+.chromatic-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.4s ease;
 }
 
 /* Animated Foil Effect */
@@ -585,4 +709,6 @@
   .order-sage { animation: none; translate: 0 0; }
   .order-sage .card-body::after { animation: none; }
   .order-sage .glow-ring { animation: none; opacity: 0; }
+  .order-warden .glow-ring { animation: none; opacity: 0; }
+  .holo-layer, .chromatic-layer { transition: none; }
 }

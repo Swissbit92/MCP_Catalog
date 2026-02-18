@@ -166,6 +166,9 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, celes
         {/* Holographic foil for Warden */}
         {order === 'warden' && <div className={styles['holo-foil']} />}
 
+        {/* Void Rift foil for Sage (cyan version) */}
+        {order === 'sage' && <div className={styles['sage-holo-foil']} />}
+
         {/* Archon foil + particles */}
         {order === 'archon' && <div className={styles['legendary-foil']} />}
         {order === 'archon' && !isMobile && (
