@@ -5,6 +5,65 @@ export function getAuthHeader(token: string | null): HeadersInit {
   return token ? { 'Authorization': 'Bearer ' + token } : {}
 }
 
+// ── 401 Auto-Refresh Mechanism ────────────────────────────────────────────────
+// AuthContext calls setAuthCallbacks() on mount so api.ts can silently refresh
+// expired tokens and retry failed requests without importing React hooks.
+
+type GetTokenFn = () => string | null
+type RefreshFn = () => Promise<string | null>
+type LogoutFn = () => void
+
+let _getToken: GetTokenFn = () => null
+let _refresh: RefreshFn = async () => null
+let _logout: LogoutFn = () => {}
+
+export function setAuthCallbacks(
+  getToken: GetTokenFn,
+  refresh: RefreshFn,
+  logout: LogoutFn
+): void {
+  _getToken = getToken
+  _refresh = refresh
+  _logout = logout
+}
+
+/**
+ * Authenticated fetch wrapper.
+ * - Injects Bearer token automatically
+ * - On 401: attempts silent token refresh, retries once
+ * - On second 401: calls logout (redirects to /login via AuthContext)
+ */
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = _getToken()
+  const authHeaders = getAuthHeader(token)
+
+  const response = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders, ...options.headers },
+  })
+
+  if (response.status !== 401) return response
+
+  // First 401 — attempt silent refresh
+  const newToken = await _refresh()
+  if (!newToken) {
+    _logout()
+    return response
+  }
+
+  // Retry with new token
+  const retried = await fetch(url, {
+    ...options,
+    headers: { ...getAuthHeader(newToken), ...options.headers },
+  })
+
+  if (retried.status === 401) {
+    _logout()
+  }
+
+  return retried
+}
+
 interface PersonaJson {
   key: string;
   rarity: string;
@@ -172,9 +231,9 @@ export const getPersonaGreeting = async (persona: string) => {
   return data.answer;
 };
 
-// Session management functions
+// Session management functions — use fetchWithAuth for automatic 401 retry
 export const fetchSessions = async (): Promise<ChatSession[]> => {
-  const response = await fetch(`${API_BASE_URL}/sessions`);
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions`);
   if (!response.ok) {
     throw new Error(`Failed to fetch sessions: ${response.statusText}`);
   }
@@ -182,15 +241,10 @@ export const fetchSessions = async (): Promise<ChatSession[]> => {
 };
 
 export const createSession = async (personaKey: string, title?: string): Promise<ChatSession> => {
-  const response = await fetch(`${API_BASE_URL}/sessions`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      persona_key: personaKey,
-      title: title || 'New Chat',
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ persona_key: personaKey, title: title || 'New Chat' }),
   });
   if (!response.ok) {
     throw new Error(`Failed to create session: ${response.statusText}`);
@@ -199,30 +253,23 @@ export const createSession = async (personaKey: string, title?: string): Promise
 };
 
 export const getSessionWithMessages = async (sessionId: string): Promise<SessionWithMessages> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch session: ${response.statusText}`);
   }
   const data = await response.json();
-  // Convert timestamp strings to Date objects and source_type to metadata
   data.messages = data.messages.map((msg: any) => ({
     ...msg,
     timestamp: new Date(msg.timestamp),
-    // Convert source_type from database to metadata format for UI
-    metadata: msg.source_type ? {
-      source_type: msg.source_type,
-      tools_used: [],
-    } : undefined,
+    metadata: msg.source_type ? { source_type: msg.source_type, tools_used: [] } : undefined,
   }));
   return data;
 };
 
 export const updateSession = async (sessionId: string, updates: Partial<Pick<ChatSession, 'title'>>): Promise<ChatSession> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
   if (!response.ok) {
@@ -232,9 +279,7 @@ export const updateSession = async (sessionId: string, updates: Partial<Pick<Cha
 };
 
 export const deleteSession = async (sessionId: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
-    method: 'DELETE',
-  });
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}`, { method: 'DELETE' });
   if (!response.ok) {
     throw new Error(`Failed to delete session: ${response.statusText}`);
   }
@@ -253,14 +298,10 @@ export interface ChatApiResponse {
 }
 
 export const sendMessageToSession = async (sessionId: string, message: string): Promise<ChatApiResponse> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/chat`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
   });
   if (!response.ok) {
     const errorText = await response.text();
@@ -700,4 +741,44 @@ export async function getWalletBalance(userId: string): Promise<WalletBalance> {
   const res = await fetch(`${API_BASE_URL}/wallet/balance/${encodeURIComponent(userId)}`);
   if (!res.ok) throw new Error(`Balance check failed: ${res.status}`);
   return res.json();
+}
+
+// ============================================================
+// Auth API — Google OAuth + JWT refresh/logout
+// ============================================================
+
+export interface AuthTokenResponse {
+  access_token: string
+  token_type: string
+  user: { sub: string; email: string; name: string; avatar: string }
+}
+
+export async function loginWithGoogle(credential: string): Promise<AuthTokenResponse> {
+  const res = await fetch('/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ credential }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(err.detail || `Login failed: ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function refreshAccessToken(): Promise<AuthTokenResponse> {
+  const res = await fetch('/auth/refresh', {
+    method: 'POST',
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error(`Refresh failed: ${res.status}`)
+  return res.json()
+}
+
+export async function logoutApi(): Promise<void> {
+  await fetch('/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+  })
 }
