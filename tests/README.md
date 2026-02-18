@@ -16,12 +16,15 @@ tests/
 
 ### Backend Unit Tests (`backend/`)
 
-Unit tests for core backend components with mocked dependencies (~8 files):
+Unit tests for core backend components with mocked dependencies (18 files):
 
-- **test_server.py** - FastAPI endpoint tests (uses pytest + mocks)
-- **test_mcp_client.py** - Brave MCP client unit tests (unittest)
+- **test_citation_service.py** - Citation generation and validation (14 tests, pytest)
 - **test_mongodb_integration.py** - MongoDB MCP unit tests (30+ tests, pytest)
-- **test_tool_calling.py** - Tool calling logic tests (unittest)
+- **test_repositories.py** - SQLite repository layer tests
+- **test_mongodb_handlers.py** - MongoDB service handler tests
+- **test_llm_completion_service.py** - LLM completion service tests
+- **test_persona_schema.py** - Persona schema validation tests
+- And more in `tests/backend/coordinator/`
 
 **Run backend tests:**
 ```bash
@@ -49,13 +52,18 @@ pytest tests/integration/ -v
 
 ### Exploration Scripts (`exploration/`)
 
-Scripts archived to `archive/exploration/` - not actively maintained. Directory contains only non-test utility scripts (check_db.py, etc.):
+Non-test utility scripts for development inspection. Test scripts have been archived to `archive/exploration/`:
 
-- **test_mongodb_phase4.py** - Phase 4 development testing (superseded by test_mongodb_integration.py)
-- **test_function_calling.py** - Model function calling capability evaluation
-- **test_model_persona_capability.py** - Model role-play testing
+- **check_db.py** - Inspect SQLite database contents
+- **check_import.py** - Verify module imports
+- **explore_mongodb_direct.py** - Direct MongoDB connection exploration
+- **simulate_ui_flow.py** - Simulate frontend API call sequences
+- **validate_model_switch.py** - Validate model switching behavior
 
-These are kept for historical reference but are not actively maintained.
+Archived test scripts (moved to `archive/exploration/`):
+- `model_comparison_test.py`, `test_function_calling.py`, `test_model_persona_capability.py`
+
+**Note:** `@pytest.mark.requires_ollama` is applied to integration tests that need a locally running Ollama instance (`ollama serve`). Skip them in CI with `pytest -m "not requires_ollama"`.
 
 ## Running Tests
 
