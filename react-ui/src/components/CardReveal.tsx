@@ -108,8 +108,7 @@ const CardReveal: React.FC<CardRevealProps> = ({
           name={persona.display_name}
           style={persona.style}
           image={`/images/${persona.image}`}
-          rarity={persona.rarity}
-          celestial_order={persona.celestial_order}
+          celestial_order={persona.celestial_order ?? 'wanderer'}
           onSelect={onSelect}
           isSelected={false}
         />

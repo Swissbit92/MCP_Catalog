@@ -11,6 +11,9 @@ import requests
 import time
 import json
 from typing import Dict, List
+import pytest
+
+pytestmark = pytest.mark.requires_ollama
 
 # Force UTF-8 encoding for Windows console
 if sys.platform == 'win32':

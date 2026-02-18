@@ -21,7 +21,7 @@ import {
   type LoreFragment
 } from '../../services/api'
 import { usePersona } from '../../context/PersonaContext'
-import { rarityToOrder, formatOrderLabel } from '../../utils/celestialOrder'
+import { formatOrderLabel } from '../../utils/celestialOrder'
 import { SeekerRankBadge } from './SeekerRankBadge'
 import { ResonanceProgress } from './ResonanceProgress'
 import { AffinityMeter } from './AffinityMeter'
@@ -423,6 +423,12 @@ const ChronicleStats: React.FC = () => {
   )
 }
 
+const getRecordOrder = (rec: { rarity?: string; celestial_order?: string }): string => {
+  if (rec.celestial_order) return rec.celestial_order.toLowerCase()
+  const m: Record<string, string> = { legendary: 'archon', epic: 'warden', rare: 'sage', common: 'wanderer' }
+  return m[rec.rarity?.toLowerCase() || ''] || 'wanderer'
+}
+
 const ChronicleHistory: React.FC = () => {
   const navigate = useNavigate()
   const { pullHistory } = usePersona()
@@ -496,7 +502,7 @@ const ChronicleHistory: React.FC = () => {
                 <div className={`text-sm font-semibold ${RARITY_TEXT[record.rarity] || 'text-gray-300'}`}>
                   {PERSONA_NAMES[record.personaKey] || record.personaKey}
                 </div>
-                <div className="text-xs text-white/60">{formatOrderLabel(rarityToOrder(record.rarity || 'common'))}</div>
+                <div className="text-xs text-white/60">{formatOrderLabel(getRecordOrder(record))}</div>
               </div>
             </div>
             <div className="text-xs text-white/60">{formatTime(record.timestamp)}</div>

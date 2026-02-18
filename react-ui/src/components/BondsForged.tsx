@@ -2,7 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { usePersona } from '../context/PersonaContext'
 import { fetchPersonas } from '../services/api'
-import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder'
+import { formatOrderLabel } from '../utils/celestialOrder'
 
 interface BondsForgedProps {
   onCharacterSelect: (personaKey: string) => void
@@ -10,18 +10,18 @@ interface BondsForgedProps {
   selectedPersonaKey?: string | null
 }
 
-const RARITY_COLORS: Record<string, string> = {
-  common: '#C0C0C0',
-  rare: '#00BFFF',
-  epic: '#DA70D6',
-  legendary: '#FFD700',
+const ORDER_COLORS: Record<string, string> = {
+  wanderer: '#C0C0C0',
+  sage: '#00BFFF',
+  warden: '#DA70D6',
+  archon: '#FFD700',
 }
 
-const RARITY_TEXT_CLASSES: Record<string, string> = {
-  common: 'text-gray-400',
-  rare: 'text-cyan-400',
-  epic: 'text-purple-400',
-  legendary: 'text-yellow-400',
+const ORDER_TEXT_CLASSES: Record<string, string> = {
+  wanderer: 'text-gray-400',
+  sage: 'text-cyan-400',
+  warden: 'text-purple-400',
+  archon: 'text-yellow-400',
 }
 
 const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, selectedPersonaKey }) => {
@@ -107,7 +107,7 @@ const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {collectedPersonasData.map((persona, index) => {
                 const bondLevel = getBondLevel(persona.key)
-                const rarityColor = RARITY_COLORS[persona.rarity] || RARITY_COLORS.common
+                const rarityColor = ORDER_COLORS[(persona.celestial_order || 'wanderer').toLowerCase()] || ORDER_COLORS.wanderer
                 const isSelected = selectedPersonaKey === persona.key
 
                 return (
@@ -147,11 +147,11 @@ const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, 
 
                       {/* Info bar */}
                       <div className="absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm p-2">
-                        <div className={`text-sm font-semibold truncate ${RARITY_TEXT_CLASSES[persona.rarity] || 'text-gray-300'}`}>
+                        <div className={`text-sm font-semibold truncate ${ORDER_TEXT_CLASSES[(persona.celestial_order || 'wanderer').toLowerCase()] || 'text-gray-300'}`}>
                           {persona.display_name || persona.key}
                         </div>
                         <div className="flex items-center justify-between mt-0.5">
-                          <div className="text-xs text-gray-500">{formatOrderLabel(rarityToOrder(persona.rarity || 'common'))}</div>
+                          <div className="text-xs text-gray-500">{formatOrderLabel((persona.celestial_order || 'wanderer').toLowerCase())}</div>
                           {bondLevel > 1 && (
                             <div className="text-xs text-fuchsia-400">
                               Bond Lv. {bondLevel}

@@ -12,9 +12,16 @@ interface Persona {
   style: string;
   image: string;
   rarity: string;
+  celestial_order?: string;
   voice?: {
     greeting: string;
   };
+}
+
+const getCharacterOrder = (char: { rarity?: string; celestial_order?: string }): string => {
+  if (char.celestial_order) return char.celestial_order.toLowerCase()
+  const m: Record<string, string> = { legendary: 'archon', epic: 'warden', rare: 'sage', common: 'wanderer' }
+  return m[char.rarity?.toLowerCase() || ''] || 'wanderer'
 }
 
 interface PullInterfaceProps {
@@ -69,6 +76,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
         style: personas[randomIndex].style,
         image: personas[randomIndex].image.replace('images/', ''),
         rarity: personas[randomIndex].rarity,
+        celestial_order: personas[randomIndex].celestial_order,
       };
 
       setPulledCharacter(character);
@@ -82,15 +90,16 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
       addPullRecord({
         personaKey: character.key,
         rarity: character.rarity,
+        celestial_order: character.celestial_order,
         pullCount: pullCount,
       });
 
       // Stage 3: Dramatic reveal (0.8s)
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Play celebration sound and haptic feedback based on rarity
-      playCelebrationSound(character.rarity);
-      triggerHapticFeedback(character.rarity === 'legendary' ? 'heavy' : 'medium');
+      // Play celebration sound and haptic feedback based on celestial order
+      playCelebrationSound(getCharacterOrder(character));
+      triggerHapticFeedback(getCharacterOrder(character) === 'archon' ? 'heavy' : 'medium');
 
       setPullStage('complete');
       setShowResult(true);
@@ -328,7 +337,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
                   name={pulledCharacter.display_name}
                   style={pulledCharacter.style}
                   image={`/images/${pulledCharacter.image}`}
-                  rarity={pulledCharacter.rarity}
+                  celestial_order={pulledCharacter.celestial_order ?? 'wanderer'}
                   onSelect={handleCharacterSelect}
                   isSelected={false}
                   personaKey={pulledCharacter.key}
@@ -341,7 +350,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
             {pulledCharacter && (
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 {/* Archon Celebration */}
-                {pulledCharacter.rarity === 'legendary' && (
+                {getCharacterOrder(pulledCharacter) === 'archon' && (
                   <>
                     <motion.div
                       initial={{ scale: 0, opacity: 0 }}
@@ -390,7 +399,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
                 )}
 
                 {/* Warden Celebration */}
-                {pulledCharacter.rarity === 'epic' && (
+                {getCharacterOrder(pulledCharacter) === 'warden' && (
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{
@@ -410,7 +419,7 @@ const PullInterface: React.FC<PullInterfaceProps> = ({ onCharacterSelect }) => {
                 )}
 
                 {/* Sage Celebration */}
-                {pulledCharacter.rarity === 'rare' && (
+                {getCharacterOrder(pulledCharacter) === 'sage' && (
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{

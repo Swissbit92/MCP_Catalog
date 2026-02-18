@@ -8,7 +8,7 @@ describe('BoltedPlateBorder', () => {
 
   it('renders children correctly', () => {
     render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -17,9 +17,9 @@ describe('BoltedPlateBorder', () => {
     expect(screen.getByText('Test Content')).toBeInTheDocument();
   });
 
-  it('applies legendary rarity styling', () => {
+  it('applies archon order styling', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -28,9 +28,9 @@ describe('BoltedPlateBorder', () => {
     expect(borderElement).toBeInTheDocument();
   });
 
-  it('applies epic rarity styling', () => {
+  it('applies warden order styling', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="epic">
+      <BoltedPlateBorder celestial_order="warden">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -39,9 +39,9 @@ describe('BoltedPlateBorder', () => {
     expect(borderElement).toBeInTheDocument();
   });
 
-  it('applies rare rarity styling', () => {
+  it('applies sage order styling', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="rare">
+      <BoltedPlateBorder celestial_order="sage">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -50,9 +50,9 @@ describe('BoltedPlateBorder', () => {
     expect(borderElement).toBeInTheDocument();
   });
 
-  it('applies common rarity styling as default', () => {
+  it('applies wanderer order styling as default', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="common">
+      <BoltedPlateBorder celestial_order="wanderer">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -61,9 +61,9 @@ describe('BoltedPlateBorder', () => {
     expect(borderElement).toBeInTheDocument();
   });
 
-  it('applies unknown rarity as common', () => {
+  it('applies unknown order as wanderer', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="unknown">
+      <BoltedPlateBorder celestial_order="unknown">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -74,7 +74,7 @@ describe('BoltedPlateBorder', () => {
 
   it('applies custom className', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary" className="custom-class">
+      <BoltedPlateBorder celestial_order="archon" className="custom-class">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -85,7 +85,7 @@ describe('BoltedPlateBorder', () => {
 
   it('has correct base styling', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -103,7 +103,7 @@ describe('BoltedPlateBorder', () => {
 
   it('renders with clip-path for bolted effect', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -114,7 +114,7 @@ describe('BoltedPlateBorder', () => {
 
   it('applies hover scale effect', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -128,7 +128,7 @@ describe('BoltedPlateBorder', () => {
 
   it('has enhanced glassmorphism styling', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );
@@ -140,7 +140,7 @@ describe('BoltedPlateBorder', () => {
 
   it('has refined breathing animation timing', () => {
     const { container } = render(
-      <BoltedPlateBorder rarity="legendary">
+      <BoltedPlateBorder celestial_order="archon">
         {mockChildren}
       </BoltedPlateBorder>
     );

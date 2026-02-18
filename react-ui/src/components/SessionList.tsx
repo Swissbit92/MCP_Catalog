@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ChatSession } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { fetchPersonas } from '../services/api'
-import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder'
+import { formatOrderLabel } from '../utils/celestialOrder'
 
 interface SessionListProps {
   onSessionSelect: (session: ChatSession) => void
@@ -67,6 +67,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
           image: p.image.replace('images/', ''),
           avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
           rarity: p.rarity,
+          celestial_order: p.celestial_order,
         }))
         setPersonas(processedPersonas)
       } catch (error) {
@@ -256,7 +257,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                                } : {}}
                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                              >
-                               {formatOrderLabel(rarityToOrder(persona.rarity || 'common'))}
+                               {formatOrderLabel(persona.celestial_order || 'wanderer')}
                              </motion.span>
                            )}
                         </div>

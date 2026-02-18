@@ -10,29 +10,29 @@ import {
 interface SearchIndicatorProps {
   personaName?: string;
   personaKey?: string;
-  rarity?: string;
+  celestial_order?: string;
   searchType?: 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp' | 'llm';
   className?: string;
 }
 
-// Rarity-based color schemes (matching persona colors)
-const getRarityColors = (rarity?: string) => {
-  switch (rarity) {
-    case 'legendary':
+// Celestial Order-based color schemes (matching persona colors)
+const getOrderColors = (celestial_order?: string) => {
+  switch (celestial_order) {
+    case 'archon':
       return {
         gradient: 'from-yellow-400 to-amber-500',
         glow: 'shadow-yellow-500/30',
         icon: 'text-yellow-600',
         text: 'text-yellow-700',
       };
-    case 'epic':
+    case 'warden':
       return {
         gradient: 'from-purple-400 to-violet-500',
         glow: 'shadow-purple-500/30',
         icon: 'text-purple-600',
         text: 'text-purple-700',
       };
-    case 'rare':
+    case 'sage':
       return {
         gradient: 'from-blue-400 to-cyan-500',
         glow: 'shadow-blue-500/30',
@@ -62,7 +62,7 @@ const NEPHILIM_COLORS: Record<string, string> = {
 export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
   personaName = 'Assistant',
   personaKey,
-  rarity = 'common',
+  celestial_order = 'wanderer',
   searchType = 'brave_mcp',
   className = ''
 }) => {
@@ -151,7 +151,7 @@ export const SearchIndicator: React.FC<SearchIndicatorProps> = ({
   }
 
   // Standard mode rendering
-  const colors = getRarityColors(rarity);
+  const colors = getOrderColors(celestial_order);
 
   return (
     <motion.div

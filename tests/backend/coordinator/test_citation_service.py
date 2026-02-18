@@ -189,6 +189,24 @@ class TestValidateCitationsFunction:
         assert "🔍 Sources:" not in processed  # Citations stripped
         assert "Answer." in processed
 
+    def test_validate_citations_non_http_links_hallucinated_are_stripped(self):
+        """Non-HTTP links in a citation section without search are treated as hallucinated."""
+        answer = "Bitcoin info:\n\n🔍 Sources:\n• [Local File](file:///path/to/file)\n"
+        processed, valid, details = validate_citations(answer, used_search=False, search_results_count=0)
+
+        assert valid is False
+        assert details["status"] == "hallucinated_removed"
+        assert "🔍 Sources:" not in processed
+
+    def test_validate_citations_plain_text_citation_section_counts_as_present(self):
+        """Citation marker in answer counts as present regardless of link format (marker-based detection)."""
+        answer = "Bitcoin data:\n\n🔍 Sources:\nSome sources were consulted but not cited with links."
+        processed, valid, details = validate_citations(answer, used_search=True, search_results_count=3)
+
+        assert valid is True
+        assert details["has_citations"] is True
+        assert details["status"] == "valid"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

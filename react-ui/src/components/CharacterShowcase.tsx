@@ -8,6 +8,7 @@ import NephilimBackground from './NephilimBackground'
 interface PersonaJson {
   key: string;
   rarity: string;
+  celestial_order?: string;
   display_name: string;
   style: string;
   coordinator_label: string;
@@ -249,7 +250,7 @@ const CharacterShowcase: React.FC = () => {
             </motion.div>
 
             {/* Bio Content - Inside Bolted Plate Border */}
-            <BoltedPlateBorder rarity={currentPersona.rarity} className="flex-1">
+            <BoltedPlateBorder celestial_order={currentPersona.celestial_order ?? 'wanderer'} className="flex-1">
               <motion.div
                 key={`bio-${currentPersona.key}`}
                 initial={{ opacity: 0, y: 40, scale: 0.95 }}

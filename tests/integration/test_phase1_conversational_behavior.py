@@ -19,6 +19,7 @@ def llm_client():
     )
 
 
+@pytest.mark.requires_ollama
 class TestConversationalLLMBehavior:
     """Test that LLM actually exhibits conversational behavior."""
 

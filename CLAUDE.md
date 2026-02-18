@@ -135,6 +135,8 @@ utils/                         # animations.ts, helpers, personaFilter.ts
 - `resonance_log`: user_id, amount, reason, persona_key, session_id
 - `unlocked_lore`: user_id, persona_key, fragment_id, unlocked_at
 
+> **Architecture details:** See `docs/architecture/SQLITE_ARCHITECTURE.md` for thread-safety pattern, migration guide, and backup procedures.
+
 ## Environment Variables
 
 Required in `.env`:
@@ -175,6 +177,8 @@ Optional (see `.env.docker` for full list):
 2. Fill in: key, display_name, rarity, celestial_order, mcp_access, lore, voice, behavior, expertise
 3. Add images to `react-ui/public/images/personas/[name]/` (card.png, avatar.png, logo.png)
 4. Persona auto-discovered on next load - no restart needed
+
+> **Full field reference:** See `docs/development/PERSONA_SCHEMA.md` for all fields, valid values, and NEPHILIM-only extended schema.
 
 ### Chat Flow
 1. Frontend POST `/greet` creates session
@@ -453,7 +457,7 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 | `/chat/:sessionId` | Chat | Chat with specific session |
 | `/dashboard` | Dashboard | Seeker's Sanctum |
 
-**Tracking:** `docs/development/PHASE7_TRANSITION_PLAN.md`
+**Tracking:** `archive/phase7/PHASE7_TRANSITION_PLAN.md` (complete ✅ Feb 17, 2026)
 
 ## Documentation
 

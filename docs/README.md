@@ -7,7 +7,8 @@ Organized documentation for MCP Coordinator development and deployment.
 ```
 docs/
 ├── setup/          Setup and deployment guides
-└── development/    Development guides and MCP integration
+├── development/    Development guides and MCP integration
+└── architecture/   Architecture decision records and system design
 ```
 
 ## Setup & Deployment
@@ -67,37 +68,83 @@ BRAVE_SEARCH_TOOL = {
 BRAVE_ENABLED_RARITIES=sage,warden,archon
 ```
 
-### [development/PHASE7_TRANSITION_PLAN.md](development/PHASE7_TRANSITION_PLAN.md)
-
-**Phase 7 NEPHILIM UI Transition tracking document**
-
-**Contents:**
-- Sub-phase checklist (7A-7G) with completion status
-- Decisions log and deviations
-- Route consolidation, navigation, character selection, summoning ritual, chat redesign, dashboard, accessibility
-
 ### [development/TESTING_GUIDE.md](development/TESTING_GUIDE.md)
 
 **Testing setup and best practices**
 
 **Test organization:**
-- `tests/backend/` - Backend unit tests (12 files)
-- `tests/integration/` - End-to-end tests (23 files)
-- `tests/exploration/` - Exploratory tests (10 files)
+- `tests/backend/` - Backend unit tests (~8 files)
+- `tests/integration/` - End-to-end tests (~13 files)
+- `tests/exploration/` - Archived exploratory scripts
 
 **Running tests:**
 ```bash
 # React tests
 cd react-ui && npm test
 
-# Python tests (standalone scripts)
-python tests/backend/coordinator/test_server.py
-python tests/integration/test_brave_mcp_connectivity.py
+# Python tests
+pytest tests/backend/ -v
+pytest tests/integration/ -v
 
 # RAGAS evaluation (persona quality)
 pytest tests/evaluation/test_persona_quality.py -v
 pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 ```
+
+### [development/DESIGN_SYSTEM.md](development/DESIGN_SYSTEM.md)
+
+**Visual design language and UI component guidelines**
+
+**Contents:**
+- Typography: Outfit (display), Manrope (body), Space Mono (mono)
+- Celestial Order colors: Wanderer, Sage, Warden, Archon palettes
+- CSS variables and Tailwind configuration
+- Card effects: holographic shimmer, rarity glows
+- Glassmorphism recipe and usage rules
+- WCAG AA contrast requirements and accessibility rules
+
+### [development/PERSONA_SCHEMA.md](development/PERSONA_SCHEMA.md)
+
+**Complete field reference for persona JSON definitions**
+
+**Contents:**
+- Complete field reference for `personas/*.json` with types, valid values, and examples
+- Core fields (key, display_name, rarity, celestial_order, mcp_access)
+- NEPHILIM extension fields (nephilim_lore, unlockable_lore, title, archetype)
+- Voice and behavior configuration
+- Validation rules and common mistakes
+
+### [development/API_REFERENCE.md](development/API_REFERENCE.md)
+
+**Backend REST API documentation**
+
+**Contents:**
+- All backend endpoints grouped by route file with request/response schemas
+- Route files: chat.py, sessions.py, personas.py, nephilim.py
+- Authentication and error handling patterns
+- WebSocket and streaming endpoints
+
+## Architecture
+
+### [architecture/SQLITE_ARCHITECTURE.md](architecture/SQLITE_ARCHITECTURE.md)
+
+**SQLite persistence layer design and implementation**
+
+**Contents:**
+- SQLite persistence layer: ADR, thread-safety pattern, schema, migrations
+- Repository pattern with `_lock` thread-safety
+- Schema: core tables, NEPHILIM progression tables
+- Migration approach and adding new tables
+
+### [architecture/CELESTIAL_ORDER.md](architecture/CELESTIAL_ORDER.md)
+
+**Four-tier Celestial Order system design**
+
+**Contents:**
+- Four-tier Celestial Order system: MCP access control, frontend theming, adding new tiers
+- Tier definitions: Wanderer, Sage, Warden, Archon
+- Per-persona `mcp_access` field and legacy env var fallback
+- Frontend theming and color palette per tier
 
 ## Root Documentation
 
@@ -134,7 +181,7 @@ See [../scripts/README.md](../scripts/README.md) for full reference.
 
 **Maintenance:**
 - Update on major feature changes
-- Archive obsolete docs to git history
+- Archive obsolete docs to `archive/` subdirectories
 - Keep guides under 500 lines (split if larger)
 - Use relative links for portability
 

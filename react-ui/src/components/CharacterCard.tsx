@@ -2,14 +2,13 @@ import React, { useRef, useState, useCallback } from 'react'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import styles from './CharacterCard.module.css'
 import LegendaryParticles from './LegendaryParticles'
-import { getDisplayOrder, formatOrderLabel, orderToRarityClass } from '../utils/celestialOrder'
+import { getDisplayOrder, formatOrderLabel } from '../utils/celestialOrder'
 
 interface CharacterCardProps {
   name: string
   style: string
   image: string
-  rarity: string
-  celestial_order?: string
+  celestial_order: string
   onSelect: (key: string) => void
   onChoose?: (key: string) => void
   isSelected: boolean
@@ -17,12 +16,10 @@ interface CharacterCardProps {
   index?: number
 }
 
-const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarity, celestial_order, onSelect, onChoose, isSelected, personaKey, index = 0 }) => {
-  // Resolve order for display; map to rarity for CSS classes and effect conditions
-  const order = getDisplayOrder({ celestial_order, rarity })
-  const rarityForCSS = orderToRarityClass(order)
-  const rarityClass = styles[`rarity-${rarityForCSS}`]
-  const rarityLower = rarityForCSS
+const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, celestial_order, onSelect, onChoose, isSelected, personaKey, index = 0 }) => {
+  // Resolve order for display and CSS classes
+  const order = getDisplayOrder({ celestial_order })
+  const orderClass = styles[`order-${order}`]
   const selectedClass = isSelected ? styles['selected'] : ''
   const cardRef = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
@@ -104,7 +101,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
     <div style={{ perspective: '1000px' }}>
       <motion.div
         ref={cardRef}
-        className={`${styles['card-outer']} ${rarityClass} ${selectedClass}`}
+        className={`${styles['card-outer']} ${orderClass} ${selectedClass}`}
         onClick={handleCardClick}
         style={{
           cursor: 'pointer',
@@ -112,7 +109,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
           rotateY: isHovered ? rotateY : 0,
           transformStyle: 'preserve-3d',
           transformOrigin: 'center center',
-          overflow: rarityLower === 'legendary' ? 'visible' : undefined,
+          overflow: order === 'archon' ? 'visible' : undefined,
         }}
         initial={{ opacity: 0, y: 20, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -143,22 +140,22 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
           />
         )}
         {/* Spinning border for Sage/Warden/Archon */}
-        {(rarityLower === 'rare' || rarityLower === 'epic' || rarityLower === 'legendary') && (
+        {(order === 'sage' || order === 'warden' || order === 'archon') && (
           <div className={styles['border-spin']} />
         )}
 
         {/* Wanderer: breathing border */}
-        {rarityLower === 'common' && (
-          <div className={styles['common-breathe']} />
+        {order === 'wanderer' && (
+          <div className={styles['wanderer-breathe']} />
         )}
 
         {/* Cursor glare for Wanderer + Sage */}
-        {(rarityLower === 'common' || rarityLower === 'rare') && (
+        {(order === 'wanderer' || order === 'sage') && (
           <div className={styles['cursor-glare']} />
         )}
 
         {/* Aurora orbs for Warden + Archon */}
-        {(rarityLower === 'epic' || rarityLower === 'legendary') && (
+        {(order === 'warden' || order === 'archon') && (
           <>
             <div className={`${styles['aurora-orb']} ${styles['aurora-orb-1']}`} />
             <div className={`${styles['aurora-orb']} ${styles['aurora-orb-2']}`} />
@@ -167,11 +164,11 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ name, style, image, rarit
         )}
 
         {/* Holographic foil for Warden */}
-        {rarityLower === 'epic' && <div className={styles['holo-foil']} />}
+        {order === 'warden' && <div className={styles['holo-foil']} />}
 
         {/* Archon foil + particles */}
-        {rarityLower === 'legendary' && <div className={styles['legendary-foil']} />}
-        {rarityLower === 'legendary' && !isMobile && (
+        {order === 'archon' && <div className={styles['legendary-foil']} />}
+        {order === 'archon' && !isMobile && (
           <LegendaryParticles isHovered={isHovered} cardRef={cardRef} />
         )}
         <div className={styles['card-body']}>

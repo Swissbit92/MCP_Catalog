@@ -7,8 +7,11 @@ jest.mock('./CharacterCard.module.css', () => ({
   __esModule: true,
   default: {
     'card-outer': 'card-outer',
-    'rarity-legendary': 'rarity-legendary',
-    'rarity-epic': 'rarity-epic',
+    'order-archon': 'order-archon',
+    'order-warden': 'order-warden',
+    'order-sage': 'order-sage',
+    'order-wanderer': 'order-wanderer',
+    'wanderer-breathe': 'wanderer-breathe',
     'selected': 'selected',
     'card-frame': 'card-frame',
     'card-foil': 'card-foil',
@@ -23,11 +26,10 @@ jest.mock('./CharacterCard.module.css', () => ({
   },
 }));
 
-test('renders character card with name, style, image, rarity, and handles selection', () => {
+test('renders character card with name, style, image, celestial_order, and handles selection', () => {
   const name = 'Test Character';
   const style = 'Test Style';
   const image = '/images/test_image.png';
-  const rarity = 'legendary';
   const celestial_order = 'archon';
   const personaKey = 'test-character';
   const onSelect = jest.fn();
@@ -37,7 +39,6 @@ test('renders character card with name, style, image, rarity, and handles select
       name={name}
       style={style}
       image={image}
-      rarity={rarity}
       celestial_order={celestial_order}
       onSelect={onSelect}
       isSelected={false}
@@ -67,7 +68,6 @@ test('applies selected class when isSelected is true', () => {
   const name = 'Test Character';
   const style = 'Test Style';
   const image = '/images/test_image.png';
-  const rarity = 'legendary';
   const celestial_order = 'archon';
   const personaKey = 'test-character';
   const onSelect = jest.fn();
@@ -77,7 +77,6 @@ test('applies selected class when isSelected is true', () => {
       name={name}
       style={style}
       image={image}
-      rarity={rarity}
       celestial_order={celestial_order}
       onSelect={onSelect}
       isSelected={true}

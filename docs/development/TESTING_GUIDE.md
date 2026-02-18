@@ -53,22 +53,24 @@ pytest -m "not requires_api_key"
 ```
 tests/
 ├── conftest.py              # Shared fixtures and configuration
-├── backend/                 # Backend unit tests
+├── backend/                 # Backend unit tests (~8 files)
 │   └── coordinator/
 │       ├── test_server.py
 │       ├── test_mcp_client.py
-│       ├── test_repositories.py
+│       ├── test_mongodb_integration.py
+│       ├── test_tool_calling.py
+│       ├── test_citation_service.py
 │       └── ...
-├── integration/             # Integration tests
+├── integration/             # Integration tests (~13 files)
 │   ├── test_brave_mcp_connectivity.py
-│   └── test_phase2_integration.py
-├── e2e/                     # End-to-end tests
-│   └── test_phase1_conversational_flow.py
+│   ├── test_phase1_conversational_behavior.py
+│   ├── test_phase2_multi_message_behavior.py
+│   └── ...
 ├── evaluation/              # RAGAS evaluation tests
 │   ├── test_persona_quality.py
 │   └── test_metrics.py
-└── exploration/             # Exploratory tests (skipped in CI)
-    └── explore_mongodb_direct.py
+└── exploration/             # Utility scripts (archived; skipped in CI)
+    └── check_db.py
 ```
 
 ---
@@ -86,7 +88,12 @@ Tests are automatically categorized based on their location:
 | `@pytest.mark.slow` | Manual | Tests that take >5 seconds |
 | `@pytest.mark.requires_api_key` | Manual | Needs BRAVE_API_KEY or similar |
 | `@pytest.mark.requires_docker` | Manual | Needs Docker running |
-| `@pytest.mark.requires_ollama` | Manual | Needs Ollama running |
+| `@pytest.mark.requires_ollama` | Manual | Needs Ollama running locally (`ollama serve`) |
+
+**Skip live LLM tests in CI:**
+```bash
+pytest tests/ -m "not requires_ollama"
+```
 
 ### Using Markers
 
@@ -400,5 +407,5 @@ pytest --cov=src.coordinator.server --cov-report=term-missing
 
 ---
 
-**Last Updated:** January 17, 2026
-**Status:** Pytest infrastructure complete, migration in progress
+**Last Updated:** February 18, 2026
+**Status:** Pytest infrastructure complete. Exploration scripts archived to `archive/exploration/`.

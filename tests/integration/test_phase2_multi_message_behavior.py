@@ -20,6 +20,7 @@ def llm_client():
     )
 
 
+@pytest.mark.requires_ollama
 class TestMultiMessageLLMBehavior:
     """Test that LLM uses multi-message format appropriately."""
 

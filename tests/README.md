@@ -16,7 +16,7 @@ tests/
 
 ### Backend Unit Tests (`backend/`)
 
-Unit tests for core backend components with mocked dependencies:
+Unit tests for core backend components with mocked dependencies (~8 files):
 
 - **test_server.py** - FastAPI endpoint tests (uses pytest + mocks)
 - **test_mcp_client.py** - Brave MCP client unit tests (unittest)
@@ -30,7 +30,7 @@ pytest tests/backend/ -v
 
 ### Integration Tests (`integration/`)
 
-End-to-end tests with real external dependencies:
+End-to-end tests with real external dependencies (~13 files):
 
 - **test_brave_mcp_connectivity.py** - Manual Brave MCP connectivity validation
 - **test_mvp2_integration.py** - Complete autonomous web search workflow
@@ -49,9 +49,8 @@ pytest tests/integration/ -v
 
 ### Exploration Scripts (`exploration/`)
 
-Historical scripts used during development (archived, not run in CI):
+Scripts archived to `archive/exploration/` - not actively maintained. Directory contains only non-test utility scripts (check_db.py, etc.):
 
-- **test_mongodb_exploration.py** - MongoDB schema discovery
 - **test_mongodb_phase4.py** - Phase 4 development testing (superseded by test_mongodb_integration.py)
 - **test_function_calling.py** - Model function calling capability evaluation
 - **test_model_persona_capability.py** - Model role-play testing
@@ -100,6 +99,9 @@ npm test -- --testNamePattern="MessageBubble"  # Specific test
 **Imports:**
 - Use absolute imports: `from coordinator.server import app`
 - conftest.py adds `src/` to path automatically
+
+**Markers:**
+- `@pytest.mark.requires_ollama` applied to tests that need Ollama running
 
 ### React Tests
 
@@ -155,7 +157,7 @@ Check:
 
 ## Test Coverage
 
-Current coverage (as of 2025-12-12):
+Current coverage (as of 2026-02-18):
 - **Backend Unit Tests**: ~80% coverage (server, MCP clients, tool calling)
 - **Integration Tests**: 100% accuracy on intent classification (360 tests)
 - **React Tests**: 40+ component tests, comprehensive coverage

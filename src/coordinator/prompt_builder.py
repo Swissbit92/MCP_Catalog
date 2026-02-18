@@ -17,6 +17,7 @@ from langchain_ollama.llms import OllamaLLM
 from ollama._types import ResponseError
 
 from .config import get_ollama_base, get_persona_model, get_persona_temperature
+from .cv_summarizer import get_or_build_cv_summary
 from .ollama_utils import assert_model_available
 from .persona_loader import resolve_persona_to_card
 
@@ -607,7 +608,10 @@ def build_system_prompt(selector: Optional[str]) -> str:
     else:
         name = (card.get("display_name") or card.get("key") or "Persona")
         style = (card.get("style") or "helpful & concise")
-        identity = _summarize(name, style, card.get("lore", []))
+        try:
+            identity = get_or_build_cv_summary(selector).get("summary", "") or _summarize(name, style, card.get("lore", []))
+        except Exception:
+            identity = _summarize(name, style, card.get("lore", []))
         beh_block = _build_behavior_block(card)
         psych_block = _build_psychological_block(card)
         curiosity_block = _build_curiosity_block(card)

@@ -1,13 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import styles from './CharacterCardV2.module.css';
-import { getDisplayOrder, formatOrderLabel, orderToRarityClass } from '../utils/celestialOrder';
+import { getDisplayOrder, formatOrderLabel } from '../utils/celestialOrder';
 
 interface CharacterCardV2Props {
   name: string;
   style: string;
   image: string;
-  rarity: string;
   celestial_order?: string;
   onSelect: (key: string) => void;
   isSelected: boolean;
@@ -20,7 +19,6 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
   name,
   style,
   image,
-  rarity,
   celestial_order,
   onSelect,
   isSelected,
@@ -30,9 +28,9 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
 }) => {
   // Auto-detect NEPHILIM from personaKey if not explicitly set
   const isNephilimCard = isNephilim || personaKey.startsWith('nephilim_');
-  // Resolve order from celestial_order or rarity mapping, then map to CSS rarity class
-  const order = getDisplayOrder({ celestial_order, rarity });
-  const rarityClass = styles[`rarity-${orderToRarityClass(order)}`];
+  // Resolve order from celestial_order, then map to CSS order class
+  const order = getDisplayOrder({ celestial_order });
+  const orderClass = styles[`order-${order}`];
   const selectedClass = isSelected ? styles['selected'] : '';
   const nephilimClass = isNephilimCard ? styles['nephilim-card'] : '';
 
@@ -131,7 +129,7 @@ const CharacterCardV2: React.FC<CharacterCardV2Props> = ({
   return (
     <motion.div
       ref={cardRef}
-      className={`${styles['card-outer']} ${rarityClass} ${selectedClass} ${nephilimClass}`}
+      className={`${styles['card-outer']} ${orderClass} ${selectedClass} ${nephilimClass}`}
       style={{
         '--rarity-primary': colors.primary,
         '--rarity-secondary': colors.secondary,

@@ -11,7 +11,7 @@ from alembic import context
 config = context.config
 
 # Set database URL from environment variable or use default
-db_path = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
+db_path = os.environ.get("COORDINATOR_DB_PATH", "data/chats.db")
 database_url = f"sqlite:///{db_path}"
 config.set_main_option("sqlalchemy.url", database_url)
 

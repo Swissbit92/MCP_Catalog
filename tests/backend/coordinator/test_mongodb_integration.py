@@ -9,14 +9,14 @@ import time
 from unittest.mock import Mock, patch
 
 # Import components to test
-from .tool_definitions import (
+from coordinator.tool_definitions import (
     classify_query_intent,
     QueryIntent,
     get_tools_for_query,
     get_mongodb_tools,
     AVAILABLE_TOOLS
 )
-from .cache import MongoDBCache, CacheEntry, get_cache, clear_cache
+from coordinator.cache import MongoDBCache, CacheEntry, get_cache, clear_cache
 
 
 class TestIntentClassification:

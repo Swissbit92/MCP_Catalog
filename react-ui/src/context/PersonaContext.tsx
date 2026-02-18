@@ -2,7 +2,6 @@ import React, { createContext, useState, useContext, ReactNode, useEffect, useCa
 import { ChatSession, SessionWithMessages, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, clearSessionMessages as clearSessionMessagesApi, ChatApiResponse } from '../services/api';
 import { Message } from '../components/MessageBubble';
 import { predictWebSearch, formatPredictionLog } from '../utils/searchHeuristics';
-import { rarityToOrder } from '../utils/celestialOrder';
 
 interface Persona {
   key: string;
@@ -23,6 +22,7 @@ interface Persona {
 interface PullRecord {
   personaKey: string;
   rarity: string;
+  celestial_order?: string;
   timestamp: number;
   pullCount: number; // 1, 5, or 10
 }
@@ -435,7 +435,11 @@ export const PersonaProvider: React.FC<{ children: ReactNode }> = ({ children })
   const pullStats = React.useMemo((): PullStats => {
     // Resolve each record's celestial order: prefer celestial_order field, else map rarity
     const getOrder = (record: PullRecord): string => {
-      return rarityToOrder(record.rarity)
+      if (record.celestial_order) return record.celestial_order.toLowerCase()
+      const rarityMap: Record<string, string> = {
+        legendary: 'archon', epic: 'warden', rare: 'sage', common: 'wanderer',
+      }
+      return rarityMap[record.rarity?.toLowerCase()] || 'wanderer'
     }
 
     const stats: PullStats = {

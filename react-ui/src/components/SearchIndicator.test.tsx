@@ -30,32 +30,32 @@ describe('SearchIndicator', () => {
     });
   });
 
-  describe('Rarity-based styling', () => {
-    it('applies legendary colors (yellow/amber)', () => {
-      const { container } = render(<SearchIndicator rarity="legendary" />);
+  describe('Celestial Order-based styling', () => {
+    it('applies archon colors (yellow/amber)', () => {
+      const { container } = render(<SearchIndicator celestial_order="archon" />);
       const dots = container.querySelectorAll('.from-yellow-400');
       expect(dots.length).toBeGreaterThan(0);
     });
 
-    it('applies epic colors (purple/violet)', () => {
-      const { container } = render(<SearchIndicator rarity="epic" />);
+    it('applies warden colors (purple/violet)', () => {
+      const { container } = render(<SearchIndicator celestial_order="warden" />);
       const dots = container.querySelectorAll('.from-purple-400');
       expect(dots.length).toBeGreaterThan(0);
     });
 
-    it('applies rare colors (blue/cyan)', () => {
-      const { container } = render(<SearchIndicator rarity="rare" />);
+    it('applies sage colors (blue/cyan)', () => {
+      const { container } = render(<SearchIndicator celestial_order="sage" />);
       const dots = container.querySelectorAll('.from-blue-400');
       expect(dots.length).toBeGreaterThan(0);
     });
 
-    it('applies common/default colors (gray)', () => {
-      const { container } = render(<SearchIndicator rarity="common" />);
+    it('applies wanderer/default colors (gray)', () => {
+      const { container } = render(<SearchIndicator celestial_order="wanderer" />);
       const dots = container.querySelectorAll('.from-gray-400');
       expect(dots.length).toBeGreaterThan(0);
     });
 
-    it('applies default colors when rarity is undefined', () => {
+    it('applies default colors when celestial_order is undefined', () => {
       const { container } = render(<SearchIndicator />);
       const dots = container.querySelectorAll('.from-gray-400');
       expect(dots.length).toBeGreaterThan(0);
@@ -64,7 +64,7 @@ describe('SearchIndicator', () => {
 
   describe('Accessibility', () => {
     it('has descriptive text for screen readers', () => {
-      render(<SearchIndicator personaName="Frieren" rarity="legendary" />);
+      render(<SearchIndicator personaName="Frieren" celestial_order="archon" />);
       const text = screen.getByText(/Frieren is searching the web/i);
       expect(text).toBeInTheDocument();
     });

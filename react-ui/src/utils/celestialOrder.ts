@@ -4,36 +4,12 @@
  * The Celestial Order system replaces the legacy gacha "rarity" vocabulary
  * with lore-aligned tier names: Archon, Warden, Sage, Wanderer.
  *
- * Colors, CSS selectors (.rarity-*), and visual effects are UNCHANGED —
- * only user-facing labels are remapped.
+ * CSS classes now use order-* naming (e.g. .order-archon, .order-warden).
  */
 
-/** Maps celestial_order → CSS rarity class name (for styling) */
-export function orderToRarityClass(order: string): string {
-  const map: Record<string, string> = {
-    archon: 'legendary',
-    warden: 'epic',
-    sage: 'rare',
-    wanderer: 'common',
-  }
-  return map[order.toLowerCase()] || 'common'
-}
-
-/** Maps legacy rarity → celestial_order (backward compat) */
-export function rarityToOrder(rarity: string): string {
-  const map: Record<string, string> = {
-    legendary: 'archon',
-    epic: 'warden',
-    rare: 'sage',
-    common: 'wanderer',
-  }
-  return map[rarity.toLowerCase()] || 'wanderer'
-}
-
-/** Get display order name for a persona (prefers celestial_order, falls back to rarity mapping) */
-export function getDisplayOrder(persona: { celestial_order?: string; rarity?: string }): string {
-  if (persona.celestial_order) return persona.celestial_order
-  return rarityToOrder(persona.rarity || 'common')
+/** Get display order name for a persona, defaulting to wanderer */
+export function getDisplayOrder(persona: { celestial_order?: string }): string {
+  return persona.celestial_order?.toLowerCase() || 'wanderer'
 }
 
 /** Capitalize first letter of order for display */
