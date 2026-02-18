@@ -87,6 +87,74 @@
     rgba(30, 144, 255, 0.15) 100%);
 }
 
+/* ── Azure Stream: Sage idle float ── */
+.order-sage {
+  animation: azureFloat 6s ease-in-out infinite;
+}
+
+@keyframes azureFloat {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -4px; }
+}
+
+/* Stop float on hover — Framer Motion handles the lift via whileHover y:-8 */
+.order-sage:hover {
+  animation: none;
+  translate: 0 0;
+}
+
+/* ── Azure Stream: Sage holographic sheen ── */
+.order-sage .card-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 30%,
+    rgba(6, 182, 212, 0.04) 38%,
+    rgba(34, 211, 238, 0.1) 44%,
+    rgba(6, 182, 212, 0.15) 50%,
+    rgba(34, 211, 238, 0.1) 56%,
+    rgba(6, 182, 212, 0.04) 62%,
+    transparent 70%
+  );
+  transform: translateX(-200%);
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+.order-sage:hover .card-body::after {
+  animation: holoSheenSweep 2s ease-in-out infinite;
+}
+
+@keyframes holoSheenSweep {
+  0%   { transform: translateX(-200%); }
+  100% { transform: translateX(200%); }
+}
+
+/* ── Azure Stream: Sage spinning conic border via glow-ring ── */
+.order-sage .glow-ring {
+  background: conic-gradient(
+    from var(--border-angle),
+    rgba(6, 182, 212, 0.0),
+    rgba(34, 211, 238, 0.25),
+    rgba(6, 182, 212, 0.35),
+    rgba(34, 211, 238, 0.25),
+    rgba(6, 182, 212, 0.0)
+  );
+  opacity: 0.4;
+  animation: sage-border-spin 6s linear infinite;
+}
+
+.order-sage:hover .glow-ring {
+  opacity: 0.65;
+}
+
+@keyframes sage-border-spin {
+  to { --border-angle: 360deg; }
+}
+
 .order-wanderer .holo-bg-layer-1 {
   background: linear-gradient(135deg,
     rgba(192, 192, 192, 0.12) 0%,
@@ -513,4 +581,8 @@
   .card-img {
     transform: none !important;
   }
+
+  .order-sage { animation: none; translate: 0 0; }
+  .order-sage .card-body::after { animation: none; }
+  .order-sage .glow-ring { animation: none; opacity: 0; }
 }
