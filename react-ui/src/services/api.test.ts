@@ -15,10 +15,8 @@ describe('API Service', () => {
 
   it('fetchPersonas should return a list of personas from API', async () => {
     const mockPersonas = [
-      { key: 'Eeva', display_name: 'Eeva — Bitcoin Expect', style: 'nerdy, charming, concise', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search', 'mongodb'], image: 'images/personas/eeva/card.png' },
       { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', celestial_order: 'warden', mcp_access: [], image: 'images/personas/frieren/card.png' },
       { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search'], image: 'images/personas/gojo/card.png' },
-      { key: 'Hitler', display_name: 'Hitler', style: 'evil', rarity: 'common', celestial_order: 'wanderer', mcp_access: [], image: 'images/personas/hitler/card.png' },
     ];
 
     (fetch as jest.Mock).mockImplementationOnce(() =>
@@ -29,13 +27,10 @@ describe('API Service', () => {
     );
 
     const personas = await fetchPersonas();
-    expect(personas.length).toBe(4);
-    expect(personas[0].key).toBe('Eeva');
-    expect(personas[0].display_name).toBe('Eeva — Bitcoin Expect');
-    expect(personas[0].rarity).toBe('legendary');
-    expect(personas[1].key).toBe('Frieren');
-    expect(personas[2].key).toBe('Gojo');
-    expect(personas[3].key).toBe('Hitler');
+    expect(personas.length).toBe(2);
+    expect(personas[0].key).toBe('Frieren');
+    expect(personas[0].rarity).toBe('epic');
+    expect(personas[1].key).toBe('Gojo');
     expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/personas');
   });
 

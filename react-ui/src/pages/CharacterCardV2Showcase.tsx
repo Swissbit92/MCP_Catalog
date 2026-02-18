@@ -6,17 +6,8 @@ import SummoningRitual from '../components/SummoningRitual'
 import BondsForged from '../components/BondsForged'
 import InvocationLog from '../components/InvocationLog'
 import NephilimBackground from '../components/NephilimBackground'
-import PersonaFilterToggle from '../components/PersonaFilterToggle'
 import { fetchPersonas } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
-import {
-  isNephilimPersona,
-  PersonaFilterMode,
-  getFilterMode,
-  setFilterMode,
-  filterPersonas,
-  getPersonaCounts,
-} from '../utils/personaFilter'
 import { formatOrderLabel } from '../utils/celestialOrder'
 
 interface Persona {
@@ -71,22 +62,12 @@ const CharacterCardV2Showcase: React.FC = () => {
   const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'cards' | 'ritual' | 'bonds' | 'chronicle'>(initialTab)
-  const [personaFilter, setPersonaFilter] = useState<PersonaFilterMode>(getFilterMode())
   const [hoveredPersona, setHoveredPersona] = useState<Persona | null>(null)
   const { setSelectedPersona, selectedPersona } = usePersona()
   const navigate = useNavigate()
 
   // The persona to show in the preview panel: hovered takes priority, then selected
   const previewPersona = hoveredPersona || selectedPersona as Persona | null
-
-  // Handle filter mode change
-  const handleFilterChange = (mode: PersonaFilterMode) => {
-    setPersonaFilter(mode)
-    setFilterMode(mode)
-  }
-
-  // Get persona counts for the toggle
-  const personaCounts = getPersonaCounts(personas)
 
   useEffect(() => {
     const getPersonas = async () => {
@@ -128,12 +109,10 @@ const CharacterCardV2Showcase: React.FC = () => {
     getPersonas()
   }, [])
 
-  // Filter personas based on search query and persona filter mode
+  // Filter personas based on search query
   React.useEffect(() => {
-    // First apply persona type filter (Nephilim/Wanderers/all)
-    let filtered = filterPersonas(personas, personaFilter)
+    let filtered = personas
 
-    // Then apply search query filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(persona =>
@@ -146,7 +125,7 @@ const CharacterCardV2Showcase: React.FC = () => {
     }
 
     setFilteredPersonas(filtered)
-  }, [searchQuery, personas, personaFilter])
+  }, [searchQuery, personas])
 
   // Card click - selection only (no navigation)
   const handleCardSelect = (personaKey: string) => {
@@ -206,15 +185,6 @@ const CharacterCardV2Showcase: React.FC = () => {
             <p className="text-xl text-gray-200 max-w-3xl mx-auto mb-4">
               Choose your companion from the Nephilim and Wanderers who await your call.
             </p>
-
-            {/* Persona Filter Toggle */}
-            <div className="flex justify-center mb-6">
-              <PersonaFilterToggle
-                mode={personaFilter}
-                onChange={handleFilterChange}
-                counts={personaCounts}
-              />
-            </div>
 
             {/* Tab Navigation */}
             <div className="flex justify-center mb-8">
@@ -280,7 +250,7 @@ const CharacterCardV2Showcase: React.FC = () => {
                       variants={containerVariants}
                       initial="hidden"
                       animate="show"
-                      key={personaFilter + searchQuery}
+                      key={searchQuery}
                     >
                       {filteredPersonas.map((persona, index) => (
                         <motion.div
@@ -343,7 +313,7 @@ const CharacterCardV2Showcase: React.FC = () => {
                             <div className="p-6 -mt-12 relative z-10">
                               {/* Type badge */}
                               <div className="flex items-center gap-2 mb-2">
-                                {isNephilimPersona(previewPersona.key) ? (
+                                {previewPersona.key.startsWith('nephilim_') ? (
                                   <span className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded bg-gradient-to-r from-cyan-500/20 to-fuchsia-500/20 border border-cyan-400/30 text-cyan-400">
                                     Nephilim
                                   </span>
