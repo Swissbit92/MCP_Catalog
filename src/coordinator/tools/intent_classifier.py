@@ -23,6 +23,7 @@ class QueryIntent(Enum):
     NEEDS_MONGODB = "mongodb"      # MongoDB MCP
     NEEDS_BOTH = "both"            # Multi-MCP
     NEEDS_NEITHER = "llm"          # Pure LLM
+    NEEDS_WALLET = "wallet"        # Jupiter wallet / Solana trading
 
 
 @dataclass
@@ -58,6 +59,42 @@ def classify_query_intent(
         QueryIntent enum indicating which MCP(s) to use
     """
     query_lower = query.lower()
+
+    # Determine wallet access
+    can_use_wallet = "solana_wallet" in (mcp_access or [])
+
+    # Wallet intent keywords (check before MongoDB/Brave)
+    WALLET_KEYWORDS = [
+        # Direct commands
+        "swap ", "swap usdc", "swap sol", "buy sol", "sell sol",
+        "buy usdc", "exchange usdc", "exchange sol",
+        # Portfolio queries
+        "my balance", "my wallet", "my portfolio", "my holdings",
+        "how much sol", "what's in my wallet", "wallet balance",
+        # Advisory conversations (key for co-pilot feel)
+        "should i buy", "good time to buy", "good time to sell",
+        "dca into", "dollar cost average", "accumulate sol",
+        "is this a good time", "what do you think about buying",
+        # Strategy management
+        "rsi strategy", "dca strategy", "set up a strategy",
+        "automate my", "start trading", "stop trading",
+        "pause strategy", "pause my strategy", "stop my strategy",
+        "cancel strategy", "resume strategy",
+        # Performance review
+        "trade history", "my trades", "strategy performance",
+        "how did my strategy", "how are my trades",
+        "p&l", "profit and loss", "trading returns",
+        # Wallet management
+        "create wallet", "new wallet", "solana wallet",
+        "my address", "public address", "private key",
+        "create a wallet", "set up a wallet",
+        # Quote/price
+        "solana quote", "jupiter quote", "swap quote",
+        "get a quote", "check rsi", "sol rsi",
+    ]
+
+    if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):
+        return QueryIntent.NEEDS_WALLET
 
     # Determine MCP permissions — per-persona mcp_access takes priority
     if mcp_access is not None:

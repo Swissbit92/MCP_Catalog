@@ -22,11 +22,13 @@ import {
   setSeekerFaction,
   createSession,
 } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 type OnboardingStep = 'portal' | 'quiz' | 'personas' | 'complete'
 
 export const NephilimOnboarding: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [step, setStep] = useState<OnboardingStep>('portal')
   const [userName, setUserName] = useState('')
   const [faction, setFaction] = useState('')
@@ -36,7 +38,13 @@ export const NephilimOnboarding: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   // Generate a user ID for the seeker profile
+  // Prefers authenticated user sub, falls back to localStorage random ID
   const getUserId = () => {
+    if (user?.sub) {
+      // Persist auth sub into localStorage for components that read it directly
+      localStorage.setItem('nephilim_user_id', user.sub)
+      return user.sub
+    }
     let userId = localStorage.getItem('nephilim_user_id')
     if (!userId) {
       userId = `seeker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -56,6 +64,9 @@ export const NephilimOnboarding: React.FC = () => {
     }
     checkOnboarding()
   }, [navigate])
+
+  // Pre-populate name from Google auth if available
+  const googleName = user?.name || ''
 
   // Handle portal entry (name collected)
   const handlePortalEnter = (name: string) => {
@@ -125,7 +136,7 @@ export const NephilimOnboarding: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <OnboardingPortal onEnter={handlePortalEnter} />
+              <OnboardingPortal onEnter={handlePortalEnter} initialName={googleName} />
             </motion.div>
           )}
 

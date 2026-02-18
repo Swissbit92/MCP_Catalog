@@ -6,7 +6,9 @@ import NephilimOnboarding from './pages/NephilimOnboarding'
 import CharacterCardV2Showcase from './pages/CharacterCardV2Showcase'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
+import LoginPage from './pages/LoginPage'
 import Header from './components/Header'
+import ProtectedRoute from './components/ProtectedRoute'
 import { AudioProvider } from './context/AudioContext'
 import { usePersona } from './context/PersonaContext'
 import { getDisplayOrder } from './utils/celestialOrder'
@@ -41,8 +43,8 @@ function App() {
     }
   }, [selectedPersona])
 
-  // Hide header on landing and onboarding pages
-  const hideHeader = location.pathname === '/' || location.pathname === '/onboarding'
+  // Hide header on landing, onboarding, and login pages
+  const hideHeader = location.pathname === '/' || location.pathname === '/onboarding' || location.pathname === '/login'
 
   return (
     <MotionConfig reducedMotion="user">
@@ -52,11 +54,28 @@ function App() {
           <div className="flex-1 overflow-auto pb-16 md:pb-0">
             <Routes>
               <Route path="/" element={<NephilimHome />} />
-              <Route path="/select" element={<CharacterCardV2Showcase />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/chat/:sessionId" element={<Chat />} />
+              <Route path="/login" element={<LoginPage />} />
               <Route path="/onboarding" element={<NephilimOnboarding />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/select" element={
+                <ProtectedRoute>
+                  <CharacterCardV2Showcase />
+                </ProtectedRoute>
+              } />
+              <Route path="/chat" element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              } />
+              <Route path="/chat/:sessionId" element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
             </Routes>
           </div>
         </div>

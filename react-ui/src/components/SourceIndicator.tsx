@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Search, Brain, Link, Zap } from 'lucide-react';
+import { Database, Search, Brain, Link, Zap, Wallet } from 'lucide-react';
 import { ResponseMetadata } from '../services/api';
 import {
   getSourceNarrative,
@@ -49,6 +49,9 @@ export const SourceIndicator: React.FC<SourceIndicatorProps> = ({
     brave_mcp: Search,
     mongodb_mcp: Database,
     multi_mcp: Link,
+    wallet_mcp: Wallet,
+    wallet_proposal: Wallet,
+    wallet_flow: Wallet,
   };
   const IconComponent = iconConfig[source_type] || Brain;
 
@@ -71,6 +74,9 @@ export const SourceIndicator: React.FC<SourceIndicatorProps> = ({
       brave_mcp: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       mongodb_mcp: 'bg-green-500/10 text-green-400 border-green-500/20',
       multi_mcp: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+      wallet_mcp: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+      wallet_proposal: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+      wallet_flow: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
     };
     return {
       useInlineStyle: false,

@@ -1,0 +1,164 @@
+import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+
+interface TradeProposal {
+  proposal_id: string
+  proposal_type: 'swap'
+  user_id: string
+  from_token: string
+  to_token: string
+  amount: number
+  quote?: {
+    out_amount_human?: number
+    price_impact_pct?: number
+    slippage_bps?: number
+  }
+  reason?: string
+  status: 'pending' | 'confirmed' | 'cancelled' | 'expired'
+  created_at: string
+  expires_at: string
+}
+
+interface TradeProposalCardProps {
+  proposal: TradeProposal
+  onConfirm: (proposalId: string) => Promise<void>
+  onCancel: (proposalId: string) => void
+}
+
+export default function TradeProposalCard({ proposal, onConfirm, onCancel }: TradeProposalCardProps) {
+  const [status, setStatus] = useState(proposal.status)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState<number>(300)
+
+  useEffect(() => {
+    if (status !== 'pending') return
+    const expires = new Date(proposal.expires_at).getTime()
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor((expires - Date.now()) / 1000))
+      setTimeLeft(remaining)
+      if (remaining === 0) setStatus('expired')
+    }
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [proposal.expires_at, status])
+
+  const handleConfirm = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await onConfirm(proposal.proposal_id)
+      setStatus('confirmed')
+    } catch (e: any) {
+      setError(e.message || 'Transaction failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancel = () => {
+    onCancel(proposal.proposal_id)
+    setStatus('cancelled')
+  }
+
+  const formatTimer = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  const timerColor = timeLeft < 30 ? 'text-red-400' : timeLeft < 60 ? 'text-orange-400' : 'text-white/60'
+
+  const isPending = status === 'pending'
+  const outAmount = proposal.quote?.out_amount_human
+  const priceImpact = proposal.quote?.price_impact_pct
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.3 }}
+      className="my-3 rounded-2xl border border-yellow-400/30 bg-white/[0.05] backdrop-blur-xl overflow-hidden"
+      style={{ fontFamily: 'Manrope, sans-serif' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <span className="text-yellow-400 text-lg">&#9889;</span>
+          <span className="text-yellow-400 font-semibold text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            Trade Proposal
+          </span>
+        </div>
+        {isPending && (
+          <span className={`${timerColor} text-xs font-mono transition-colors`}>
+            Expires {formatTimer(timeLeft)}
+          </span>
+        )}
+        {status === 'confirmed' && <span className="text-green-400 text-xs font-semibold">&#10003; Confirmed</span>}
+        {status === 'cancelled' && <span className="text-red-400 text-xs font-semibold">&#10005; Cancelled</span>}
+        {status === 'expired' && <span className="text-white/60 text-xs">Expired</span>}
+      </div>
+
+      {/* Trade details */}
+      <div className="px-4 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-center">
+            <div className="text-white/60 text-xs mb-1">You Send</div>
+            <div className="text-white font-bold text-xl">{proposal.amount}</div>
+            <div className="text-yellow-400/80 text-sm font-semibold">{proposal.from_token}</div>
+          </div>
+          <div className="text-white/60 text-2xl">&#8594;</div>
+          <div className="text-center">
+            <div className="text-white/60 text-xs mb-1">You Receive ~</div>
+            <div className="text-green-400 font-bold text-xl">{outAmount ?? '...'}</div>
+            <div className="text-green-400/80 text-sm font-semibold">{proposal.to_token}</div>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        {priceImpact !== undefined && (
+          <div className="flex gap-4 justify-center text-xs text-white/60 mb-4">
+            <span>
+              Price impact:{' '}
+              <span className={priceImpact > 1 ? 'text-orange-400' : 'text-white/70'}>
+                {priceImpact.toFixed(2)}%
+              </span>
+            </span>
+            {proposal.quote?.slippage_bps !== undefined && (
+              <span>
+                Slippage:{' '}
+                <span className="text-white/70">{proposal.quote.slippage_bps / 100}%</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {proposal.reason && (
+          <div className="text-white/60 text-xs mb-4 italic">{proposal.reason}</div>
+        )}
+
+        {error && (
+          <div className="mb-3 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        {/* Actions */}
+        {isPending && (
+          <div className="flex gap-3">
+            <button
+              onClick={handleConfirm}
+              disabled={isLoading || timeLeft === 0}
+              className="flex-1 py-2.5 rounded-xl bg-green-500/20 border border-green-500/40 text-green-400 font-semibold text-sm hover:bg-green-500/30 focus:ring-2 focus:ring-green-400/50 focus:outline-none transition-colors disabled:opacity-50"
+              aria-label="Confirm trade"
+            >
+              {isLoading ? 'Executing...' : <><span aria-hidden="true">&#10003;</span> Confirm Trade</>}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 font-semibold text-sm hover:bg-white/10 focus:ring-2 focus:ring-white/20 focus:outline-none transition-colors disabled:opacity-50"
+              aria-label="Cancel trade"
+            >
+              <span aria-hidden="true">&#10005;</span> Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}

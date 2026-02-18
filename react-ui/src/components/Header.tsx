@@ -1,23 +1,26 @@
-import React, { useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAudio } from '../context/AudioContext'
 import { SeekerRankBadge } from './nephilim/SeekerRankBadge'
 import { getRankProgress } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 const Header: React.FC = () => {
   const location = useLocation()
   const { isMuted, toggleMute } = useAudio()
   const [seekerRank, setSeekerRank] = useState('Initiate')
+  const { user, isAuthenticated, logout } = useAuth()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Get seeker info from localStorage
-  const seekerName = typeof window !== 'undefined'
-    ? localStorage.getItem('nephilim_user_name') || 'Seeker'
-    : 'Seeker'
+  // Get seeker info — prefer auth user name, fall back to localStorage
+  const seekerName = user?.name
+    || (typeof window !== 'undefined' ? localStorage.getItem('nephilim_user_name') || 'Seeker' : 'Seeker')
 
   // Fetch current rank from API on mount
   useEffect(() => {
-    const userId = localStorage.getItem('nephilim_user_id') || 'default_seeker'
+    const userId = user?.sub || localStorage.getItem('nephilim_user_id') || 'default_seeker'
     const fetchRank = async () => {
       try {
         const data = await getRankProgress(userId)
@@ -27,7 +30,25 @@ const Header: React.FC = () => {
       }
     }
     fetchRank()
-  }, [])
+  }, [user?.sub])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [dropdownOpen])
+
+  const handleLogout = async () => {
+    setDropdownOpen(false)
+    await logout()
+  }
 
   const desktopNavItems = [
     { to: '/select', label: 'Companions' },
@@ -46,6 +67,13 @@ const Header: React.FC = () => {
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
     return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
+
+  // Derive initials for avatar fallback
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    return name.slice(0, 2).toUpperCase()
   }
 
   return (
@@ -86,7 +114,7 @@ const Header: React.FC = () => {
             ))}
           </nav>
 
-          {/* Right: Rank, Audio, Name */}
+          {/* Right: Rank, Audio, User */}
           <div className="flex items-center gap-3">
             <SeekerRankBadge rank={seekerRank} size="sm" animated={false} />
             <button
@@ -98,7 +126,137 @@ const Header: React.FC = () => {
             >
               {isMuted ? '\u{1F507}' : '\u{1F50A}'}
             </button>
-            <span className="text-sm text-gray-300 font-medium">{seekerName}</span>
+
+            {/* User avatar + dropdown */}
+            {isAuthenticated && user ? (
+              <div ref={dropdownRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setDropdownOpen(o => !o)}
+                  aria-label="User menu"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '40px', padding: '4px 10px 4px 4px',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                >
+                  {/* Avatar */}
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(0,191,255,0.4)' }}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div style={{
+                      width: '28px', height: '28px', borderRadius: '50%',
+                      background: 'radial-gradient(circle at 40% 35%, rgba(0,255,255,0.45), rgba(0,191,255,0.08))',
+                      border: '1.5px solid rgba(0,255,255,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: "'Orbitron', sans-serif", fontSize: '9px', fontWeight: 700, color: '#00ffff',
+                    }}>
+                      {getInitials(user.name)}
+                    </div>
+                  )}
+                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', fontWeight: 500, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.name.split(' ')[0]}
+                  </span>
+                  {/* Caret */}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.5 }}>
+                    <path d="M2 3.5L5 6.5L8 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
+                {/* Dropdown menu */}
+                <AnimatePresence>
+                  {dropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                        minWidth: '200px',
+                        background: 'rgba(17,17,21,0.97)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                        backdropFilter: 'blur(20px)',
+                        overflow: 'hidden',
+                        zIndex: 100,
+                      }}
+                    >
+                      {/* Menu items */}
+                      <div style={{ padding: '6px' }}>
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setDropdownOpen(false)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '9px',
+                            padding: '11px 15px', borderRadius: '8px',
+                            fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.55)',
+                            textDecoration: 'none', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.92)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
+                        >
+                          👤 My Seeker Profile
+                        </Link>
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setDropdownOpen(false)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '9px',
+                            padding: '11px 15px', borderRadius: '8px',
+                            fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.55)',
+                            textDecoration: 'none', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.92)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
+                        >
+                          ✦ Progression
+                        </Link>
+                        <button
+                          onClick={() => setDropdownOpen(false)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '9px', width: '100%',
+                            padding: '11px 15px', borderRadius: '8px',
+                            fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.55)',
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            textAlign: 'left', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.92)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
+                        >
+                          ⚙ Settings
+                        </button>
+                        {/* Separator */}
+                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                        <button
+                          onClick={handleLogout}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '9px', width: '100%',
+                            padding: '11px 15px', borderRadius: '8px',
+                            fontSize: '13px', fontWeight: 500, color: 'rgba(255,80,80,0.8)',
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            textAlign: 'left', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,0,0,0.06)'; e.currentTarget.style.color = 'rgba(255,110,110,1)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,80,80,0.8)' }}
+                        >
+                          ⏏ Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-300 font-medium">{seekerName}</span>
+            )}
           </div>
         </div>
       </header>

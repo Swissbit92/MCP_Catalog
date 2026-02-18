@@ -55,6 +55,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [personas, setPersonas] = useState<any[]>([])
+  const [personasLoaded, setPersonasLoaded] = useState(false)
 
   // Load personas for session display
   useEffect(() => {
@@ -70,6 +71,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
           celestial_order: p.celestial_order,
         }))
         setPersonas(processedPersonas)
+        setPersonasLoaded(true)
       } catch (error) {
         console.error('Failed to load personas for session list:', error)
       }
@@ -106,6 +108,10 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
     }
   }
 
+  const visibleSessions = personasLoaded
+    ? sessions.filter(s => personas.some(p => p.key === s.persona_key))
+    : sessions
+
   return (
     <div className="w-80 bg-[#0B0B0D]/95 backdrop-blur-xl border-r border-white/[0.1] flex flex-col h-full relative overflow-hidden">
       {/* Header */}
@@ -128,14 +134,14 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
 
       {/* Sessions List */}
       <div className="relative flex-1 overflow-y-auto p-2">
-        {sessions.length === 0 ? (
+        {visibleSessions.length === 0 ? (
           <div className="relative p-6 text-center text-gray-400">
             <div className="text-4xl mb-2">&#x25C7;</div>
             <p className="font-medium">No conversations yet</p>
             <p className="text-sm mt-1">Start chatting with a character!</p>
           </div>
         ) : (
-          sessions.map((session) => {
+          visibleSessions.map((session) => {
             const persona = getPersonaForSession(session.persona_key)
             const rarityStyles = getRarityStyles(persona?.rarity)
             const isActive = currentSession?.id === session.id

@@ -52,6 +52,16 @@ _mongodb_client: Optional[MongoDBMCPClient] = None
 _mongodb_cache: Optional[MongoDBCache] = None
 _mongodb_service: Optional[MongoDBService] = None
 
+# Jupiter MCP + Strategy Scheduler
+_jupiter_client = None
+_jupiter_ops = None
+_wallet_execution_service = None
+_strategy_service = None
+_wallet_repo = None
+_trade_proposal_repo = None
+_strategy_scheduler = None
+_mongo_write_client = None
+
 # Repositories
 _session_repo: Optional[SessionRepository] = None
 _message_repo: Optional[MessageRepository] = None
@@ -155,6 +165,47 @@ def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
 def get_fact_extractor() -> Optional[FactExtractor]:
     """Get the fact extractor."""
     return _fact_extractor
+
+
+# Jupiter MCP getters
+
+def get_jupiter_client():
+    """Get the global Jupiter MCP client instance."""
+    return _jupiter_client
+
+
+def get_jupiter_ops():
+    """Get the global Jupiter operations instance."""
+    return _jupiter_ops
+
+
+def get_wallet_execution_service():
+    """Get the wallet execution service."""
+    return _wallet_execution_service
+
+
+def get_strategy_service():
+    """Get the strategy service."""
+    return _strategy_service
+
+
+def get_wallet_repo():
+    """Get the wallet repository."""
+    if _wallet_repo is None:
+        raise RuntimeError("WalletRepository not initialized — server startup incomplete")
+    return _wallet_repo
+
+
+def get_trade_proposal_repo():
+    """Get the trade proposal repository."""
+    if _trade_proposal_repo is None:
+        raise RuntimeError("TradeProposalRepository not initialized — server startup incomplete")
+    return _trade_proposal_repo
+
+
+def get_strategy_scheduler():
+    """Get the global APScheduler instance."""
+    return _strategy_scheduler
 
 
 # ----------------- Initialization Functions -----------------
@@ -272,23 +323,131 @@ def init_db():
 
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{_DB_PATH}")
-        
+
         # Run migrations to latest version
         command.upgrade(alembic_cfg, "head")
         logger.info("Database migrations applied successfully")
-        
+
     except ImportError:
         # Alembic not installed - repositories will auto-initialize schema when first used
         logger.info("Alembic not available, repositories will auto-initialize database schema")
-            
+
     except Exception as e:
         # Alembic config or migration files not found (e.g., Docker without alembic dir)
         # Repositories with _ensure_tables() will self-initialize schema
         logger.warning(f"Alembic migration skipped ({e}), repositories will auto-initialize schema")
 
+    # Ensure users table exists for OAuth-authenticated users (idempotent CREATE IF NOT EXISTS)
+    try:
+        conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_sub TEXT UNIQUE NOT NULL,
+                email TEXT,
+                display_name TEXT,
+                avatar_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            )
+        """)
+        conn.commit()
+        conn.close()
+        logger.info("Users table initialized (OAuth)")
+    except Exception as e:
+        logger.warning(f"Users table initialization failed: {e}")
+
+
+def init_jupiter():
+    """Initialize Jupiter MCP client, execution service, and strategy service."""
+    global _jupiter_client, _jupiter_ops, _wallet_execution_service, _strategy_service
+    global _wallet_repo, _trade_proposal_repo, _mongo_write_client
+
+    from .config import get_settings
+    jupiter_cfg = get_settings().jupiter
+
+    if not jupiter_cfg.is_enabled:
+        logger.info("Jupiter MCP is disabled (JUPITER_ENABLED=false)")
+        return
+
+    try:
+        from .jupiter.jupiter_mcp_client import JupiterDockerClient
+        from .jupiter.jupiter_operations import JupiterOperations
+        from .services.wallet_execution_service import WalletExecutionService
+        from .services.strategy_service import StrategyService
+        from .repositories.wallet_repository import WalletRepository
+        from .repositories.trade_proposal_repository import TradeProposalRepository
+
+        # Init repositories
+        _wallet_repo = WalletRepository(_DB_PATH)
+        _trade_proposal_repo = TradeProposalRepository(_DB_PATH)
+
+        # Init MongoDB write client if configured
+        mongodb_write_uri = jupiter_cfg.mongodb_write_uri
+        if mongodb_write_uri:
+            try:
+                import pymongo
+                mongo_client = pymongo.MongoClient(mongodb_write_uri)
+                _mongo_write_client = mongo_client["wallet_data"]
+                logger.info("MongoDB write client initialized for trade history")
+            except Exception as e:
+                logger.warning(f"MongoDB write client init failed: {e}")
+
+        # Init Jupiter Docker client (deferred — starts on set_private_key())
+        _jupiter_client = JupiterDockerClient(
+            image=jupiter_cfg.mcp_image,
+            solana_rpc_url=jupiter_cfg.solana_rpc_url,
+            timeout=jupiter_cfg.timeout,
+        )
+        _jupiter_ops = JupiterOperations(_jupiter_client)
+
+        # Init services
+        _wallet_execution_service = WalletExecutionService(
+            jupiter_ops=_jupiter_ops,
+            mongo_write_client=_mongo_write_client,
+        )
+        _strategy_service = StrategyService(
+            strategies_dir=jupiter_cfg.strategies_dir,
+            mongo_write=_mongo_write_client,
+        )
+
+        logger.info(f"Jupiter MCP initialized (image={jupiter_cfg.mcp_image}, rpc={jupiter_cfg.solana_rpc_url})")
+
+    except Exception as e:
+        logger.error(f"Jupiter MCP initialization failed: {e}")
+        _jupiter_client = None
+        _jupiter_ops = None
+
+
+def init_strategy_scheduler():
+    """Initialize the APScheduler for autonomous strategy execution."""
+    global _strategy_scheduler
+
+    if _jupiter_ops is None or _wallet_execution_service is None:
+        logger.info("Strategy scheduler skipped — Jupiter not initialized")
+        return
+
+    try:
+        from .jupiter.strategy_scheduler import init_scheduler
+        _strategy_scheduler = init_scheduler(
+            jupiter_ops=_jupiter_ops,
+            execution_service=_wallet_execution_service,
+            strategy_service=_strategy_service,
+        )
+        if _strategy_scheduler:
+            _strategy_scheduler.start()
+            logger.info("Strategy scheduler started")
+    except Exception as e:
+        logger.error(f"Strategy scheduler initialization failed: {e}")
+        _strategy_scheduler = None
+
 
 def cleanup_orphaned_sessions():
     """Remove chat sessions for personas that no longer exist."""
+    if _session_repo is None:
+        logger.debug("cleanup_orphaned_sessions skipped: repo not yet initialized")
+        return
     try:
         cards = _load_all_cards_cached()
         current_persona_keys = {card.get("key") for card in cards if card.get("key")}
@@ -367,6 +526,18 @@ def initialize_all():
             logger.info("MongoDB MCP disabled (no URI or feature flag off)")
     except Exception as e:
         logger.warning(f"MongoDB MCP initialization warning: {e}")
+
+    # Initialize Jupiter MCP
+    try:
+        init_jupiter()
+    except Exception as e:
+        logger.warning(f"Jupiter MCP initialization warning: {e}")
+
+    # Initialize Strategy Scheduler (must be after Jupiter)
+    try:
+        init_strategy_scheduler()
+    except Exception as e:
+        logger.warning(f"Strategy scheduler initialization warning: {e}")
 
     # Remove sessions for personas that no longer exist
     cleanup_orphaned_sessions()

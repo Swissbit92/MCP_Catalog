@@ -265,6 +265,176 @@ class MongoDBSettings(BaseSettings):
     }
 
 
+class JupiterSettings(BaseSettings):
+    """Jupiter DEX + Solana wallet configuration."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Jupiter wallet integration",
+        alias="JUPITER_ENABLED"
+    )
+    mcp_image: str = Field(
+        default="localhost/jupiter-mcp:latest",
+        description="Docker image for Jupiter MCP server",
+        alias="JUPITER_MCP_IMAGE"
+    )
+    slippage_bps: int = Field(
+        default=50,
+        ge=0,
+        le=10000,
+        description="Default slippage tolerance in basis points",
+        alias="JUPITER_SLIPPAGE_BPS"
+    )
+    timeout: int = Field(
+        default=30,
+        ge=1,
+        le=300,
+        description="Jupiter MCP operation timeout in seconds",
+        alias="JUPITER_TIMEOUT"
+    )
+    solana_rpc_url: str = Field(
+        default="https://api.devnet.solana.com",
+        description="Solana RPC URL (devnet by default for safety)",
+        alias="SOLANA_RPC_URL"
+    )
+    strategies_dir: str = Field(
+        default="strategies",
+        description="Directory containing strategy JSON files",
+        alias="STRATEGIES_DIR"
+    )
+    mongodb_write_uri: str = Field(
+        default="",
+        description="MongoDB URI for writing trade history",
+        alias="MONGODB_WRITE_URI"
+    )
+
+    @property
+    def is_enabled(self) -> bool:
+        return self.enabled
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class EmailSettings(BaseSettings):
+    """Email notification configuration for trade alerts."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable email trade notifications",
+        alias="EMAIL_ENABLED"
+    )
+    smtp_host: str = Field(
+        default="smtp.gmail.com",
+        description="SMTP server hostname",
+        alias="EMAIL_SMTP_HOST"
+    )
+    smtp_port: int = Field(
+        default=587,
+        ge=1,
+        le=65535,
+        description="SMTP server port",
+        alias="EMAIL_SMTP_PORT"
+    )
+    username: str = Field(
+        default="",
+        description="SMTP username/email",
+        alias="EMAIL_USERNAME"
+    )
+    password: str = Field(
+        default="",
+        description="SMTP password or app password",
+        alias="EMAIL_PASSWORD"
+    )
+    from_addr: str = Field(
+        default="",
+        description="From email address",
+        alias="EMAIL_FROM"
+    )
+    to_addr: str = Field(
+        default="",
+        description="Recipient email address for trade notifications",
+        alias="EMAIL_TO"
+    )
+
+    @property
+    def is_enabled(self) -> bool:
+        """Check if email notifications are configured."""
+        return self.enabled and bool(self.username.strip()) and bool(self.to_addr.strip())
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class AuthSettings(BaseSettings):
+    """Google OAuth and JWT configuration."""
+
+    google_client_id: str = Field(
+        default="",
+        description="Google OAuth Client ID",
+        alias="GOOGLE_CLIENT_ID"
+    )
+    jwt_secret_key: str = Field(
+        default="dev-secret-change-in-production-min-32-chars!!",
+        description="Secret key for signing JWT tokens",
+        alias="JWT_SECRET_KEY"
+    )
+    jwt_algorithm: str = Field(
+        default="HS256",
+        description="JWT signing algorithm",
+        alias="JWT_ALGORITHM"
+    )
+    jwt_expire_hours: int = Field(
+        default=1,
+        ge=1,
+        le=168,
+        description="Access token expiry in hours",
+        alias="JWT_EXPIRE_HOURS"
+    )
+    refresh_expire_days: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+        description="Refresh token expiry in days",
+        alias="JWT_REFRESH_EXPIRE_DAYS"
+    )
+    auth_required: bool = Field(
+        default=False,
+        description="Require authentication (set True in production)",
+        alias="AUTH_REQUIRED"
+    )
+    auth_env: str = Field(
+        default="development",
+        description="Environment: development or production",
+        alias="AUTH_ENV"
+    )
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Use secure cookies in production (requires HTTPS)."""
+        return self.auth_env == "production"
+
+    @property
+    def is_google_configured(self) -> bool:
+        """Check if Google OAuth credentials are set."""
+        return bool(self.google_client_id.strip())
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
 class CoordinatorSettings(BaseSettings):
     """Main coordinator configuration.
 
@@ -301,6 +471,9 @@ class CoordinatorSettings(BaseSettings):
     brave: BraveSettings = Field(default_factory=BraveSettings)
     mongodb: MongoDBSettings = Field(default_factory=MongoDBSettings)
     memory: MemorySettings = Field(default_factory=MemorySettings)
+    jupiter: JupiterSettings = Field(default_factory=JupiterSettings)
+    email: EmailSettings = Field(default_factory=EmailSettings)
+    auth: AuthSettings = Field(default_factory=AuthSettings)
 
     model_config = {
         "env_file": ".env",
