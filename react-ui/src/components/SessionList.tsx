@@ -51,7 +51,7 @@ const getRarityStyles = (rarity?: string) => {
 
 const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
   const navigate = useNavigate()
-  const { sessions, currentSession, deleteSessionById, updateSessionTitle, selectedPersona } = usePersona()
+  const { sessions, currentSession, deleteSessionById, updateSessionTitle } = usePersona()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [personas, setPersonas] = useState<any[]>([])
