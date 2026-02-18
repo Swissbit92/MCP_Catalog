@@ -3,14 +3,14 @@ import React, { createContext, useContext, useRef, useCallback, useState } from 
 interface AudioContextType {
   playPullSound: () => void;
   playRevealSound: () => void;
-  playCelebrationSound: (rarity: string) => void;
+  playCelebrationSound: (order: string) => void;
   playSummoningStart: () => void;
   playAnticipationLoop: () => void;
-  playRarityReveal: (rarity: string) => void;
+  playRarityReveal: (order: string) => void;
   // Phase 7D: Summoning Ritual phase-based audio
   playCommitSound: () => void;
   playAnticipationSound: () => void;
-  playRarityRevealSound: (rarity: string) => void;
+  playRarityRevealSound: (order: string) => void;
   playIdentityRevealSound: () => void;
   isMuted: boolean;
   toggleMute: () => void;
@@ -71,22 +71,22 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     createTone(880, 0.5, 'sawtooth');
   }, [createTone]);
 
-  const playCelebrationSound = useCallback((rarity: string) => {
-    switch (rarity) {
-      case 'legendary':
+  const playCelebrationSound = useCallback((order: string) => {
+    switch (order) {
+      case 'archon':
         // Triumphant fanfare
         createTone(523, 0.3, 'triangle');
         setTimeout(() => createTone(659, 0.3, 'triangle'), 150);
         setTimeout(() => createTone(784, 0.5, 'triangle'), 300);
         setTimeout(() => createTone(1047, 0.8, 'triangle'), 450);
         break;
-      case 'epic':
+      case 'warden':
         // Magical sparkle
         createTone(784, 0.2, 'sine');
         setTimeout(() => createTone(988, 0.2, 'sine'), 100);
         setTimeout(() => createTone(1175, 0.4, 'sine'), 200);
         break;
-      case 'rare':
+      case 'sage':
         // Exciting chime
         createTone(659, 0.3, 'triangle');
         setTimeout(() => createTone(831, 0.3, 'triangle'), 150);
@@ -151,23 +151,23 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [isMuted, initAudio]);
 
-  const playRarityReveal = useCallback((rarity: string) => {
+  const playRarityReveal = useCallback((order: string) => {
     if (isMuted) return;
-    switch (rarity) {
-      case 'legendary':
+    switch (order) {
+      case 'archon':
         // Full fanfare (523->659->784->1047Hz, durations 0.3, 0.3, 0.5, 0.8, triangle)
         createTone(523, 0.3, 'triangle');
         setTimeout(() => createTone(659, 0.3, 'triangle'), 300);
         setTimeout(() => createTone(784, 0.5, 'triangle'), 600);
         setTimeout(() => createTone(1047, 0.8, 'triangle'), 1100);
         break;
-      case 'epic':
+      case 'warden':
         // Three-note arpeggio (784->988->1175Hz, 0.2s each, sine)
         createTone(784, 0.2, 'sine');
         setTimeout(() => createTone(988, 0.2, 'sine'), 200);
         setTimeout(() => createTone(1175, 0.2, 'sine'), 400);
         break;
-      case 'rare':
+      case 'sage':
         // Two-note chime (659->831Hz, 0.3s each, triangle)
         createTone(659, 0.3, 'triangle');
         setTimeout(() => createTone(831, 0.3, 'triangle'), 300);
@@ -231,24 +231,24 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [isMuted, initAudio]);
 
-  // Rarity-specific stinger for rarity gate
-  const playRarityRevealSound = useCallback((rarity: string) => {
+  // Order-specific stinger for rarity gate
+  const playRarityRevealSound = useCallback((order: string) => {
     if (isMuted) return;
-    switch (rarity) {
-      case 'legendary':
+    switch (order) {
+      case 'archon':
         // Four-note fanfare (400->600->800->1200Hz, longer sustain)
         createTone(400, 0.4, 'triangle');
         setTimeout(() => createTone(600, 0.4, 'triangle'), 200);
         setTimeout(() => createTone(800, 0.4, 'triangle'), 400);
         setTimeout(() => createTone(1200, 0.8, 'triangle'), 600);
         break;
-      case 'epic':
+      case 'warden':
         // Three-note arpeggio (600->900->1200Hz)
         createTone(600, 0.3, 'triangle');
         setTimeout(() => createTone(900, 0.3, 'triangle'), 150);
         setTimeout(() => createTone(1200, 0.5, 'triangle'), 300);
         break;
-      case 'rare':
+      case 'sage':
         // Two-note arpeggio (800->1200Hz)
         createTone(800, 0.3, 'sine');
         setTimeout(() => createTone(1200, 0.4, 'sine'), 150);

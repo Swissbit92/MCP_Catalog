@@ -2,6 +2,9 @@
 
 import sys
 import os
+import pytest
+
+pytestmark = pytest.mark.unit
 
 # Fix encoding for Windows console
 if sys.platform == 'win32':

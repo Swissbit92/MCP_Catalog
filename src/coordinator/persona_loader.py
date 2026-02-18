@@ -66,6 +66,7 @@ def _load_all_cards_cached() -> List[Dict]:
     return cards
 
 
+@lru_cache(maxsize=1)
 def _cards_by_all_names() -> Dict[str, Dict]:
     """Build index mapping all persona name variants to their cards."""
     idx: Dict[str, Dict] = {}

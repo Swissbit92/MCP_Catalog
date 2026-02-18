@@ -291,7 +291,7 @@ class CoordinatorSettings(BaseSettings):
         alias="COORD_URL"
     )
     db_path: str = Field(
-        default="chats.db",
+        default="data/chats.db",
         description="SQLite database path",
         alias="COORDINATOR_DB_PATH"
     )

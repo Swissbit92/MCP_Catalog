@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fetchPersonas } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { useAudio } from '../context/AudioContext'
-import { orderToRarityClass, rarityToOrder } from '../utils/celestialOrder'
 
 interface Persona {
   key: string
@@ -11,6 +10,7 @@ interface Persona {
   style: string
   image: string
   rarity: string
+  celestial_order?: string
   voice?: {
     greeting: string
   }
@@ -86,6 +86,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
           style: p.style,
           image: p.image.replace('images/', ''),
           rarity: p.rarity,
+          celestial_order: p.celestial_order,
         })))
       } catch (error) {
         console.error('Failed to load personas:', error)
@@ -146,11 +147,8 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
 
     const isHardPity = pityCounter >= HARD_PITY_THRESHOLD - 1
     const selectedOrder = selectWeightedOrder()
-    // Map order back to rarity string for persona filtering
-    const rarityForFilter = orderToRarityClass(selectedOrder)
-
-    // Filter by rarity (persona data still stores rarity)
-    let candidates = allPersonas.filter(p => p.rarity === rarityForFilter)
+    // Filter by celestial_order (prefer it over rarity-based mapping)
+    let candidates = allPersonas.filter(p => (p.celestial_order || 'wanderer') === selectedOrder)
     if (candidates.length === 0) {
       candidates = allPersonas
     }
@@ -189,10 +187,10 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
     await new Promise(resolve => setTimeout(resolve, anticipationDuration))
 
     // Phase 3: Rarity Gate (0.8s)
-    const order = rarityToOrder(character.rarity)
+    const order = character.celestial_order || 'wanderer'
     setRevealedOrder(order)
     setPhase('rarity_gate')
-    playRarityRevealSound(character.rarity)
+    playRarityRevealSound(order)
     await new Promise(resolve => setTimeout(resolve, 800))
 
     // Phase 4: Identity Reveal (1-2s)
@@ -204,12 +202,13 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
 
     // Phase 5: Celebration (1-3s)
     setPhase('celebration')
-    playCelebrationSound(character.rarity)
+    playCelebrationSound(character.celestial_order || 'wanderer')
 
     // Record the pull
     addPullRecord({
       personaKey: character.key,
       rarity: character.rarity,
+      celestial_order: character.celestial_order,
       pullCount: 1,
     })
 

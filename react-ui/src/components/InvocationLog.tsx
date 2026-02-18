@@ -2,25 +2,36 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { usePersona } from '../context/PersonaContext'
 
-const RARITY_BORDER_COLORS: Record<string, string> = {
-  common: '#C0C0C0',
-  rare: '#00BFFF',
-  epic: '#DA70D6',
-  legendary: '#FFD700',
+const RARITY_TO_ORDER: Record<string, string> = {
+  legendary: 'archon',
+  epic: 'warden',
+  rare: 'sage',
+  common: 'wanderer',
+}
+const getRecordOrder = (record: { rarity?: string; celestial_order?: string }): string => {
+  if (record.celestial_order) return record.celestial_order.toLowerCase()
+  return RARITY_TO_ORDER[(record.rarity || 'common').toLowerCase()] || 'wanderer'
 }
 
-const RARITY_TEXT_COLORS: Record<string, string> = {
-  common: 'text-gray-400',
-  rare: 'text-cyan-400',
-  epic: 'text-purple-400',
-  legendary: 'text-yellow-400',
+const ORDER_BORDER_COLORS: Record<string, string> = {
+  wanderer: '#C0C0C0',
+  sage: '#00BFFF',
+  warden: '#DA70D6',
+  archon: '#FFD700',
 }
 
-const RARITY_LABELS: Record<string, string> = {
-  common: 'Wanderer',
-  rare: 'Sage',
-  epic: 'Warden',
-  legendary: 'Archon',
+const ORDER_TEXT_COLORS: Record<string, string> = {
+  wanderer: 'text-gray-400',
+  sage: 'text-cyan-400',
+  warden: 'text-purple-400',
+  archon: 'text-yellow-400',
+}
+
+const ORDER_LABELS: Record<string, string> = {
+  wanderer: 'Wanderer',
+  sage: 'Sage',
+  warden: 'Warden',
+  archon: 'Archon',
 }
 
 const formatNarrativeTime = (timestamp: number): string => {
@@ -78,22 +89,22 @@ const InvocationLog: React.FC = () => {
           <h3 className="text-lg font-nephilim tracking-wider text-gray-200 mb-4">Order Attunement</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { rarity: 'legendary', count: pullStats.archonCount },
-              { rarity: 'epic', count: pullStats.wardenCount },
-              { rarity: 'rare', count: pullStats.sageCount },
-              { rarity: 'common', count: pullStats.wandererCount },
-            ].map(({ rarity, count }) => (
-              <div key={rarity} className="text-center">
+              { order: 'archon', count: pullStats.archonCount },
+              { order: 'warden', count: pullStats.wardenCount },
+              { order: 'sage', count: pullStats.sageCount },
+              { order: 'wanderer', count: pullStats.wandererCount },
+            ].map(({ order, count }) => (
+              <div key={order} className="text-center">
                 <div
                   className="w-8 h-8 rounded-full mx-auto mb-2"
                   style={{
-                    backgroundColor: RARITY_BORDER_COLORS[rarity] + '33',
-                    border: `2px solid ${RARITY_BORDER_COLORS[rarity]}`,
-                    boxShadow: `0 0 12px ${RARITY_BORDER_COLORS[rarity]}44`,
+                    backgroundColor: ORDER_BORDER_COLORS[order] + '33',
+                    border: `2px solid ${ORDER_BORDER_COLORS[order]}`,
+                    boxShadow: `0 0 12px ${ORDER_BORDER_COLORS[order]}44`,
                   }}
                 />
-                <div className={`text-xl font-bold ${RARITY_TEXT_COLORS[rarity]}`}>{count}</div>
-                <div className="text-sm text-gray-500">{RARITY_LABELS[rarity] || rarity}</div>
+                <div className={`text-xl font-bold ${ORDER_TEXT_COLORS[order]}`}>{count}</div>
+                <div className="text-sm text-gray-500">{ORDER_LABELS[order] || order}</div>
               </div>
             ))}
           </div>
@@ -127,23 +138,23 @@ const InvocationLog: React.FC = () => {
                 className="bg-white/[0.03] backdrop-blur-sm rounded-lg p-4 border border-white/[0.06] flex items-center justify-between"
                 style={{
                   borderLeftWidth: 3,
-                  borderLeftColor: RARITY_BORDER_COLORS[record.rarity] || RARITY_BORDER_COLORS.common,
+                  borderLeftColor: ORDER_BORDER_COLORS[getRecordOrder(record)] || ORDER_BORDER_COLORS.wanderer,
                 }}
               >
                 <div className="flex items-center gap-4">
                   <div
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{
-                      backgroundColor: RARITY_BORDER_COLORS[record.rarity],
-                      boxShadow: `0 0 8px ${RARITY_BORDER_COLORS[record.rarity]}66`,
+                      backgroundColor: ORDER_BORDER_COLORS[getRecordOrder(record)],
+                      boxShadow: `0 0 8px ${ORDER_BORDER_COLORS[getRecordOrder(record)]}66`,
                     }}
                   />
                   <div>
-                    <div className={`font-semibold ${RARITY_TEXT_COLORS[record.rarity]}`}>
+                    <div className={`font-semibold ${ORDER_TEXT_COLORS[getRecordOrder(record)]}`}>
                       {record.personaKey}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {RARITY_LABELS[record.rarity] || 'Unknown'} Bond
+                      {ORDER_LABELS[getRecordOrder(record)] || 'Unknown'} Bond
                     </div>
                   </div>
                 </div>

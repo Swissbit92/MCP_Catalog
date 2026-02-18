@@ -45,6 +45,9 @@ def test_repositories():
             content TEXT NOT NULL,
             timestamp TEXT NOT NULL,
             latency_ms INTEGER,
+            source_type TEXT DEFAULT 'llm',
+            multi_message_id TEXT,
+            multi_message_index INTEGER,
             FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
         )""")
         conn.commit()
@@ -122,10 +125,13 @@ def test_repositories():
         return False
 
     finally:
-        # Clean up
+        # Clean up — ignore Windows file-lock errors (connections may still be pooled)
         if os.path.exists(db_path):
-            os.unlink(db_path)
-            print(f"[CLEANUP] Cleaned up test database")
+            try:
+                os.unlink(db_path)
+                print(f"[CLEANUP] Cleaned up test database")
+            except PermissionError:
+                pass
 
 if __name__ == "__main__":
     success = test_repositories()

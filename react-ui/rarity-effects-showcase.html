@@ -1,0 +1,2056 @@
+<!--
+  LEGACY REFERENCE DOCUMENT — kept for card effect iteration reference only.
+
+  NOTE: This file uses legacy CSS class names (.rarity-legendary, .rarity-epic, etc.)
+  which correspond to the following live codebase classes:
+    .rarity-legendary  →  .order-archon   (gold / Solar Crown)
+    .rarity-epic       →  .order-warden   (purple / Void Rift)
+    .rarity-rare       →  .order-sage     (cyan / Frost Pulse)
+    .rarity-common     →  .order-wanderer (silver / Dim Echo)
+
+  Do NOT use this file as a build dependency.
+  See react-ui/src/components/CharacterCard.module.css for current effects.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEPHILIM Rarity Card Effects Showcase</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   NEPHILIM RARITY CARD EFFECTS — Professional Gacha-Quality VFX
+   12 Variants: 2 Common, 3 Rare, 3 Epic, 4 Legendary
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=Manrope:wght@300;400;500;600&display=swap');
+
+/* ── CSS Houdini @property for smooth gradient animation ── */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@property --holo-x {
+  syntax: '<percentage>';
+  initial-value: 50%;
+  inherits: false;
+}
+@property --holo-y {
+  syntax: '<percentage>';
+  initial-value: 50%;
+  inherits: false;
+}
+@property --shimmer-pos {
+  syntax: '<percentage>';
+  initial-value: -100%;
+  inherits: false;
+}
+@property --glow-intensity {
+  syntax: '<number>';
+  initial-value: 0.3;
+  inherits: false;
+}
+@property --aurora-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@property --flame-offset {
+  syntax: '<length>';
+  initial-value: 0px;
+  inherits: false;
+}
+
+/* ── Global Reset & Theme ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #05050a;
+  color: #e0e0e0;
+  font-family: 'Manrope', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background void texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0, 255, 255, 0.015) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(255, 0, 255, 0.015) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 20%, rgba(255, 215, 0, 0.01) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ── */
+.page-header {
+  text-align: center;
+  padding: 48px 24px 24px;
+  position: relative;
+  z-index: 1;
+}
+.page-header h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  background: linear-gradient(135deg, #00ffff, #ff00ff, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-transform: uppercase;
+}
+.page-header p {
+  color: rgba(255,255,255,0.4);
+  margin-top: 8px;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+.rarity-section {
+  padding: 32px 24px 48px;
+  position: relative;
+  z-index: 1;
+}
+.rarity-section h2 {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-left: 16px;
+  position: relative;
+}
+.rarity-section h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+}
+.section-common h2 { color: #94a3b8; }
+.section-common h2::before { background: #94a3b8; }
+.section-rare h2 { color: #06b6d4; }
+.section-rare h2::before { background: #06b6d4; }
+.section-epic h2 { color: #a78bfa; }
+.section-epic h2::before { background: #a78bfa; }
+.section-legendary h2 { color: #fbbf24; }
+.section-legendary h2::before { background: #fbbf24; }
+
+.rarity-subtitle {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.3);
+  padding-left: 16px;
+  margin-bottom: 32px;
+}
+
+.cards-row {
+  display: flex;
+  gap: 48px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: start;
+}
+
+.card-demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.card-label {
+  text-align: center;
+}
+.card-label .effect-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.card-label .effect-desc {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.35);
+  margin-top: 4px;
+  max-width: 220px;
+  line-height: 1.4;
+}
+
+.effect-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+.tag {
+  font-size: 0.6rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'Manrope', sans-serif;
+  letter-spacing: 0.05em;
+}
+.tag-idle {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tag-hover {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* ═══════════════════════════════════════════════
+   BASE CARD STRUCTURE
+   ═══════════════════════════════════════════════ */
+.card {
+  width: 220px;
+  height: 320px;
+  border-radius: 16px;
+  position: relative;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  /* GPU acceleration */
+  will-change: transform;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  background: rgba(15, 15, 25, 0.9);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s cubic-bezier(0.03, 0.98, 0.52, 0.99);
+  transform-style: preserve-3d;
+}
+
+.card-image {
+  flex: 1;
+  background-size: cover;
+  background-position: center top;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Placeholder gradient for demo */
+.card-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(20, 20, 40, 0.3) 0%,
+    rgba(20, 20, 40, 0.1) 40%,
+    rgba(20, 20, 40, 0.6) 100%
+  );
+}
+
+.card-info {
+  padding: 12px 16px;
+  position: relative;
+  z-index: 2;
+}
+.card-info .name {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.card-info .title {
+  font-size: 0.65rem;
+  opacity: 0.5;
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+}
+
+.rarity-stars {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 2px;
+  font-size: 0.55rem;
+  z-index: 5;
+}
+
+/* ═══════════════════════════════════════════════
+   1. COMMON — "SILENT GLASS"
+   Idle: Static glassmorphism, faint silver border
+   Hover: Silver glare sweep, subtle lift
+   ═══════════════════════════════════════════════ */
+.card-silent-glass .card-inner {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 15, 25, 0.85);
+}
+
+/* Glare sweep on hover */
+.card-silent-glass .card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(148, 163, 184, 0.06) 45%,
+    rgba(148, 163, 184, 0.15) 50%,
+    rgba(148, 163, 184, 0.06) 55%,
+    transparent 60%
+  );
+  --shimmer-pos: -100%;
+  transform: translateX(var(--shimmer-pos));
+  transition: none;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.card-silent-glass:hover .card-inner::after {
+  animation: silentGlassSweep 1.2s ease-out forwards;
+}
+
+.card-silent-glass:hover .card-inner {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+              0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.card-silent-glass .card-info .name { color: #cbd5e1; }
+
+@keyframes silentGlassSweep {
+  0% { transform: translateX(-150%); }
+  100% { transform: translateX(150%); }
+}
+
+
+/* ═══════════════════════════════════════════════
+   2. COMMON — "DIM ECHO"
+   Idle: Subtle breathing border opacity
+   Hover: 3D tilt + silver ripple from center
+   ═══════════════════════════════════════════════ */
+.card-dim-echo .card-inner {
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  animation: dimEchoBreathe 4s ease-in-out infinite;
+}
+
+/* Breathing border */
+@keyframes dimEchoBreathe {
+  0%, 100% { border-color: rgba(148, 163, 184, 0.06); }
+  50% { border-color: rgba(148, 163, 184, 0.15); }
+}
+
+/* Radial glare on hover */
+.card-dim-echo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(148, 163, 184, 0.12) 0%,
+    transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.card-dim-echo:hover::after {
+  opacity: 1;
+}
+
+.card-dim-echo:hover .card-inner {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  animation: none;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.card-dim-echo .card-info .name { color: #94a3b8; }
+
+
+/* ═══════════════════════════════════════════════
+   3. RARE — "FROST PULSE"
+   Idle: Soft pulsing cyan glow border
+   Hover: 3D tilt + cyan glare + intensified border
+   ═══════════════════════════════════════════════ */
+.card-frost-pulse .card-inner {
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  animation: frostPulse 3s ease-in-out infinite;
+}
+
+@keyframes frostPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(6, 182, 212, 0.08),
+      0 0 20px rgba(6, 182, 212, 0.04);
+    border-color: rgba(6, 182, 212, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(6, 182, 212, 0.2),
+      0 0 36px rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.35);
+  }
+}
+
+/* Glare overlay */
+.card-frost-pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(6, 182, 212, 0.15) 0%,
+    transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-frost-pulse:hover::before { opacity: 1; }
+
+.card-frost-pulse:hover .card-inner {
+  transform: translateY(-6px) scale(1.03);
+  animation: none;
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow:
+    0 0 16px rgba(6, 182, 212, 0.25),
+    0 0 48px rgba(6, 182, 212, 0.1),
+    0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.card-frost-pulse .card-info .name { color: #67e8f9; }
+.card-frost-pulse .rarity-stars { color: #06b6d4; }
+
+
+/* ═══════════════════════════════════════════════
+   4. RARE — "AZURE STREAM"
+   Idle: Rotating cyan border gradient + gentle float
+   Hover: Full 3D tilt + holographic sheen band
+   ═══════════════════════════════════════════════ */
+.card-azure-stream {
+  animation: azureFloat 6s ease-in-out infinite;
+}
+
+@keyframes azureFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Rotating border */
+.card-azure-stream::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: conic-gradient(
+    from var(--angle),
+    rgba(6, 182, 212, 0.05),
+    rgba(6, 182, 212, 0.4),
+    rgba(34, 211, 238, 0.5),
+    rgba(6, 182, 212, 0.4),
+    rgba(6, 182, 212, 0.05)
+  );
+  animation: borderSpin 6s linear infinite;
+  z-index: -1;
+}
+/* Glow layer */
+.card-azure-stream::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(6, 182, 212, 0.3),
+    transparent,
+    transparent
+  );
+  filter: blur(12px);
+  animation: borderSpin 6s linear infinite;
+  z-index: -2;
+}
+
+@keyframes borderSpin {
+  to { --angle: 360deg; }
+}
+
+/* Holographic sheen band on hover */
+.card-azure-stream .card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 30%,
+    rgba(6, 182, 212, 0.04) 38%,
+    rgba(34, 211, 238, 0.1) 44%,
+    rgba(6, 182, 212, 0.15) 50%,
+    rgba(34, 211, 238, 0.1) 56%,
+    rgba(6, 182, 212, 0.04) 62%,
+    transparent 70%
+  );
+  transform: translateX(-200%);
+  transition: none;
+  pointer-events: none;
+  z-index: 3;
+  mix-blend-mode: screen;
+}
+
+.card-azure-stream:hover .card-inner::after {
+  animation: holoSheenSweep 2s ease-in-out infinite;
+}
+
+@keyframes holoSheenSweep {
+  0% { transform: translateX(-200%); }
+  100% { transform: translateX(200%); }
+}
+
+.card-azure-stream:hover {
+  animation: none;
+}
+.card-azure-stream:hover .card-inner {
+  transform: translateY(-8px) scale(1.04);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5),
+              0 0 24px rgba(6, 182, 212, 0.15);
+}
+
+.card-azure-stream .card-info .name { color: #22d3ee; }
+.card-azure-stream .rarity-stars { color: #06b6d4; }
+
+
+/* ═══════════════════════════════════════════════
+   5. RARE — "CIRCUIT TRACE"
+   Idle: Cyan line traces along border edges
+   Hover: Lines accelerate, grid overlay, lift
+   ═══════════════════════════════════════════════ */
+.card-circuit-trace .card-inner {
+  border: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+/* Traveling light dot along border */
+.card-circuit-trace::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0%,
+    transparent 85%,
+    rgba(6, 182, 212, 0.6) 92%,
+    rgba(34, 211, 238, 0.9) 96%,
+    rgba(6, 182, 212, 0.6) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 2px;
+  animation: borderSpin 4s linear infinite;
+  z-index: 3;
+}
+
+/* Grid overlay on hover */
+.card-circuit-trace .card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.card-circuit-trace:hover .card-inner::after { opacity: 1; }
+
+.card-circuit-trace:hover::before {
+  animation-duration: 1.5s;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0%,
+    transparent 70%,
+    rgba(6, 182, 212, 0.4) 80%,
+    rgba(34, 211, 238, 1) 90%,
+    rgba(6, 182, 212, 0.4) 100%
+  );
+}
+
+.card-circuit-trace:hover .card-inner {
+  transform: translateY(-6px) scale(1.03);
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+              0 0 20px rgba(6, 182, 212, 0.1);
+}
+
+.card-circuit-trace .card-info .name { color: #67e8f9; }
+.card-circuit-trace .rarity-stars { color: #06b6d4; }
+
+
+/* ═══════════════════════════════════════════════
+   6. EPIC — "VOID RIFT"
+   Idle: Rotating purple conic border + blur glow
+   Hover: Holographic overlay + chromatic edge + particle canvas
+   ═══════════════════════════════════════════════ */
+.card-void-rift::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    rgba(167, 139, 250, 0.1),
+    rgba(167, 139, 250, 0.5),
+    rgba(192, 132, 252, 0.7),
+    rgba(139, 92, 246, 0.5),
+    rgba(167, 139, 250, 0.1)
+  );
+  animation: borderSpin 4s linear infinite;
+  z-index: -1;
+}
+
+/* Glow bloom */
+.card-void-rift::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(167, 139, 250, 0.35),
+    rgba(192, 132, 252, 0.5),
+    rgba(167, 139, 250, 0.35),
+    transparent,
+    transparent
+  );
+  filter: blur(16px);
+  animation: borderSpin 4s linear infinite;
+  z-index: -2;
+}
+
+/* Inner border */
+.card-void-rift .card-inner {
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+/* Holographic overlay on hover */
+.card-void-rift .holo-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(
+    var(--holo-angle, 125deg),
+    transparent 20%,
+    rgba(167, 139, 250, 0.05) 30%,
+    rgba(192, 132, 252, 0.12) 40%,
+    rgba(139, 92, 246, 0.18) 50%,
+    rgba(192, 132, 252, 0.12) 60%,
+    rgba(167, 139, 250, 0.05) 70%,
+    transparent 80%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-void-rift:hover .holo-layer { opacity: 1; }
+
+/* Chromatic aberration border on hover */
+.card-void-rift .chromatic-layer {
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  border: 2px solid transparent;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.card-void-rift:hover .chromatic-layer {
+  opacity: 1;
+  box-shadow:
+    -2px 0 0 rgba(255, 0, 100, 0.3),
+    2px 0 0 rgba(0, 100, 255, 0.3);
+}
+
+.card-void-rift:hover .card-inner {
+  transform: translateY(-8px) scale(1.04);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5),
+              0 0 32px rgba(167, 139, 250, 0.15);
+}
+
+.card-void-rift .card-info .name { color: #c4b5fd; }
+.card-void-rift .rarity-stars { color: #a78bfa; }
+
+
+/* ═══════════════════════════════════════════════
+   7. EPIC — "ARCANE TEMPEST"
+   Idle: Purple aurora orbs behind card
+   Hover: Aurora intensifies, card lifts, holo sheen
+   ═══════════════════════════════════════════════ */
+.card-arcane-tempest {
+  /* Aurora orbs container */
+}
+
+.card-arcane-tempest .aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(30px);
+  z-index: -3;
+  pointer-events: none;
+}
+.card-arcane-tempest .aurora-orb-1 {
+  width: 120px;
+  height: 120px;
+  background: rgba(167, 139, 250, 0.2);
+  top: -20px;
+  left: -30px;
+  animation: auroraOrb1 8s ease-in-out infinite;
+}
+.card-arcane-tempest .aurora-orb-2 {
+  width: 100px;
+  height: 100px;
+  background: rgba(192, 132, 252, 0.15);
+  bottom: -15px;
+  right: -25px;
+  animation: auroraOrb2 10s ease-in-out infinite;
+}
+.card-arcane-tempest .aurora-orb-3 {
+  width: 80px;
+  height: 80px;
+  background: rgba(139, 92, 246, 0.12);
+  top: 40%;
+  left: 50%;
+  animation: auroraOrb3 7s ease-in-out infinite;
+}
+
+@keyframes auroraOrb1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  33% { transform: translate(20px, 15px) scale(1.2); opacity: 0.8; }
+  66% { transform: translate(-10px, 25px) scale(0.9); opacity: 0.5; }
+}
+@keyframes auroraOrb2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  50% { transform: translate(-20px, -15px) scale(1.3); opacity: 0.7; }
+}
+@keyframes auroraOrb3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+  50% { transform: translate(-30%, -60%) scale(1.4); opacity: 0.6; }
+}
+
+.card-arcane-tempest .card-inner {
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  animation: arcaneInnerPulse 3.5s ease-in-out infinite;
+}
+
+@keyframes arcaneInnerPulse {
+  0%, 100% { box-shadow: inset 0 0 20px rgba(167, 139, 250, 0.03); }
+  50% { box-shadow: inset 0 0 30px rgba(167, 139, 250, 0.08); }
+}
+
+/* Rainbow-tinted holo sweep on hover */
+.card-arcane-tempest .card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 100, 200, 0.04) 35%,
+    rgba(167, 139, 250, 0.1) 42%,
+    rgba(100, 200, 255, 0.08) 50%,
+    rgba(167, 139, 250, 0.1) 58%,
+    rgba(255, 100, 200, 0.04) 65%,
+    transparent 75%
+  );
+  transform: translateX(-200%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.card-arcane-tempest:hover .card-inner::after {
+  animation: holoSheenSweep 2.5s ease-in-out infinite;
+}
+
+.card-arcane-tempest:hover .card-inner {
+  transform: translateY(-10px) scale(1.05);
+  animation: none;
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+              0 0 40px rgba(167, 139, 250, 0.15);
+}
+
+.card-arcane-tempest:hover .aurora-orb-1 { animation-duration: 4s; }
+.card-arcane-tempest:hover .aurora-orb-2 { animation-duration: 5s; }
+.card-arcane-tempest:hover .aurora-orb-3 { animation-duration: 3.5s; }
+
+.card-arcane-tempest .card-info .name { color: #c4b5fd; }
+.card-arcane-tempest .rarity-stars { color: #a78bfa; }
+
+
+/* ═══════════════════════════════════════════════
+   8. EPIC — "PHANTOM EDGE"
+   Idle: Dual-layer animated border (inner sharp, outer blur) + energy wisps
+   Hover: Holographic shimmer + mouse-tracked spotlight
+   ═══════════════════════════════════════════════ */
+.card-phantom-edge::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: conic-gradient(
+    from var(--angle),
+    rgba(139, 92, 246, 0.05),
+    rgba(167, 139, 250, 0.45),
+    rgba(139, 92, 246, 0.05),
+    rgba(167, 139, 250, 0.45),
+    rgba(139, 92, 246, 0.05)
+  );
+  animation: borderSpin 3s linear infinite;
+  z-index: -1;
+}
+
+/* Outer glow ring */
+.card-phantom-edge::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(167, 139, 250, 0.2),
+    transparent,
+    rgba(139, 92, 246, 0.15),
+    transparent
+  );
+  filter: blur(8px);
+  animation: borderSpin 3s linear infinite;
+  z-index: -2;
+  opacity: 0.7;
+}
+
+.card-phantom-edge .card-inner {
+  border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+/* Wisp particles (CSS pseudo) */
+.card-phantom-edge .wisps {
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+  z-index: -1;
+}
+.card-phantom-edge .wisp {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(167, 139, 250, 0.6);
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+}
+.card-phantom-edge .wisp:nth-child(1) {
+  left: 10%; top: 20%;
+  animation: wispFloat1 5s ease-in-out infinite;
+}
+.card-phantom-edge .wisp:nth-child(2) {
+  right: 15%; top: 40%;
+  animation: wispFloat2 7s ease-in-out infinite;
+}
+.card-phantom-edge .wisp:nth-child(3) {
+  left: 20%; bottom: 25%;
+  animation: wispFloat3 6s ease-in-out infinite;
+}
+.card-phantom-edge .wisp:nth-child(4) {
+  right: 10%; bottom: 35%;
+  animation: wispFloat1 8s ease-in-out infinite reverse;
+}
+
+@keyframes wispFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  25% { transform: translate(8px, -12px) scale(1.3); opacity: 0.8; }
+  50% { transform: translate(-5px, -20px) scale(0.8); opacity: 0.3; }
+  75% { transform: translate(12px, -8px) scale(1.1); opacity: 0.7; }
+}
+@keyframes wispFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(-15px, -18px) scale(1.4); opacity: 0.9; }
+}
+@keyframes wispFloat3 {
+  0%, 100% { transform: translate(0, 0); opacity: 0.6; }
+  33% { transform: translate(10px, -15px); opacity: 0.3; }
+  66% { transform: translate(-8px, -25px); opacity: 0.8; }
+}
+
+/* Mouse spotlight on hover */
+.card-phantom-edge .spotlight {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(
+    circle 120px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(167, 139, 250, 0.12) 0%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-phantom-edge:hover .spotlight { opacity: 1; }
+
+.card-phantom-edge:hover .card-inner {
+  transform: translateY(-8px) scale(1.04);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.card-phantom-edge .card-info .name { color: #c4b5fd; }
+.card-phantom-edge .rarity-stars { color: #a78bfa; }
+
+
+/* ═══════════════════════════════════════════════
+   9. LEGENDARY — "SOLAR CROWN"
+   Idle: Full rotating rainbow/gold border + floating particles
+   Hover: Holographic foil surface + particle storm + dramatic glow
+   ═══════════════════════════════════════════════ */
+.card-solar-crown::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    #fbbf24,
+    #f59e0b,
+    #fbbf24,
+    #fcd34d,
+    #f59e0b,
+    #fbbf24
+  );
+  animation: borderSpin 3s linear infinite;
+  z-index: -1;
+}
+
+/* Multi-layer glow */
+.card-solar-crown::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(251, 191, 36, 0.5),
+    rgba(245, 158, 11, 0.6),
+    rgba(251, 191, 36, 0.5),
+    transparent,
+    transparent
+  );
+  filter: blur(20px);
+  animation: borderSpin 3s linear infinite;
+  z-index: -2;
+}
+
+.card-solar-crown .card-inner {
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: inset 0 0 30px rgba(251, 191, 36, 0.03);
+}
+
+/* Holographic foil surface on hover */
+.card-solar-crown .foil-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(
+      var(--holo-angle, 0deg),
+      rgba(255, 215, 0, 0.03) 0px,
+      rgba(255, 180, 0, 0.06) 2px,
+      rgba(255, 215, 0, 0.03) 4px
+    ),
+    linear-gradient(
+      calc(var(--holo-angle, 0deg) + 45deg),
+      transparent 20%,
+      rgba(255, 215, 0, 0.08) 35%,
+      rgba(255, 180, 50, 0.15) 45%,
+      rgba(255, 220, 100, 0.2) 50%,
+      rgba(255, 180, 50, 0.15) 55%,
+      rgba(255, 215, 0, 0.08) 65%,
+      transparent 80%
+    );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-solar-crown:hover .foil-layer {
+  opacity: 1;
+  animation: foilShimmer 3s ease-in-out infinite;
+}
+
+@keyframes foilShimmer {
+  0% { --holo-angle: 0deg; }
+  100% { --holo-angle: 360deg; }
+}
+
+.card-solar-crown:hover .card-inner {
+  transform: translateY(-12px) scale(1.05);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(251, 191, 36, 0.2),
+    0 0 80px rgba(251, 191, 36, 0.08),
+    inset 0 0 40px rgba(251, 191, 36, 0.05);
+}
+
+.card-solar-crown .card-info .name {
+  background: linear-gradient(135deg, #fcd34d, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.card-solar-crown .rarity-stars { color: #fbbf24; }
+
+
+/* ═══════════════════════════════════════════════
+   10. LEGENDARY — "CELESTIAL FORGE"
+   Idle: Iridescent rainbow border shift + scanlines
+   Hover: Full Pokemon-style holographic + 3D depth + golden aurora
+   ═══════════════════════════════════════════════ */
+.card-celestial-forge::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    #ff6b6b,
+    #fbbf24,
+    #34d399,
+    #06b6d4,
+    #818cf8,
+    #c084fc,
+    #f472b6,
+    #ff6b6b
+  );
+  animation: borderSpin 4s linear infinite;
+  z-index: -1;
+}
+
+.card-celestial-forge::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(251, 191, 36, 0.3),
+    rgba(52, 211, 153, 0.3),
+    rgba(6, 182, 212, 0.3),
+    rgba(167, 139, 250, 0.3),
+    transparent,
+    transparent
+  );
+  filter: blur(24px);
+  animation: borderSpin 4s linear infinite;
+  z-index: -2;
+}
+
+.card-celestial-forge .card-inner {
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+/* Subtle scanline texture idle */
+.card-celestial-forge .scanlines {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(255, 255, 255, 0.015) 2px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 3;
+  animation: scanlineShift 0.1s steps(2) infinite;
+}
+
+@keyframes scanlineShift {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+/* Full holographic on hover - pokemon-cards-css inspired */
+.card-celestial-forge .holo-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    /* Rainbow diagonal bands */
+    repeating-linear-gradient(
+      calc(var(--holo-angle, 0deg) + 30deg),
+      rgba(255, 100, 100, 0.04) 0%,
+      rgba(255, 200, 50, 0.06) 14%,
+      rgba(100, 255, 100, 0.06) 28%,
+      rgba(50, 200, 255, 0.06) 42%,
+      rgba(150, 100, 255, 0.06) 56%,
+      rgba(255, 100, 200, 0.04) 70%,
+      rgba(255, 100, 100, 0.04) 84%,
+      rgba(255, 200, 50, 0.06) 100%
+    ),
+    /* Metallic highlight */
+    radial-gradient(
+      ellipse at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.05) 30%,
+      transparent 60%
+    );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-celestial-forge:hover .holo-surface {
+  opacity: 1;
+  animation: foilShimmer 5s linear infinite;
+}
+
+.card-celestial-forge:hover .card-inner {
+  transform: translateY(-12px) scale(1.06);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(251, 191, 36, 0.15),
+    0 0 80px rgba(167, 139, 250, 0.08);
+}
+
+.card-celestial-forge .card-info .name {
+  background: linear-gradient(135deg, #fcd34d, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.card-celestial-forge .rarity-stars { color: #fbbf24; }
+
+
+/* ═══════════════════════════════════════════════
+   11. LEGENDARY — "NEPHILIM CONVERGENCE"
+   Idle: Cyan-magenta gradient rotation + energy wisps
+   Hover: Full holo + chromatic aberration + particle burst
+   ═══════════════════════════════════════════════ */
+.card-nephilim-conv::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    #00ffff,
+    #ff00ff,
+    #ffd700,
+    #00ffff,
+    #ff00ff,
+    #00ffff
+  );
+  animation: borderSpin 3.5s linear infinite;
+  z-index: -1;
+}
+
+.card-nephilim-conv::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(0, 255, 255, 0.4),
+    rgba(255, 0, 255, 0.3),
+    rgba(255, 215, 0, 0.3),
+    transparent,
+    transparent
+  );
+  filter: blur(20px);
+  animation: borderSpin 3.5s linear infinite;
+  z-index: -2;
+}
+
+.card-nephilim-conv .card-inner {
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.02);
+}
+
+/* Energy wisps */
+.card-nephilim-conv .wisps {
+  position: absolute;
+  inset: -24px;
+  pointer-events: none;
+  z-index: -1;
+}
+.card-nephilim-conv .wisp {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.card-nephilim-conv .wisp:nth-child(1) {
+  background: rgba(0, 255, 255, 0.7);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.5);
+  left: 5%; top: 30%;
+  animation: wispFloat1 4s ease-in-out infinite;
+}
+.card-nephilim-conv .wisp:nth-child(2) {
+  background: rgba(255, 0, 255, 0.6);
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
+  right: 8%; top: 50%;
+  animation: wispFloat2 6s ease-in-out infinite;
+}
+.card-nephilim-conv .wisp:nth-child(3) {
+  background: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+  left: 15%; bottom: 20%;
+  animation: wispFloat3 5s ease-in-out infinite;
+}
+.card-nephilim-conv .wisp:nth-child(4) {
+  background: rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+  right: 12%; bottom: 40%;
+  animation: wispFloat1 7s ease-in-out infinite reverse;
+}
+.card-nephilim-conv .wisp:nth-child(5) {
+  background: rgba(255, 0, 255, 0.5);
+  box-shadow: 0 0 8px rgba(255, 0, 255, 0.3);
+  left: 50%; top: 10%;
+  animation: wispFloat2 5.5s ease-in-out infinite reverse;
+}
+
+/* Full holographic on hover */
+.card-nephilim-conv .holo-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(
+      calc(var(--holo-angle, 0deg) + 60deg),
+      rgba(0, 255, 255, 0.04) 0%,
+      rgba(255, 0, 255, 0.06) 25%,
+      rgba(255, 215, 0, 0.06) 50%,
+      rgba(0, 255, 255, 0.04) 75%,
+      rgba(255, 0, 255, 0.06) 100%
+    ),
+    radial-gradient(
+      ellipse at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.04) 40%,
+      transparent 70%
+    );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-nephilim-conv:hover .holo-layer {
+  opacity: 1;
+  animation: foilShimmer 4s linear infinite;
+}
+
+/* Chromatic aberration on hover */
+.card-nephilim-conv .chromatic-layer {
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.card-nephilim-conv:hover .chromatic-layer {
+  opacity: 1;
+  box-shadow:
+    -3px 0 0 rgba(0, 255, 255, 0.25),
+    3px 0 0 rgba(255, 0, 255, 0.25);
+}
+
+.card-nephilim-conv:hover .card-inner {
+  transform: translateY(-14px) scale(1.06);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    0 0 48px rgba(0, 255, 255, 0.12),
+    0 0 80px rgba(255, 0, 255, 0.06);
+}
+
+.card-nephilim-conv .card-info .name {
+  background: linear-gradient(135deg, #00ffff, #ff00ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.card-nephilim-conv .rarity-stars { color: #fbbf24; }
+
+
+/* ═══════════════════════════════════════════════
+   12. LEGENDARY — "PRIMORDIAL FIRE"
+   Idle: Gold flame particles + warm aura
+   Hover: Intensity surge, dramatic lift, holographic rainbow
+   ═══════════════════════════════════════════════ */
+.card-primordial-fire::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: conic-gradient(
+    from var(--angle),
+    #ff6b2b,
+    #fbbf24,
+    #fcd34d,
+    #fbbf24,
+    #ff6b2b,
+    #fbbf24
+  );
+  animation: borderSpin 2.5s linear infinite;
+  z-index: -1;
+}
+
+.card-primordial-fire::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 20px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent,
+    rgba(255, 107, 43, 0.4),
+    rgba(251, 191, 36, 0.5),
+    rgba(255, 107, 43, 0.4),
+    transparent,
+    transparent
+  );
+  filter: blur(24px);
+  animation: borderSpin 2.5s linear infinite, firePulse 2s ease-in-out infinite;
+  z-index: -2;
+}
+
+@keyframes firePulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.card-primordial-fire .card-inner {
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow:
+    inset 0 -40px 60px rgba(255, 107, 43, 0.04),
+    inset 0 0 30px rgba(251, 191, 36, 0.03);
+}
+
+/* Flame particles - done via canvas in JS */
+
+/* Holographic rainbow on hover */
+.card-primordial-fire .foil-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(
+      calc(var(--holo-angle, 0deg) + 45deg),
+      rgba(255, 100, 50, 0.05) 0%,
+      rgba(255, 200, 50, 0.08) 20%,
+      rgba(255, 255, 100, 0.06) 40%,
+      rgba(255, 200, 50, 0.08) 60%,
+      rgba(255, 100, 50, 0.05) 80%,
+      rgba(255, 200, 50, 0.08) 100%
+    ),
+    radial-gradient(
+      ellipse at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255, 230, 150, 0.25) 0%,
+      rgba(255, 200, 100, 0.08) 30%,
+      transparent 60%
+    );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-primordial-fire:hover .foil-layer {
+  opacity: 1;
+  animation: foilShimmer 3s linear infinite;
+}
+
+.card-primordial-fire:hover .card-inner {
+  transform: translateY(-14px) scale(1.06);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    0 0 50px rgba(251, 191, 36, 0.25),
+    0 0 100px rgba(255, 107, 43, 0.1),
+    inset 0 -40px 60px rgba(255, 107, 43, 0.06);
+}
+
+.card-primordial-fire:hover::after {
+  filter: blur(32px);
+  opacity: 1;
+}
+
+.card-primordial-fire .card-info .name {
+  background: linear-gradient(135deg, #fcd34d, #ff6b2b, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.card-primordial-fire .rarity-stars { color: #fbbf24; }
+
+
+/* ═══════════════════════════════════════════════
+   3D TILT (Applied via JavaScript to hover-tiltable cards)
+   ═══════════════════════════════════════════════ */
+.tilt-3d {
+  transition: transform 0.15s ease-out;
+}
+
+/* ═══════════════════════════════════════════════
+   PARTICLE CANVAS OVERLAY
+   ═══════════════════════════════════════════════ */
+.particle-canvas {
+  position: absolute;
+  inset: -30px;
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* ═══════════════════════════════════════════════
+   Dividers between sections
+   ═══════════════════════════════════════════════ */
+.section-divider {
+  height: 1px;
+  margin: 0 48px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+
+/* ═══════════════════════════════════════════════
+   LEGEND / KEY
+   ═══════════════════════════════════════════════ */
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.5);
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Rarity Card Effects</h1>
+  <p>Professional gacha-quality VFX &mdash; 12 variants across 4 rarity tiers</p>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Common</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Rare</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Epic</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Legendary</div>
+  </div>
+</div>
+
+<!-- ═══════════════ COMMON ═══════════════ -->
+<div class="rarity-section section-common">
+  <h2>Common</h2>
+  <p class="rarity-subtitle">Minimal treatment &mdash; clean, quiet, understated</p>
+  <div class="cards-row">
+
+    <!-- 1. Silent Glass -->
+    <div class="card-demo">
+      <div class="card card-silent-glass">
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+            <div class="rarity-stars">&#9734;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Wanderer</div>
+            <div class="title">The Drifter</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#94a3b8">Silent Glass</div>
+        <div class="effect-desc">Static glassmorphism. Silver glare sweep on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: static</span>
+          <span class="tag tag-hover">hover: glare sweep</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Dim Echo -->
+    <div class="card-demo">
+      <div class="card card-dim-echo" data-tilt>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a1a2e 0%, #1c1c3a 50%, #252547 100%);">
+            <div class="rarity-stars">&#9734;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Nomad</div>
+            <div class="title">The Wanderer</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#94a3b8">Dim Echo</div>
+        <div class="effect-desc">Breathing border opacity. 3D tilt + radial glare on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: breathing</span>
+          <span class="tag tag-hover">hover: tilt + glare</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════ RARE ═══════════════ -->
+<div class="rarity-section section-rare">
+  <h2>Rare</h2>
+  <p class="rarity-subtitle">Awakening energy &mdash; pulsing borders, cyan resonance</p>
+  <div class="cards-row">
+
+    <!-- 3. Frost Pulse -->
+    <div class="card-demo">
+      <div class="card card-frost-pulse" data-tilt>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #0a192f 0%, #0d2137 50%, #0f2b45 100%);">
+            <div class="rarity-stars">&#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Nyx</div>
+            <div class="title">The Muse</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#06b6d4">Frost Pulse</div>
+        <div class="effect-desc">Pulsing cyan glow border. 3D tilt + intensified glow on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: pulse glow</span>
+          <span class="tag tag-hover">hover: tilt + bloom</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Azure Stream -->
+    <div class="card-demo">
+      <div class="card card-azure-stream" data-tilt>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #0a192f 0%, #102a43 50%, #1a365d 100%);">
+            <div class="rarity-stars">&#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Cipher</div>
+            <div class="title">The Maven</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#06b6d4">Azure Stream</div>
+        <div class="effect-desc">Rotating cyan border + gentle float. Holographic sheen sweep on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: float + spin border</span>
+          <span class="tag tag-hover">hover: holo sheen</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Circuit Trace -->
+    <div class="card-demo">
+      <div class="card card-circuit-trace" data-tilt>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #0a1628 0%, #0e1f3d 50%, #152847 100%);">
+            <div class="rarity-stars">&#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Cipher</div>
+            <div class="title">The Maven</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#06b6d4">Circuit Trace</div>
+        <div class="effect-desc">Traveling light dot along border. Grid overlay + accelerated trace on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: light trace</span>
+          <span class="tag tag-hover">hover: grid + accelerate</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════ EPIC ═══════════════ -->
+<div class="rarity-section section-epic">
+  <h2>Epic</h2>
+  <p class="rarity-subtitle">Awakened power &mdash; arcane borders, particle wisps, holographic surfaces</p>
+  <div class="cards-row">
+
+    <!-- 6. Void Rift -->
+    <div class="card-demo">
+      <div class="card card-void-rift" data-tilt>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a0a2e 0%, #2d1b69 50%, #1a0a2e 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Aegis</div>
+            <div class="title">The Sentinel</div>
+          </div>
+        </div>
+        <div class="holo-layer"></div>
+        <div class="chromatic-layer"></div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#a78bfa">Void Rift</div>
+        <div class="effect-desc">Rotating purple conic border + bloom glow. Holographic overlay + chromatic aberration on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: spin border + bloom</span>
+          <span class="tag tag-hover">hover: holo + chromatic</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Arcane Tempest -->
+    <div class="card-demo">
+      <div class="card card-arcane-tempest" data-tilt>
+        <div class="aurora-orb aurora-orb-1"></div>
+        <div class="aurora-orb aurora-orb-2"></div>
+        <div class="aurora-orb aurora-orb-3"></div>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a0a2e 0%, #1f1145 50%, #2a1555 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Solace</div>
+            <div class="title">The Empath</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#a78bfa">Arcane Tempest</div>
+        <div class="effect-desc">Floating purple aurora orbs. Aurora intensifies + rainbow holo sweep on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: aurora orbs</span>
+          <span class="tag tag-hover">hover: aurora surge + holo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Phantom Edge -->
+    <div class="card-demo">
+      <div class="card card-phantom-edge" data-tilt>
+        <div class="wisps">
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+        </div>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #150a28 0%, #1e1040 50%, #261555 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">Aurora</div>
+            <div class="title">The Oracle</div>
+          </div>
+        </div>
+        <div class="spotlight"></div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#a78bfa">Phantom Edge</div>
+        <div class="effect-desc">Dual-layer border + floating energy wisps. Mouse-tracked spotlight on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: wisps + dual border</span>
+          <span class="tag tag-hover">hover: spotlight + lift</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════ LEGENDARY ═══════════════ -->
+<div class="rarity-section section-legendary">
+  <h2>Legendary</h2>
+  <p class="rarity-subtitle">Transcendent &mdash; maximum visual intensity, holographic foil, particle storms</p>
+  <div class="cards-row">
+
+    <!-- 9. Solar Crown -->
+    <div class="card-demo">
+      <div class="card card-solar-crown" data-tilt data-particles="gold">
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a1500 0%, #2d2200 50%, #3d2e00 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">E.E.V.A.</div>
+            <div class="title">The Primarch</div>
+          </div>
+        </div>
+        <div class="foil-layer"></div>
+        <canvas class="particle-canvas" data-type="gold-sparkle"></canvas>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#fbbf24">Solar Crown</div>
+        <div class="effect-desc">Gold rotating border + floating particles. Holographic foil + particle storm on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: gold spin + particles</span>
+          <span class="tag tag-hover">hover: foil + storm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. Celestial Forge -->
+    <div class="card-demo">
+      <div class="card card-celestial-forge" data-tilt>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a1200 0%, #252000 50%, #302800 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">E.E.V.A.</div>
+            <div class="title">The Primarch</div>
+          </div>
+        </div>
+        <div class="scanlines"></div>
+        <div class="holo-surface"></div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#fbbf24">Celestial Forge</div>
+        <div class="effect-desc">Rainbow rotating border + scanlines. Full Pokemon-style holographic + mouse-tracked metallic highlight on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: rainbow spin + scanlines</span>
+          <span class="tag tag-hover">hover: full holo + 3D</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. Nephilim Convergence -->
+    <div class="card-demo">
+      <div class="card card-nephilim-conv" data-tilt>
+        <div class="wisps">
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+          <div class="wisp"></div>
+        </div>
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #0a0a1a 0%, #0f0f2d 50%, #141430 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">E.E.V.A.</div>
+            <div class="title">The Primarch</div>
+          </div>
+        </div>
+        <div class="holo-layer"></div>
+        <div class="chromatic-layer"></div>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#fbbf24">Nephilim Convergence</div>
+        <div class="effect-desc">Cyan-magenta-gold border rotation + multi-color wisps. Full holo + chromatic aberration on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: tri-color spin + wisps</span>
+          <span class="tag tag-hover">hover: holo + chromatic + burst</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12. Primordial Fire -->
+    <div class="card-demo">
+      <div class="card card-primordial-fire" data-tilt data-particles="fire">
+        <div class="card-inner">
+          <div class="card-image" style="background: linear-gradient(135deg, #1a0a00 0%, #2d1500 50%, #3d1e00 100%);">
+            <div class="rarity-stars">&#9733; &#9733; &#9733; &#9733;</div>
+          </div>
+          <div class="card-info">
+            <div class="name">E.E.V.A.</div>
+            <div class="title">The Primarch</div>
+          </div>
+        </div>
+        <div class="foil-layer"></div>
+        <canvas class="particle-canvas" data-type="fire-ember"></canvas>
+      </div>
+      <div class="card-label">
+        <div class="effect-name" style="color:#fbbf24">Primordial Fire</div>
+        <div class="effect-desc">Fast gold-orange border + rising ember particles + pulsing aura. Holographic foil + intensity surge on hover.</div>
+        <div class="effect-tags">
+          <span class="tag tag-idle">idle: embers + fire aura</span>
+          <span class="tag tag-hover">hover: foil + surge</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="height: 80px;"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   INTERACTIVE EFFECTS ENGINE
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── 3D Tilt System ──
+document.querySelectorAll('[data-tilt]').forEach(card => {
+  const inner = card.querySelector('.card-inner')
+  const maxTilt = 15
+  let isHovered = false
+  let raf = null
+
+  card.addEventListener('mouseenter', () => {
+    isHovered = true
+    card.style.transition = 'none'
+    if (inner) inner.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease'
+  })
+
+  card.addEventListener('mousemove', (e) => {
+    if (!isHovered) return
+    if (raf) cancelAnimationFrame(raf)
+    raf = requestAnimationFrame(() => {
+      const rect = card.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / rect.width
+      const y = (e.clientY - rect.top) / rect.height
+      const tiltX = (y - 0.5) * -maxTilt * 2
+      const tiltY = (x - 0.5) * maxTilt * 2
+
+      card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`
+
+      // Update mouse position CSS variables for glare/spotlight effects
+      card.style.setProperty('--mouse-x', `${x * 100}%`)
+      card.style.setProperty('--mouse-y', `${y * 100}%`)
+
+      // Also set on inner for nested elements
+      if (inner) {
+        inner.style.setProperty('--mouse-x', `${x * 100}%`)
+        inner.style.setProperty('--mouse-y', `${y * 100}%`)
+      }
+
+      // Update holo angle based on mouse position
+      const angle = Math.atan2(y - 0.5, x - 0.5) * (180 / Math.PI)
+      card.style.setProperty('--holo-angle', `${angle}deg`)
+    })
+  })
+
+  card.addEventListener('mouseleave', () => {
+    isHovered = false
+    if (raf) cancelAnimationFrame(raf)
+    card.style.transition = 'transform 0.6s cubic-bezier(0.03, 0.98, 0.52, 0.99)'
+    card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)'
+    card.style.removeProperty('--mouse-x')
+    card.style.removeProperty('--mouse-y')
+    if (inner) {
+      inner.style.transition = ''
+      inner.style.removeProperty('--mouse-x')
+      inner.style.removeProperty('--mouse-y')
+    }
+  })
+})
+
+// ── Particle System (Canvas-based) ──
+class Particle {
+  constructor(x, y, config) {
+    this.x = x
+    this.y = y
+    this.config = config
+    this.vx = (Math.random() - 0.5) * config.speedX
+    this.vy = config.speedY.min + Math.random() * (config.speedY.max - config.speedY.min)
+    this.life = 1.0
+    this.decay = config.decay.min + Math.random() * (config.decay.max - config.decay.min)
+    this.size = config.size.min + Math.random() * (config.size.max - config.size.min)
+    this.color = config.colors[Math.floor(Math.random() * config.colors.length)]
+    this.wobble = Math.random() * Math.PI * 2
+    this.wobbleSpeed = (Math.random() - 0.5) * 0.04
+  }
+
+  update() {
+    this.wobble += this.wobbleSpeed
+    this.x += this.vx + Math.sin(this.wobble) * 0.3
+    this.y += this.vy
+    this.life -= this.decay
+    this.size *= 0.998
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return
+    ctx.save()
+    ctx.globalAlpha = this.life * 0.8
+    ctx.shadowBlur = this.size * 4
+    ctx.shadowColor = this.color
+    ctx.fillStyle = this.color
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Inner bright core
+    ctx.globalAlpha = this.life * 0.5
+    ctx.shadowBlur = 0
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+}
+
+const PARTICLE_CONFIGS = {
+  'gold-sparkle': {
+    colors: ['#fbbf24', '#fcd34d', '#f59e0b', '#fef3c7', '#ffffff'],
+    speedX: 0.8,
+    speedY: { min: -1.2, max: -0.3 },
+    decay: { min: 0.003, max: 0.008 },
+    size: { min: 1, max: 3 },
+    spawnRate: 0.15,
+    spawnEdge: true,
+    maxParticles: 40
+  },
+  'fire-ember': {
+    colors: ['#ff6b2b', '#fbbf24', '#ff4500', '#fcd34d', '#ff8c00'],
+    speedX: 1.2,
+    speedY: { min: -2.0, max: -0.5 },
+    decay: { min: 0.004, max: 0.012 },
+    size: { min: 1.5, max: 3.5 },
+    spawnRate: 0.25,
+    spawnEdge: false, // spawn from bottom
+    maxParticles: 50
+  }
+}
+
+// Initialize particle canvases
+document.querySelectorAll('.particle-canvas').forEach(canvas => {
+  const type = canvas.dataset.type
+  const config = PARTICLE_CONFIGS[type]
+  if (!config) return
+
+  const card = canvas.closest('.card')
+  const ctx = canvas.getContext('2d')
+  const particles = []
+  let isHovered = false
+
+  function resize() {
+    const rect = card.getBoundingClientRect()
+    canvas.width = rect.width + 60
+    canvas.height = rect.height + 60
+  }
+  resize()
+  window.addEventListener('resize', resize)
+
+  card.addEventListener('mouseenter', () => isHovered = true)
+  card.addEventListener('mouseleave', () => isHovered = false)
+
+  function spawn() {
+    if (particles.length >= config.maxParticles) return
+    const spawnChance = isHovered ? config.spawnRate * 3 : config.spawnRate
+
+    if (Math.random() < spawnChance) {
+      let x, y
+      if (config.spawnEdge) {
+        // Spawn around card edges
+        const edge = Math.floor(Math.random() * 4)
+        switch (edge) {
+          case 0: x = Math.random() * canvas.width; y = 30; break // top
+          case 1: x = canvas.width - 30; y = Math.random() * canvas.height; break // right
+          case 2: x = Math.random() * canvas.width; y = canvas.height - 30; break // bottom
+          case 3: x = 30; y = Math.random() * canvas.height; break // left
+        }
+      } else {
+        // Spawn from bottom (fire embers)
+        x = 30 + Math.random() * (canvas.width - 60)
+        y = canvas.height - 20
+      }
+      particles.push(new Particle(x, y, config))
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    spawn()
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].update()
+      particles[i].draw(ctx)
+      if (particles[i].life <= 0) {
+        particles.splice(i, 1)
+      }
+    }
+
+    requestAnimationFrame(animate)
+  }
+
+  animate()
+})
+
+// ── Mouse tracking for non-tilt cards (Dim Echo) ──
+document.querySelectorAll('.card-dim-echo, .card-frost-pulse').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    card.style.setProperty('--mouse-x', `${x}%`)
+    card.style.setProperty('--mouse-y', `${y}%`)
+  })
+})
+</script>
+
+</body>
+</html>

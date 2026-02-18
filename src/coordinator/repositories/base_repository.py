@@ -21,7 +21,7 @@ class BaseRepository:
             db_path: Path to database file (SQLite default)
             adapter: Optional database adapter instance (defaults to SQLiteAdapter)
         """
-        self._db_path = db_path or os.environ.get("COORDINATOR_DB_PATH", "chats.db")
+        self._db_path = db_path or os.environ.get("COORDINATOR_DB_PATH", "data/chats.db")
         self._lock = threading.Lock()
 
         # Use provided adapter or default to SQLiteAdapter

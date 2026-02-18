@@ -8,6 +8,9 @@ import time
 import json
 import sqlite3
 from datetime import datetime
+import pytest
+
+pytestmark = [pytest.mark.requires_ollama, pytest.mark.integration]
 
 BASE_URL = "http://localhost:8000"
 

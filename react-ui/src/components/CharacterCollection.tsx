@@ -93,7 +93,7 @@ const CharacterCollection: React.FC<CharacterCollectionProps> = ({ onCharacterSe
                   name={persona.display_name || persona.key}
                   style={persona.style}
                   image={`/images/${persona.image.replace('images/', '')}`}
-                  rarity={persona.rarity}
+                  celestial_order={persona.celestial_order ?? 'wanderer'}
                   onSelect={onCharacterSelect}
                   onChoose={onChoose}
                   isSelected={selectedPersonaKey === persona.key}

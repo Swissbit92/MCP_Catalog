@@ -43,7 +43,8 @@ from .fact_extractor import FactExtractor
 logger = logging.getLogger(__name__)
 
 # ----------------- Global State -----------------
-_DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "chats.db")
+_DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "data/chats.db")
+os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True) if os.path.dirname(_DB_PATH) else None
 
 # MCP Clients
 _brave_client: Optional[BraveMCPClientStdio] = None
@@ -366,6 +367,9 @@ def initialize_all():
             logger.info("MongoDB MCP disabled (no URI or feature flag off)")
     except Exception as e:
         logger.warning(f"MongoDB MCP initialization warning: {e}")
+
+    # Remove sessions for personas that no longer exist
+    cleanup_orphaned_sessions()
 
     # Refresh persona summaries
     try:

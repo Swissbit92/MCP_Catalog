@@ -436,7 +436,7 @@ const Chat: React.FC = () => {
                       <ToolIndicator
                         toolType={toolType}
                         personaName={selectedPersona?.display_name}
-                        rarity={selectedPersona?.rarity}
+                        celestial_order={selectedPersona?.celestial_order ?? 'wanderer'}
                       />
                     </div>
                   )}

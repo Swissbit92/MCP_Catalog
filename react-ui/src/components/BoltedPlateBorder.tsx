@@ -3,31 +3,31 @@ import { motion } from 'framer-motion';
 
 interface BoltedPlateBorderProps {
   children: React.ReactNode;
-  rarity: string;
+  celestial_order: string;
   className?: string;
 }
 
-const getRarityColors = (rarity: string) => {
-  switch (rarity.toLowerCase()) {
-    case 'legendary':
+const getOrderColors = (order: string) => {
+  switch (order.toLowerCase()) {
+    case 'archon':
       return {
         base: 'border-yellow-400/30',
         glow: 'shadow-yellow-400/50',
         accent: 'border-yellow-300'
       };
-    case 'epic':
+    case 'warden':
       return {
         base: 'border-purple-400/30',
         glow: 'shadow-purple-400/50',
         accent: 'border-purple-300'
       };
-    case 'rare':
+    case 'sage':
       return {
         base: 'border-blue-400/30',
         glow: 'shadow-blue-400/50',
         accent: 'border-blue-300'
       };
-    case 'common':
+    case 'wanderer':
     default:
       return {
         base: 'border-gray-400/30',
@@ -39,11 +39,11 @@ const getRarityColors = (rarity: string) => {
 
 const BoltedPlateBorder: React.FC<BoltedPlateBorderProps> = ({
   children,
-  rarity,
+  celestial_order,
   className = ''
 }) => {
   const [isHovered, setIsHovered] = React.useState(false);
-  const colors = getRarityColors(rarity);
+  const colors = getOrderColors(celestial_order);
 
   return (
     <motion.div
@@ -105,7 +105,7 @@ const BoltedPlateBorder: React.FC<BoltedPlateBorderProps> = ({
             scale: [1, 1.005, 1]
           }}
           transition={{
-            duration: rarity === 'legendary' ? 4 : rarity === 'epic' ? 5 : 6,
+            duration: celestial_order === 'archon' ? 4 : celestial_order === 'warden' ? 5 : 6,
             repeat: Infinity,
             ease: [0.4, 0, 0.6, 1]
           }}

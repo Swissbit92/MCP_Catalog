@@ -24,10 +24,10 @@
   filter:saturate(1.05)
 }
 
-.rarity-legendary{--glow:rgba(255,208,80,.9);--glow2:rgba(255,240,166,.7)}
-.rarity-epic{--glow:rgba(186,120,255,.85);--glow2:rgba(246,212,255,.65)}
-.rarity-rare{--glow:rgba(66,245,255,.85);--glow2:rgba(212,246,255,.65)}
-.rarity-common{--glow:rgba(230,230,230,.85);--glow2:rgba(250,250,250,.6)}
+.order-archon{--glow:rgba(255,208,80,.9);--glow2:rgba(255,240,166,.7)}
+.order-warden{--glow:rgba(186,120,255,.85);--glow2:rgba(246,212,255,.65)}
+.order-sage{--glow:rgba(66,245,255,.85);--glow2:rgba(212,246,255,.65)}
+.order-wanderer{--glow:rgba(230,230,230,.85);--glow2:rgba(250,250,250,.6)}
 
 .card-outer.selected{transform:translateY(-4px) scale(1.01);filter:saturate(1.12) brightness(1.03);box-shadow:0 20px 40px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.22),0 0 24px var(--glow)}
 .card-outer.selected::before{content:"";position:absolute;inset:-8px;border-radius:26px;background:radial-gradient(60% 50% at 50% 6%,var(--glow2),transparent 60%),radial-gradient(70% 60% at 50% 100%,var(--glow),transparent 70%);filter:blur(14px);opacity:.85;z-index:0;pointer-events:none;animation:haloPulse 2.2s ease-in-out infinite}
@@ -40,10 +40,10 @@
 .card-glint{position:absolute;inset:-20%;background:linear-gradient(120deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.18) 50%,rgba(255,255,255,0) 65%);transform:translateX(-60%);animation:glintSweep 4.6s ease-in-out infinite;mix-blend-mode:screen;pointer-events:none;z-index:2}
 @keyframes foilSpin{0%{filter:hue-rotate(0) brightness(1)}50%{filter:hue-rotate(30deg) brightness(1.05)}100%{filter:hue-rotate(0) brightness(1)}}
 @keyframes glintSweep{0%{transform:translateX(-70%) rotate(.2deg)}55%{transform:translateX(60%) rotate(.2deg)}100%{transform:translateX(110%) rotate(.2deg)}}
-.rarity-legendary .card-frame{background:conic-gradient(from 180deg,#fff8d6,#ffe07a,#ffbf4a,#ffd36e,#fff0a6,#ffe07a,#fff8d6);box-shadow:0 0 26px rgba(255,208,80,.45),inset 0 0 12px rgba(255,208,80,.35)}
-.rarity-epic .card-frame{background:conic-gradient(from 180deg,#f6d4ff,#d09aff,#b974ff,#ff64f6,#f6d4ff);box-shadow:0 0 24px rgba(186,120,255,.4),inset 0 0 10px rgba(186,120,255,.3)}
-.rarity-rare .card-frame{background:conic-gradient(from 180deg,#d4f6ff,#9fe3ff,#6fd6ff,#42f5ff,#d4f6ff);box-shadow:0 0 22px rgba(66,245,255,.35),inset 0 0 10px rgba(66,245,255,.25)}
-.rarity-common .card-frame{background:conic-gradient(from 180deg,#f2f2f2,#ddd,#ccc,#eee,#f2f2f2);box-shadow:0 0 18px rgba(220,220,220,.25),inset 0 0 8px rgba(230,230,230,.2)}
+.order-archon .card-frame{background:conic-gradient(from 180deg,#fff8d6,#ffe07a,#ffbf4a,#ffd36e,#fff0a6,#ffe07a,#fff8d6);box-shadow:0 0 26px rgba(255,208,80,.45),inset 0 0 12px rgba(255,208,80,.35)}
+.order-warden .card-frame{background:conic-gradient(from 180deg,#f6d4ff,#d09aff,#b974ff,#ff64f6,#f6d4ff);box-shadow:0 0 24px rgba(186,120,255,.4),inset 0 0 10px rgba(186,120,255,.3)}
+.order-sage .card-frame{background:conic-gradient(from 180deg,#d4f6ff,#9fe3ff,#6fd6ff,#42f5ff,#d4f6ff);box-shadow:0 0 22px rgba(66,245,255,.35),inset 0 0 10px rgba(66,245,255,.25)}
+.order-wanderer .card-frame{background:conic-gradient(from 180deg,#f2f2f2,#ddd,#ccc,#eee,#f2f2f2);box-shadow:0 0 18px rgba(220,220,220,.25),inset 0 0 8px rgba(230,230,230,.2)}
 .card-spotlight{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;mix-blend-mode:overlay;transition:background .1s ease}
 .card-body{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;padding:10px;box-sizing:border-box;gap:4px;z-index:3}
 
@@ -70,18 +70,18 @@
 
 /* Remaining 20%: split 10% + 10% for title and tagline */
 .card-name{flex:0 0 10%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;margin-top:4px;font-weight:800;text-align:center;font-size:1.06em;line-height:1.15;letter-spacing:.02em;color:#fff8e7;text-shadow:0 0 6px rgba(255,220,120,.4),0 1px 0 rgba(0,0,0,.6)}
-.rarity-epic .card-name{text-shadow:0 0 6px rgba(186,120,255,.45),0 1px 0 rgba(0,0,0,.6)}
-.rarity-rare .card-name{text-shadow:0 0 6px rgba(66,245,255,.45),0 1px 0 rgba(0,0,0,.6)}
-.rarity-common .card-name{text-shadow:0 0 6px rgba(220,220,220,.4),0 1px 0 rgba(0,0,0,.6)}
+.order-warden .card-name{text-shadow:0 0 6px rgba(186,120,255,.45),0 1px 0 rgba(0,0,0,.6)}
+.order-sage .card-name{text-shadow:0 0 6px rgba(66,245,255,.45),0 1px 0 rgba(0,0,0,.6)}
+.order-wanderer .card-name{text-shadow:0 0 6px rgba(220,220,220,.4),0 1px 0 rgba(0,0,0,.6)}
 .card-tagline{flex:0 0 10%;width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;text-align:center;opacity:.96;font-size:.95em;line-height:1.2;min-height:2.1em;color:#fefce8}
 
 .card-choose{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .14s,transform .14s;pointer-events:none}
 .card-outer:hover .card-choose{opacity:1;transform:scale(1.02);pointer-events:auto}
 .choose-pill{padding:12px 18px;border-radius:999px;background:rgba(17,24,39,.85);color:#fff;border:1px solid rgba(255,255,255,.5);font-weight:700;box-shadow:0 8px 16px rgba(0,0,0,.35);cursor:pointer;user-select:none;text-decoration:none!important;outline:none;border-width:1px;font-size:clamp(.9rem,1.5vw,1rem)}
 .rarity-badge{position:absolute;top:8px;left:10px;z-index:4;padding:4px 10px;font-weight:800;font-size:.78rem;border-radius:999px;letter-spacing:.02em;color:#111827;background:linear-gradient(135deg,#ffe9a6,#ffd36e,#ffbf4a);border:1px solid rgba(0,0,0,.25);box-shadow:0 2px 8px rgba(0,0,0,.25),inset 0 0 6px rgba(255,255,255,.45);text-shadow:0 1px 0 rgba(255,255,255,.6);backdrop-filter:blur(2px)}
-.rarity-epic .rarity-badge{background:linear-gradient(135deg,#f6d4ff,#d09aff,#b974ff);color:#1a0b2e}
-.rarity-rare .rarity-badge{background:linear-gradient(135deg,#d4f6ff,#9fe3ff,#42f5ff);color:#06222a}
-.rarity-common .rarity-badge{background:linear-gradient(135deg,#f4f4f4,#dfdfdf,#cfcfcf);color:#1f2937}
+.order-warden .rarity-badge{background:linear-gradient(135deg,#f6d4ff,#d09aff,#b974ff);color:#1a0b2e}
+.order-sage .rarity-badge{background:linear-gradient(135deg,#d4f6ff,#9fe3ff,#42f5ff);color:#06222a}
+.order-wanderer .rarity-badge{background:linear-gradient(135deg,#f4f4f4,#dfdfdf,#cfcfcf);color:#1f2937}
 .mint-plate{position:absolute;top:8px;right:10px;z-index:4;padding:4px 10px;font-weight:700;font-size:.78rem;border-radius:8px;letter-spacing:.02em;color:#fff6d4;background:linear-gradient(135deg,rgba(17,24,39,.9),rgba(45,55,72,.85));border:1px solid rgba(255,255,255,.18);box-shadow:0 2px 8px rgba(0,0,0,.25),inset 0 0 6px rgba(255,255,255,.08);text-shadow:0 1px 0 rgba(0,0,0,.6);backdrop-filter:blur(2px)}
 
 /* Card Reveal Styles */
@@ -231,38 +231,38 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   RARITY-SPECIFIC CARD EFFECTS
+   ORDER-SPECIFIC CARD EFFECTS
    ═══════════════════════════════════════════════════════════ */
 
 /* Local keyframes for CSS Module scoping (must be defined here, not just in global index.css,
    because css-loader mangles animation-name references to match local @keyframes) */
-@keyframes rarity-border-spin {
+@keyframes order-border-spin {
   to { --border-angle: 360deg; }
 }
 
-@keyframes rarity-holo-spin {
+@keyframes order-holo-spin {
   to { --holo-angle: 360deg; }
 }
 
-/* ── A. Suppress universal effects per rarity ── */
-.rarity-common .card-frame { opacity: 0; }
-.rarity-common .card-foil { opacity: 0.15; }
-.rarity-common .card-glint { display: none; }
+/* ── A. Suppress universal effects per order ── */
+.order-wanderer .card-frame { opacity: 0; }
+.order-wanderer .card-foil { opacity: 0.15; }
+.order-wanderer .card-glint { display: none; }
 
-.rarity-rare .card-frame,
-.rarity-epic .card-frame,
-.rarity-legendary .card-frame { opacity: 0; }
+.order-sage .card-frame,
+.order-warden .card-frame,
+.order-archon .card-frame { opacity: 0; }
 
-.rarity-rare .card-foil,
-.rarity-epic .card-foil,
-.rarity-legendary .card-foil { opacity: 0.25; }
+.order-sage .card-foil,
+.order-warden .card-foil,
+.order-archon .card-foil { opacity: 0.25; }
 
-.rarity-rare .card-glint,
-.rarity-epic .card-glint,
-.rarity-legendary .card-glint { display: none; }
+.order-sage .card-glint,
+.order-warden .card-glint,
+.order-archon .card-glint { display: none; }
 
 /* ── B. Wanderer "Dim Echo" ── */
-.common-breathe {
+.wanderer-breathe {
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -295,13 +295,13 @@
 
 .card-outer:hover .cursor-glare { opacity: 1; }
 
-.rarity-common:hover {
+.order-wanderer:hover {
   box-shadow: 0 18px 32px rgba(0,0,0,.45), 0 0 12px rgba(148, 163, 184, 0.08);
   filter: saturate(1.05);
 }
 
 /* ── C. Sage "Frost Pulse" ── */
-.rarity-rare {
+.order-sage {
   animation: rareFrostPulse 3s ease-in-out infinite;
 }
 
@@ -314,7 +314,7 @@
   }
 }
 
-.rarity-rare:hover {
+.order-sage:hover {
   animation: none;
   box-shadow: 0 18px 32px rgba(0,0,0,.45), 0 0 24px rgba(6, 182, 212, 0.25), 0 0 48px rgba(6, 182, 212, 0.1);
   filter: brightness(1.05) saturate(1.1);
@@ -335,7 +335,7 @@
 }
 
 /* Sage spinning border: cyan, 5s */
-.rarity-rare .border-spin {
+.order-sage .border-spin {
   background: conic-gradient(
     from var(--border-angle),
     rgba(6, 182, 212, 0.05),
@@ -344,11 +344,11 @@
     rgba(6, 182, 212, 0.4),
     rgba(6, 182, 212, 0.05)
   );
-  animation: rarity-border-spin 5s linear infinite;
+  animation: order-border-spin 5s linear infinite;
 }
 
 /* Warden spinning border: purple, 4s */
-.rarity-epic .border-spin {
+.order-warden .border-spin {
   background: conic-gradient(
     from var(--border-angle),
     rgba(167, 139, 250, 0.1),
@@ -357,11 +357,11 @@
     rgba(139, 92, 246, 0.5),
     rgba(167, 139, 250, 0.1)
   );
-  animation: rarity-border-spin 4s linear infinite;
+  animation: order-border-spin 4s linear infinite;
 }
 
 /* Archon spinning border: gold, 3s (fastest) */
-.rarity-legendary .border-spin {
+.order-archon .border-spin {
   background: conic-gradient(
     from var(--border-angle),
     #fbbf24,
@@ -371,11 +371,11 @@
     #f59e0b,
     #fbbf24
   );
-  animation: rarity-border-spin 3s linear infinite;
+  animation: order-border-spin 3s linear infinite;
 }
 
 /* ── E. Warden "Void Rift + Arcane Tempest" ── */
-.rarity-epic {
+.order-warden {
   animation: epicAuraPulse 3.5s ease-in-out infinite;
 }
 
@@ -388,7 +388,7 @@
   }
 }
 
-.rarity-epic:hover {
+.order-warden:hover {
   animation: none;
   box-shadow: 0 18px 32px rgba(0,0,0,.45), 0 0 28px rgba(167, 139, 250, 0.3), 0 0 56px rgba(167, 139, 250, 0.12),
     -2px 0 0 rgba(255, 0, 100, 0.15), 2px 0 0 rgba(0, 100, 255, 0.15);
@@ -484,11 +484,11 @@
 
 .card-outer:hover .holo-foil {
   opacity: 1;
-  animation: rarity-holo-spin 5s linear infinite;
+  animation: order-holo-spin 5s linear infinite;
 }
 
 /* ── F. Archon "Solar Crown" ── */
-.rarity-legendary {
+.order-archon {
   overflow: visible;
   animation: legendaryAuraPulse 3s ease-in-out infinite;
 }
@@ -503,15 +503,15 @@
 }
 
 /* Gold-tinted aurora orbs for Archon */
-.rarity-legendary .aurora-orb-1 {
+.order-archon .aurora-orb-1 {
   background: rgba(251, 191, 36, 0.2);
 }
 
-.rarity-legendary .aurora-orb-2 {
+.order-archon .aurora-orb-2 {
   background: rgba(245, 158, 11, 0.15);
 }
 
-.rarity-legendary .aurora-orb-3 {
+.order-archon .aurora-orb-3 {
   background: rgba(252, 211, 77, 0.12);
 }
 
@@ -546,10 +546,10 @@
 
 .card-outer:hover .legendary-foil {
   opacity: 1;
-  animation: rarity-holo-spin 3s linear infinite;
+  animation: order-holo-spin 3s linear infinite;
 }
 
-.rarity-legendary:hover {
+.order-archon:hover {
   animation: none;
   box-shadow: 0 20px 40px rgba(0,0,0,.5), 0 0 35px rgba(251, 191, 36, 0.3), 0 0 70px rgba(251, 191, 36, 0.12), 0 0 100px rgba(251, 191, 36, 0.06),
     -2px 0 0 rgba(255, 180, 50, 0.2), 2px 0 0 rgba(255, 100, 50, 0.15);
@@ -558,7 +558,7 @@
 
 /* ── G. Reduced motion for rarity effects ── */
 @media (prefers-reduced-motion: reduce) {
-  .common-breathe { animation: none; }
+  .wanderer-breathe { animation: none; }
   .border-spin { animation: none; }
   .aurora-orb,
   .aurora-orb-1,
@@ -566,9 +566,9 @@
   .aurora-orb-3 { animation: none; }
   .holo-foil { animation: none; transition: none; }
   .legendary-foil { animation: none; transition: none; }
-  .rarity-rare { animation: none; }
-  .rarity-epic { animation: none; }
-  .rarity-legendary { animation: none; }
+  .order-sage { animation: none; }
+  .order-warden { animation: none; }
+  .order-archon { animation: none; }
 }
 
 /* ── H. Mobile optimizations ── */

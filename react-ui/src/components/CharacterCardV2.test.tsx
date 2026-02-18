@@ -8,10 +8,10 @@ jest.mock('./CharacterCardV2.module.css', () => ({
   __esModule: true,
   default: {
     'card-outer': 'card-outer',
-    'rarity-legendary': 'rarity-legendary',
-    'rarity-epic': 'rarity-epic',
-    'rarity-rare': 'rarity-rare',
-    'rarity-common': 'rarity-common',
+    'order-archon': 'order-archon',
+    'order-warden': 'order-warden',
+    'order-sage': 'order-sage',
+    'order-wanderer': 'order-wanderer',
     'selected': 'selected',
     'holo-bg-layer-1': 'holo-bg-layer-1',
     'holo-bg-layer-2': 'holo-bg-layer-2',
@@ -42,7 +42,6 @@ describe('CharacterCardV2', () => {
     name: 'Test Character',
     style: 'Test Style',
     image: '/test-image.png',
-    rarity: 'legendary',
     celestial_order: 'archon',
     onSelect: jest.fn(),
     isSelected: false,
@@ -64,11 +63,11 @@ describe('CharacterCardV2', () => {
     expect(screen.getByAltText('Test Character')).toBeInTheDocument();
   });
 
-  it('applies correct rarity class based on rarity prop', () => {
+  it('applies correct order class based on celestial_order prop', () => {
     const { container } = render(<CharacterCardV2 {...mockProps} />);
 
     const cardOuter = container.querySelector('.card-outer');
-    expect(cardOuter).toHaveClass('rarity-legendary');
+    expect(cardOuter).toHaveClass('order-archon');
   });
 
   it('applies selected class when isSelected is true', () => {
@@ -114,8 +113,8 @@ describe('CharacterCardV2', () => {
     expect(cardOuter.style.getPropertyValue('--rarity-secondary')).toBe('#FFA500');
   });
 
-  it('applies correct CSS custom properties for warden order (epic rarity)', () => {
-    const wardenProps = { ...mockProps, rarity: 'epic', celestial_order: 'warden' };
+  it('applies correct CSS custom properties for warden order', () => {
+    const wardenProps = { ...mockProps, celestial_order: 'warden' };
     const { container } = render(<CharacterCardV2 {...wardenProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
@@ -123,8 +122,8 @@ describe('CharacterCardV2', () => {
     expect(cardOuter.style.getPropertyValue('--rarity-secondary')).toBe('#9370DB');
   });
 
-  it('applies correct CSS custom properties for sage order (rare rarity)', () => {
-    const sageProps = { ...mockProps, rarity: 'rare', celestial_order: 'sage' };
+  it('applies correct CSS custom properties for sage order', () => {
+    const sageProps = { ...mockProps, celestial_order: 'sage' };
     const { container } = render(<CharacterCardV2 {...sageProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
@@ -132,8 +131,8 @@ describe('CharacterCardV2', () => {
     expect(cardOuter.style.getPropertyValue('--rarity-secondary')).toBe('#1E90FF');
   });
 
-  it('applies correct CSS custom properties for wanderer order (common rarity)', () => {
-    const wandererProps = { ...mockProps, rarity: 'common', celestial_order: 'wanderer' };
+  it('applies correct CSS custom properties for wanderer order', () => {
+    const wandererProps = { ...mockProps, celestial_order: 'wanderer' };
     const { container } = render(<CharacterCardV2 {...wandererProps} />);
 
     const cardOuter = container.querySelector('.card-outer') as HTMLElement;
@@ -148,19 +147,19 @@ describe('CharacterCardV2', () => {
     expect(image).toHaveAttribute('src', '/test-image.png');
   });
 
-  it('applies correct rarity class for different orders', () => {
-    const { rerender, container } = render(<CharacterCardV2 {...mockProps} rarity="epic" celestial_order="warden" />);
+  it('applies correct order class for different celestial orders', () => {
+    const { rerender, container } = render(<CharacterCardV2 {...mockProps} celestial_order="warden" />);
 
     let cardOuter = container.querySelector('.card-outer');
-    expect(cardOuter).toHaveClass('rarity-epic');
+    expect(cardOuter).toHaveClass('order-warden');
 
-    rerender(<CharacterCardV2 {...mockProps} rarity="rare" celestial_order="sage" />);
+    rerender(<CharacterCardV2 {...mockProps} celestial_order="sage" />);
     cardOuter = container.querySelector('.card-outer');
-    expect(cardOuter).toHaveClass('rarity-rare');
+    expect(cardOuter).toHaveClass('order-sage');
 
-    rerender(<CharacterCardV2 {...mockProps} rarity="common" celestial_order="wanderer" />);
+    rerender(<CharacterCardV2 {...mockProps} celestial_order="wanderer" />);
     cardOuter = container.querySelector('.card-outer');
-    expect(cardOuter).toHaveClass('rarity-common');
+    expect(cardOuter).toHaveClass('order-wanderer');
   });
 
   it('handles different persona names correctly', () => {
@@ -291,16 +290,16 @@ describe('CharacterCardV2', () => {
   });
 
   it('handles physics with different order types', () => {
-    const { rerender, container } = render(<CharacterCardV2 {...mockProps} rarity="epic" celestial_order="warden" />);
+    const { rerender, container } = render(<CharacterCardV2 {...mockProps} celestial_order="warden" />);
 
     let cardOuter = container.querySelector('.card-outer');
-    expect(cardOuter).toHaveClass('rarity-epic');
+    expect(cardOuter).toHaveClass('order-warden');
 
-    rerender(<CharacterCardV2 {...mockProps} rarity="rare" celestial_order="sage" />);
+    rerender(<CharacterCardV2 {...mockProps} celestial_order="sage" />);
     cardOuter = container.querySelector('.card-outer');
-    expect(cardOuter).toHaveClass('rarity-rare');
+    expect(cardOuter).toHaveClass('order-sage');
 
-    // Physics should still work with different rarities
+    // Physics should still work with different orders
     expect(cardOuter).toBeInTheDocument();
   });
 

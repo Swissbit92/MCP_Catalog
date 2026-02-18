@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 
 from ..schemas import SummaryBody
 from ..persona_memory import (
@@ -18,13 +19,7 @@ router = APIRouter(tags=["personas"])
 @router.get("/personas")
 def list_personas():
     """Return list of available personas with metadata."""
-    # Import here to avoid circular dependency
-    from ..startup import cleanup_orphaned_sessions
-
     try:
-        # Clean up orphaned sessions before returning personas
-        cleanup_orphaned_sessions()
-
         cards = _load_all_cards_cached()
         personas = []
         for card in cards:
@@ -41,7 +36,10 @@ def list_personas():
                 "bg": card.get("bg"),
                 "voice": card.get("voice"),
             })
-        return personas
+        return JSONResponse(
+            content=personas,
+            headers={"Cache-Control": "max-age=30"},
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list personas: {e}")
 

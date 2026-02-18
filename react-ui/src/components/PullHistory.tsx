@@ -1,7 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { usePersona } from '../context/PersonaContext';
-import { rarityToOrder, formatOrderLabel } from '../utils/celestialOrder';
+import { formatOrderLabel } from '../utils/celestialOrder';
+
+const RARITY_TO_ORDER: Record<string, string> = {
+  legendary: 'archon',
+  epic: 'warden',
+  rare: 'sage',
+  common: 'wanderer',
+}
+const getRecordOrder = (record: { rarity?: string; celestial_order?: string }): string => {
+  if (record.celestial_order) return record.celestial_order.toLowerCase()
+  return RARITY_TO_ORDER[(record.rarity || 'common').toLowerCase()] || 'wanderer'
+}
 
 const PullHistory: React.FC = () => {
   const { pullHistory, pullStats } = usePersona();
@@ -10,20 +21,20 @@ const PullHistory: React.FC = () => {
     return new Date(timestamp).toLocaleString();
   };
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'legendary': return 'text-yellow-400';
-      case 'epic': return 'text-purple-400';
-      case 'rare': return 'text-blue-400';
+  const getOrderColor = (order: string) => {
+    switch (order) {
+      case 'archon': return 'text-yellow-400';
+      case 'warden': return 'text-purple-400';
+      case 'sage': return 'text-blue-400';
       default: return 'text-gray-400';
     }
   };
 
-  const getRarityEmoji = (rarity: string) => {
-    switch (rarity) {
-      case 'legendary': return '🌟';
-      case 'epic': return '💎';
-      case 'rare': return '🔥';
+  const getOrderEmoji = (order: string) => {
+    switch (order) {
+      case 'archon': return '🌟';
+      case 'warden': return '💎';
+      case 'sage': return '🔥';
       default: return '⚪';
     }
   };
@@ -110,13 +121,13 @@ const PullHistory: React.FC = () => {
                 className="bg-black/20 backdrop-blur-sm rounded-lg p-4 border border-white/10 flex items-center justify-between"
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-2xl">{getRarityEmoji(record.rarity)}</div>
+                  <div className="text-2xl">{getOrderEmoji(getRecordOrder(record))}</div>
                   <div>
-                    <div className={`font-semibold ${getRarityColor(record.rarity)}`}>
+                    <div className={`font-semibold ${getOrderColor(getRecordOrder(record))}`}>
                       {record.personaKey}
                     </div>
                     <div className="text-sm text-gray-400">
-                      {formatOrderLabel(rarityToOrder(record.rarity))} • {record.pullCount}x pull
+                      {formatOrderLabel(getRecordOrder(record))} • {record.pullCount}x pull
                     </div>
                   </div>
                 </div>
