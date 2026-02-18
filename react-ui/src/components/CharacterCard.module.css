@@ -320,7 +320,8 @@
 
 .order-sage:hover {
   animation: none;
-  box-shadow: 0 18px 32px rgba(0,0,0,.45), 0 0 24px rgba(6, 182, 212, 0.25), 0 0 48px rgba(6, 182, 212, 0.1);
+  box-shadow: 0 18px 32px rgba(0,0,0,.45), 0 0 24px rgba(6, 182, 212, 0.25), 0 0 48px rgba(6, 182, 212, 0.1),
+    -2px 0 0 rgba(0, 50, 200, 0.15), 2px 0 0 rgba(0, 220, 200, 0.15);
   filter: brightness(1.05) saturate(1.1);
 }
 
@@ -491,6 +492,40 @@
   animation: order-holo-spin 5s linear infinite;
 }
 
+/* ── E2. Sage "Void Rift" foil (cyan) ── */
+.sage-holo-foil {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
+      var(--holo-angle, 0deg),
+      rgba(6, 182, 212, 0.03) 0px,
+      rgba(34, 211, 238, 0.06) 2px,
+      rgba(6, 182, 212, 0.03) 4px
+    ),
+    linear-gradient(
+      calc(var(--holo-angle, 0deg) + 45deg),
+      transparent 20%,
+      rgba(0, 200, 255, 0.04) 30%,
+      rgba(34, 211, 238, 0.12) 42%,
+      rgba(6, 182, 212, 0.08) 50%,
+      rgba(34, 211, 238, 0.12) 58%,
+      rgba(0, 200, 255, 0.04) 70%,
+      transparent 80%
+    );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.card-outer:hover .sage-holo-foil {
+  opacity: 1;
+  animation: order-holo-spin 5s linear infinite;
+}
+
 /* ── F. Archon "Solar Crown" ── */
 .order-archon {
   overflow: visible;
@@ -569,6 +604,7 @@
   .aurora-orb-2,
   .aurora-orb-3 { animation: none; }
   .holo-foil { animation: none; transition: none; }
+  .sage-holo-foil { animation: none; transition: none; }
   .legendary-foil { animation: none; transition: none; }
   .order-sage { animation: none; }
   .order-warden { animation: none; }
