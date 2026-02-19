@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import NephilimHome from './pages/NephilimHome'
-import NephilimOnboarding from './pages/NephilimOnboarding'
 import CharacterCardV2Showcase from './pages/CharacterCardV2Showcase'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
@@ -11,18 +10,7 @@ import Header from './components/Header'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AudioProvider } from './context/AudioContext'
 import { usePersona } from './context/PersonaContext'
-import { useAuth } from './context/AuthContext'
 import { getDisplayOrder } from './utils/celestialOrder'
-
-/** Redirects to /select if user already completed onboarding. */
-function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  const { onboardingCompleted, isLoading } = useAuth()
-
-  if (isLoading) return null
-  if (onboardingCompleted) return <Navigate to="/select" replace />
-
-  return <>{children}</>
-}
 
 function App() {
   const { selectedPersona } = usePersona()
@@ -54,8 +42,8 @@ function App() {
     }
   }, [selectedPersona])
 
-  // Hide header on landing, onboarding, and login pages
-  const hideHeader = location.pathname === '/' || location.pathname === '/onboarding' || location.pathname === '/login'
+  // Hide header on landing and login pages
+  const hideHeader = location.pathname === '/' || location.pathname === '/login'
 
   return (
     <MotionConfig reducedMotion="user">
@@ -64,19 +52,8 @@ function App() {
           {!hideHeader && <Header />}
           <div className="flex-1 overflow-auto pb-16 md:pb-0">
             <Routes>
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <NephilimHome />
-                </ProtectedRoute>
-              } />
+              <Route path="/" element={<NephilimHome />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/onboarding" element={
-                <ProtectedRoute>
-                  <OnboardingGuard>
-                    <NephilimOnboarding />
-                  </OnboardingGuard>
-                </ProtectedRoute>
-              } />
               <Route path="/select" element={
                 <ProtectedRoute>
                   <CharacterCardV2Showcase />
