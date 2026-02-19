@@ -348,10 +348,17 @@ def init_db():
                 email TEXT,
                 display_name TEXT,
                 avatar_url TEXT,
+                onboarding_completed BOOLEAN DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP
             )
         """)
+        # Backfill column for existing databases that lack it
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT 0")
+            logger.info("Added onboarding_completed column to users table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         conn.commit()
         conn.close()
         logger.info("Users table initialized (OAuth)")

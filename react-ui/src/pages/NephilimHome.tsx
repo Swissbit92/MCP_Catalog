@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import NephilimBackground from '../components/NephilimBackground'
+import { useAuth } from '../context/AuthContext'
 
 /** The six Nephilim with their core info */
 const NEPHILIM = [
@@ -122,16 +123,16 @@ const NephilimPreview: React.FC<{
 /** Main NEPHILIM landing page */
 const NephilimHome: React.FC = () => {
   const navigate = useNavigate()
+  const { onboardingCompleted } = useAuth()
   const [entered, setEntered] = useState(false)
   const [showNephilim, setShowNephilim] = useState(false)
 
-  // Auto-redirect to onboarding if not completed
+  // Auto-redirect to onboarding if not completed (server-side flag)
   useEffect(() => {
-    const onboarded = localStorage.getItem('nephilim_onboarding_complete')
-    if (onboarded !== 'true') {
-      navigate('/onboarding')
+    if (!onboardingCompleted) {
+      navigate('/onboarding', { replace: true })
     }
-  }, [navigate])
+  }, [onboardingCompleted, navigate])
 
   // Show Nephilim selection after entering
   useEffect(() => {
@@ -278,12 +279,6 @@ const NephilimHome: React.FC = () => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
               >
-                <button
-                  className="nephilim-btn"
-                  onClick={() => navigate('/onboarding')}
-                >
-                  New Seeker Journey
-                </button>
                 <button
                   className="nephilim-btn"
                   onClick={handleBrowseAll}

@@ -4,9 +4,10 @@ import { AlertTriangle } from 'lucide-react'
 import { Avatar2D } from './Avatar2D'
 import { RichContent } from './RichContent'
 import { SourceIndicator } from './SourceIndicator'
-import { Message as ApiMessage, confirmTrade, cancelTrade, approveStrategy, rejectStrategy } from '../services/api'
+import { Message as ApiMessage, confirmTrade, cancelTrade, approveStrategy, rejectStrategy, deleteWallet } from '../services/api'
 import TradeProposalCard from './TradeProposalCard'
 import StrategyApprovalCard from './StrategyApprovalCard'
+import WalletDeletionCard from './WalletDeletionCard'
 
 export interface Message extends ApiMessage {
   latency?: number
@@ -175,6 +176,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 onReject={(proposalId: string) => {
                   rejectStrategy(proposalId).catch(() => {/* fire-and-forget */})
                 }}
+              />
+            )
+          }
+
+          if (proposalType === 'wallet_deletion' && proposal) {
+            return (
+              <WalletDeletionCard
+                proposal={proposal}
+                onConfirm={async (userId: string) => {
+                  await deleteWallet(userId)
+                }}
+                onCancel={() => {/* dismiss — no backend call needed */}}
               />
             )
           }

@@ -1,11 +1,11 @@
 import React from 'react'
 import NephilimBackground from '../components/NephilimBackground'
 import { SeekerDashboard } from '../components/nephilim/SeekerDashboard'
+import { useAuth } from '../context/AuthContext'
 
 const Dashboard: React.FC = () => {
-  const userId = typeof window !== 'undefined'
-    ? localStorage.getItem('nephilim_user_id') || 'default_seeker'
-    : 'default_seeker'
+  const { user } = useAuth()
+  const userId = user?.sub || 'default_seeker'
 
   return (
     <NephilimBackground particles skyline intensity={0.4}>

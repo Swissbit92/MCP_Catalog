@@ -4,21 +4,27 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
-  const { login, loginLocal, isAuthenticated, isLoading } = useAuth()
+  const { login, loginLocal, isAuthenticated, isLoading, onboardingCompleted } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [signingIn, setSigningIn] = useState(false)
 
-  const from = (location.state as any)?.from || '/'
+  const from = (location.state as any)?.from || null
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated — route based on onboarding status
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate(from, { replace: true })
+      if (from && from !== '/login') {
+        navigate(from, { replace: true })
+      } else if (onboardingCompleted) {
+        navigate('/select', { replace: true })
+      } else {
+        navigate('/onboarding', { replace: true })
+      }
     }
-  }, [isAuthenticated, isLoading, navigate, from])
+  }, [isAuthenticated, isLoading, navigate, from, onboardingCompleted])
 
   // Particle canvas
   useEffect(() => {
@@ -82,26 +88,26 @@ export default function LoginPage() {
     setError(null)
     try {
       await login(credentialResponse.credential)
-      navigate(from, { replace: true })
+      // Navigation handled by useEffect above once isAuthenticated flips
     } catch (e: any) {
       setError(e.message || 'Authentication failed')
     } finally {
       setSigningIn(false)
     }
-  }, [login, navigate, from])
+  }, [login])
 
   const handleLocalLogin = useCallback(async () => {
     setSigningIn(true)
     setError(null)
     try {
       await loginLocal()
-      navigate(from, { replace: true })
+      // Navigation handled by useEffect above once isAuthenticated flips
     } catch (e: any) {
       setError(e.message || 'Local login failed')
     } finally {
       setSigningIn(false)
     }
-  }, [loginLocal, navigate, from])
+  }, [loginLocal])
 
   const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || ''
 

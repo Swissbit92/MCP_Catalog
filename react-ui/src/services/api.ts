@@ -119,7 +119,7 @@ export interface ResponseMetadata {
   is_multi_message?: boolean;
   message_count?: number;
   // WALLET: Proposal card injection
-  proposal_type?: 'trade_proposal' | 'strategy_proposal';
+  proposal_type?: 'trade_proposal' | 'strategy_proposal' | 'wallet_deletion';
   proposal?: Record<string, any>;
 }
 
@@ -741,6 +741,17 @@ export async function getWalletBalance(userId: string): Promise<WalletBalance> {
   const res = await fetch(`${API_BASE_URL}/wallet/balance/${encodeURIComponent(userId)}`);
   if (!res.ok) throw new Error(`Balance check failed: ${res.status}`);
   return res.json();
+}
+
+export async function deleteWallet(userId: string): Promise<{ status: string; public_address: string }> {
+  const res = await fetch(`${API_BASE_URL}/wallet/delete/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Deletion failed' }))
+    throw new Error(err.detail || `Delete failed: ${res.status}`)
+  }
+  return res.json()
 }
 
 // ============================================================

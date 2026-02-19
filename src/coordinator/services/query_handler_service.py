@@ -41,6 +41,50 @@ class QueryHandlerService:
         self.brave_client = brave_client
         self.mongodb_service = mongodb_service
 
+    @staticmethod
+    def _build_wallet_state_context(user_id: str) -> str:
+        """Build a ground-truth wallet state block to inject into the LLM system prompt.
+
+        Prevents hallucination by giving the LLM real wallet data (or explicit "no wallet" signal).
+        """
+        try:
+            from ..startup import get_wallet_repo
+            wallet_repo = get_wallet_repo()
+            if not wallet_repo:
+                return ""
+            wallet = wallet_repo.get_active_wallet(user_id)
+        except Exception as e:
+            logger.warning(f"[WalletState] Failed to fetch wallet for state injection: {e}")
+            return ""
+
+        lines = [
+            "",
+            "## SEEKER WALLET STATE (GROUND TRUTH)",
+        ]
+
+        if wallet:
+            addr = wallet.get("public_address", "")
+            name = wallet.get("wallet_name", "My Wallet")
+            short_addr = f"{addr[:8]}...{addr[-4:]}" if len(addr) > 12 else addr
+            lines.extend([
+                f"- Wallet name: {name}",
+                f"- Public address: {addr}",
+                f"- Short address: {short_addr}",
+                f"- Network: devnet",
+                f"- Status: active",
+                "",
+                "Use ONLY these values when referring to the Seeker's wallet.",
+                "Do NOT invent or guess any wallet details.",
+            ])
+        else:
+            lines.extend([
+                "The Seeker has NO active wallet.",
+                "Do NOT invent wallet addresses, names, or balances.",
+                "If asked about their wallet, tell them they need to create one first.",
+            ])
+
+        return "\n".join(lines)
+
     def _finalize_response(
         self,
         answer: str,
@@ -369,22 +413,48 @@ User Query: {user_compiled}"""
                 metadata=metadata,
             )
 
-        # Guard: wallet deletion via chat is not permitted — require REST-only deletion.
-        _DELETION_TRIGGERS = [
-            "delete my wallet", "delete wallet", "remove my wallet", "remove wallet",
-            "destroy my wallet", "deactivate my wallet", "deactivate wallet",
-        ]
+        # Wallet deletion via chat — return a confirmation card (HITL)
+        _DELETION_PATTERN = re.compile(
+            r"(?:delete|remove|destroy|deactivate|wipe|clear|get rid of|nuke)"
+            r"(?:\s+)"
+            r"(?:my |all |all my |the |the created |every )?"
+            r"(?:wallet|wallets)",
+            re.IGNORECASE,
+        )
         msg_lower = message.lower()
-        if any(t in msg_lower for t in _DELETION_TRIGGERS):
-            metadata.source_type = "wallet_mcp"
+        if _DELETION_PATTERN.search(msg_lower):
+            logger.info(f"[WalletQuery] Wallet deletion intent detected for user={user_id}")
+            try:
+                from ..startup import get_wallet_repo
+                wallet_repo = get_wallet_repo()
+                wallet = wallet_repo.get_active_wallet(user_id or "default_user") if wallet_repo else None
+            except Exception as e:
+                logger.warning(f"[WalletQuery] Wallet lookup failed during deletion: {e}")
+                wallet = None
+
+            if not wallet:
+                metadata.source_type = "wallet_mcp"
+                metadata.tools_used = []
+                return self._finalize_response(
+                    answer="You have no active wallet to delete.",
+                    persona_name=persona_name,
+                    metadata=metadata,
+                    used_search=False,
+                )
+
+            # Build and return a deletion confirmation card
+            from ..services.wallet_proposal_service import build_wallet_deletion_proposal
+            proposal = build_wallet_deletion_proposal(
+                user_id=user_id or "default_user",
+                wallet_name=wallet.get("wallet_name", "My Wallet"),
+                public_address=wallet.get("public_address", ""),
+            )
+            metadata.source_type = proposal["metadata"]["source_type"]
+            metadata.proposal_type = proposal["metadata"]["proposal_type"]
+            metadata.proposal = proposal["metadata"]["proposal"]
             metadata.tools_used = []
-            logger.warning(f"[WalletQuery] Wallet deletion attempted via chat for user={user_id} — blocked")
             return self._finalize_response(
-                answer=(
-                    "Deleting a wallet is an irreversible action that requires deliberate confirmation. "
-                    "For your protection, this cannot be done through conversation — "
-                    "please use the Wallet settings panel or call DELETE /wallet/delete/{user_id} directly."
-                ),
+                answer=proposal["content"],
                 persona_name=persona_name,
                 metadata=metadata,
                 used_search=False,
@@ -442,6 +512,10 @@ User Query: {user_compiled}"""
                 used_search=True,
             )
 
+        # Inject wallet ground-truth state into system prompt to prevent hallucination
+        wallet_state_block = self._build_wallet_state_context(user_id or "default_user")
+        augmented_system_prompt = system_prompt + wallet_state_block if wallet_state_block else system_prompt
+
         # Regular wallet query: let LLM choose the right tool via standard tool-calling flow
         client = LC_OllamaClient(
             base=get_ollama_base(),
@@ -451,7 +525,7 @@ User Query: {user_compiled}"""
 
         # Use standard tool-calling path — LLM decides which wallet tool to call
         answer, tool_call, _ = client.complete_with_tools(
-            persona_system=system_prompt,
+            persona_system=augmented_system_prompt,
             user_prompt=user_compiled,
             tools=wallet_tools,
         )

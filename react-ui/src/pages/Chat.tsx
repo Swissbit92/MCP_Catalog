@@ -12,6 +12,7 @@ import { LoreRevealOverlay } from '../components/LoreRevealOverlay'
 import NephilimBackground from '../components/NephilimBackground'
 import { fetchPersonas, greetWithSession, checkLoreUnlocks } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
+import { useAuth } from '../context/AuthContext'
 
 /** Extract NEPHILIM persona short name from key (e.g. nephilim_cipher -> cipher) */
 const extractPersonaName = (key: string): 'eeva' | 'aegis' | 'solace' | 'nyx' | 'cipher' | 'aurora' | null => {
@@ -38,6 +39,7 @@ const defaultOrbColors: [string, string, string] = [
 ]
 
 const Chat: React.FC = () => {
+  const { user } = useAuth()
   const [input, setInput] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [initializingSession, setInitializingSession] = useState<boolean>(false)
@@ -144,7 +146,7 @@ const Chat: React.FC = () => {
 
           // Check for newly unlocked lore fragments (non-blocking)
           try {
-            const userId = localStorage.getItem('nephilim_user_id') || 'default_seeker'
+            const userId = user?.sub || 'default_seeker'
             const loreResult = await checkLoreUnlocks(userId, selectedPersona.key)
             if (loreResult.newly_unlocked > 0 && loreResult.fragments.length > 0) {
               const frag = loreResult.fragments[0]

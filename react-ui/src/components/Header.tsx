@@ -14,13 +14,12 @@ const Header: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Get seeker info — prefer auth user name, fall back to localStorage
-  const seekerName = user?.name
-    || (typeof window !== 'undefined' ? localStorage.getItem('nephilim_user_name') || 'Seeker' : 'Seeker')
+  // Get seeker info from auth context
+  const seekerName = user?.name || 'Seeker'
 
   // Fetch current rank from API on mount
   useEffect(() => {
-    const userId = user?.sub || localStorage.getItem('nephilim_user_id') || 'default_seeker'
+    const userId = user?.sub || 'default_seeker'
     const fetchRank = async () => {
       try {
         const data = await getRankProgress(userId)

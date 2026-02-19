@@ -130,6 +130,8 @@ async def login_with_google(body: GoogleAuthRequest, response: Response) -> Toke
         avatar_url=avatar,
     )
 
+    onboarded = user_repository.get_onboarding_status(settings.db_path, sub)
+
     access_token  = _create_access_token(sub, email, name, avatar)
     refresh_token = _create_refresh_token(sub)
 
@@ -137,7 +139,7 @@ async def login_with_google(body: GoogleAuthRequest, response: Response) -> Toke
 
     return TokenResponse(
         access_token=access_token,
-        user={"sub": sub, "email": email, "name": name, "avatar": avatar},
+        user={"sub": sub, "email": email, "name": name, "avatar": avatar, "onboarding_completed": onboarded},
     )
 
 
@@ -155,9 +157,10 @@ async def refresh_access_token(
         access_token = _create_access_token(
             local_sub, "local@nephilim.dev", "Local Seeker", ""
         )
+        onboarded = user_repository.get_onboarding_status(settings.db_path, local_sub)
         return TokenResponse(
             access_token=access_token,
-            user={"sub": local_sub, "email": "local@nephilim.dev", "name": "Local Seeker", "avatar": ""},
+            user={"sub": local_sub, "email": "local@nephilim.dev", "name": "Local Seeker", "avatar": "", "onboarding_completed": onboarded},
         )
 
     if not refresh_token:
@@ -204,6 +207,7 @@ async def refresh_access_token(
             "email": user.get("email", ""),
             "name": user.get("display_name", ""),
             "avatar": user.get("avatar_url", ""),
+            "onboarding_completed": bool(user.get("onboarding_completed", 0)),
         },
     )
 
@@ -217,5 +221,17 @@ async def logout(response: Response) -> dict:
 
 @auth_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)) -> dict:
-    """Return current authenticated user info from JWT."""
-    return current_user
+    """Return current authenticated user info from JWT, enriched with DB flags."""
+    settings = get_settings()
+    sub = current_user.get("sub", "")
+    onboarded = user_repository.get_onboarding_status(settings.db_path, sub)
+    return {**current_user, "onboarding_completed": onboarded}
+
+
+@auth_router.post("/auth/me/onboarding")
+async def complete_onboarding(current_user: dict = Depends(get_current_user)) -> dict:
+    """Mark onboarding as completed for the current user."""
+    settings = get_settings()
+    sub = current_user.get("sub", "")
+    user_repository.set_onboarding_completed(settings.db_path, sub)
+    return {"onboarding_completed": True}
