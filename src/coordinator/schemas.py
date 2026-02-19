@@ -136,6 +136,9 @@ class ResponseMetadata(BaseModel):
     # PHASE 2: Multi-message response fields
     is_multi_message: bool = False
     message_count: int = 1
+    # WALLET: Proposal card injection
+    proposal_type: Optional[str] = None  # "trade_proposal", "strategy_proposal", "wallet_deletion"
+    proposal: Optional[Dict] = None
 
 
 # ----------------- NEPHILIM Progression Schemas -----------------

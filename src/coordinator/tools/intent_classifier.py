@@ -91,6 +91,11 @@ def classify_query_intent(
         # Quote/price
         "solana quote", "jupiter quote", "swap quote",
         "get a quote", "check rsi", "sol rsi",
+        # Common misspellings / aliases
+        "jupyter wallet", "jupyter quote", "jupyter swap",
+        "jupter wallet", "jupter quote",
+        "my sol", "my usdc", "my tokens",
+        "wallet address", "fund my wallet",
     ]
 
     if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):

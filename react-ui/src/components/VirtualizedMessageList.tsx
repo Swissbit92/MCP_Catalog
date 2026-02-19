@@ -1,6 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react'
-import { FixedSizeList as List } from 'react-window'
-import AutoSizer from 'react-virtualized-auto-sizer'
+import React, { useRef, useEffect } from 'react'
 import { MessageBubble } from './MessageBubble'
 
 interface Message {
@@ -32,38 +30,14 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   showTypingIndicator,
   typingIndicatorComponent
 }) => {
-  const listRef = useRef<List>(null)
-
-  // Fixed row height for simplicity (can be made dynamic later)
-  const ROW_HEIGHT = 150
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (listRef.current && messages.length > 0) {
-      listRef.current.scrollToItem(messages.length - 1, 'end')
+    if (scrollRef.current && messages.length > 0) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages.length])
-
-  // Memoize Row component to prevent recreation on every render
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const message = messages[index]
-
-    return (
-      <div style={style}>
-        <div className="px-4 md:px-6 py-2">
-          <MessageBubble
-            message={message}
-            personaAvatar={personaAvatar}
-            userAvatar={userAvatar}
-            showTimestamp={true}
-            onRetry={onRetry}
-            personaRarity={personaRarity}
-            personaName={personaName}
-          />
-        </div>
-      </div>
-    )
-  }, [messages, personaAvatar, userAvatar, personaRarity, personaName, onRetry])
 
   // Handle empty state
   if (messages.length === 0) {
@@ -77,22 +51,24 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   }
 
   return (
-    <div className="flex-1 min-h-0" style={{ background: 'transparent' }}>
-      <AutoSizer>
-        {({ height, width }: { height: number; width: number }) => (
-          <List
-            ref={listRef}
-            height={height}
-            itemCount={messages.length}
-            itemSize={ROW_HEIGHT}
-            width={width}
-            overscanCount={5}
-            style={{ background: 'transparent' }}
-          >
-            {Row}
-          </List>
-        )}
-      </AutoSizer>
+    <div
+      ref={scrollRef}
+      className="flex-1 min-h-0 overflow-y-auto"
+      style={{ background: 'transparent' }}
+    >
+      {messages.map((message) => (
+        <div key={message.id} className="px-4 md:px-6 py-2">
+          <MessageBubble
+            message={message}
+            personaAvatar={personaAvatar}
+            userAvatar={userAvatar}
+            showTimestamp={true}
+            onRetry={onRetry}
+            personaRarity={personaRarity}
+            personaName={personaName}
+          />
+        </div>
+      ))}
     </div>
   )
 }

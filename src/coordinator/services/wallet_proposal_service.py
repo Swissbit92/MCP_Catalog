@@ -180,6 +180,57 @@ def build_strategy_proposal(
     }
 
 
+def build_wallet_deletion_proposal(
+    user_id: str,
+    wallet_name: str,
+    public_address: str,
+) -> dict:
+    """Build a WalletDeletionCard payload for chat-based wallet deletion.
+
+    Returns a chat message dict with proposal_type='wallet_deletion' in metadata.
+    The frontend renders this as a confirm/cancel card with countdown timer.
+
+    Args:
+        user_id: User identifier
+        wallet_name: Human-readable wallet label
+        public_address: Solana public key (base58)
+
+    Returns:
+        Chat message dict with wallet deletion proposal metadata
+    """
+    proposal_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(seconds=PROPOSAL_TTL_SECONDS)
+
+    short_addr = f"{public_address[:8]}...{public_address[-4:]}" if len(public_address) > 12 else public_address
+
+    proposal_data = {
+        "proposal_id": proposal_id,
+        "proposal_type": "wallet_deletion",
+        "user_id": user_id,
+        "wallet_name": wallet_name,
+        "public_address": public_address,
+        "status": "pending",
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+    }
+
+    narrative = (
+        f"You're about to delete **{wallet_name}** (`{short_addr}`). "
+        "This is irreversible. Any remaining funds should be transferred first. "
+        "Confirm below to proceed."
+    )
+
+    return {
+        "content": narrative,
+        "metadata": {
+            "source_type": "wallet_proposal",
+            "proposal_type": "wallet_deletion",
+            "proposal": proposal_data,
+        },
+    }
+
+
 def build_wallet_creation_step(step: int, total_steps: int = 3, **kwargs) -> dict:
     """Build a wallet creation guided flow message.
 

@@ -66,3 +66,36 @@ def get_user_by_sub(db_path: str, google_sub: str) -> Optional[dict]:
             return dict(row) if row else None
         finally:
             conn.close()
+
+
+def get_onboarding_status(db_path: str, google_sub: str) -> bool:
+    """Return True if the user has completed onboarding."""
+    with _lock:
+        conn = _get_conn(db_path)
+        try:
+            row = conn.execute(
+                "SELECT onboarding_completed FROM users WHERE google_sub = ?",
+                (google_sub,),
+            ).fetchone()
+            return bool(row["onboarding_completed"]) if row else False
+        finally:
+            conn.close()
+
+
+def set_onboarding_completed(db_path: str, google_sub: str) -> None:
+    """Mark onboarding as completed. Upserts the user row for local_user."""
+    with _lock:
+        conn = _get_conn(db_path)
+        try:
+            now = datetime.utcnow().isoformat()
+            conn.execute(
+                """
+                INSERT INTO users (google_sub, onboarding_completed, created_at, last_login)
+                VALUES (?, 1, ?, ?)
+                ON CONFLICT(google_sub) DO UPDATE SET onboarding_completed = 1
+                """,
+                (google_sub, now, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
