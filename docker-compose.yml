@@ -73,6 +73,10 @@ services:
       MONGODB_ENABLED: ${MONGODB_ENABLED:-false}
       MONGODB_MCP_URL: http://mongodb-mcp:3000  # HTTP transport to MCP service
 
+      # Authentication
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+
       # Memory & RAG settings
       MEMORY_EMBEDDING_MODEL: ${MEMORY_EMBEDDING_MODEL:-nomic-embed-text:latest}
       MEMORY_SUMMARIZATION_INTERVAL: ${MEMORY_SUMMARIZATION_INTERVAL:-30}
@@ -123,6 +127,7 @@ services:
       dockerfile: Dockerfile
       args:
         - REACT_APP_API_BASE_URL=http://localhost:8000
+        - REACT_APP_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
     container_name: ai-companion-web
     depends_on:
       backend:
