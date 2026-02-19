@@ -120,19 +120,12 @@ const NephilimPreview: React.FC<{
   </motion.button>
 )
 
-/** Main NEPHILIM landing page */
+/** Main NEPHILIM landing page — public cinematic portal */
 const NephilimHome: React.FC = () => {
   const navigate = useNavigate()
-  const { onboardingCompleted } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [entered, setEntered] = useState(false)
   const [showNephilim, setShowNephilim] = useState(false)
-
-  // Auto-redirect to onboarding if not completed (server-side flag)
-  useEffect(() => {
-    if (!onboardingCompleted) {
-      navigate('/onboarding', { replace: true })
-    }
-  }, [onboardingCompleted, navigate])
 
   // Show Nephilim selection after entering
   useEffect(() => {
@@ -143,7 +136,7 @@ const NephilimHome: React.FC = () => {
   }, [entered])
 
   const handleEnterRealm = () => {
-    setEntered(true)
+    navigate(isAuthenticated ? '/select' : '/login')
   }
 
   const handleSelectNephilim = (key: string) => {

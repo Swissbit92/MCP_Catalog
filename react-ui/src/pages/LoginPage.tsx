@@ -4,7 +4,7 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
-  const { login, loginLocal, isAuthenticated, isLoading, onboardingCompleted } = useAuth()
+  const { login, loginLocal, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -13,18 +13,13 @@ export default function LoginPage() {
 
   const from = (location.state as any)?.from || null
 
-  // Redirect if already authenticated — route based on onboarding status
+  // Redirect if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      if (from && from !== '/login') {
-        navigate(from, { replace: true })
-      } else if (onboardingCompleted) {
-        navigate('/select', { replace: true })
-      } else {
-        navigate('/onboarding', { replace: true })
-      }
+      const dest = (from && from !== '/login' && from !== '/') ? from : '/select'
+      navigate(dest, { replace: true })
     }
-  }, [isAuthenticated, isLoading, navigate, from, onboardingCompleted])
+  }, [isAuthenticated, isLoading, navigate, from])
 
   // Particle canvas
   useEffect(() => {
