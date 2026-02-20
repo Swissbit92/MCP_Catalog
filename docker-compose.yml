@@ -73,6 +73,32 @@ services:
       MONGODB_ENABLED: ${MONGODB_ENABLED:-false}
       MONGODB_MCP_URL: http://mongodb-mcp:3000  # HTTP transport to MCP service
 
+      # Authentication (Google OAuth + JWT)
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
+      AUTH_ENV: ${AUTH_ENV:-development}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-min-32-chars!!}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-1}
+      JWT_REFRESH_EXPIRE_DAYS: ${JWT_REFRESH_EXPIRE_DAYS:-30}
+
+      # Jupiter / Solana Wallet (optional)
+      JUPITER_ENABLED: ${JUPITER_ENABLED:-false}
+      JUPITER_MCP_IMAGE: ${JUPITER_MCP_IMAGE:-localhost/jupiter-mcp:latest}
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      JUPITER_SLIPPAGE_BPS: ${JUPITER_SLIPPAGE_BPS:-50}
+      JUPITER_TIMEOUT: ${JUPITER_TIMEOUT:-30}
+      STRATEGIES_DIR: strategies
+      MONGODB_WRITE_URI: ${MONGODB_WRITE_URI:-}
+
+      # Email Trade Notifications (optional)
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-smtp.gmail.com}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_USERNAME: ${EMAIL_USERNAME:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_TO: ${EMAIL_TO:-}
+
       # Memory & RAG settings
       MEMORY_EMBEDDING_MODEL: ${MEMORY_EMBEDDING_MODEL:-nomic-embed-text:latest}
       MEMORY_SUMMARIZATION_INTERVAL: ${MEMORY_SUMMARIZATION_INTERVAL:-30}
@@ -90,6 +116,9 @@ services:
 
       # Persona definitions (read-only)
       - ./personas:/app/personas:ro
+
+      # Strategy definitions for Jupiter autonomous trading
+      - ./strategies:/app/strategies
 
       # Docker socket - enables backend to spawn ephemeral MCP containers
       # This is the standard pattern for container orchestration (like CI/CD runners)
@@ -123,6 +152,7 @@ services:
       dockerfile: Dockerfile
       args:
         - REACT_APP_API_BASE_URL=http://localhost:8000
+        - REACT_APP_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
     container_name: ai-companion-web
     depends_on:
       backend:

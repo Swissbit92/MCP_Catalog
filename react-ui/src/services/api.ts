@@ -1,5 +1,69 @@
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000';
 
+// Auth helper — inject Bearer token into fetch headers when available
+export function getAuthHeader(token: string | null): HeadersInit {
+  return token ? { 'Authorization': 'Bearer ' + token } : {}
+}
+
+// ── 401 Auto-Refresh Mechanism ────────────────────────────────────────────────
+// AuthContext calls setAuthCallbacks() on mount so api.ts can silently refresh
+// expired tokens and retry failed requests without importing React hooks.
+
+type GetTokenFn = () => string | null
+type RefreshFn = () => Promise<string | null>
+type LogoutFn = () => void
+
+let _getToken: GetTokenFn = () => null
+let _refresh: RefreshFn = async () => null
+let _logout: LogoutFn = () => {}
+
+export function setAuthCallbacks(
+  getToken: GetTokenFn,
+  refresh: RefreshFn,
+  logout: LogoutFn
+): void {
+  _getToken = getToken
+  _refresh = refresh
+  _logout = logout
+}
+
+/**
+ * Authenticated fetch wrapper.
+ * - Injects Bearer token automatically
+ * - On 401: attempts silent token refresh, retries once
+ * - On second 401: calls logout (redirects to /login via AuthContext)
+ */
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = _getToken()
+  const authHeaders = getAuthHeader(token)
+
+  const response = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders, ...options.headers },
+  })
+
+  if (response.status !== 401) return response
+
+  // First 401 — attempt silent refresh
+  const newToken = await _refresh()
+  if (!newToken) {
+    _logout()
+    return response
+  }
+
+  // Retry with new token
+  const retried = await fetch(url, {
+    ...options,
+    headers: { ...getAuthHeader(newToken), ...options.headers },
+  })
+
+  if (retried.status === 401) {
+    _logout()
+  }
+
+  return retried
+}
+
 interface PersonaJson {
   key: string;
   rarity: string;
@@ -46,7 +110,7 @@ export interface ChatSession {
 
 // Response metadata for MCP data sources
 export interface ResponseMetadata {
-  source_type: 'llm' | 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp';
+  source_type: 'llm' | 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp' | 'wallet_mcp' | 'wallet_proposal' | 'wallet_flow';
   tools_used: string[];
   cache_status?: 'hit' | 'miss' | null;
   data_timestamp?: string | null;
@@ -54,6 +118,9 @@ export interface ResponseMetadata {
   // PHASE 2: Multi-message response fields
   is_multi_message?: boolean;
   message_count?: number;
+  // WALLET: Proposal card injection
+  proposal_type?: 'trade_proposal' | 'strategy_proposal' | 'wallet_deletion';
+  proposal?: Record<string, any>;
 }
 
 // Phase 2.2: Emotional state tracking
@@ -164,9 +231,9 @@ export const getPersonaGreeting = async (persona: string) => {
   return data.answer;
 };
 
-// Session management functions
+// Session management functions — use fetchWithAuth for automatic 401 retry
 export const fetchSessions = async (): Promise<ChatSession[]> => {
-  const response = await fetch(`${API_BASE_URL}/sessions`);
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions`);
   if (!response.ok) {
     throw new Error(`Failed to fetch sessions: ${response.statusText}`);
   }
@@ -174,15 +241,10 @@ export const fetchSessions = async (): Promise<ChatSession[]> => {
 };
 
 export const createSession = async (personaKey: string, title?: string): Promise<ChatSession> => {
-  const response = await fetch(`${API_BASE_URL}/sessions`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      persona_key: personaKey,
-      title: title || 'New Chat',
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ persona_key: personaKey, title: title || 'New Chat' }),
   });
   if (!response.ok) {
     throw new Error(`Failed to create session: ${response.statusText}`);
@@ -191,30 +253,23 @@ export const createSession = async (personaKey: string, title?: string): Promise
 };
 
 export const getSessionWithMessages = async (sessionId: string): Promise<SessionWithMessages> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch session: ${response.statusText}`);
   }
   const data = await response.json();
-  // Convert timestamp strings to Date objects and source_type to metadata
   data.messages = data.messages.map((msg: any) => ({
     ...msg,
     timestamp: new Date(msg.timestamp),
-    // Convert source_type from database to metadata format for UI
-    metadata: msg.source_type ? {
-      source_type: msg.source_type,
-      tools_used: [],
-    } : undefined,
+    metadata: msg.source_type ? { source_type: msg.source_type, tools_used: [] } : undefined,
   }));
   return data;
 };
 
 export const updateSession = async (sessionId: string, updates: Partial<Pick<ChatSession, 'title'>>): Promise<ChatSession> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
   if (!response.ok) {
@@ -224,9 +279,7 @@ export const updateSession = async (sessionId: string, updates: Partial<Pick<Cha
 };
 
 export const deleteSession = async (sessionId: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
-    method: 'DELETE',
-  });
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}`, { method: 'DELETE' });
   if (!response.ok) {
     throw new Error(`Failed to delete session: ${response.statusText}`);
   }
@@ -245,14 +298,10 @@ export interface ChatApiResponse {
 }
 
 export const sendMessageToSession = async (sessionId: string, message: string): Promise<ChatApiResponse> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/chat`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/sessions/${sessionId}/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
   });
   if (!response.ok) {
     const errorText = await response.text();
@@ -586,3 +635,161 @@ export const getFactionInfo = async (): Promise<{ factions: Faction[] }> => {
   }
   return response.json();
 };
+
+// ============================================================
+// WALLET / JUPITER API — Trade proposals and strategies
+// ============================================================
+
+export interface TradeProposalResponse {
+  proposal_id: string;
+  status: 'confirmed' | 'cancelled' | 'expired';
+  tx_signature?: string;
+  error?: string;
+}
+
+export interface StrategyResponse {
+  strategy_id: string;
+  status: 'active' | 'paused' | 'cancelled';
+  message: string;
+}
+
+export interface WalletBalance {
+  public_address: string;
+  sol: number;
+  tokens: Array<{ mint: string; symbol: string; amount: number; value_usdc?: number }>;
+}
+
+export async function confirmTrade(proposalId: string): Promise<TradeProposalResponse> {
+  const res = await fetch(`${API_BASE_URL}/wallet/confirm/${proposalId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(err.detail || `Confirm failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function cancelTrade(proposalId: string): Promise<TradeProposalResponse> {
+  const res = await fetch(`${API_BASE_URL}/wallet/cancel/${proposalId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(err.detail || `Cancel failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function approveStrategy(
+  proposalId: string,
+  strategyConfig: Record<string, any>
+): Promise<StrategyResponse> {
+  const res = await fetch(`${API_BASE_URL}/wallet/strategy/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ proposal_id: proposalId, strategy_config: strategyConfig }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(err.detail || `Approval failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function rejectStrategy(proposalId: string): Promise<{ status: string }> {
+  const res = await fetch(`${API_BASE_URL}/wallet/strategy/reject/${proposalId}`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Reject failed: ${res.status}`);
+  return res.json();
+}
+
+export async function pauseStrategy(strategyId: string): Promise<StrategyResponse> {
+  const res = await fetch(`${API_BASE_URL}/wallet/strategy/${strategyId}/pause`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Pause failed: ${res.status}`);
+  return res.json();
+}
+
+export async function resumeStrategy(strategyId: string): Promise<StrategyResponse> {
+  const res = await fetch(`${API_BASE_URL}/wallet/strategy/${strategyId}/resume`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Resume failed: ${res.status}`);
+  return res.json();
+}
+
+export async function cancelStrategy(strategyId: string): Promise<StrategyResponse> {
+  const res = await fetch(`${API_BASE_URL}/wallet/strategy/${strategyId}/cancel`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Cancel failed: ${res.status}`);
+  return res.json();
+}
+
+export async function listStrategies(userId: string): Promise<{ strategies: any[] }> {
+  const res = await fetch(`${API_BASE_URL}/wallet/strategies?user_id=${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error(`List strategies failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getWalletBalance(userId: string): Promise<WalletBalance> {
+  const res = await fetch(`${API_BASE_URL}/wallet/balance/${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error(`Balance check failed: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteWallet(userId: string): Promise<{ status: string; public_address: string }> {
+  const res = await fetch(`${API_BASE_URL}/wallet/delete/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Deletion failed' }))
+    throw new Error(err.detail || `Delete failed: ${res.status}`)
+  }
+  return res.json()
+}
+
+// ============================================================
+// Auth API — Google OAuth + JWT refresh/logout
+// ============================================================
+
+export interface AuthTokenResponse {
+  access_token: string
+  token_type: string
+  user: { sub: string; email: string; name: string; avatar: string }
+}
+
+export async function loginWithGoogle(credential: string): Promise<AuthTokenResponse> {
+  const res = await fetch('/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ credential }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(err.detail || `Login failed: ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function refreshAccessToken(): Promise<AuthTokenResponse> {
+  const res = await fetch('/auth/refresh', {
+    method: 'POST',
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error(`Refresh failed: ${res.status}`)
+  return res.json()
+}
+
+export async function logoutApi(): Promise<void> {
+  await fetch('/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+  })
+}

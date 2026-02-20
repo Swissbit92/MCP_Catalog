@@ -64,6 +64,7 @@ NULL
 # Test results
 react-ui/test-results/
 react-ui/test-screenshots/
+react-ui/tests/screenshots/
 
 # Persona summaries cache
 personas/_summaries/.lock

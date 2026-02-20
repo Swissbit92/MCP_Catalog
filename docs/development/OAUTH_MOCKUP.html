@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEPHILIM — Google OAuth Flow Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Manrope:wght@300;400;500;600;700&family=Roboto:wght@400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void: #0B0B0D;
+  --void2: #111115;
+  --cyan: #00BFFF;
+  --cyanb: #00ffff;
+  --magenta: #ff00ff;
+  --gold: #FFD700;
+  --purple: #DA70D6;
+  --glass: rgba(255,255,255,0.04);
+  --gborder: rgba(255,255,255,0.08);
+  --t1: rgba(255,255,255,0.92);
+  --t2: rgba(255,255,255,0.55);
+  --t3: rgba(255,255,255,0.28);
+  --fd: 'Orbitron', sans-serif;
+  --fb: 'Manrope', sans-serif;
+  --fm: 'Space Mono', monospace;
+}
+
+html, body { width:100%; height:100%; overflow:hidden; background:var(--void); color:var(--t1); font-family:var(--fb); }
+
+/* ─── TAB BAR ─── */
+.tabbar {
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  height:52px; display:flex; align-items:center;
+  padding:0 16px; gap:2px;
+  background:rgba(11,11,13,0.97); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--gborder);
+  overflow-x:auto; scrollbar-width:none;
+}
+.tabbar::-webkit-scrollbar { display:none; }
+.tab-logo {
+  font-family:var(--fd); font-size:11px; font-weight:700;
+  letter-spacing:.18em; color:var(--cyan);
+  margin-right:14px; padding-right:14px;
+  border-right:1px solid var(--gborder); white-space:nowrap; flex-shrink:0;
+}
+.tab {
+  flex-shrink:0; padding:6px 13px; border-radius:8px;
+  font-family:var(--fb); font-size:12px; font-weight:500;
+  color:var(--t2); cursor:pointer;
+  border:1px solid transparent; background:transparent;
+  white-space:nowrap; transition:all .2s;
+}
+.tab:hover { color:var(--t1); background:var(--glass); }
+.tab.on { color:var(--cyan); background:rgba(0,191,255,0.08); border-color:rgba(0,191,255,0.25); }
+
+/* ─── SCREEN STACK ─── */
+/* All screens sit at the same absolute position; only .on is visible */
+.wrap { position:fixed; top:52px; left:0; right:0; bottom:0; overflow:hidden; }
+
+.scr {
+  position:absolute; inset:0;        /* fill the .wrap */
+  overflow-y:auto; overflow-x:hidden;
+  opacity:0; pointer-events:none;
+  transition:opacity .3s ease;
+  /* no background — transparent so the shared bgcanvas shows through */
+  scrollbar-width:thin; scrollbar-color:rgba(0,191,255,.15) transparent;
+}
+.scr.on { opacity:1; pointer-events:all; }
+
+/* canvas always behind content */
+.bgcanvas {
+  position:fixed; top:52px; left:0; right:0; bottom:0;
+  pointer-events:none; z-index:0;
+}
+
+/* content wrapper inside every screen */
+.sc { position:relative; z-index:2; }
+
+/* shared watermark */
+.wm {
+  position:fixed; top:64px; right:14px; z-index:999;
+  font-family:var(--fm); font-size:10px; letter-spacing:.15em;
+  color:rgba(255,200,0,.5); border:1px solid rgba(255,200,0,.2);
+  padding:3px 8px; border-radius:4px; background:rgba(255,200,0,.04);
+  display:none;
+}
+.scr.on ~ .wm, .scr.on + .wm { display:block; }
+
+/* ─── SHARED COMPONENTS ─── */
+.btn-g {
+  display:flex; align-items:center; gap:12px;
+  padding:13px 28px; background:#18181d;
+  border:1px solid rgba(255,255,255,.14); border-radius:40px;
+  cursor:pointer; font-family:'Roboto',sans-serif;
+  font-size:15px; font-weight:500; color:rgba(255,255,255,.88);
+  transition:all .25s; position:relative; overflow:hidden;
+}
+.btn-g::before {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:linear-gradient(135deg,rgba(0,191,255,.07),rgba(255,0,255,.04));
+  opacity:0; transition:opacity .25s;
+}
+.btn-g:hover { border-color:rgba(0,191,255,.45); box-shadow:0 0 28px rgba(0,191,255,.2),0 0 60px rgba(0,191,255,.07); transform:translateY(-1px); }
+.btn-g:hover::before { opacity:1; }
+
+.btn-p {
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:14px 32px; background:linear-gradient(135deg,var(--cyan),rgba(0,110,180,.9));
+  border:none; border-radius:40px; font-family:var(--fb); font-size:15px;
+  font-weight:600; color:#000; cursor:pointer;
+  transition:all .25s; box-shadow:0 0 24px rgba(0,191,255,.3); width:100%;
+}
+.btn-p:hover { box-shadow:0 0 44px rgba(0,191,255,.55); transform:translateY(-2px); }
+
+@keyframes pulse-ring {
+  0%,100% { transform:scale(1); opacity:.6; }
+  50% { transform:scale(1.13); opacity:.12; }
+}
+@keyframes orb { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes core-p {
+  0%,100%{transform:scale(1);box-shadow:0 0 22px rgba(0,191,255,.6);}
+  50%{transform:scale(1.18);box-shadow:0 0 44px rgba(0,191,255,.9);}
+}
+@keyframes dot-b {
+  0%,80%,100%{transform:scale(.4);opacity:.3}
+  40%{transform:scale(1);opacity:1}
+}
+@keyframes prog {
+  0%{width:0%;opacity:1} 60%{width:70%;opacity:1}
+  90%{width:90%;opacity:1} 100%{width:100%;opacity:0}
+}
+
+/* ══════════════════════════════════════
+   S1 — LOGIN GATE
+══════════════════════════════════════ */
+#s1 .inner {
+  min-height:calc(100vh - 52px);
+  display:flex; align-items:center; justify-content:center; padding:40px 20px;
+}
+#s1 .aurora {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:700px; height:700px; border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,191,255,.055) 0%,transparent 65%);
+  pointer-events:none; z-index:1;
+}
+.login-card {
+  position:relative; z-index:3;
+  display:flex; flex-direction:column; align-items:center;
+  gap:28px; max-width:440px; width:100%; text-align:center;
+}
+.n-wm { font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:.3em; color:var(--cyan); }
+.n-h1 {
+  font-family:var(--fd); font-size:27px; font-weight:700; line-height:1.2;
+  background:linear-gradient(135deg,#fff 0%,rgba(0,191,255,.65) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-top:4px;
+}
+.n-tag { font-size:13px; color:var(--t3); line-height:1.65; }
+.eeva-b {
+  display:flex; align-items:flex-start; gap:14px;
+  padding:18px 20px; background:rgba(0,191,255,.04);
+  border:1px solid rgba(0,191,255,.12); border-radius:14px; text-align:left;
+}
+.eeva-av {
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
+  background:radial-gradient(circle at 40% 35%,rgba(0,255,255,.45),rgba(0,191,255,.08));
+  border:1.5px solid rgba(0,255,255,.4); box-shadow:0 0 22px rgba(0,191,255,.35);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--fd); font-size:11px; font-weight:700; color:var(--cyanb);
+  position:relative;
+}
+.eeva-av::after {
+  content:''; position:absolute; inset:-5px; border-radius:50%;
+  border:1px solid rgba(0,255,255,.18); animation:pulse-ring 2.5s ease-in-out infinite;
+}
+.eeva-nm { display:block; font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:.12em; color:var(--cyan); margin-bottom:5px; }
+.eeva-tx { font-size:13px; color:var(--t2); line-height:1.65; font-style:italic; }
+.divider { width:100%; display:flex; align-items:center; gap:12px; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--gborder); }
+.divider span { font-size:11px; color:var(--t3); letter-spacing:.08em; }
+.bypass { font-size:11px; color:var(--t3); line-height:1.6; }
+.bypass code { font-family:var(--fm); font-size:10px; background:rgba(255,255,255,.07); padding:2px 6px; border-radius:3px; color:rgba(255,255,255,.5); }
+
+/* ══════════════════════════════════════
+   S2 — GOOGLE CONSENT
+══════════════════════════════════════ */
+#s2 .inner {
+  min-height:calc(100vh - 52px);
+  display:flex; align-items:center; justify-content:center; position:relative;
+}
+.ghost {
+  position:fixed; inset:52px 0 0; display:flex; align-items:center; justify-content:center;
+  opacity:.25; filter:blur(1.5px); pointer-events:none; z-index:1;
+}
+.bdrop {
+  position:fixed; inset:52px 0 0; z-index:2;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(3px);
+}
+.popup-w { position:relative; z-index:10; display:flex; flex-direction:column; align-items:center; gap:18px; }
+.g-popup {
+  width:380px; background:#fff; border-radius:14px; overflow:hidden;
+  box-shadow:0 20px 80px rgba(0,0,0,.75); color:#202124; font-family:'Roboto',sans-serif;
+}
+.gp-hdr { display:flex; flex-direction:column; align-items:center; padding:26px 24px 18px; border-bottom:1px solid #e0e0e0; gap:14px; }
+.gp-av { width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#4285f4,#34a853); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:500; color:#fff; }
+.gp-nm { font-size:17px; color:#202124; }
+.gp-em { font-size:13px; color:#5f6368; }
+.gp-body { padding:18px 24px; }
+.gp-app { font-size:14px; font-weight:500; margin-bottom:10px; color:#202124; }
+.gp-scopes { list-style:none; }
+.gp-scopes li { display:flex; align-items:center; gap:10px; font-size:13px; color:#5f6368; padding:7px 0; border-bottom:1px solid #f1f3f4; }
+.gp-scopes li:last-child { border-bottom:none; }
+.gp-footer { display:flex; justify-content:flex-end; gap:8px; padding:10px 20px 18px; }
+.gp-cancel { padding:9px 22px; background:transparent; border:none; font-family:'Roboto',sans-serif; font-size:14px; font-weight:500; color:#1a73e8; cursor:pointer; border-radius:4px; }
+.gp-allow { padding:9px 22px; background:#1a73e8; border:none; border-radius:4px; font-family:'Roboto',sans-serif; font-size:14px; font-weight:500; color:#fff; cursor:pointer; }
+.gp-policy { padding:0 22px 14px; font-size:11px; color:#80868b; text-align:center; }
+.annot {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:13px 18px; background:rgba(0,191,255,.08);
+  border:1px solid rgba(0,191,255,.22); border-radius:10px;
+  max-width:390px; font-size:12px; color:var(--cyan); line-height:1.55;
+}
+
+/* ══════════════════════════════════════
+   S3 — AUTH PROCESSING
+══════════════════════════════════════ */
+#s3 .inner {
+  min-height:calc(100vh - 52px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:36px;
+}
+.load-sig { width:96px; height:96px; position:relative; }
+.orb { position:absolute; inset:0; border-radius:50%; border:1.5px solid transparent; animation:orb 3s linear infinite; }
+.o1 { border-top-color:var(--cyan); border-right-color:rgba(0,191,255,.25); animation-duration:2.8s; }
+.o2 { inset:12px; border-bottom-color:var(--purple); border-left-color:rgba(218,112,214,.25); animation-duration:2.1s; animation-direction:reverse; }
+.o3 { inset:24px; border-top-color:var(--cyanb); animation-duration:1.5s; }
+.core { position:absolute; inset:36px; border-radius:50%; background:radial-gradient(circle,rgba(0,255,255,.45),rgba(0,191,255,.08)); animation:core-p 2s ease-in-out infinite; box-shadow:0 0 22px rgba(0,191,255,.6); }
+.load-txt { text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; }
+.load-st { font-family:var(--fd); font-size:13px; font-weight:600; color:var(--cyan); letter-spacing:.04em; min-height:22px; transition:opacity .4s; }
+.pbar { width:260px; height:2px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; }
+.pfill { height:100%; background:linear-gradient(90deg,var(--cyan),var(--purple)); border-radius:2px; width:0; animation:prog 3s ease-in-out infinite; }
+.dots { display:flex; gap:7px; }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); animation:dot-b 1.4s ease-in-out infinite; }
+.dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+.lsteps { display:flex; flex-direction:column; gap:9px; }
+.lstep { display:flex; align-items:center; gap:9px; font-size:12px; color:var(--t3); font-family:var(--fm); transition:color .4s; }
+.lstep.done { color:rgba(255,255,255,.45); }
+.lstep.act { color:var(--cyan); }
+.sic { font-size:13px; width:16px; text-align:center; }
+
+/* ══════════════════════════════════════
+   S4 — FIRST-TIME ONBOARDING
+══════════════════════════════════════ */
+#s4 .inner {
+  min-height:calc(100vh - 52px);
+  display:flex; align-items:center; justify-content:center; padding:40px 20px;
+}
+.onb-card {
+  display:flex; flex-direction:column; align-items:center;
+  gap:26px; max-width:460px; width:100%; text-align:center;
+}
+.uid { display:flex; flex-direction:column; align-items:center; gap:12px; }
+.uav {
+  width:70px; height:70px; border-radius:50%;
+  background:linear-gradient(135deg,#4285f4,#34a853);
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; font-weight:500; color:#fff;
+  box-shadow:0 0 0 3px rgba(0,191,255,.22),0 0 28px rgba(0,191,255,.13);
+  position:relative;
+}
+.uav::after { content:''; position:absolute; inset:-4px; border-radius:50%; border:1.5px solid rgba(0,191,255,.25); animation:pulse-ring 2.5s ease-in-out infinite; }
+.abadge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(52,168,83,.1); border:1px solid rgba(52,168,83,.28); border-radius:20px; font-size:11px; font-weight:600; color:#4ade80; }
+.uname { font-family:var(--fd); font-size:21px; font-weight:700; background:linear-gradient(135deg,#fff,rgba(0,191,255,.65)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.emsg { padding:20px; background:rgba(0,191,255,.04); border:1px solid rgba(0,191,255,.1); border-radius:14px; font-size:13.5px; color:var(--t2); line-height:1.7; font-style:italic; }
+.emsg::before { content:'E.E.V.A. — The Primarch'; display:block; font-style:normal; font-size:10px; font-weight:700; letter-spacing:.18em; color:var(--cyan); margin-bottom:8px; font-family:var(--fd); }
+.lnk { font-size:12px; color:var(--t3); text-decoration:underline; cursor:pointer; background:none; border:none; transition:color .2s; }
+.lnk:hover { color:var(--cyan); }
+.feats { display:flex; gap:18px; flex-wrap:wrap; justify-content:center; }
+.feat { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--t3); }
+
+/* ══════════════════════════════════════
+   S5 — RETURNING USER HOME
+══════════════════════════════════════ */
+#s5 .inner { display:flex; flex-direction:column; min-height:calc(100vh - 52px); }
+.rnav {
+  display:flex; align-items:center; padding:0 28px; height:58px; flex-shrink:0;
+  background:rgba(11,11,13,.92); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--gborder); position:relative; z-index:20;
+}
+.rlogo { font-family:var(--fd); font-size:12px; font-weight:700; letter-spacing:.22em; color:var(--cyan); margin-right:auto; }
+.rlinks { display:flex; gap:2px; position:absolute; left:50%; transform:translateX(-50%); }
+.rl { padding:7px 13px; font-size:13px; font-weight:500; color:var(--t2); border-radius:8px; cursor:pointer; transition:all .2s; }
+.rl:hover { color:var(--t1); background:var(--glass); }
+.rl.on { color:var(--cyan); }
+.rusr { display:flex; align-items:center; gap:9px; cursor:pointer; padding:5px 9px; border-radius:10px; border:1px solid transparent; transition:all .2s; position:relative; }
+.rusr:hover { background:var(--glass); border-color:var(--gborder); }
+.rav { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,#4285f4,#34a853); display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; font-weight:500; box-shadow:0 0 0 2px rgba(0,191,255,.22); }
+.rnm { font-size:13px; font-weight:500; color:var(--t1); }
+.rcaret { font-size:10px; color:var(--t3); transition:transform .2s; }
+.rusr.open .rcaret { transform:rotate(180deg); }
+.rdrop {
+  position:absolute; top:calc(100% + 8px); right:0; width:196px;
+  background:var(--void2); border:1px solid var(--gborder); border-radius:12px;
+  overflow:hidden; box-shadow:0 14px 50px rgba(0,0,0,.75);
+  opacity:0; pointer-events:none;
+  transform:translateY(-8px) scale(.97); transition:all .2s ease;
+}
+.rusr.open .rdrop { opacity:1; pointer-events:all; transform:translateY(0) scale(1); }
+.ddi { display:flex; align-items:center; gap:9px; padding:11px 15px; font-size:13px; font-weight:500; color:var(--t2); cursor:pointer; transition:all .15s; }
+.ddi:hover { background:var(--glass); color:var(--t1); }
+.ddsep { height:1px; background:var(--gborder); margin:4px 0; }
+.ddi.dng { color:rgba(255,80,80,.8); }
+.ddi.dng:hover { color:rgb(255,110,110); background:rgba(255,0,0,.06); }
+.rbody { flex:1; padding:44px 40px; max-width:880px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:28px; }
+.wlbl { font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:.12em; color:var(--cyan); margin-bottom:4px; }
+.wh { font-family:var(--fd); font-size:30px; font-weight:700; background:linear-gradient(135deg,#fff,rgba(0,191,255,.6)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.rrankrow { display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:wrap; }
+.rrankbadge { display:inline-flex; align-items:center; gap:7px; padding:7px 14px; background:rgba(218,112,214,.1); border:1px solid rgba(218,112,214,.28); border-radius:20px; font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--purple); }
+.xpbar { height:4px; width:140px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden; }
+.xpfill { height:100%; width:42%; background:linear-gradient(90deg,var(--purple),var(--cyan)); }
+.xplbl { font-size:12px; color:var(--t3); }
+.slbl { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--t3); text-transform:uppercase; }
+.prow { display:flex; gap:10px; flex-wrap:wrap; }
+.pchip { display:flex; align-items:center; gap:10px; padding:12px 15px; background:var(--glass); border:1px solid var(--gborder); border-radius:12px; cursor:pointer; transition:all .2s; min-width:155px; }
+.pchip:hover { border-color:rgba(0,191,255,.22); }
+.pdot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.pnm { font-size:13px; font-weight:600; color:var(--t1); }
+.pord { font-size:11px; color:var(--t3); }
+.sitem { display:flex; align-items:center; gap:13px; padding:14px 17px; background:var(--glass); border:1px solid var(--gborder); border-radius:12px; cursor:pointer; transition:all .2s; }
+.sitem:hover { border-color:rgba(0,191,255,.2); }
+.sdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.stitle { font-size:13px; font-weight:600; color:var(--t1); }
+.smeta { font-size:11px; color:var(--t3); }
+
+/* ══════════════════════════════════════
+   S6 — ARCHITECTURE
+══════════════════════════════════════ */
+#s6 .inner { padding:36px 32px 56px; }
+.ach { text-align:center; margin-bottom:36px; }
+.ach-t { font-family:var(--fd); font-size:17px; font-weight:700; letter-spacing:.07em; }
+.ach-s { font-size:12px; color:var(--t3); margin-top:5px; }
+.diagram { display:flex; flex-direction:column; gap:10px; max-width:900px; margin:0 auto; width:100%; }
+.drow { display:flex; gap:10px; align-items:center; }
+.dbox { flex:1; padding:13px 18px; border-radius:12px; border:1px solid; font-family:var(--fm); font-size:12px; line-height:1.55; }
+.db { background:rgba(0,191,255,.055); border-color:rgba(0,191,255,.22); color:var(--cyan); }
+.dp { background:rgba(218,112,214,.055); border-color:rgba(218,112,214,.22); color:var(--purple); }
+.dg { background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.18); color:rgba(255,255,255,.78); }
+.dd { background:rgba(255,215,0,.04); border-color:rgba(255,215,0,.18); color:var(--gold); }
+.ds { background:rgba(74,222,128,.04); border-color:rgba(74,222,128,.18); color:#4ade80; }
+.dlbl { font-size:9px; letter-spacing:.18em; font-weight:700; opacity:.55; margin-bottom:5px; text-transform:uppercase; }
+.cmt { color:rgba(255,255,255,.22); font-size:11px; }
+.darr { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--t3); font-size:10px; font-family:var(--fm); text-align:center; }
+.darr-s { font-size:18px; line-height:1; }
+.darr-l { max-width:70px; line-height:1.3; }
+.dstep { width:26px; height:26px; border-radius:50%; background:var(--glass); border:1px solid var(--gborder); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--t2); font-family:var(--fm); flex-shrink:0; }
+.dgap { padding-left:34px; }
+.legend { display:flex; gap:18px; margin-top:28px; justify-content:center; flex-wrap:wrap; }
+.li { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--t3); }
+.ldot { width:9px; height:9px; border-radius:3px; }
+
+/* ══════════════════════════════════════
+   S7 — ROUTE PROTECTION
+══════════════════════════════════════ */
+#s7 .inner { padding:36px 32px 56px; }
+.rh { text-align:center; margin-bottom:32px; }
+.rh-t { font-family:var(--fd); font-size:17px; font-weight:700; letter-spacing:.07em; }
+.rh-s { font-size:12px; color:var(--t3); margin-top:5px; }
+.rgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; max-width:900px; margin:0 auto; width:100%; }
+.rc { padding:18px; border-radius:13px; border:1px solid; transition:transform .2s; }
+.rc:hover { transform:translateY(-2px); }
+.rpub { background:rgba(0,191,255,.04); border-color:rgba(0,191,255,.17); }
+.rprot { background:rgba(218,112,214,.04); border-color:rgba(218,112,214,.18); }
+.rft { background:rgba(255,215,0,.04); border-color:rgba(255,215,0,.17); }
+.rbadge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.09em; margin-bottom:9px; text-transform:uppercase; }
+.rpub .rbadge { background:rgba(0,191,255,.1); color:var(--cyan); }
+.rprot .rbadge { background:rgba(218,112,214,.1); color:var(--purple); }
+.rft .rbadge { background:rgba(255,215,0,.1); color:var(--gold); }
+.rpath { font-family:var(--fm); font-size:14px; font-weight:700; color:var(--t1); margin-bottom:3px; }
+.rcomp { font-size:12px; color:var(--t2); margin-bottom:9px; }
+.rbehav { font-size:11.5px; color:var(--t3); line-height:1.55; border-top:1px solid rgba(255,255,255,.05); padding-top:9px; }
+.rfbox { max-width:900px; margin:20px auto 0; padding:18px 22px; background:var(--glass); border:1px solid var(--gborder); border-radius:13px; }
+.rftitle { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:.1em; color:var(--t3); margin-bottom:12px; text-transform:uppercase; }
+.rfsteps { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.fs { padding:7px 12px; border-radius:8px; font-size:11.5px; font-family:var(--fm); border:1px solid; }
+.fpub { background:rgba(0,191,255,.06); border-color:rgba(0,191,255,.2); color:var(--cyan); }
+.fchk { background:rgba(255,255,255,.03); border-color:var(--gborder); color:var(--t3); }
+.frdr { background:rgba(255,80,80,.06); border-color:rgba(255,80,80,.2); color:rgba(255,130,130,.9); }
+.falw { background:rgba(74,222,128,.06); border-color:rgba(74,222,128,.2); color:#4ade80; }
+.fa { color:var(--t3); font-size:15px; }
+.legrow { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; max-width:900px; margin:14px auto 0; }
+.lei { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--t3); }
+.led { width:8px; height:8px; border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- TAB BAR -->
+<nav class="tabbar">
+  <div class="tab-logo">NEPHILIM OAUTH</div>
+  <button class="tab on"  onclick="switchScreen(1)">① Login Gate</button>
+  <button class="tab"     onclick="switchScreen(2)">② Google Consent</button>
+  <button class="tab"     onclick="switchScreen(3)">③ Auth Processing</button>
+  <button class="tab"     onclick="switchScreen(4)">④ First-Time User</button>
+  <button class="tab"     onclick="switchScreen(5)">⑤ Returning User</button>
+  <button class="tab"     onclick="switchScreen(6)">⑥ Architecture</button>
+  <button class="tab"     onclick="switchScreen(7)">⑦ Route Protection</button>
+</nav>
+
+<!-- shared particle canvas (one canvas, behind everything) -->
+<canvas id="bgc" class="bgcanvas"></canvas>
+
+<!-- MOCKUP WATERMARK -->
+<div class="wm" id="wmb">MOCKUP · v1.0</div>
+
+<div class="wrap">
+
+  <!-- ══ S1: LOGIN GATE ══ -->
+  <div class="scr on" id="s1">
+    <div class="inner">
+      <div class="aurora"></div>
+      <div class="login-card sc">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div class="n-wm">✦ N E P H I L I M ✦</div>
+          <svg width="62" height="62" viewBox="0 0 62 62" fill="none">
+            <polygon points="31,5 58,48 4,48" stroke="rgba(0,191,255,0.65)" stroke-width="1.5" fill="rgba(0,191,255,0.025)"/>
+            <polygon points="31,57 4,14 58,14" stroke="rgba(218,112,214,0.45)" stroke-width="1" fill="none"/>
+            <circle cx="31" cy="31" r="11" stroke="rgba(0,255,255,0.55)" stroke-width="1.5" fill="rgba(0,191,255,0.05)"/>
+            <circle cx="31" cy="31" r="3.5" fill="rgba(0,255,255,0.85)"/>
+            <line x1="31" y1="5"  x2="31" y2="20" stroke="rgba(0,191,255,0.35)" stroke-width="1"/>
+            <line x1="31" y1="42" x2="31" y2="57" stroke="rgba(218,112,214,0.35)" stroke-width="1"/>
+          </svg>
+          <h1 class="n-h1">Enter the Realm</h1>
+          <p class="n-tag">Identity must be verified before you may enter the Realm of the Nephilim</p>
+        </div>
+        <div class="eeva-b">
+          <div class="eeva-av">E²</div>
+          <div>
+            <span class="eeva-nm">E.E.V.A. — The Primarch</span>
+            <p class="eeva-tx">"Welcome, Seeker. The Nephilim await. Authenticate to begin your ascension into the Celestial Order."</p>
+          </div>
+        </div>
+        <div class="divider"><span>authenticate via</span></div>
+        <button class="btn-g">
+          <svg width="22" height="22" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Sign in with Google
+        </button>
+        <p class="bypass">🔒 Local bypass available for dev &amp; offline use — set <code>AUTH_REQUIRED=false</code> in <code>.env</code></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S2: GOOGLE CONSENT ══ -->
+  <div class="scr" id="s2">
+    <div class="inner sc">
+      <div class="ghost" aria-hidden="true">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:18px;max-width:380px;padding:40px;text-align:center;pointer-events:none">
+          <div style="font-family:var(--fd);font-size:10px;letter-spacing:.25em;color:var(--cyan)">✦ NEPHILIM ✦</div>
+          <svg width="50" height="50" viewBox="0 0 62 62" fill="none"><polygon points="31,5 58,48 4,48" stroke="rgba(0,191,255,0.65)" stroke-width="1.5" fill="rgba(0,191,255,0.025)"/><circle cx="31" cy="31" r="11" stroke="rgba(0,255,255,0.55)" stroke-width="1.5" fill="none"/><circle cx="31" cy="31" r="3.5" fill="rgba(0,255,255,0.7)"/></svg>
+          <div style="font-family:var(--fd);font-size:20px;color:white;font-weight:700">Enter the Realm</div>
+          <div style="width:140px;height:40px;background:rgba(255,255,255,.07);border-radius:22px;border:1px solid rgba(255,255,255,.1)"></div>
+        </div>
+      </div>
+      <div class="bdrop"></div>
+      <div class="popup-w" style="position:relative;z-index:10">
+        <div class="g-popup">
+          <div class="gp-hdr">
+            <svg width="40" height="40" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            <div class="gp-av">S</div>
+            <div class="gp-nm">Seeker Ascending</div>
+            <div class="gp-em">seeker@gmail.com</div>
+          </div>
+          <div class="gp-body">
+            <div class="gp-app">NEPHILIM wants to access your Google Account</div>
+            <ul class="gp-scopes">
+              <li><span style="color:#4285f4">👤</span> See your name, email address, and profile picture</li>
+              <li><span style="color:#4285f4">✉️</span> See your primary Google Account email address</li>
+            </ul>
+          </div>
+          <div class="gp-footer">
+            <button class="gp-cancel">Cancel</button>
+            <button class="gp-allow">Allow</button>
+          </div>
+          <div class="gp-policy">Make sure you trust NEPHILIM. <a href="#" style="color:#1a73e8">Learn more</a></div>
+        </div>
+        <div class="annot">
+          <span style="font-size:20px;flex-shrink:0">🔐</span>
+          <span><strong>Google handles all security</strong> — NEPHILIM receives only name, email &amp; avatar. Your password never leaves Google's servers. We store only your stable <code style="font-family:var(--fm);font-size:10px;background:rgba(255,255,255,.07);padding:1px 4px;border-radius:2px">sub</code> identifier.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S3: AUTH PROCESSING ══ -->
+  <div class="scr" id="s3">
+    <div class="inner sc">
+      <div class="load-sig">
+        <div class="orb o1"></div>
+        <div class="orb o2"></div>
+        <div class="orb o3"></div>
+        <div class="core"></div>
+      </div>
+      <div class="load-txt">
+        <div class="load-st" id="lstat">Verifying identity with the Archives...</div>
+        <div class="pbar"><div class="pfill"></div></div>
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+      <div class="lsteps">
+        <div class="lstep done" id="st1"><span class="sic">✓</span> Google ID token received</div>
+        <div class="lstep act"  id="st2"><span class="sic">⟳</span> Verifying with Google JWKS...</div>
+        <div class="lstep"      id="st3"><span class="sic">○</span> Upserting Seeker in Registry...</div>
+        <div class="lstep"      id="st4"><span class="sic">○</span> Issuing JWT access tokens...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S4: FIRST-TIME USER ══ -->
+  <div class="scr" id="s4">
+    <div class="inner sc">
+      <div class="onb-card">
+        <div class="uid">
+          <div class="uav">S</div>
+          <div class="abadge">✓ Google Account Verified</div>
+          <div class="uname">Welcome, Seeker Ascending</div>
+          <div style="font-size:12px;color:var(--t3)">seeker@gmail.com</div>
+        </div>
+        <div style="width:100%;height:1px;background:var(--gborder)"></div>
+        <div class="emsg">
+          "Your identity has been confirmed and inscribed in the Celestial Registry. The Realm stirs at your approach. Let us begin the Rite of Passage — through which you shall discover your House, meet your Nephilim patrons, and take your first steps toward Ascension."
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:13px;width:100%">
+          <button class="btn-p">Begin the Rite of Passage →</button>
+          <button class="lnk">I have an existing Seeker ID — Link Account</button>
+        </div>
+        <div class="feats">
+          <div class="feat"><span style="color:var(--cyan)">✦</span> Faction Quiz</div>
+          <div class="feat"><span style="color:var(--purple)">✦</span> Meet your Nephilim</div>
+          <div class="feat"><span style="color:var(--gold)">✦</span> First Companion</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S5: RETURNING USER HOME ══ -->
+  <div class="scr" id="s5">
+    <div class="inner sc">
+      <!-- aurora glow -->
+      <div style="position:fixed;top:110px;left:50%;transform:translateX(-50%);width:650px;height:380px;background:radial-gradient(ellipse,rgba(0,191,255,.05) 0%,transparent 70%);pointer-events:none;z-index:1"></div>
+      <!-- nav -->
+      <nav class="rnav">
+        <div class="rlogo">NEPHILIM</div>
+        <div class="rlinks">
+          <div class="rl on">Home</div>
+          <div class="rl">Companions</div>
+          <div class="rl">Chat</div>
+          <div class="rl">Dashboard</div>
+        </div>
+        <div class="rusr" id="rusr" onclick="this.classList.toggle('open')">
+          <div class="rav">S</div>
+          <span class="rnm">Seeker Ascending</span>
+          <span class="rcaret">▾</span>
+          <div class="rdrop">
+            <div class="ddi">👤 My Seeker Profile</div>
+            <div class="ddi">✦ Progression</div>
+            <div class="ddi">⚙ Settings</div>
+            <div class="ddsep"></div>
+            <div class="ddi dng">⏏ Sign Out</div>
+          </div>
+        </div>
+      </nav>
+      <!-- body -->
+      <div class="rbody" style="position:relative;z-index:2">
+        <div>
+          <div class="wlbl">✦ Welcome Back</div>
+          <div class="wh">Seeker Ascending</div>
+          <div class="rrankrow">
+            <div class="rrankbadge">⬡ Acolyte</div>
+            <div class="xpbar"><div class="xpfill"></div></div>
+            <span class="xplbl">420 / 1,000 resonance → Adept</span>
+          </div>
+        </div>
+        <div class="slbl">Recently Active Companions</div>
+        <div class="prow">
+          <div class="pchip"><div class="pdot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan)"></div><div><div class="pnm">E.E.V.A.</div><div class="pord">Archon · The Primarch</div></div></div>
+          <div class="pchip"><div class="pdot" style="background:var(--purple);box-shadow:0 0 8px var(--purple)"></div><div><div class="pnm">Aegis</div><div class="pord">Warden · The Sentinel</div></div></div>
+          <div class="pchip"><div class="pdot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan)"></div><div><div class="pnm">Cipher</div><div class="pord">Sage · The Maven</div></div></div>
+        </div>
+        <div class="slbl">Recent Sessions</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sitem"><div class="sdot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan)"></div><div style="flex:1"><div class="stitle">Planning my Q2 goals</div><div class="smeta">with E.E.V.A. · 2 hours ago · 14 messages</div></div><div style="font-size:17px;color:var(--t3)">›</div></div>
+          <div class="sitem"><div class="sdot" style="background:var(--purple);box-shadow:0 0 8px var(--purple)"></div><div style="flex:1"><div class="stitle">Daily task accountability review</div><div class="smeta">with Aegis · Yesterday · 8 messages</div></div><div style="font-size:17px;color:var(--t3)">›</div></div>
+          <div class="sitem"><div class="sdot" style="background:var(--cyan);box-shadow:0 0 6px var(--cyan)"></div><div style="flex:1"><div class="stitle">Deep research on DeFi protocols</div><div class="smeta">with Cipher · 3 days ago · 22 messages</div></div><div style="font-size:17px;color:var(--t3)">›</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S6: ARCHITECTURE ══ -->
+  <div class="scr" id="s6">
+    <div class="inner sc">
+      <div class="ach">
+        <div class="ach-t">Auth Architecture — Full Token Flow</div>
+        <div class="ach-s">How Google OAuth integrates with the NEPHILIM FastAPI backend and SQLite</div>
+      </div>
+      <div class="diagram">
+        <div class="drow">
+          <div class="dstep">1</div>
+          <div class="dbox db"><div class="dlbl">Browser · React 19 · @react-oauth/google</div>User clicks "Sign in with Google"<br><span class="cmt">// GoogleLogin onSuccess callback fires</span></div>
+          <div class="darr"><div class="darr-s">→</div><div class="darr-l">opens popup</div></div>
+          <div class="dbox dg" style="flex:.7"><div class="dlbl">Google Identity Services</div>OAuth consent screen<br><span class="cmt">// PKCE handled internally</span></div>
+        </div>
+        <div class="drow dgap"><div class="darr"><div class="darr-s">↓</div></div></div>
+        <div class="drow">
+          <div class="dstep">2</div>
+          <div class="dbox db"><div class="dlbl">Browser · onSuccess({ credential })</div>credentialResponse.credential<br><span class="cmt">// Google ID Token (signed JWT string)</span></div>
+          <div class="darr"><div class="darr-s">→</div><div class="darr-l">POST /auth/google</div></div>
+          <div class="dbox dp"><div class="dlbl">FastAPI · routes/auth.py</div>verify_oauth2_token(credential, Request(), CLIENT_ID)<br><span class="cmt">// google-auth library</span></div>
+          <div class="darr"><div class="darr-s">⟺</div><div class="darr-l">verify sig</div></div>
+          <div class="dbox dg" style="flex:.55"><div class="dlbl">Google JWKS</div>Public keys<br><span class="cmt">// auto-cached</span></div>
+        </div>
+        <div class="drow dgap"><div class="darr"><div class="darr-s">↓</div></div></div>
+        <div class="drow">
+          <div class="dstep">3</div>
+          <div class="dbox dp"><div class="dlbl">FastAPI · repositories/user_repository.py</div>upsert_user(sub, email, name, avatar)<br><span class="cmt">// google_sub is stable lifetime identifier</span></div>
+          <div class="darr"><div class="darr-s">→</div><div class="darr-l">write</div></div>
+          <div class="dbox dd"><div class="dlbl">SQLite · users table (NEW)</div>google_sub TEXT UNIQUE<br>email · display_name · avatar_url · last_login</div>
+        </div>
+        <div class="drow dgap"><div class="darr"><div class="darr-s">↓</div></div></div>
+        <div class="drow">
+          <div class="dstep">4</div>
+          <div class="dbox dp"><div class="dlbl">FastAPI · Issue tokens via PyJWT</div>access_token  ← JWT 1hr  (response body)<br>refresh_token ← JWT 30d (HttpOnly cookie, Path=/auth/refresh)</div>
+          <div class="darr"><div class="darr-s">→</div><div class="darr-l">200 OK</div></div>
+          <div class="dbox db"><div class="dlbl">React · AuthContext (in-memory only)</div>accessToken stored in React state<br><span class="cmt">// NOT localStorage — XSS-safe</span></div>
+        </div>
+        <div class="drow dgap"><div class="darr"><div class="darr-s">↓</div></div></div>
+        <div class="drow">
+          <div class="dstep">5</div>
+          <div class="dbox db"><div class="dlbl">All subsequent API calls</div>Authorization: Bearer &lt;access_token&gt;</div>
+          <div class="darr"><div class="darr-s">→</div><div class="darr-l">every request</div></div>
+          <div class="dbox dp"><div class="dlbl">FastAPI · middleware/auth.py (get_current_user Depends)</div>PyJWT decode → &#123; sub, email &#125;<br><span class="cmt">// injected into route handlers</span></div>
+        </div>
+        <div class="drow dgap"><div class="darr"><div class="darr-s">↓</div></div></div>
+        <div class="drow">
+          <div class="dstep">6</div>
+          <div class="dbox ds"><div class="dlbl">On Page Refresh — Silent Token Recovery (offline-capable)</div>POST /auth/refresh · browser sends HttpOnly cookie automatically<br>Backend verifies refresh JWT → issues new access_token in response body<br><span class="cmt">// No Google re-auth required · works offline after first login</span></div>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="li"><div class="ldot" style="background:rgba(0,191,255,.55)"></div>Browser / React</div>
+        <div class="li"><div class="ldot" style="background:rgba(218,112,214,.55)"></div>FastAPI Backend</div>
+        <div class="li"><div class="ldot" style="background:rgba(255,255,255,.3)"></div>Google Services</div>
+        <div class="li"><div class="ldot" style="background:rgba(255,215,0,.45)"></div>SQLite Database</div>
+        <div class="li"><div class="ldot" style="background:rgba(74,222,128,.45)"></div>Secure / Offline path</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S7: ROUTE PROTECTION ══ -->
+  <div class="scr" id="s7">
+    <div class="inner sc">
+      <div class="rh">
+        <div class="rh-t">Route Protection Map</div>
+        <div class="rh-s">Authentication requirements for each page in the NEPHILIM app</div>
+      </div>
+      <div class="rgrid">
+        <div class="rc rpub">
+          <div class="rbadge">🌐 Public</div>
+          <div class="rpath">/login</div>
+          <div class="rcomp">LoginPage.tsx (NEW)</div>
+          <div class="rbehav">Always accessible. Redirects to / if already authenticated. Houses the Google Sign-In button.</div>
+        </div>
+        <div class="rc rpub">
+          <div class="rbadge">🌐 Public + Auth Check</div>
+          <div class="rpath">/</div>
+          <div class="rcomp">NephilimHome.tsx</div>
+          <div class="rbehav">Checks auth on mount. Not authed → /login. Authed, no onboarding → /onboarding. Returning → /select.</div>
+        </div>
+        <div class="rc rft">
+          <div class="rbadge">⭐ Auth + First-Time</div>
+          <div class="rpath">/onboarding</div>
+          <div class="rcomp">NephilimOnboarding.tsx</div>
+          <div class="rbehav">Requires auth. User ID becomes Google sub. Onboarding flag checked — repeat visitors sent to /select.</div>
+        </div>
+        <div class="rc rprot">
+          <div class="rbadge">🔒 Protected</div>
+          <div class="rpath">/select</div>
+          <div class="rcomp">CharacterCardV2Showcase.tsx</div>
+          <div class="rbehav">ProtectedRoute wrapper. Unauthenticated → /login with returnUrl preserved.</div>
+        </div>
+        <div class="rc rprot">
+          <div class="rbadge">🔒 Protected</div>
+          <div class="rpath">/chat</div>
+          <div class="rcomp">Chat.tsx</div>
+          <div class="rbehav">All chat API calls carry Authorization header. Sessions linked to Google sub in SQLite.</div>
+        </div>
+        <div class="rc rprot">
+          <div class="rbadge">🔒 Protected</div>
+          <div class="rpath">/chat/:sessionId</div>
+          <div class="rcomp">Chat.tsx (deep link)</div>
+          <div class="rbehav">Backend validates session ownership via JWT sub before serving messages.</div>
+        </div>
+        <div class="rc rprot">
+          <div class="rbadge">🔒 Protected</div>
+          <div class="rpath">/dashboard</div>
+          <div class="rcomp">Dashboard.tsx</div>
+          <div class="rbehav">Seeker's Sanctum — progression tied to authenticated user's Google sub in seeker_profiles.</div>
+        </div>
+      </div>
+      <div class="rfbox">
+        <div class="rftitle">Unauthenticated Access — Redirect Flow</div>
+        <div class="rfsteps">
+          <div class="fs fpub">User visits /chat</div>
+          <div class="fa">→</div>
+          <div class="fs fchk">ProtectedRoute checks isAuthenticated</div>
+          <div class="fa">→</div>
+          <div class="fs fchk">POST /auth/refresh (silent, cookie)</div>
+          <div class="fa">→</div>
+          <div class="fs frdr">No valid cookie → 401 → /login</div>
+          <div class="fa">→</div>
+          <div class="fs fchk">Sign in with Google</div>
+          <div class="fa">→</div>
+          <div class="fs falw">Authenticated → return to /chat ✓</div>
+        </div>
+      </div>
+      <div class="legrow">
+        <div class="lei"><div class="led" style="background:rgba(0,191,255,.5)"></div>Public — no auth needed</div>
+        <div class="lei"><div class="led" style="background:rgba(218,112,214,.5)"></div>Protected — JWT required</div>
+        <div class="lei"><div class="led" style="background:rgba(255,215,0,.4)"></div>Auth + first-time onboarding check</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .wrap -->
+
+<script>
+// ─── TAB SWITCHING ───────────────────────────────────────
+function switchScreen(n) {
+  const screens = document.querySelectorAll('.scr')
+  const tabs    = document.querySelectorAll('.tab')
+  screens.forEach((s, i) => s.classList.toggle('on', i === n - 1))
+  tabs.forEach((t, i)    => t.classList.toggle('on', i === n - 1))
+}
+
+// ─── PARTICLE SYSTEM ─────────────────────────────────────
+(function initParticles() {
+  const canvas = document.getElementById('bgc')
+  const ctx    = canvas.getContext('2d')
+  let W, H, pts = []
+
+  function resize() {
+    W = canvas.width  = window.innerWidth
+    H = canvas.height = window.innerHeight
+    pts = []
+    const n = Math.floor(W * H / 8500)
+    for (let i = 0; i < n; i++) {
+      pts.push({
+        x:  Math.random() * W,
+        y:  Math.random() * H,
+        r:  Math.random() * 1.3 + 0.25,
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: -Math.random() * 0.25 - 0.04,
+        a:  Math.random() * 0.55 + 0.08,
+        fl: Math.random() * Math.PI * 2,
+        fs: Math.random() * 0.018 + 0.004,
+        c:  Math.random() < 0.14 ? '#00ffff' :
+            Math.random() < 0.07 ? '#DA70D6' : '#ffffff'
+      })
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H)
+    pts.forEach(p => {
+      p.fl += p.fs
+      const a = p.a * (0.65 + 0.35 * Math.sin(p.fl))
+      ctx.save()
+      ctx.globalAlpha = a
+      ctx.fillStyle   = p.c
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+      if (p.c === '#00ffff') {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
+        g.addColorStop(0, `rgba(0,255,255,${a * 0.18})`)
+        g.addColorStop(1, 'transparent')
+        ctx.fillStyle = g
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2); ctx.fill()
+      }
+      ctx.restore()
+      p.x += p.vx; p.y += p.vy
+      if (p.y < -4)    { p.y = H + 4; p.x = Math.random() * W }
+      if (p.x < -4)    p.x = W + 4
+      if (p.x > W + 4) p.x = -4
+    })
+    requestAnimationFrame(draw)
+  }
+
+  window.addEventListener('resize', resize)
+  resize()
+  draw()
+})()
+
+// ─── LOADING SCREEN ANIMATIONS ───────────────────────────
+const MSGS = [
+  'Verifying identity with the Archives...',
+  'Consulting the Celestial Registry...',
+  'Preparing your Seeker profile...',
+  'Synchronizing resonance data...',
+  'Issuing access tokens...'
+]
+let mi = 0, si = 0
+setInterval(() => {
+  const el = document.getElementById('lstat')
+  if (!el) return
+  el.style.opacity = '0'
+  setTimeout(() => {
+    mi = (mi + 1) % MSGS.length
+    el.textContent = MSGS[mi]
+    el.style.opacity = '1'
+    el.style.transition = 'opacity .4s'
+  }, 280)
+}, 2200)
+
+setInterval(() => {
+  const ids = ['st1','st2','st3','st4']
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.className = 'lstep'
+    const ic = el.querySelector('.sic')
+    if (i < si)       { el.classList.add('done'); ic.textContent = '✓' }
+    else if (i === si) { el.classList.add('act');  ic.textContent = '⟳' }
+    else               { ic.textContent = '○' }
+  })
+  si = (si + 1) % (ids.length + 1)
+}, 1800)
+</script>
+</body>
+</html>

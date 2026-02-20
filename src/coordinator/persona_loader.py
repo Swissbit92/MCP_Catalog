@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import os
 import logging
-from functools import lru_cache
 from typing import Dict, List, Optional
 
 from .config import get_persona_dir
@@ -55,7 +54,6 @@ def _load_card_file(path: str) -> Optional[Dict]:
     return card
 
 
-@lru_cache(maxsize=1)
 def _load_all_cards_cached() -> List[Dict]:
     """Load all persona cards with caching."""
     cards: List[Dict] = []
@@ -66,7 +64,6 @@ def _load_all_cards_cached() -> List[Dict]:
     return cards
 
 
-@lru_cache(maxsize=1)
 def _cards_by_all_names() -> Dict[str, Dict]:
     """Build index mapping all persona name variants to their cards."""
     idx: Dict[str, Dict] = {}

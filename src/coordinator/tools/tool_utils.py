@@ -161,6 +161,9 @@ def get_tools_for_persona(
             tools.append(get_brave_search_tool())
         if "mongodb" in mcp_access:
             tools.extend(get_mongodb_tools())
+        if "solana_wallet" in mcp_access:
+            from .wallet_tool_generators import get_wallet_tools
+            tools.extend(get_wallet_tools())
     else:
         # Fallback to rarity-based access for personas without mcp_access field
         # Brave MCP: rare, epic, legendary
@@ -207,6 +210,10 @@ def get_tools_for_query(
     elif intent == QueryIntent.NEEDS_BOTH:
         tools.append(get_brave_search_tool())
         tools.extend(get_mongodb_tools())
+
+    elif intent == QueryIntent.NEEDS_WALLET:
+        from .wallet_tool_generators import get_wallet_tools
+        tools.extend(get_wallet_tools())
 
     # QueryIntent.NEEDS_NEITHER → empty tools list
 

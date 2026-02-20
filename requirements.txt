@@ -31,6 +31,17 @@ ragas==0.2.3
 alembic==1.15.2
 sqlalchemy==2.0.41
 
+# Jupiter / Solana Wallet Integration
+solders==0.26.0             # Solana keypair primitives
+aiosmtplib==3.0.0           # Async SMTP for trade email notifications
+apscheduler==3.10.4         # Background scheduler for autonomous strategy execution
+cryptography>=42.0.0        # AES-GCM encryption for private key storage
+pymongo>=4.6.0              # MongoDB direct write client for trade history
+
+# Google OAuth + JWT Authentication
+google-auth>=2.40.0
+PyJWT>=2.8.0
+
 # Note: This project requires Node.js and npm for the React UI
 # Install Node.js from: https://nodejs.org/
 # After installing Node.js, run: cd react-ui && npm install

@@ -90,10 +90,29 @@ const CharacterCardV2Showcase: React.FC = () => {
         const currentPersonaKeys = new Set(mappedPersonas.map(p => p.key))
         const storedCollected = localStorage.getItem('collectedPersonas')
         if (storedCollected) {
-          const collectedPersonas = JSON.parse(storedCollected)
-          const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key))
-          if (validCollected.length !== collectedPersonas.length) {
-            localStorage.setItem('collectedPersonas', JSON.stringify(validCollected))
+          try {
+            const collectedPersonas = JSON.parse(storedCollected)
+            const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key))
+            if (validCollected.length !== collectedPersonas.length) {
+              localStorage.setItem('collectedPersonas', JSON.stringify(validCollected))
+            }
+          } catch {
+            localStorage.removeItem('collectedPersonas')
+          }
+        }
+
+        const storedPullHistory = localStorage.getItem('pullHistory')
+        if (storedPullHistory) {
+          try {
+            const pullHistory = JSON.parse(storedPullHistory)
+            const validHistory = pullHistory.filter(
+              (record: { personaKey: string }) => currentPersonaKeys.has(record.personaKey)
+            )
+            if (validHistory.length !== pullHistory.length) {
+              localStorage.setItem('pullHistory', JSON.stringify(validHistory))
+            }
+          } catch {
+            localStorage.removeItem('pullHistory')
           }
         }
 

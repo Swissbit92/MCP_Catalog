@@ -9,7 +9,7 @@
  * 4. First Chat - Begin journey with chosen companion
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import NephilimBackground from '../components/NephilimBackground'
@@ -22,11 +22,13 @@ import {
   setSeekerFaction,
   createSession,
 } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 type OnboardingStep = 'portal' | 'quiz' | 'personas' | 'complete'
 
 export const NephilimOnboarding: React.FC = () => {
   const navigate = useNavigate()
+  const { user, completeOnboarding } = useAuth()
   const [step, setStep] = useState<OnboardingStep>('portal')
   const [userName, setUserName] = useState('')
   const [faction, setFaction] = useState('')
@@ -35,27 +37,19 @@ export const NephilimOnboarding: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Generate a user ID for the seeker profile
+  // Auth is guaranteed by ProtectedRoute — always use user.sub
   const getUserId = () => {
-    let userId = localStorage.getItem('nephilim_user_id')
-    if (!userId) {
-      userId = `seeker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      localStorage.setItem('nephilim_user_id', userId)
-    }
-    return userId
+    const sub = user?.sub || 'default_seeker'
+    // Keep localStorage in sync for components that still read it directly
+    localStorage.setItem('nephilim_user_id', sub)
+    return sub
   }
 
-  // Check if user has completed onboarding
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      const completed = localStorage.getItem('nephilim_onboarding_complete')
-      if (completed === 'true') {
-        // Already onboarded, redirect to home
-        navigate('/')
-      }
-    }
-    checkOnboarding()
-  }, [navigate])
+  // OnboardingGuard in App.tsx prevents already-onboarded users from reaching
+  // this page, so no localStorage check needed here.
+
+  // Pre-populate name from Google auth if available
+  const googleName = user?.name || ''
 
   // Handle portal entry (name collected)
   const handlePortalEnter = (name: string) => {
@@ -92,8 +86,8 @@ export const NephilimOnboarding: React.FC = () => {
       // Create a new chat session with the selected persona
       const session = await createSession(personaKey, `First conversation with ${personaKey.replace('nephilim_', '').toUpperCase()}`)
 
-      // Mark onboarding as complete
-      localStorage.setItem('nephilim_onboarding_complete', 'true')
+      // Mark onboarding as complete on server (hits POST /auth/me/onboarding)
+      await completeOnboarding()
       localStorage.setItem('nephilim_first_persona', personaKey)
 
       setStep('complete')
@@ -125,7 +119,7 @@ export const NephilimOnboarding: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <OnboardingPortal onEnter={handlePortalEnter} />
+              <OnboardingPortal onEnter={handlePortalEnter} initialName={googleName} />
             </motion.div>
           )}
 
