@@ -42,7 +42,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           className="flex-1 px-4 py-3 md:py-3 rounded-2xl bg-white/[0.05] border border-white/[0.1] text-gray-200 placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-base transition-colors"
           placeholder={initializingSession ? "Loading character..." : "Type a message..."}
           disabled={isDisabled}

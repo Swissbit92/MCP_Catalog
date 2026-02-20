@@ -14,7 +14,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from coordinator.config import get_persona_model, get_ollama_base
+from coordinator.config import get_settings
 
 
 def get_model_context_window(model_name: str) -> dict:
@@ -154,8 +154,8 @@ def calculate_recommended_settings(context_window: int) -> dict:
 def main():
     """Main entry point."""
     # Get configured model from environment
-    model = get_persona_model()
-    ollama_base = get_ollama_base()
+    model = get_settings().ollama.model
+    ollama_base = get_settings().ollama.base
 
     print("[*] Model Context Window Verification")
     print("=" * 70)

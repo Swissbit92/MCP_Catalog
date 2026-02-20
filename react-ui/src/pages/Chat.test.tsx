@@ -63,7 +63,7 @@ jest.mock('../components/ChatInput', () => ({
           type="text"
           value={value || ''}
           onChange={(e: any) => onChange(e.target.value)}
-          onKeyPress={(e: any) => { if (e.key === 'Enter') onSend(); }}
+          onKeyDown={(e: any) => { if (e.key === 'Enter') onSend(); }}
           placeholder={initializingSession ? "Loading character..." : "Type a message..."}
           disabled={isDisabled}
           autoComplete="off"
@@ -102,6 +102,19 @@ jest.mock('../components/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: any) => <>{children}</>,
 }));
 
+jest.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { sub: 'test-user', email: 'test@test.com', name: 'Test User', avatar: '' },
+    token: 'mock-token',
+    isAuthenticated: true,
+    isLoading: false,
+    login: jest.fn(),
+    logout: jest.fn(),
+    completeOnboarding: jest.fn(),
+  }),
+  AuthProvider: ({ children }: any) => <>{children}</>,
+}));
+
 jest.mock('../components/ResonanceToast', () => ({
   ResonanceToast: () => <div data-testid="resonance-toast">+5 resonance</div>,
 }));
@@ -123,7 +136,6 @@ jest.mock('../components/SessionList', () => ({
 
 jest.mock('../services/api', () => ({
   fetchPersonas: jest.fn(),
-  getPersonaGreeting: jest.fn(),
   greetWithSession: jest.fn(),
   checkLoreUnlocks: jest.fn(),
 }));
@@ -169,7 +181,6 @@ describe('Chat', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (require('../services/api').fetchPersonas as jest.Mock).mockResolvedValue(mockPersonas);
-    (require('../services/api').getPersonaGreeting as jest.Mock).mockResolvedValue('Hello from Eeva!');
     // Mock window.confirm
     window.confirm = jest.fn();
   });
@@ -179,6 +190,7 @@ describe('Chat', () => {
     const mockLoadSessionMessages = jest.fn();
 
     mockUsePersona.mockReturnValue({
+      personas: mockPersonas,
       selectedPersona: mockPersonas[0],
       currentSession: { id: 'session1', persona_key: 'eeva', title: 'Chat with Eeva' },
       messages: [{ id: '1', role: 'assistant', content: 'Hello!', timestamp: new Date() }],

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 
-from ..config import get_ollama_base, get_persona_model, get_temp_rewrite
+from ..config import get_settings
 from .llm_completion_service import LLMCompletionService
 
 logger = logging.getLogger(__name__)
@@ -88,9 +88,9 @@ Rewritten first-person response:"""
 
     try:
         service = LLMCompletionService(
-            base=get_ollama_base(),
-            model=get_persona_model(),
-            temperature=get_temp_rewrite()
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
+            temperature=get_settings().ollama.temp_rewrite
         )
 
         rewritten = service.complete(

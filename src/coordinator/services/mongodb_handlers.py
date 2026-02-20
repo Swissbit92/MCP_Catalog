@@ -9,7 +9,7 @@ import logging
 
 from fastapi import HTTPException
 
-from ..config import get_mongodb_cache_ttl
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class MongoDBService:
         try:
             data = fetch_func()
             # Cache the result
-            ttl = get_mongodb_cache_ttl(cache_key)
+            ttl = get_settings().mongodb.get_cache_ttl(cache_key)
             self._cache.set(cache_key, data, ttl=ttl, source="mongodb_mcp")
             logger.info(f"Cached {cache_key} with TTL={ttl}s")
             return data, "miss"

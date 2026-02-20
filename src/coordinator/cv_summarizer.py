@@ -17,7 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 from ollama._types import ResponseError
 
-from .config import get_persona_dir, get_ollama_base, get_persona_model, get_persona_temperature
+from .config import get_settings
 from .ollama_utils import assert_model_available
 from .persona_loader import _load_all_cards_cached, resolve_persona_to_card
 
@@ -29,10 +29,9 @@ logger = logging.getLogger(__name__)
 
 def _llm() -> OllamaLLM:
     """Create Ollama LLM client for CV summary generation."""
-    base = get_ollama_base()
-    model = get_persona_model()
-    assert_model_available(base, model)
-    return OllamaLLM(base_url=base, model=model, temperature=get_persona_temperature())
+    cfg = get_settings().ollama
+    assert_model_available(cfg.base, cfg.model)
+    return OllamaLLM(base_url=cfg.base, model=cfg.model, temperature=cfg.temperature)
 
 
 # ---------------- Token counting and truncation ----------------
@@ -137,7 +136,7 @@ def _truncate_to_sentence(text: str, max_tokens: int) -> str:
 
 def _summary_dir() -> Path:
     """Get directory for cached summaries."""
-    return Path(get_persona_dir()) / "_summaries"
+    return Path(get_settings().persona_dir) / "_summaries"
 
 
 def _normalize_for_fingerprint(card: Dict) -> Dict:

@@ -21,7 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import get_ollama_base, get_persona_model
+from .config import get_settings
 from .startup import initialize_all, get_session_repo
 from .routes.chat import router as chat_router
 from .routes.sessions import router as sessions_router
@@ -77,8 +77,8 @@ app.include_router(auth_router)
 def health():
     """Health check endpoint."""
     try:
-        base = get_ollama_base()
-        model = get_persona_model()
+        base = get_settings().ollama.base
+        model = get_settings().ollama.model
         # DB ping
         get_session_repo().get_all_sessions()
         return {"status": "ok", "model": model, "db": "ok"}

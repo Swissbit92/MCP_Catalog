@@ -3,25 +3,12 @@
 
 from __future__ import annotations
 
-import time
 import logging
-from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
 from ..schemas import ChatBody, GreetBody, ChatTurn, AppendMessageBody, ResponseMetadata
-from ..config import (
-    get_ollama_base,
-    get_persona_model,
-    get_persona_temperature,
-    get_persona_temperature_override,
-    get_model_context_window,
-    get_summarization_interval,
-    get_fact_extraction_interval,
-    get_temp_summarization,
-    get_temp_fact_extraction,
-)
+from ..config import get_settings, get_persona_temperature_override
 from ..llm_client import LC_OllamaClient, estimate_tokens, log_context_stats
 from ..persona_memory import (
     build_system_prompt,
@@ -43,6 +30,31 @@ from ..services.chat_session_service import handle_session_chat
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger(__name__)
+
+
+def _build_llm_response(
+    answer: str,
+    user_message: str,
+    persona_name: str,
+    metadata: ResponseMetadata,
+) -> dict:
+    """Post-process LLM output into a standard response dict."""
+    answer, was_rewritten = post_process_first_person(answer, persona_name)
+    answer = force_multi_message_split(answer, user_message)
+    messages, flow_type = parse_multi_message_response(answer)
+
+    metadata_dict = metadata.model_dump()
+    metadata_dict["is_multi_message"] = (flow_type == "multi")
+    metadata_dict["message_count"] = len(messages)
+
+    return {
+        "answer": messages if flow_type == "multi" else messages[0],
+        "message_flow": flow_type,
+        "message_count": len(messages),
+        "used_search": False,
+        "metadata": metadata_dict,
+        "rewritten": was_rewritten,
+    }
 
 
 def _get_dependencies():
@@ -108,8 +120,17 @@ def chat(body: ChatBody):
         system_prompt=system,
         history=history,
         query=body.message,
-        model_context_window=get_model_context_window()
+        model_context_window=get_settings().ollama.context_window
     )
+
+    # Prepare metadata and persona_name early (needed by wallet pre-check and all downstream paths)
+    metadata = ResponseMetadata(
+        source_type="llm",
+        tools_used=[],
+        cache_status=None,
+        data_timestamp=None
+    )
+    persona_name = card.get("display_name") or card.get("key") or "Persona"
 
     # Pre-check: active wallet creation flow bypasses intent classification
     # (mid-flow messages like wallet names and passwords won't match NEEDS_WALLET keywords)
@@ -142,16 +163,6 @@ def chat(body: ChatBody):
     tool_names = [t["function"]["name"] for t in tools] if tools else []
     logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
 
-    # Prepare metadata
-    metadata = ResponseMetadata(
-        source_type="llm",
-        tools_used=[],
-        cache_status=None,
-        data_timestamp=None
-    )
-
-    persona_name = card.get("display_name") or card.get("key") or "Persona"
-
     # Route wallet intent before MongoDB/Brave checks
     if intent == QueryIntent.NEEDS_WALLET:
         from ..startup import get_wallet_repo, get_jupiter_ops, get_wallet_execution_service, get_strategy_service
@@ -177,34 +188,12 @@ def chat(body: ChatBody):
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
         client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
             temperature=get_persona_temperature_override(card)
         )
         answer = client.complete(system=system, user_prompt=user_compiled)
-
-        # Post-process to enforce first-person
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, body.message)
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-
-        # Update metadata with multi-message info
-        metadata_dict = metadata.model_dump()
-        metadata_dict["is_multi_message"] = (flow_type == 'multi')
-        metadata_dict["message_count"] = len(messages)
-
-        return {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": False,
-            "metadata": metadata_dict,
-            "rewritten": was_rewritten
-        }
+        return _build_llm_response(answer, body.message, persona_name, metadata)
 
     # Tools needed - check if MongoDB tools are included
     mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "").startswith("bitcoin_")]
@@ -253,30 +242,12 @@ def chat(body: ChatBody):
     else:
         # Fallback to regular completion
         client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
             temperature=get_persona_temperature_override(card)
         )
         answer = client.complete(system=system, user_prompt=user_compiled)
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, body.message)
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-        metadata_dict = metadata.model_dump()
-        metadata_dict["is_multi_message"] = (flow_type == 'multi')
-        metadata_dict["message_count"] = len(messages)
-
-        return {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": False,
-            "metadata": metadata_dict,
-            "rewritten": was_rewritten
-        }
+        return _build_llm_response(answer, body.message, persona_name, metadata)
 
 
 @router.post("/sessions/{session_id}/chat")
@@ -311,8 +282,8 @@ def greet(body: GreetBody):
     user_prompt = build_greeting_user_prompt(body.persona)
 
     client = LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
+        base=get_settings().ollama.base,
+        model=get_settings().ollama.model,
         temperature=get_persona_temperature_override(card),
     )
     answer = client.complete(system=system, user_prompt=user_prompt)
