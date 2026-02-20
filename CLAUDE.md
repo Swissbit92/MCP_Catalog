@@ -450,3 +450,11 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 - `docs/development/ADDING_MCP_SERVERS.md` - MCP integration guide
 - `docs/development/TESTING_GUIDE.md` - Testing guide
 - `personas/NEPHILIM_*.md` - Worldbuilding lore documents
+
+### Protected Reference Files (do NOT delete)
+
+These files have **no build dependency** and are never imported, so automated cleanup passes may flag them as dead code. **Do not delete them.** Open directly in a browser for visual reference during CSS iteration.
+
+| File | Purpose |
+|------|---------|
+| `react-ui/rarity-effects-showcase.html` | **Canonical VFX reference** — gacha-quality card effect showcase (12 variants). Use this when iterating on card effects without needing the dev server. Uses legacy `.rarity-*` class names — see the file header for mapping to current `.order-*` equivalents. Live implementations: `CharacterCard.module.css` (V1) and `CharacterCardV2.module.css` (V2). |
