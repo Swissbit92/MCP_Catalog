@@ -10,9 +10,9 @@ import logging
 from typing import Optional, Any
 
 from ..schemas import ResponseMetadata
-from ..config import get_ollama_base, get_persona_model, get_persona_temperature, get_persona_temperature_override
+from ..config import get_settings, get_persona_temperature_override
 from .llm_completion_service import LLMCompletionService
-from ..llm_client import LC_OllamaClient  # For tool calling (Brave/Multi-MCP/Wallet)
+# LC_OllamaClient imported lazily inside methods to break circular import with llm_client.py
 from ..tool_definitions import build_mongodb_synthesis_prompt
 from .citation_service import CitationService, validate_citations
 from .first_person_service import post_process_first_person
@@ -192,8 +192,8 @@ class QueryHandlerService:
                 formatted_data = json.dumps(mongodb_result, indent=2)
 
                 service = LLMCompletionService(
-                    base=get_ollama_base(),
-                    model=get_persona_model(),
+                    base=get_settings().ollama.base,
+                    model=get_settings().ollama.model,
                     temperature=get_persona_temperature_override(persona_card)
                 )
 
@@ -230,9 +230,10 @@ User Query: {user_compiled}"""
             logger.error(f"MongoDB query failed: {e}")
 
         # Fallback to regular LLM response
+        from ..llm_client import LC_OllamaClient  # noqa: PLC0415
         client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
             temperature=get_persona_temperature_override(persona_card)
         )
         answer = client.complete(system=system_prompt, user_prompt=user_compiled)
@@ -269,9 +270,10 @@ User Query: {user_compiled}"""
         logger.info("[Brave] Starting Brave-only query workflow")
         start_time = time.time()
 
+        from ..llm_client import LC_OllamaClient  # noqa: PLC0415
         client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
             temperature=get_persona_temperature_override(persona_card),
             mcp_client=self.brave_client
         )
@@ -340,9 +342,10 @@ User Query: {user_compiled}"""
         """
         logger.info("Multi-MCP query detected (Brave + MongoDB)")
 
+        from ..llm_client import LC_OllamaClient  # noqa: PLC0415
         client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
             temperature=get_persona_temperature_override(persona_card),
             mcp_client=self.brave_client
         )
@@ -517,9 +520,10 @@ User Query: {user_compiled}"""
         augmented_system_prompt = system_prompt + wallet_state_block if wallet_state_block else system_prompt
 
         # Regular wallet query: let LLM choose the right tool via standard tool-calling flow
+        from ..llm_client import LC_OllamaClient  # noqa: PLC0415
         client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
+            base=get_settings().ollama.base,
+            model=get_settings().ollama.model,
             temperature=get_persona_temperature_override(persona_card),
         )
 

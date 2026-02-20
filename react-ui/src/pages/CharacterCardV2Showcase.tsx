@@ -1,175 +1,108 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import CharacterCard from '../components/CharacterCard'
 import SummoningRitual from '../components/SummoningRitual'
 import BondsForged from '../components/BondsForged'
-import InvocationLog from '../components/InvocationLog'
 import NephilimBackground from '../components/NephilimBackground'
-import { fetchPersonas } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { formatOrderLabel } from '../utils/celestialOrder'
+import { Persona } from '../types/personas'
 
-interface Persona {
-  key: string
-  display_name: string
-  style: string
-  image: string
-  avatar?: string
-  bg?: string
-  rarity: string
-  celestial_order?: string
-  coordinator_label?: string
-  voice?: {
-    greeting: string
-  }
-}
-
-// Staggered entrance animation variants
-const containerVariants = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.07 }
-  }
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.9 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: 'spring' as const, stiffness: 300, damping: 20 }
-  }
-}
 
 const CharacterCardV2Showcase: React.FC = () => {
   const [searchParams] = useSearchParams()
   // Support both old and new tab names for backward compatibility
-  const TAB_ALIASES: Record<string, 'cards' | 'ritual' | 'bonds' | 'chronicle'> = {
+  const TAB_ALIASES: Record<string, 'cards' | 'ritual' | 'bonds'> = {
     cards: 'cards',
     pull: 'ritual',
     ritual: 'ritual',
     collection: 'bonds',
     bonds: 'bonds',
-    history: 'chronicle',
-    chronicle: 'chronicle',
   }
   const rawTab = searchParams.get('tab') || 'cards'
   const initialTab = TAB_ALIASES[rawTab] || 'cards'
 
-  const [personas, setPersonas] = useState<Persona[]>([])
-  const [filteredPersonas, setFilteredPersonas] = useState<Persona[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'cards' | 'ritual' | 'bonds' | 'chronicle'>(initialTab)
+  const [activeTab, setActiveTab] = useState<'cards' | 'ritual' | 'bonds'>(initialTab)
   const [hoveredPersona, setHoveredPersona] = useState<Persona | null>(null)
-  const { setSelectedPersona, selectedPersona } = usePersona()
+  const { personas, setSelectedPersona, selectedPersona } = usePersona()
   const navigate = useNavigate()
 
   // The persona to show in the preview panel: hovered takes priority, then selected
   const previewPersona = hoveredPersona || selectedPersona as Persona | null
 
+  // Sync localStorage with available personas
   useEffect(() => {
-    const getPersonas = async () => {
+    if (personas.length === 0) return
+    const currentPersonaKeys = new Set(personas.map(p => p.key))
+    const storedCollected = localStorage.getItem('collectedPersonas')
+    if (storedCollected) {
       try {
-        const fetchedPersonas = await fetchPersonas()
-        const mappedPersonas = fetchedPersonas.map(p => ({
-          key: p.key,
-          display_name: p.display_name || p.key,
-          style: p.style,
-          image: p.image.replace('images/', ''),
-          avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
-          bg: p.bg ? p.bg.replace('images/', '') : undefined,
-          rarity: p.rarity,
-          celestial_order: p.celestial_order,
-          coordinator_label: p.coordinator_label,
-          voice: p.voice,
-        }))
-
-        // Startup synchronization: clean up localStorage for removed personas
-        const currentPersonaKeys = new Set(mappedPersonas.map(p => p.key))
-        const storedCollected = localStorage.getItem('collectedPersonas')
-        if (storedCollected) {
-          try {
-            const collectedPersonas = JSON.parse(storedCollected)
-            const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key))
-            if (validCollected.length !== collectedPersonas.length) {
-              localStorage.setItem('collectedPersonas', JSON.stringify(validCollected))
-            }
-          } catch {
-            localStorage.removeItem('collectedPersonas')
-          }
+        const collectedPersonas = JSON.parse(storedCollected)
+        const validCollected = collectedPersonas.filter((key: string) => currentPersonaKeys.has(key))
+        if (validCollected.length !== collectedPersonas.length) {
+          localStorage.setItem('collectedPersonas', JSON.stringify(validCollected))
         }
-
-        const storedPullHistory = localStorage.getItem('pullHistory')
-        if (storedPullHistory) {
-          try {
-            const pullHistory = JSON.parse(storedPullHistory)
-            const validHistory = pullHistory.filter(
-              (record: { personaKey: string }) => currentPersonaKeys.has(record.personaKey)
-            )
-            if (validHistory.length !== pullHistory.length) {
-              localStorage.setItem('pullHistory', JSON.stringify(validHistory))
-            }
-          } catch {
-            localStorage.removeItem('pullHistory')
-          }
-        }
-
-        setPersonas(mappedPersonas)
-        setFilteredPersonas(mappedPersonas)
-      } catch (error) {
-        console.error('Failed to fetch personas:', error)
-        setPersonas([])
-        setFilteredPersonas([])
+      } catch {
+        localStorage.removeItem('collectedPersonas')
       }
     }
 
-    getPersonas()
-  }, [])
-
-  // Filter personas based on search query
-  React.useEffect(() => {
-    let filtered = personas
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(persona =>
-        persona.display_name.toLowerCase().includes(query) ||
-        persona.style.toLowerCase().includes(query) ||
-        persona.key.toLowerCase().includes(query) ||
-        (persona.celestial_order || 'wanderer').toLowerCase().includes(query) ||
-        formatOrderLabel(persona.celestial_order || 'wanderer').toLowerCase().includes(query)
-      )
+    const storedPullHistory = localStorage.getItem('pullHistory')
+    if (storedPullHistory) {
+      try {
+        const pullHistory = JSON.parse(storedPullHistory)
+        const validHistory = pullHistory.filter(
+          (record: { personaKey: string }) => currentPersonaKeys.has(record.personaKey)
+        )
+        if (validHistory.length !== pullHistory.length) {
+          localStorage.setItem('pullHistory', JSON.stringify(validHistory))
+        }
+      } catch {
+        localStorage.removeItem('pullHistory')
+      }
     }
+  }, [personas])
 
-    setFilteredPersonas(filtered)
+  // Filter personas based on search query (useMemo instead of useEffect+setState)
+  const filteredPersonas = useMemo(() => {
+    if (!searchQuery.trim()) return personas
+
+    const query = searchQuery.toLowerCase()
+    return personas.filter(persona =>
+      persona.display_name.toLowerCase().includes(query) ||
+      persona.style.toLowerCase().includes(query) ||
+      persona.key.toLowerCase().includes(query) ||
+      (persona.celestial_order || 'wanderer').toLowerCase().includes(query) ||
+      formatOrderLabel(persona.celestial_order || 'wanderer').toLowerCase().includes(query)
+    )
   }, [searchQuery, personas])
 
   // Card click - selection only (no navigation)
-  const handleCardSelect = (personaKey: string) => {
+  const handleCardSelect = useCallback((personaKey: string) => {
     const personaToSelect = personas.find(p => p.key === personaKey)
     if (personaToSelect) {
       setSelectedPersona(personaToSelect)
     }
-  }
+  }, [personas, setSelectedPersona])
 
   // Choose button - navigate to chat
-  const handleChoose = (personaKey: string) => {
+  const handleChoose = useCallback((personaKey: string) => {
     const personaToSelect = personas.find(p => p.key === personaKey)
     if (personaToSelect) {
       setSelectedPersona(personaToSelect)
       navigate('/chat')
     }
-  }
+  }, [personas, setSelectedPersona, navigate])
 
   // Navigate to chat from preview panel
-  const handleBeginConversation = () => {
+  const handleBeginConversation = useCallback(() => {
     if (previewPersona) {
       setSelectedPersona(previewPersona)
       navigate('/chat')
     }
-  }
+  }, [previewPersona, setSelectedPersona, navigate])
 
   // NEPHILIM glassmorphic tab button classes
   const activeTabStyle = 'bg-white/[0.1] border border-cyan-500/50 text-cyan-300 shadow-lg'
@@ -207,18 +140,15 @@ const CharacterCardV2Showcase: React.FC = () => {
 
             {/* Tab Navigation */}
             <div className="flex justify-center mb-8">
-              <div className="bg-[#141418]/60 backdrop-blur-xl rounded-full p-1 border border-white/[0.1]">
-                <button onClick={() => setActiveTab('cards')} className={tabClass('cards')}>
+              <div className="bg-[#141418]/60 backdrop-blur-xl rounded-full p-1 border border-white/[0.1]" role="tablist" aria-label="Character views">
+                <button onClick={() => setActiveTab('cards')} className={tabClass('cards')} role="tab" aria-selected={activeTab === 'cards'}>
                   Companions
                 </button>
-                <button onClick={() => setActiveTab('ritual')} className={tabClass('ritual')}>
+                <button onClick={() => setActiveTab('ritual')} className={tabClass('ritual')} role="tab" aria-selected={activeTab === 'ritual'}>
                   Summoning Ritual
                 </button>
-                <button onClick={() => setActiveTab('bonds')} className={tabClass('bonds')}>
+                <button onClick={() => setActiveTab('bonds')} className={tabClass('bonds')} role="tab" aria-selected={activeTab === 'bonds'}>
                   Bonds Forged
-                </button>
-                <button onClick={() => setActiveTab('chronicle')} className={tabClass('chronicle')}>
-                  Invocation Chronicle
                 </button>
               </div>
             </div>
@@ -264,17 +194,15 @@ const CharacterCardV2Showcase: React.FC = () => {
                 <div className="flex gap-6">
                   {/* Cards Grid - 60% on desktop */}
                   <div className="w-full md:w-[60%]">
-                    <motion.div
+                    <div
                       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center"
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="show"
-                      key={searchQuery}
                     >
                       {filteredPersonas.map((persona, index) => (
                         <motion.div
                           key={persona.key}
-                          variants={itemVariants}
+                          initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20, delay: index * 0.07 }}
                           onMouseEnter={() => setHoveredPersona(persona)}
                           onMouseLeave={() => setHoveredPersona(null)}
                         >
@@ -291,7 +219,7 @@ const CharacterCardV2Showcase: React.FC = () => {
                           />
                         </motion.div>
                       ))}
-                    </motion.div>
+                    </div>
                   </div>
 
                   {/* Live Preview Panel - 40% on desktop, hidden on mobile */}
@@ -462,17 +390,7 @@ const CharacterCardV2Showcase: React.FC = () => {
                   selectedPersonaKey={selectedPersona?.key || null}
                 />
               </motion.div>
-            ) : (
-              <motion.div
-                key="chronicle"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <InvocationLog />
-              </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </div>

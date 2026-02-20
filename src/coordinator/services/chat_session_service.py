@@ -22,14 +22,9 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from ..schemas import ChatBody, ChatTurn, AppendMessageBody
-from ..config import (
-    get_ollama_base,
-    get_persona_model,
-    get_model_context_window,
-    get_fact_extraction_interval,
-    get_temp_fact_extraction,
-)
-from ..llm_client import estimate_tokens, LC_OllamaClient  # LC_OllamaClient for FactExtractor/Summarizer
+from ..config import get_settings
+# Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
+# estimate_tokens and LC_OllamaClient are imported inside functions where needed
 from .llm_completion_service import LLMCompletionService
 from ..persona_memory import build_system_prompt, get_persona_card
 
@@ -71,6 +66,9 @@ def handle_session_chat(
     Raises:
         HTTPException: If session not found (404)
     """
+    # Lazy imports to break circular dependency at module load time
+    from ..llm_client import estimate_tokens, LC_OllamaClient  # noqa: PLC0415
+
     # Extract dependencies
     session_repo = deps["session_repo"]
     message_repo = deps["message_repo"]
@@ -145,7 +143,7 @@ def handle_session_chat(
     # Use MemoryManager to select messages
     selected_messages = memory_manager.select_messages(
         messages=db_messages,
-        token_budget=get_model_context_window(),
+        token_budget=get_settings().ollama.context_window,
         system_prompt_tokens=system_tokens
     )
 
@@ -295,7 +293,7 @@ def handle_session_chat(
             logger.debug(f"[Phase3 RAG] Updated vector index for session {session_id}")
 
         # Extract facts and update user profile (configurable interval to save compute)
-        fact_interval = get_fact_extraction_interval()
+        fact_interval = get_settings().memory.fact_extraction_interval
         if user_profile_repo and len(db_messages) % fact_interval == 0:
             try:
                 # Get updated message list
@@ -307,9 +305,9 @@ def handle_session_chat(
                 # Initialize fact extractor with LLM client if needed
                 if fact_extractor is None:
                     llm_client = LC_OllamaClient(
-                        base=get_ollama_base(),
-                        model=get_persona_model(),
-                        temperature=get_temp_fact_extraction()
+                        base=get_settings().ollama.base,
+                        model=get_settings().ollama.model,
+                        temperature=get_settings().ollama.temp_fact_extraction
                     )
                     from ..fact_extractor import FactExtractor
                     fact_extractor = FactExtractor(llm_client)
@@ -451,7 +449,7 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
         persona_key: Persona key for context
         deps: Dictionary of injected dependencies
     """
-    from ..config import get_summarization_interval, get_temp_summarization
+    cfg = get_settings()
 
     message_repo = deps["message_repo"]
     summary_repo = deps["summary_repo"]
@@ -461,7 +459,7 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
         all_messages = message_repo.get_messages_by_session(session_id)
         message_count = len(all_messages)
         summary_count = summary_repo.count_summaries(session_id)
-        interval = get_summarization_interval()
+        interval = cfg.memory.summarization_interval
         messages_summarized = summary_count * interval
         messages_since_summary = message_count - messages_summarized
 
@@ -479,9 +477,9 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
             if not conversation_summarizer.llm_client:
                 conversation_summarizer.set_llm_client(
                     LC_OllamaClient(
-                        base=get_ollama_base(),
-                        model=get_persona_model(),
-                        temperature=get_temp_summarization()
+                        base=cfg.ollama.base,
+                        model=cfg.ollama.model,
+                        temperature=cfg.ollama.temp_summarization
                     )
                 )
 
