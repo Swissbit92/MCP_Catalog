@@ -47,6 +47,13 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY src/ ./src/
 COPY personas/ ./personas/
 
+# Copy Alembic migrations for database schema management
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+
+# Copy strategies directory (for Jupiter autonomous trading)
+COPY strategies/ ./strategies/
+
 # Create directories for SQLite database and logs
 # These will be mounted as volumes from host
 RUN mkdir -p /app/data /app/logs
