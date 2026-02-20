@@ -1,7 +1,7 @@
-# 🧠 MCP Coordinator - AI Companion Interface
+# NEPHILIM — AI Companion Platform
 
-> **Local AI Companion Chat with Advanced Memory & Live Data**
-> _Private • Local-First • Docker-Ready • React + FastAPI Coordinator_
+> **Local AI Companions with Personality, Memory, Live Data & Wallet Integration**
+> _Private · Local-First · Docker-Ready · React 19 + FastAPI_
 
 <div align="center">
 
@@ -12,157 +12,127 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Latest-orange.svg)](https://ollama.ai)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57.svg?logo=sqlite)](https://sqlite.org)
 
-**🐳 Docker Quick Start (Recommended) • 🤖 Multiple AI Companions • 💬 Persistent Chat**
-[What Can This Do?](#-what-can-this-do) • [Docker Setup](#-quick-start-docker) • [Local Setup](#-alternative-local-development-setup)
+**[What Can This Do?](#-what-can-this-do) · [Docker Setup](#-quick-start-docker) · [Local Setup](#-local-development-setup) · [Architecture](#-architecture)**
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [🚀 What Can This Do?](#-what-can-this-do)
-- [🔍 How Does It Compare?](#-how-does-it-compare)
-- [✨ Features](#-features)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [🔧 System Requirements](#-system-requirements)
-- [⚡ Quick Start (Docker)](#-quick-start-docker)
-- [🧩 Alternative: Local Development Setup](#-alternative-local-development-setup)
-- [🏗️ Architecture](#️-architecture)
-- [🎭 Available Personas](#-available-personas)
-- [🚀 Usage](#-usage)
-- [✅ Testing & Quality](#-testing--quality)
-- [📚 Documentation](#-documentation)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+- [What Can This Do?](#-what-can-this-do)
+- [How Does It Compare?](#-how-does-it-compare)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [System Requirements](#-system-requirements)
+- [Quick Start (Docker)](#-quick-start-docker)
+- [Local Development Setup](#-local-development-setup)
+- [Architecture](#-architecture)
+- [Available AI Companions](#-available-ai-companions)
+- [NEPHILIM Worldbuilding System](#-nephilim-worldbuilding-system)
+- [Usage](#-usage)
+- [Testing & Quality](#-testing--quality)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
-## 🚀 What Can This Do?
+## What Can This Do?
 
-**5-Second Pitch:** Local AI companions with personality-driven conversations, web search, trading data, and advanced memory - all running on your machine.
+**5-Second Pitch:** Local AI companions with personality-driven conversations, web search, trading data, Solana wallet integration, and advanced memory — all running on your machine.
 
 ### Key Capabilities
 
-- 🤖 **10 AI Companions** (4 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
-- 💬 **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
-- 🧠 **Advanced Memory System** - remembers you across sessions, extracts facts automatically
-- 🔍 **Web Search with Citations** - personas autonomously search Brave API with mandatory sources
-- 📊 **Real-Time Trading Data** - Bitcoin prices, technical indicators (RSI, MACD), DCA stats via MongoDB
-- 🎲 **Summoning Collection System** - pull cards, build collections, unlock personas
-- 💾 **100% Local & Private** - all conversations stay on your device (no data transmission)
-- 🐳 **One-Command Docker Setup** - automated script handles everything
+- **10 AI Companions** (4 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
+- **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
+- **Advanced Memory System** — remembers you across sessions, extracts facts automatically
+- **Web Search with Citations** — personas autonomously search Brave API with mandatory sources
+- **Real-Time Trading Data** — Bitcoin prices, technical indicators (RSI, MACD), DCA stats via MongoDB
+- **Jupiter Wallet Integration** — Solana DEX trading, autonomous strategies, trade proposals (Phase 8)
+- **Google OAuth Authentication** — secure login with JWT access/refresh tokens
+- **Summoning Ritual System** — five-phase animated card pulls with audio feedback
+- **Seeker Progression** — ranks, resonance, faction affinity, unlockable lore fragments
+- **100% Local & Private** — all conversations stay on your device (no data transmission)
+- **One-Command Docker Setup** — Nginx reverse proxy, full NEPHILIM UI out of the box
 
 ### Who Is This For?
 
 - **Developers** wanting a local ChatGPT alternative with customizable AI companions
-- **Crypto Enthusiasts** needing a research assistant with live Bitcoin data
+- **Crypto Enthusiasts** needing a research assistant with live Bitcoin data and Solana wallet
 - **Privacy-Conscious Users** who want full control over their AI conversations
 - **AI Experimenters** interested in companion-driven conversational AI with advanced memory
 
 ---
 
-## 🔍 How Does It Compare?
+## How Does It Compare?
 
-**vs. Other Local AI Chat Solutions**
-
-| Feature | MCP Coordinator | Open WebUI | LM Studio | Jan | LibreChat | ChatGPT |
-|---------|----------------|------------|-----------|-----|-----------|---------|
-| **100% Local & Private** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ Cloud |
-| **Multi-Message Conversations** | ✅ 2-4 msgs | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Dynamic AI Companion System** | ✅ 10 companions | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Advanced Memory (RAG)** | ✅ FAISS + profiles | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Emotional Tracking** | ✅ Trust/rapport | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Psychological Depth** | ✅ Core wound/defense | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Web Search Integration** | ✅ Brave API | ✅ Plugins | ❌ | ❌ | ✅ Plugins | ✅ Bing |
-| **Live Data (MongoDB)** | ✅ Bitcoin/trading | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Summoning/Gamification** | ✅ Collection system | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **One-Command Setup** | ✅ Docker script | ⚠️ Manual | ✅ GUI installer | ✅ GUI installer | ⚠️ Manual | N/A |
-| **Citation Validation** | ✅ Mandatory | ❌ | ❌ | ❌ | ❌ | ⚠️ Optional |
-| **Persistent Chat** | ✅ SQLite | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Open Source** | ✅ | ✅ | ❌ Proprietary | ❌ Proprietary | ✅ | ❌ Proprietary |
-| **Cross-Session User Profiles** | ✅ Auto-extract facts | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Feature | NEPHILIM | Open WebUI | LM Studio | Jan | LibreChat | ChatGPT |
+|---------|----------|------------|-----------|-----|-----------|---------|
+| **100% Local & Private** | Yes | Yes | Yes | Yes | Yes | No (Cloud) |
+| **Multi-Message Conversations** | Yes (2-4 msgs) | No | No | No | No | No |
+| **AI Companion System** | Yes (10 companions) | No | No | No | No | No |
+| **Advanced Memory (RAG)** | Yes (FAISS + profiles) | No | No | No | No | No |
+| **Emotional Tracking** | Yes (trust/rapport) | No | No | No | No | No |
+| **Web Search Integration** | Yes (Brave API) | Yes (Plugins) | No | No | Yes (Plugins) | Yes (Bing) |
+| **Live Trading Data** | Yes (MongoDB) | No | No | No | No | No |
+| **Wallet / DEX Trading** | Yes (Jupiter/Solana) | No | No | No | No | No |
+| **OAuth Authentication** | Yes (Google) | Yes | No | No | Yes | Yes |
+| **Gamification / Progression** | Yes (Seeker ranks) | No | No | No | No | No |
+| **One-Command Docker Setup** | Yes | Partial | Yes (GUI) | Yes (GUI) | Partial | N/A |
+| **Open Source** | Yes | Yes | No | No | Yes | No |
 | **Cost** | Free | Free | Free | Free | Free | $20/mo |
 
-### 🎯 What Makes MCP Coordinator Unique?
+---
 
-1. **Natural Conversations** - Multi-message responses (2-4 messages with staggered rendering) simulate texting a real person, not a chatbot
-2. **AI Companion System** - Deep psychological profiles with emotional tracking create genuinely different companions
-3. **Advanced Memory** - Only solution with RAG semantic search + automatic user profile building across sessions
-4. **Live Data Integration** - Real-time Bitcoin prices and technical indicators via MongoDB MCP
-5. **Transparent Data Sources** - Mandatory citations for web search, visible source tags (pure LLM/Brave/MongoDB) on every message
-6. **Gamified UX** - Summoning collection system makes discovering personas engaging
+## Features
 
-### 📊 When to Choose MCP Coordinator?
+### AI & Conversational Intelligence
 
-**Choose MCP Coordinator if you want:**
-- Conversations that feel like texting a friend, not querying a database
-- AI companions that remember you across sessions and adapt their responses
-- Live crypto/trading data integrated naturally into conversations
-- Complete transparency about where answers come from
-- A fun, engaging way to interact with local AI
+| Feature | Description |
+|---------|-------------|
+| **Dynamic AI Companions** | 10 companions with unique personality, expertise, and voice |
+| **Advanced Memory System** | Importance scoring, auto-summarization, RAG semantic search, cross-session user profiles |
+| **Multi-Message Conversations** | 2-4 messages per response with staggered rendering (1.2s delays) |
+| **Psychological Depth** | core_wound, defense_style, growth_edge, contradiction_pairs per persona |
+| **Emotional State Tracking** | trust_level, rapport, and current_mood across conversations |
+| **Advanced Sampling** | Per-persona temperature, top_k, top_p, repeat_penalty with presets |
 
-**Choose alternatives if you need:**
-- **Open WebUI** - Maximum compatibility with all Ollama models, extensive plugin ecosystem
-- **LM Studio** - Simple drag-and-drop model management with polished GUI
-- **Jan** - Easiest setup for non-technical users with GUI installer
-- **LibreChat** - Support for multiple LLM providers (OpenAI, Anthropic, Google, etc.)
+### External Integrations
+
+| Feature | Description |
+|---------|-------------|
+| **Brave Web Search** | Autonomous web search with mandatory citation validation |
+| **MongoDB MCP** | Real-time Bitcoin prices, technical indicators (RSI, MACD, Bollinger), DCA stats |
+| **Jupiter / Solana Wallet** | DEX swap proposals, autonomous DCA/RSI strategies, AES-encrypted key storage |
+| **Email Notifications** | Optional SMTP alerts for executed trades |
+| **Smart Caching** | TTL-based cache (60s current price, 3600s historical) |
+
+### Authentication & Security
+
+| Feature | Description |
+|---------|-------------|
+| **Google OAuth** | Sign in with Google via `@react-oauth/google` SDK |
+| **JWT Tokens** | Short-lived access tokens (1h) + HttpOnly refresh cookies (30d) |
+| **Auth Middleware** | FastAPI dependency injection guards all protected routes |
+| **Local Bypass** | Set `AUTH_REQUIRED=false` for dev/offline use without Google |
+| **Protected Routes** | Frontend `ProtectedRoute` wrapper redirects unauthenticated users to `/login` |
+
+### User Experience
+
+| Feature | Description |
+|---------|-------------|
+| **Summoning Ritual System** | Five-phase animated card pulls with 1x/5x/10x multi-pull |
+| **Seeker Progression** | Ranks (Initiate → Nephilim), resonance, faction affiliation, unlockable lore |
+| **Persistent Chat History** | SQLite-backed sessions with automatic orphan cleanup |
+| **Session Switching** | Sidebar navigation between persona chats |
+| **Glassmorphic UI** | Dark void theme (`#0B0B0D`), `backdrop-blur-xl`, cyan/magenta accents |
+| **Mobile Optimization** | Responsive layout, touch gestures, bottom tab navigation |
+| **WCAG AA Compliance** | 4.5:1 contrast ratios, keyboard navigation, `aria-label` on interactive elements |
 
 ---
 
-## ✨ Features
-
-### 🤖 AI & Conversational Intelligence
-
-| Feature | Description |
-|---------|-------------|
-| 🤖 **Dynamic AI Companions** | 10 companions: Legacy (Eeva, Frieren, Gojo, Hitler) + NEPHILIM (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) - each with unique personality, expertise, and voice |
-| 🧠 **Advanced Memory System** | Multi-phase memory with importance scoring, auto-summarization, RAG semantic search, and cross-session user profiles |
-| 💬 **Multi-Message Conversations** | Natural conversational flow with 2-4 messages per response, staggered rendering (1.2s delays) |
-| 🎨 **Psychological Depth** | Each persona has core_wound, defense_style, growth_edge, contradiction_pairs for realistic behavior |
-| 📊 **Emotional State Tracking** | Personas track trust_level, rapport, and current_mood across conversations |
-| 🎯 **Context Management** | Token budget monitoring with 90% warnings, critical message detection (names 6x weight, never dropped) |
-| 📝 **Example Dialogues** | 50 training examples across all personas to teach correct voice and style |
-| 🔧 **Advanced Sampling** | Per-persona temperature, top_k, top_p, repeat_penalty with presets (creative, balanced, precise, chaotic) |
-
-### 🌐 External Integrations
-
-| Feature | Description |
-|---------|-------------|
-| 🔍 **Brave Web Search** | Personas with web search access autonomously search the web with mandatory citation validation |
-| 🗄️ **MongoDB MCP Integration** | Personas with data access query real-time Bitcoin prices, technical indicators (RSI, MACD, Bollinger Bands), and DCA trading stats |
-| 📈 **Live Trading Data** | Historical price data (2016-present), hourly charts (6 months), technical analysis signals |
-| 🔗 **Smart Caching** | TTL-based cache (60s current price, 3600s historical) for optimal performance |
-| 📚 **Synthesis Prompts** | Anti-hallucination prompts ensure accurate data usage and persona flavor retention |
-
-### 🎮 User Experience
-
-| Feature | Description |
-|---------|-------------|
-| 🎯 **Summoning Ritual System** | Classic character pulls with 1x/5x/10x multi-pull, particle effects, and audio feedback |
-| 💎 **Classic Card Collection** | Elegant collectible cards with foil effects, smooth animations, and order-based styling |
-| 🔊 **Audio Integration** | Synthesized sound effects for pulls, reveals, and celebrations with mute controls |
-| 📊 **Collection Management** | Persistent character collection with statistics, pull history, and organized display |
-| 💬 **Persistent Chat History** | Conversations saved across sessions with automatic cleanup of orphaned chats |
-| 🔄 **Session Switching** | Seamlessly switch between different persona chats |
-| 🎨 **Modern UI** | Beautiful React interface with premium animations and mobile optimization |
-| 📋 **Copy Functionality** | ChatGPT-style copy buttons for JSON and code blocks |
-| 📱 **Mobile Optimization** | ChatGPT-style responsive layout, touch gestures, swipe navigation |
-
-### 🔒 Privacy & Architecture
-
-| Feature | Description |
-|---------|-------------|
-| 🔒 **Local-First** | All AI processing and data storage happens on your device |
-| 🛡️ **Secure Dependencies** | Regular security audits |
-| 🤖 **Ollama LLM** | Powered by local LLM models (nchapman/gemma-2-9b-it-abliterated:9b - validated Dec 2025) |
-| 🐳 **Docker Ready** | Containerized deployment with automated setup scripts |
-| 📊 **Type Safety** | TypeScript strict mode + Pydantic validation throughout |
-| 🔄 **Dynamic Persona Management** | Automatic discovery, orphaned session cleanup, collection synchronization |
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Current as of February 2026**
 
@@ -170,60 +140,64 @@
 - **React 19** with TypeScript 4.9.5
 - **Framer Motion** for 60fps animations
 - **Tailwind CSS** for utility-first styling
-- **Lucide React** for icon library
+- **@react-oauth/google** for Google Sign-In
+- **Lucide React** for icons
+- **Playwright** for E2E testing
 
 ### Backend
 - **FastAPI 0.100+** with Uvicorn ASGI server
 - **Python 3.11+** with type hints
-- **Pydantic 2.x** for schema validation and settings
+- **Pydantic 2.x** + `pydantic-settings` for validated configuration
 - **SQLite 3** for persistent storage
+- **Alembic** for database migrations
+- **google-auth** + **PyJWT** for OAuth/JWT authentication
+- **APScheduler** for autonomous strategy execution
 
 ### AI/ML
 - **Ollama** local LLM server
-- **nchapman/gemma-2-9b-it-abliterated:9b** (9GB model, validated Dec 2025)
-  - 75% multi-message usage, 0% garbled output, 100% technical accuracy
-- **nomic-embed-text:latest** for embeddings (Phase 3 memory)
+- **nchapman/gemma-2-9b-it-abliterated:9b** (9GB, validated Dec 2025)
+- **nomic-embed-text:latest** for embeddings
 - **FAISS CPU** for vector search and semantic retrieval
 - **LangChain** for LLM orchestration
 
 ### Integrations
-- **Brave Search API** for web search (personas with web search access)
-- **MongoDB Atlas** for Bitcoin trading data (personas with data access)
-- **Docker + Docker Compose** for deployment
+- **Brave Search API** for web search (per-persona `mcp_access`)
+- **MongoDB Atlas** for Bitcoin trading data
+- **Jupiter DEX** for Solana token swaps (via Docker MCP)
+- **Docker + Docker Compose** with Nginx reverse proxy
 
 ---
 
-## 🔧 System Requirements
+## System Requirements
 
 ### Docker Setup (Recommended)
 
-| Component | Requirement | Installation |
-|-----------|-------------|--------------|
-| **OS** | Windows 10/11, macOS 13+, or Linux | - |
-| **Docker Desktop** | v24.0+ with Docker Compose v2.0+ | [docker.com](https://docker.com) |
-| **Disk Space** | 15GB free (for images + models) | - |
-| **RAM** | 8GB minimum, 16GB recommended | For running Ollama LLM |
-| **GPU** | NVIDIA RTX (optional) | For CUDA acceleration |
+| Component | Requirement | Notes |
+|-----------|-------------|-------|
+| **OS** | Windows 10/11, macOS 13+, or Linux | — |
+| **Docker Desktop** | v24.0+ with Compose v2.0+ | [docker.com](https://docker.com) |
+| **Disk Space** | 15GB free | Images + models |
+| **RAM** | 8GB min, 16GB recommended | Ollama LLM inference |
+| **GPU** | NVIDIA RTX (optional) | CUDA acceleration |
 
-### Local Development Setup
+### Local Development
 
-| Component | Requirement | Installation |
-|-----------|-------------|--------------|
-| **Python** | 3.11 or higher | [python.org](https://python.org) |
+| Component | Requirement | Notes |
+|-----------|-------------|-------|
+| **Python** | 3.11+ | [python.org](https://python.org) |
 | **Node.js** | v16+ with npm | [nodejs.org](https://nodejs.org) |
-| **Ollama** | Latest version | [ollama.ai](https://ollama.ai) |
-| **GPU** | NVIDIA RTX 30/40 series (optional) | For CUDA acceleration |
-| **VRAM** | ≥ 8 GB (recommended) | For optimal performance |
+| **Ollama** | Latest | [ollama.ai](https://ollama.ai) |
+| **GPU** | NVIDIA RTX 30/40 (optional) | 8GB+ VRAM recommended |
 
 ---
 
-## ⚡ Quick Start (Docker)
+## Quick Start (Docker)
 
-> **🐳 Recommended**: Docker provides the easiest setup with all dependencies containerized.
+> Docker provides the easiest setup with all dependencies containerized, including Nginx reverse proxy for API routing and cookie-based authentication.
 
-**Prerequisites**: [Docker Desktop](https://docker.com) installed and running
+**Prerequisites**: [Docker Desktop](https://docker.com) installed and running.
 
-### One-Command Setup (Easiest)
+### One-Command Setup
 
 ```bash
 # 1. Clone the repository
@@ -234,263 +208,267 @@ cd MCP_Catalog
 # Windows (PowerShell):
 .\scripts\docker\setup-docker.ps1
 
-# Windows (Command Prompt):
-scripts\docker\setup-docker.bat
-
 # Linux/Mac:
 chmod +x scripts/docker/setup-docker.sh
 ./scripts/docker/setup-docker.sh
 ```
 
-**🎉 That's it!** The script will:
-- ✅ Start all Docker containers
-- ✅ Download the 9GB AI model (with progress bar)
-- ✅ Download the embedding model (for memory features)
-- ✅ Verify everything is running
-- ✅ Open your browser automatically
+The script will start all containers, download the 9GB AI model, and open your browser.
 
-**App will be ready at:** `http://localhost:3000`
+**App ready at:** `http://localhost:3000`
 
-> **⚠️ Note:** Docker may still serve the legacy UI if not rebuilt after Phase 7. For the latest NEPHILIM UI, use local development setup below.
-
----
-
-### Manual Setup (Alternative)
-
-If you prefer to run commands manually:
+### Manual Setup
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Swissbit92/MCP_Catalog.git
-cd MCP_Catalog
+# 1. Start all services
+docker compose --env-file .env.docker up -d
 
-# 2. Start all services (downloads ~2GB of images on first run)
-docker-compose --env-file .env.docker up -d
-
-# 3. Pull LLM model (~9GB download, takes 5-10 minutes)
+# 2. Pull LLM model (~9GB, takes 5-10 minutes)
 docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
 
-# 4. Pull embedding model (optional, for Phase 3 memory)
+# 3. Pull embedding model (for memory features)
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 
-# 5. Open your browser
-start http://localhost:3000  # Windows
-open http://localhost:3000   # Mac/Linux
+# 4. Open browser
+start http://localhost:3000    # Windows
+open http://localhost:3000     # Mac/Linux
 ```
 
-**🎉 Done!** Your app is running at `http://localhost:3000`
+### Docker Architecture
 
-### Quick Commands
+The Docker deployment runs three containers behind an Nginx reverse proxy:
+
+```
+Browser (localhost:3000)
+    │
+    ▼
+┌──────────────────────────────────┐
+│  Nginx (ai-companion-web)        │
+│  - Serves React static build     │
+│  - Proxies /auth/* → backend     │
+│  - Proxies /chat, /sessions, etc │
+│  - React Router catch-all        │
+└──────────┬───────────────────────┘
+           │ proxy_pass
+           ▼
+┌──────────────────────────────────┐
+│  FastAPI (ai-companion-api)      │
+│  - OAuth + JWT auth              │
+│  - Chat, personas, wallet routes │
+│  - Spawns ephemeral MCP containers│
+└──────────┬───────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────┐
+│  Ollama (ai-companion-brain)     │
+│  - Local LLM inference (GPU)     │
+│  - Embedding model               │
+└──────────────────────────────────┘
+```
+
+### Docker Commands
 
 ```bash
 # View logs
-docker-compose logs -f
+docker compose logs -f backend
 
 # Stop all services
-docker-compose down
+docker compose down
 
 # Restart a service
-docker-compose restart backend
+docker compose restart backend
 
-# Backup your database
-# Windows: Copy-Item data\chats.db data\chats.db.backup
-# Linux/Mac: cp data/chats.db data/chats.db.backup
+# Rebuild after code changes
+docker compose --env-file .env.docker build --no-cache
+docker compose --env-file .env.docker up -d
+
+# Backup database
+cp data/chats.db data/chats.db.backup
 ```
 
-### Validation (Optional)
+### Docker Environment Variables
 
-Test your Docker setup:
+Key variables in `.env.docker`:
 
-```bash
-# Windows
-.\scripts\docker\test_docker_setup.ps1
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PERSONA_MODEL` | `nchapman/gemma-2-9b-it-abliterated:9b` | Ollama LLM model |
+| `AUTH_REQUIRED` | `true` | Require Google OAuth login |
+| `AUTH_ENV` | `development` | `development` for HTTP, `production` for HTTPS |
+| `GOOGLE_CLIENT_ID` | — | Google OAuth Client ID |
+| `JWT_SECRET_KEY` | (dev default) | JWT signing secret (change in production) |
+| `BRAVE_API_KEY` | — | Brave Search API key (optional) |
+| `MONGODB_URI` | — | MongoDB Atlas connection string (optional) |
+| `MONGODB_ENABLED` | `false` | Enable MongoDB integration |
+| `JUPITER_ENABLED` | `false` | Enable Jupiter wallet features |
+| `SOLANA_RPC_URL` | `https://api.devnet.solana.com` | Solana RPC endpoint |
+| `EMAIL_ENABLED` | `false` | Enable trade email notifications |
 
-# Linux/Mac
-chmod +x scripts/docker/test_docker_setup.sh
-./scripts/docker/test_docker_setup.sh
-```
-
-**📖 Detailed Guide**: See [docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md) for full documentation, troubleshooting, and advanced configuration.
+See [`.env.docker`](.env.docker) for the full list with documentation.
 
 ---
 
-## 🧩 Alternative: Local Development Setup
+## Local Development Setup
 
-> **Note**: Docker setup (above) is recommended for most users. Use local setup if you need to modify code or prefer running services directly.
+> Use this if you need to modify code or prefer running services directly.
 
-### 📥 Step 1: Clone the Repository
+### Step 1: Install Dependencies
 
 ```bash
 git clone https://github.com/Swissbit92/MCP_Catalog.git
 cd MCP_Catalog
-```
 
-### 🔧 Step 2: Install Dependencies
-
-#### **Option A: Automated Setup (Recommended)**
-
-```bash
-# Linux/macOS
-chmod +x scripts/setup/setup.sh
-./scripts/setup/setup.sh
-
-# Windows
-scripts\setup\setup.bat
-```
-
-#### **Option B: Manual Setup**
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows: venv\Scripts\activate
-# Linux/Mac: source venv/bin/activate
-
-# Install Python dependencies
-python -m pip install --upgrade pip
+# Python backend
 pip install -r requirements.txt
 
-# Install React dependencies
-cd react-ui
-npm install
-cd ..
+# React frontend
+cd react-ui && npm install && cd ..
 ```
 
-### 🤖 Step 3: Setup Ollama
-
-#### **Install Ollama**
-
-Visit [ollama.ai](https://ollama.ai) and download the installer for your OS.
-
-#### **Start Ollama Service**
+### Step 2: Setup Ollama
 
 ```bash
-# Start Ollama in the background
-ollama serve
+ollama serve                                               # Start service
+ollama pull nchapman/gemma-2-9b-it-abliterated:9b         # Main model (9GB)
+ollama pull nomic-embed-text:latest                        # Embeddings (RAG memory)
 ```
 
-#### **Pull Required Model**
+### Step 3: Configure Environment
+
+Create a `.env` file in the project root:
 
 ```bash
-# Pull the RECOMMENDED model (validated Dec 25, 2025)
-# nchapman: 9B params, uncensored, excellent multi-message performance
-# Test results: 75% multi-message usage, 0% garbled output, 100% technical accuracy
-ollama pull nchapman/gemma-2-9b-it-abliterated:9b
-
-# Pull embedding model (optional, for Phase 3 memory features)
-ollama pull nomic-embed-text:latest
-
-# Alternative models (NOT recommended):
-# ollama pull dolphin-llama3:8b      # Previous default, replaced due to reliability issues
-# ollama pull llama3.1:latest        # Formal, censored, doesn't follow <msg> tag instructions
-```
-
-### ⚙️ Step 4: Configure Environment
-
-Create a `.env` file in the root directory:
-
-```bash
-# Ollama configuration
+# Required
 OLLAMA_BASE=http://127.0.0.1:11434
 PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b
 PERSONA_TEMPERATURE=0.9
-
-# Server configuration
 COORD_PORT=8000
-COORD_URL=http://127.0.0.1:8000
 PERSONA_DIR=personas
 
-# Database (SQLite)
-COORDINATOR_DB_PATH=chats.db
+# Authentication
+AUTH_REQUIRED=true                    # Set false for no-login dev mode
+GOOGLE_CLIENT_ID=your-client-id      # From Google Cloud Console
 
-# Optional: Brave Search API
+# Optional: Brave Search
 BRAVE_API_KEY=
-BRAVE_ENABLED_RARITIES=rare,epic,legendary  # Fallback tier filter; per-persona mcp_access field takes priority
+BRAVE_ENABLED_RARITIES=rare,epic,legendary
 
-# Optional: MongoDB MCP
+# Optional: MongoDB
 MONGODB_URI=
 MONGODB_ENABLED=false
 
+# Optional: Jupiter Wallet
+JUPITER_ENABLED=false
+SOLANA_RPC_URL=https://api.devnet.solana.com
+
 # Optional: Memory & RAG
 MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest
-MEMORY_SUMMARIZATION_INTERVAL=30
-MEMORY_FACT_EXTRACTION_INTERVAL=10
 ```
 
-**Key Environment Variables:**
+### Step 4: Run
 
-- `OLLAMA_BASE`: Ollama API endpoint (default: http://127.0.0.1:11434)
-- `PERSONA_MODEL`: LLM model to use (default: nchapman/gemma-2-9b-it-abliterated:9b)
-- `PERSONA_TEMPERATURE`: LLM creativity (0.0-1.5, default: 0.9)
-- `COORDINATOR_DB_PATH`: SQLite database location (default: chats.db)
+```bash
+# Terminal 1: Backend
+python -m uvicorn src.coordinator.server:app --reload --port 8000
+
+# Terminal 2: Frontend
+cd react-ui && PORT=3001 npx react-scripts start
+```
+
+**Access at:** `http://localhost:3001`
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-                           🧠  MCP Coordinator
-                   ╔═══════════════════════════════════════╗
-                   ║         React Frontend (19)           ║
-                   ║   (Summoning System • Multi-Message UI)   ║
-                   ╚═══════════════════════════════════════╝
-                                   │  🔗  HTTP / CORS
-                                   ▼
-                   ╔═══════════════════════════════════════╗
-                   ║     🧩 FastAPI Coordinator (0.100+)   ║
-                   ║  (Persona Router • MCP Bridge • LLM)  ║
-                   ╚═══════════════════════════════════════╝
-                    │                   │                  │
-        ┌───────────┴───────┬───────────┴────────┬─────────┴───────┐
-        ▼                   ▼                    ▼                 ▼
-  ╔═══════════╗     ╔═══════════╗      ╔═══════════╗     ╔═══════════╗
-  ║ 🔍 Brave  ║     ║ 🗄️ MongoDB ║      ║ 💾 SQLite ║     ║ 🧠 FAISS  ║
-  ║  Search   ║     ║    MCP     ║      ║  Database ║     ║  Vectors  ║
-  ║(web search)║    ║(data access)║      ║  (Chats)  ║     ║ (Memory)  ║
-  ╚═══════════╝     ╚═══════════╝      ╚═══════════╝     ╚═══════════╝
-                                   │
-                                   ▼
-                  ╔═══════════════════════════════════════╗
-                  ║ 🤖 Ollama LLM (Local Inference)       ║
-                  ║  • nchapman/gemma-2-9b (9B params)    ║
-                  ║  • nomic-embed-text (embeddings)      ║
-                  ╚═══════════════════════════════════════╝
+                    ┌─────────────────────────────────────────┐
+                    │         React 19 Frontend                │
+                    │  (OAuth • Glassmorphic UI • Framer Motion)│
+                    └───────────────────┬─────────────────────┘
+                                        │ HTTP / CORS
+                                        ▼
+                    ┌─────────────────────────────────────────┐
+                    │     FastAPI Coordinator (0.100+)         │
+                    │  (Auth Middleware • Persona Router • LLM) │
+                    └──┬──────┬──────┬──────┬──────┬──────────┘
+                       │      │      │      │      │
+         ┌─────────────┤      │      │      │      └──────────────┐
+         ▼             ▼      ▼      ▼      ▼                    ▼
+   ┌───────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  ┌──────────────┐
+   │  Brave    │ │ MongoDB  │ │  SQLite  │ │  FAISS   │  │   Jupiter    │
+   │  Search   │ │   MCP    │ │ Database │ │ Vectors  │  │  DEX / MCP   │
+   │(web search)│ │(trading) │ │ (Chats)  │ │ (Memory) │  │(Solana swaps)│
+   └───────────┘ └──────────┘ └──────────┘ └──────────┘  └──────────────┘
+                                    │
+                                    ▼
+                    ┌─────────────────────────────────────────┐
+                    │   Ollama LLM (Local Inference)           │
+                    │  • nchapman/gemma-2-9b (9B params)       │
+                    │  • nomic-embed-text (embeddings)          │
+                    └─────────────────────────────────────────┘
 ```
 
 ### Component Breakdown
 
-- **React Frontend**: TypeScript 4.9.5, Framer Motion animations, mobile-optimized
-- **FastAPI Backend**: Persona routing, MCP client orchestration, LLM integration
-- **Brave Search**: Web search with citation validation (E.E.V.A., Aegis, Solace, Cipher, Aurora)
-- **MongoDB MCP**: Bitcoin trading data with technical indicators (E.E.V.A., Aurora, Cipher)
-- **SQLite**: Persistent chat history, sessions, summaries, user profiles
-- **FAISS**: Vector database for semantic memory search (Phase 3)
-- **Ollama**: Local LLM server with nchapman model + nomic embeddings
+- **React Frontend**: TypeScript, Framer Motion animations, Google OAuth, mobile-optimized
+- **FastAPI Backend**: Auth middleware, persona routing, MCP orchestration, wallet routes
+- **Brave Search**: Web search with citation validation (per-persona `mcp_access`)
+- **MongoDB MCP**: Bitcoin trading data with technical indicators
+- **Jupiter MCP**: Solana DEX swaps via Docker container, autonomous strategies (DCA, RSI)
+- **SQLite**: Chat sessions, messages, summaries, user accounts, wallets, trade proposals
+- **FAISS**: Vector database for semantic memory search
+- **Ollama**: Local LLM server with GPU acceleration
 
-### MCP Server Integration
+### Authentication Flow
 
-The MCP Coordinator uses two proven patterns for integrating external data sources:
+```
+Browser                    Nginx (Docker)              FastAPI Backend
+  │                            │                            │
+  │  GET /login                │                            │
+  │  ← LoginPage (React)      │                            │
+  │                            │                            │
+  │  Google Sign-In popup      │                            │
+  │  ← credential (ID token)  │                            │
+  │                            │                            │
+  │  POST /auth/google ───────►│ proxy_pass ───────────────►│
+  │                            │                            │ verify Google token
+  │                            │                            │ upsert user in SQLite
+  │                            │                            │ issue access_token (JWT)
+  │  ◄─ { access_token, user } │ ◄──────────────────────── │ set refresh_token cookie
+  │                            │                            │
+  │  GET /personas (Bearer) ──►│ ─────────────────────────►│ validate JWT
+  │  ◄─ persona list           │ ◄──────────────────────── │
+```
 
-- **Ephemeral STDIO (Brave Search)**: Spawns containers per request, dies after response (2-3 seconds)
-- **Long-Running STDIO (MongoDB)**: Single container stays alive for multiple requests
+### Route Map
 
-Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin/stdout pipes).
+| Route | Component | Auth Required | Description |
+|-------|-----------|:---:|-------------|
+| `/` | NephilimHome | No | Cinematic landing portal |
+| `/login` | LoginPage | No | Google OAuth / local bypass |
+| `/select` | CharacterCardV2Showcase | Yes | Companion selection & summoning |
+| `/chat` | Chat | Yes | Chat interface |
+| `/chat/:sessionId` | Chat | Yes | Chat with specific session |
+| `/dashboard` | Dashboard | Yes | Seeker's Sanctum progression hub |
 
-**Want to add your own MCP server?** See **[docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md)** for:
-- Choosing the right pattern for your use case
-- Step-by-step implementation guide with examples
-- Testing, troubleshooting, and best practices
-- Per-persona MCP access configuration (Celestial Order)
+### MCP Integration Patterns
+
+- **Ephemeral STDIO (Brave Search)**: `docker run -i --rm` per request, 2-3s lifecycle
+- **Long-Running STDIO (MongoDB)**: Container stays alive for multiple requests
+- **Jupiter MCP**: Docker container for Solana DEX operations, managed by wallet routes
+
+All MCP containers have resource limits (256-512MB RAM, 0.5-1.0 CPU, 100 PIDs max).
+
+See [docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md) for integration guide.
 
 ---
 
-## 🤖 Available AI Companions
+## Available AI Companions
 
 **Current Roster (February 2026) — 10 Companions**
 
-### Legacy Companions
+### Legacy Companions ("Wanderers")
 
 | Companion | Style | Order | Special Access |
 |-----------|-------|-------|----------------|
@@ -512,54 +490,52 @@ Both patterns use Docker containers with STDIO transport (JSON-RPC 2.0 via stdin
 
 ### Companion Features
 
-- **Psychological Profiles**: Each companion has core_wound, defense_style, growth_edge, contradiction_pairs
-- **Emotional Tracking**: Companions track trust_level, rapport, current_mood per session
-- **Example Dialogues**: 50 training examples (10-15 per companion) teach correct voice
-- **Custom Sampling**: Per-companion temperature and sampling presets (creative, balanced, precise)
-- **Celestial Order**: MCP access is configured per-persona via the `mcp_access` field, not per tier
+- **Psychological Profiles**: core_wound, defense_style, growth_edge, contradiction_pairs
+- **Emotional Tracking**: trust_level, rapport, current_mood per session
+- **Example Dialogues**: 50 training examples across all personas
+- **Custom Sampling**: Per-persona temperature with presets (creative, balanced, precise, chaotic)
+- **Per-Persona MCP Access**: Configured via `mcp_access` field in persona JSON
 
-### Managing AI Companions
+### Managing Companions
 
-#### ➕ Adding a New Companion
+**Add**: Copy `personas/template.jsonc` → `personas/[name].json`, add images to `react-ui/public/images/personas/[name]/`. Auto-discovered on load.
 
-1. **Create persona file**: Copy `personas/template.jsonc` to `personas/[name].json`
-2. **Configure persona**: Edit the JSON with character details (see template for schema)
-3. **Add images**: Place card, avatar, logo, and background images in `react-ui/public/images/personas/[name]/`
-4. **Auto-discovery**: Persona appears automatically without restart
+**Remove**: Delete the JSON file. Sessions and collections auto-cleanup on next load.
 
-#### 🗑️ Removing a Companion
-
-1. **Delete persona file**: Remove JSON from `personas/` directory
-2. **Automatic cleanup**: Sessions, chats, and collections auto-cleanup on next load
-
-#### 🔄 Modifying a Companion
-
-1. **Edit persona file**: Update JSON with new details
-2. **Auto-update**: Summary regenerates on next access, UI updates immediately
+**Modify**: Edit the JSON. Summary regenerates on next access.
 
 ---
 
-## ⬡ NEPHILIM Worldbuilding System
+## NEPHILIM Worldbuilding System
 
-The NEPHILIM system is an immersive narrative universe layered on top of the AI companion platform, adding worldbuilding, faction identity, progression, and lore discovery.
-
-### What is NEPHILIM?
-
-Six interconnected AI companions (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) exist within a shared lore — a realm of fallen celestial beings, six Houses, and a Seeker progression system. Users take on the role of a "Seeker" who advances through ranks (Initiate → Acolyte → Adept → Ascendant → Nephilim) by conversing with NEPHILIM personas and earning resonance.
+Six interconnected AI companions exist within a shared lore — a realm of fallen celestial beings, six Houses, and a Seeker progression system.
 
 ### Entering the Realm
 
-- **Portal**: Visit `/nephilim` for the cinematic landing page
-- **Onboarding**: `/nephilim/onboarding` guides new users through name entry, a faction quiz, persona introductions, and first companion selection
-- **Progression**: Earn 5 resonance per conversation exchange; unlock lore fragments as affinity grows
+- **Portal** (`/`): Cinematic landing page with particle and aurora effects
+- **Login** (`/login`): Google OAuth or local bypass authentication
+- **Onboarding**: Name entry, faction quiz, persona introductions, first companion selection
+- **Progression**: Earn 5 resonance per conversation; unlock lore fragments as affinity grows
 
-### Key Features
+### Rank System
 
-- **Narrative MCP Integration**: External data sources are framed as Nephilim powers — Brave Search becomes "Cipher's Archives", MongoDB trading data becomes "Aurora's Crystal Grid"
-- **Persona Filter Toggle**: Switch between All, NEPHILIM, and Legacy persona views with persistent preference
-- **Visual Theming**: Dedicated dark aesthetic with cyan/magenta accents and per-persona color palettes
-- **Seeker Dashboard**: Track rank, resonance, faction affiliation, persona affinities, and unlocked lore
-- **Unlockable Lore**: Story fragments unlock as you converse more with each NEPHILIM companion
+| Rank | Resonance Required |
+|------|-------------------|
+| Initiate | 0 |
+| Acolyte | 100 |
+| Adept | 500 |
+| Ascendant | 2,000 |
+| Nephilim | 10,000 |
+
+### Narrative MCP Integration
+
+External data sources are framed as Nephilim powers:
+
+| MCP Source | NEPHILIM Name | Patron |
+|------------|---------------|--------|
+| Brave Search | Cipher's Archives | Cipher |
+| MongoDB Trading | Aurora's Crystal Grid | Aurora |
+| Multi-Source | The Convergence | E.E.V.A. |
 
 ### Lore Documents
 
@@ -569,299 +545,157 @@ Six interconnected AI companions (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) 
 
 ---
 
-## 🚀 Usage
+## Usage
 
-### Docker Usage
+### First Launch
 
-**Start the application:**
-```bash
-docker-compose --env-file .env.docker up -d
-```
+1. Navigate to `http://localhost:3000` (Docker) or `http://localhost:3001` (local dev)
+2. **Login**: Sign in with Google OAuth, or use local bypass if `AUTH_REQUIRED=false`
+3. **Onboarding**: Complete the faction quiz and select your first companion
+4. **Chat**: Start conversations from the companion selection page
 
-**Access the application:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+### Key Pages
 
-**View logs:**
-```bash
-docker-compose logs -f backend  # Backend logs
-docker-compose logs -f          # All services
-```
+| Page | What You Can Do |
+|------|-----------------|
+| **Landing** (`/`) | Enter the Realm portal with cinematic effects |
+| **Login** (`/login`) | Google OAuth or local bypass authentication |
+| **Companion Selection** (`/select`) | Browse cards, run Summoning Ritual pulls, manage collection |
+| **Chat** (`/chat`) | Converse with AI companions, switch sessions via sidebar |
+| **Dashboard** (`/dashboard`) | Track rank, resonance, faction, affinities, unlocked lore |
 
-**Stop the application:**
-```bash
-docker-compose down
-```
+### API Documentation
 
-**Backup your data:**
-```bash
-# Windows
-Copy-Item data\chats.db backups\chats.db.$(Get-Date -Format 'yyyyMMdd')
+Backend API docs available at `http://localhost:8000/docs` (Swagger UI).
 
-# Linux/Mac
-cp data/chats.db backups/chats.db.$(date +%Y%m%d)
-```
-
-### Local Development Usage
-
-#### **🎨 Phase 7 NEPHILIM UI (Latest)**
-
-**Run the new NEPHILIM UI with full glassmorphic styling, dark cyberpunk theme:**
-
-```bash
-# Terminal 1: Backend (FastAPI)
-python -m uvicorn src.coordinator.server:app --reload --port 8000
-
-# Terminal 2: Frontend (React dev server)
-cd react-ui
-PORT=3001 npx react-scripts start
-```
-
-**Access at:** `http://localhost:3001`
-
-> **✨ New in Phase 7:**
-> - Unified NEPHILIM dark theme (void `#0B0B0D` base)
-> - Glassmorphic components (`bg-white/[0.05] backdrop-blur-xl`)
-> - "Wanderers" concept for legacy personas
-> - Summoning Ritual system with 5-phase animation
-> - Seeker's Sanctum dashboard with constellation map
-> - Full WCAG AA accessibility compliance
-
-#### **📦 Legacy UI (Docker/Production)**
-
-**Option A: Unified Startup**
-
-```bash
-python scripts/utils/run_react.py
-```
-
-**🎯 This starts both backend and frontend automatically!**
-
-**Option B: Manual Startup**
-
-```bash
-# Terminal 1: Backend
-python run.py
-
-# Terminal 2: Frontend
-cd react-ui && npm start
-```
-
-**Access at:** `http://localhost:3000`
-
-#### **Stopping the Application**
-
-Press `Ctrl+C` in the terminal(s) to stop services gracefully.
+Key endpoint groups:
+- `/auth/*` — Google OAuth login, token refresh, logout
+- `/chat`, `/greet` — Conversation endpoints
+- `/sessions/*` — Chat session management
+- `/personas/*` — Persona listing and details
+- `/nephilim/*` — Seeker progression, ranks, factions, lore
+- `/wallet/*` — Jupiter wallet management, trade proposals, strategies
 
 ---
 
-### 🎯 How to Use the App
-
-#### **Home Page (`/`)**
-
-- 🎲 **Try Your Luck**: Navigate to Summoning Ritual for companion pulls
-- 📚 **Browse All Agents**: View all available AI companions
-- 🎨 **Sophisticated UI**: Glassmorphism effects, animated particles
-
-#### **Agent Selection (`/select`)**
-
-- 🎴 **Card Gallery**: Browse with search and order filtering
-- 🎲 **Summoning Ritual**: 1x/5x/10x pulls with audio and particle effects
-- 📚 **My Collection**: View collected companions with stats
-- 📊 **Pull History**: Track pulling statistics
-- 🎯 **Choose Agents**: Click "Choose" to jump to chat
-
-#### **Chat Interface (`/chat`)**
-
-- 💬 **Start Conversations**: Chat with selected AI companion
-- 🔄 **Switch Sessions**: Use sidebar to change chats
-- 💾 **Export Chats**: Save conversations as JSON
-- 🎨 **Celestial Order Theming**: Companion-specific colors and backgrounds
-- 📋 **Copy Functionality**: Copy JSON/code blocks with one click
-
-#### **NEPHILIM Portal (`/nephilim`)**
-
-- ⬡ **Cinematic Landing**: Animated portal with particle and aurora effects
-- 🌌 **Enter the Realm**: Gateway to the NEPHILIM companion experience
-- 🎨 **Dedicated Theme**: Dark void aesthetic with cyan/magenta accents
-
-#### **NEPHILIM Onboarding (`/nephilim/onboarding`)**
-
-- 🌀 **Portal Entry**: Animated welcome with E.E.V.A. greeting and name collection
-- 🏛️ **Faction Quiz**: 4 personality questions to determine House alignment
-- 👥 **Persona Introductions**: Carousel of all 6 NEPHILIM with sample greetings
-- 🎯 **First Companion**: Select your starting companion and begin chatting
-
----
-
-## ✅ Testing & Quality
+## Testing & Quality
 
 ### Automated Testing
 
-- **Backend Tests**: 37 test files, ~360 test cases
-  - Unit tests for all core modules
-  - Integration tests for Phase 1-3 features
-  - End-to-end tests for Brave/MongoDB MCPs
-- **Frontend Tests**: 40+ Jest tests with React Testing Library
-  - Component tests for all major UI elements
-  - Integration tests for multi-message rendering
-  - Phase 2 persona quality validation
-- **Playwright E2E Tests**: Browser-based end-to-end testing
-  - NEPHILIM filter toggle visibility, functionality, and persistence
-  - Run: `cd react-ui && npx playwright test`
-  - Headed mode: `cd react-ui && npx playwright test --headed`
+```bash
+# React unit tests
+cd react-ui && npm test
 
-### Code Quality Metrics
+# Playwright E2E tests
+cd react-ui && npx playwright test
+cd react-ui && npx playwright test --headed    # With browser visible
 
+# Python backend tests
+pytest tests/backend/
+pytest tests/integration/
+pytest tests/evaluation/ -v    # RAGAS persona quality
+```
+
+### Test Coverage
+
+- **Backend**: 37 test files, ~360 test cases (unit, integration, E2E)
+- **Frontend**: 40+ Jest tests with React Testing Library
+- **Playwright E2E**: OAuth flow, chat interactions, Jupiter wallet, visual regression
 - **Type Safety**: TypeScript strict mode + Pydantic validation throughout
-- **Hygiene Score**: 10/10
-  - Zero unused imports
-  - Zero dead code
-  - Zero TODO comments (all tracked in docs)
-- **Security**: npm audit passing
-  - 2 moderate dev-only issues (react-scripts nested deps)
-  - Zero production vulnerabilities
-  - Regular dependency updates
-### Production Readiness
 
-- **Docker Build**: Tested with automated validation scripts
-- **Model Validation**: Comparison testing (nchapman vs. alternatives)
-- **Performance**: 60fps animations, <500ms API responses
-- **Reliability**: 100% test pass rate, zero critical bugs
-- **Monitoring**: Comprehensive logging with structured formats
+### Code Quality
 
-### Quality Assurance Process
-
-1. **Pre-Commit**: Local testing before commits
-2. **Code Review**: Documentation-first approach
-3. **Validation**: Manual testing for major features
-4. **Hygiene Sessions**: Regular cleanup and refactoring
+- Zero unused imports, zero dead code
+- npm audit passing (zero production vulnerabilities)
+- ESLint enforced, PEP 8 compliant
+- 60fps animations, <500ms API responses
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-### Docker Deployment
-
-| Document | Description |
-|----------|-------------|
-| **[docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md)** | Complete Docker setup guide with troubleshooting |
-| **[SQLITE_ARCHITECTURE.md](SQLITE_ARCHITECTURE.md)** | Technical decision record for SQLite architecture |
-| **[.env.docker](.env.docker)** | Environment configuration template |
-| **[scripts/docker/test_docker_setup.ps1](scripts/docker/test_docker_setup.ps1)** | Windows validation script |
-| **[scripts/docker/test_docker_setup.sh](scripts/docker/test_docker_setup.sh)** | Linux/Mac validation script |
-
-### Development & Architecture
+### Setup & Deployment
 
 | Document | Description |
 |----------|-------------|
-| **[CLAUDE.md](CLAUDE.md)** | Developer guide, project structure, testing (most up-to-date) |
-| **[AGENTS.md](AGENTS.md)** | Repository guidelines, coding style, setup commands |
-| **[ASSESSMENT.md](ASSESSMENT.md)** | Codebase quality assessment (Dec 2025) |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history and feature additions |
-| **[docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md)** | Guide for integrating new MCP servers (ephemeral & long-running patterns) |
-| **[docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md)** | Testing setup, organization, and best practices |
+| [docs/setup/DOCKER_QUICKSTART.md](docs/setup/DOCKER_QUICKSTART.md) | Complete Docker setup guide |
+| [.env.docker](.env.docker) | Docker environment configuration |
+| [scripts/docker/](scripts/docker/) | Docker setup, validation, troubleshooting scripts |
 
-### Scripts & Utilities
+### Development
 
-| Directory | Description |
-|-----------|-------------|
-| **[scripts/](scripts/)** | Organized collection of development and deployment scripts |
-| **[scripts/docker/](scripts/docker/)** | Docker setup, validation, and troubleshooting scripts |
-| **[scripts/setup/](scripts/setup/)** | Local development environment setup scripts |
-| **[scripts/utils/](scripts/utils/)** | Python utilities (unified launcher, validation, cleanup) |
-
-See each directory's README.md for usage examples and detailed documentation.
+| Document | Description |
+|----------|-------------|
+| [CLAUDE.md](CLAUDE.md) | Developer guide, project structure, commands |
+| [docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md) | MCP integration guide |
+| [docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md) | Testing setup and best practices |
+| [docs/development/OAUTH_IMPLEMENTATION_PLAN.md](docs/development/OAUTH_IMPLEMENTATION_PLAN.md) | OAuth architecture and flow |
+| [docs/development/JUPITER_WALLET_IMPLEMENTATION.md](docs/development/JUPITER_WALLET_IMPLEMENTATION.md) | Wallet integration details |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-See Repository Guidelines in `AGENTS.md` and `CLAUDE.md` for:
+See `CLAUDE.md` and `AGENTS.md` for project structure, coding style, and conventions.
 
-- Project structure overview and entrypoints
-- Setup and run commands (Python, FastAPI, React, Docker)
-- Coding style and test conventions
-- Commit/PR expectations and environment variables
+### Development Roadmap
 
-See `CHANGELOG.md` for recent updates and project evolution.
-
-### 📋 Development Roadmap
-
-**Completed (Dec 2025 - Feb 2026):**
-- ✅ Phase 1-2 Persona Quality (psychological depth, emotional tracking)
-- ✅ Phase 1-3 Memory System (RAG, user profiles, fact extraction)
-- ✅ Phase 2 Conversational AI (multi-message architecture)
-- ✅ Brave MCP Integration (web search with citations)
-- ✅ MongoDB MCP Integration (trading data with technical indicators)
-- ✅ Docker deployment with automated setup
-- ✅ NEPHILIM Phase 0-2: Worldbuilding lore, factions, ranks, and 6 new personas
-- ✅ NEPHILIM Phase 3: Gamification progression (resonance, affinity, lore unlocks)
-- ✅ NEPHILIM Phase 4: Immersive onboarding (portal, faction quiz, persona intros)
-- ✅ NEPHILIM Phase 5: Narrative MCP integration (Cipher's Archives, Aurora's Crystal Grid)
-- ✅ NEPHILIM Phase 6: Persona filter toggle (All/NEPHILIM/Legacy views)
-- ✅ Playwright E2E testing for NEPHILIM features
-- ✅ Chat UI performance and accessibility fixes
-- ✅ NEPHILIM Phase 7: Full UI transition — unified dark theme, glassmorphic chat, summoning ritual system, progression dashboard, WCAG AA accessibility
+**Completed (Dec 2025 – Feb 2026):**
+- Phase 1-2: Persona quality (psychological depth, emotional tracking)
+- Phase 1-3: Memory system (RAG, user profiles, fact extraction)
+- Phase 2: Multi-message conversational AI architecture
+- Brave MCP + MongoDB MCP integration with per-persona access
+- Docker deployment with automated setup scripts
+- NEPHILIM Phases 0-6: Worldbuilding, progression, onboarding, narrative MCP, filter toggle
+- NEPHILIM Phase 7: Full UI transition — unified dark theme, glassmorphic chat, summoning ritual, dashboard, WCAG AA
+- Phase 8: Google OAuth authentication with JWT tokens
+- Phase 8: Jupiter wallet integration (Solana DEX, autonomous strategies, trade proposals)
+- Phase 8: Nginx reverse proxy in Docker for cookie-based auth
+- Phase 8: Playwright E2E test suite (OAuth, wallet, chat, visual regression)
 
 **Future Enhancements:**
-- NEPHILIM Phase 8: Advanced progression, cross-persona storylines
-- Phase 3 Conversational AI (response timing analysis, follow-up generation)
-- Phase 4 Conversational AI (reflection loops, meta-cognition)
-- Phase 5 Conversational AI (multi-turn planning)
+- Phase 9: Cross-persona storylines and advanced progression
+- Phase 3-5 Conversational AI (response timing, reflection loops, multi-turn planning)
 - PostgreSQL migration (optional, for scaling beyond local use)
 - Kubernetes deployment (optional, for production at scale)
 
-Contributions are welcome. Please read `AGENTS.md` before opening a PR.
-
 ---
 
-## 🛡️ Security & Privacy
+## Security & Privacy
+
+### Authentication
+- **Google OAuth 2.0**: Server-side token verification via `google-auth` library
+- **JWT Tokens**: HS256-signed, short-lived access (1h) + HttpOnly refresh cookies (30d)
+- **Cookie Security**: `SameSite=strict`, `Secure` flag in production (HTTPS)
+- **Wallet Encryption**: AES-GCM encryption for Solana private keys at rest
 
 ### Docker Deployment
-- **Container Isolation**: Services run in isolated containers with minimal attack surface
-- **Non-Root User**: Backend container runs as non-root user for security
-- **Local Network**: Services communicate via private Docker network
-- **Volume Security**: Data persists in host-mounted volumes you control
-- **No External Dependencies**: All processing happens locally (except optional web search/MongoDB)
-
-### General Security
-- **Dependency Audits**: Regular npm audit checks with minimal vulnerabilities (2 moderate issues in dev dependencies only)
-- **Local-First Architecture**: All AI processing and data storage happens locally
-- **No Data Transmission**: Conversations never leave your device (unless you use optional Brave/MongoDB features)
-- **Package Overrides**: Security fixes applied via package.json overrides for transitive dependency vulnerabilities
-- **Production Ready**: Optimized build with no security issues affecting production runtime
-
----
-
-## ⚠️ Important Notes
-
-### Docker Setup
-- **Data Persistence**: All data stored in `./data/` directory on your machine
-- **First Launch**: Docker image download and model pull takes 10-20 minutes initially
-- **Resource Usage**: Ollama LLM requires ~4-8GB RAM when running
-- **Disk Space**: LLM models are 4-10GB each, plan accordingly
-- **Backups**: Simply copy `data/chats.db` file to backup your conversations
-
-### Local Development Setup
-- **Local AI Only**: All conversations run locally via Ollama - no data leaves your device
-- **GPU Recommended**: For best performance, use a GPU with ≥8GB VRAM
-- **First Launch**: Initial model loading may take a few minutes
-- **SQLite Database**: All data stored in `chats.db` file in project root
+- **Container Isolation**: Services on private Docker network
+- **Nginx Reverse Proxy**: Single entry point, no direct backend exposure
+- **MCP Resource Limits**: Memory (256-512MB), CPU (0.5-1.0), PID (100 max) per container
+- **Non-Root User**: Backend container uses dedicated `coordinator` user
 
 ### General
-- **Privacy First**: Your conversations are 100% private and local
-- **Experimental**: This is a prototype - use responsibly
-- **Optional Features**: Web search (Brave) and MongoDB features require external APIs
-- **Model Validation**: nchapman model validated Dec 2025 with comprehensive testing
+- **Local-First**: All AI processing and storage happens on your device
+- **No Data Transmission**: Conversations never leave your machine (except optional Brave/MongoDB)
+- **Dependency Audits**: Regular npm audit with zero production vulnerabilities
 
 ---
 
-## 📄 License
+## Important Notes
 
-© 2025-2026 GraphRAG Coordinator UI – All rights reserved.
-
-This project is provided "as is", without any warranty or guarantee. Use responsibly and at your own discretion.
+- **First Launch**: Docker image download + model pull takes 10-20 minutes
+- **Resource Usage**: Ollama LLM requires ~4-8GB RAM; models are 4-10GB on disk
+- **Data Persistence**: All data in `./data/` (Docker) or `chats.db` (local)
+- **Backups**: Copy `data/chats.db` to back up all conversations and user data
+- **GPU Optional**: NVIDIA RTX recommended but CPU inference works (slower)
+- **Auth Bypass**: Set `AUTH_REQUIRED=false` in `.env` for offline/dev use without Google
 
 ---
+
+## License
+
+(c) 2025-2026 — All rights reserved.
+
+This project is provided "as is", without warranty. Use responsibly and at your own discretion.
