@@ -1,12 +1,7 @@
-import { fetchPersonas, sendMessage, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, fetchCharacterBio } from './api';
+import { fetchPersonas, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, fetchCharacterBio } from './api';
 
 // Mock the global fetch function
 global.fetch = jest.fn();
-
-interface ChatTurn {
-  role: string;
-  content: string;
-}
 
 describe('API Service', () => {
   beforeEach(() => {
@@ -66,49 +61,6 @@ describe('API Service', () => {
     expect(personas[1].voice.greeting).toBe('Hi!');
   });
 
-  it('sendMessage should return AI response', async () => {
-    const mockResponse = { answer: 'Hello from AI', used_search: false, search_results_count: 0 };
-    (fetch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      })
-    );
-
-    const persona = 'eeva';
-    const message = 'Hi';
-    const history: ChatTurn[] = [];
-    const response = await sendMessage(persona, message, history);
-
-    expect(response.answer).toBe(mockResponse.answer);
-    expect(response.used_search).toBe(false);
-    expect(response.search_results_count).toBe(0);
-    expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:8000/persona/chat',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ persona, message, history }),
-      })
-    );
-  });
-
-  it('sendMessage should throw an error if API call fails', async () => {
-    (fetch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        text: () => Promise.resolve('Server error'),
-      })
-    );
-
-    const persona = 'eeva';
-    const message = 'Hi';
-    const history: ChatTurn[] = [];
-
-    await expect(sendMessage(persona, message, history)).rejects.toThrow('API Error: 500 Internal Server Error - Server error');
-  });
-
   describe('Session API', () => {
     it('fetchSessions should return a list of sessions', async () => {
       const mockSessions = [
@@ -131,7 +83,7 @@ describe('API Service', () => {
 
       const sessions = await fetchSessions();
       expect(sessions).toEqual(mockSessions);
-      expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/sessions');
+      expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/sessions', expect.objectContaining({}));
     });
 
     it('createSession should return a new session', async () => {
@@ -241,9 +193,9 @@ describe('API Service', () => {
       );
 
       await deleteSession('1');
-      expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/sessions/1', {
+      expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/sessions/1', expect.objectContaining({
         method: 'DELETE',
-      });
+      }));
     });
 
     it('sendMessageToSession should return ChatApiResponse', async () => {

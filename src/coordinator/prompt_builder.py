@@ -1,4 +1,4 @@
-# src/coordinator/prompt_builder_optimized.py
+# src/coordinator/prompt_builder.py
 # OPTIMIZED version of prompt_builder.py with token efficiency improvements.
 # Changes:
 #   - Reduced first-person rules from 84 lines to 20 lines (save ~600 tokens)
@@ -16,7 +16,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 from ollama._types import ResponseError
 
-from .config import get_ollama_base, get_persona_model, get_persona_temperature
+from .config import get_settings
 from .cv_summarizer import get_or_build_cv_summary
 from .ollama_utils import assert_model_available
 from .persona_loader import resolve_persona_to_card
@@ -202,10 +202,9 @@ Let your core wound and contradictions shape your engagement style naturally.
 
 def _llm() -> OllamaLLM:
     """Create Ollama LLM client for prompt operations."""
-    base = get_ollama_base()
-    model = get_persona_model()
-    assert_model_available(base, model)
-    return OllamaLLM(base_url=base, model=model, temperature=get_persona_temperature())
+    cfg = get_settings().ollama
+    assert_model_available(cfg.base, cfg.model)
+    return OllamaLLM(base_url=cfg.base, model=cfg.model, temperature=cfg.temperature)
 
 
 # ---------------- Summarization helpers ----------------

@@ -156,7 +156,7 @@ export default function LoginPage() {
           }}>
             Enter the Realm
           </h1>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.28)', lineHeight: 1.65 }}>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.65 }}>
             Identity must be verified before you may enter the Realm of the Nephilim
           </p>
         </div>
@@ -207,7 +207,7 @@ export default function LoginPage() {
         {/* Divider */}
         <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.08em' }}>authenticate via</span>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em' }}>authenticate via</span>
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
         </div>
 
@@ -258,7 +258,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', lineHeight: 1.6 }}>
+        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
           🔒 Local bypass available for dev &amp; offline use —{' '}
           set <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', background: 'rgba(255,255,255,0.07)', padding: '2px 6px', borderRadius: '3px', color: 'rgba(255,255,255,0.5)' }}>AUTH_REQUIRED=false</code>{' '}
           in <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', background: 'rgba(255,255,255,0.07)', padding: '2px 6px', borderRadius: '3px', color: 'rgba(255,255,255,0.5)' }}>.env</code>

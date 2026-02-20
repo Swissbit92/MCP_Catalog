@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChatSession } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
-import { fetchPersonas } from '../services/api'
 import { formatOrderLabel } from '../utils/celestialOrder'
 
 interface SessionListProps {
@@ -51,33 +50,10 @@ const getRarityStyles = (rarity?: string) => {
 
 const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
   const navigate = useNavigate()
-  const { sessions, currentSession, deleteSessionById, updateSessionTitle } = usePersona()
+  const { personas, sessions, currentSession, deleteSessionById, updateSessionTitle } = usePersona()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
-  const [personas, setPersonas] = useState<any[]>([])
-  const [personasLoaded, setPersonasLoaded] = useState(false)
-
-  // Load personas for session display
-  useEffect(() => {
-    const loadPersonas = async () => {
-      try {
-        const fetchedPersonas = await fetchPersonas()
-        const processedPersonas = fetchedPersonas.map(p => ({
-          key: p.key,
-          display_name: p.display_name || p.key,
-          image: p.image.replace('images/', ''),
-          avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
-          rarity: p.rarity,
-          celestial_order: p.celestial_order,
-        }))
-        setPersonas(processedPersonas)
-        setPersonasLoaded(true)
-      } catch (error) {
-        console.error('Failed to load personas for session list:', error)
-      }
-    }
-    loadPersonas()
-  }, [])
+  const personasLoaded = personas.length > 0
 
   // Get persona info for a session
   const getPersonaForSession = (personaKey: string) => {
@@ -221,7 +197,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
                             type="text"
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
-                            onKeyPress={(e) => {
+                            onKeyDown={(e) => {
                               if (e.key === 'Enter') handleEditSave()
                               if (e.key === 'Escape') handleEditCancel()
                             }}

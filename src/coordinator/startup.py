@@ -8,22 +8,7 @@ import sqlite3
 import logging
 from typing import Optional
 
-from .config import (
-    get_ollama_base,
-    get_persona_model,
-    is_brave_enabled,
-    get_brave_api_key,
-    get_brave_max_results,
-    get_brave_safesearch,
-    get_brave_search_timeout,
-    get_brave_enabled_rarities,
-    is_mongodb_enabled,
-    get_mongodb_uri,
-    get_mongodb_timeout,
-    get_mongodb_max_response_bytes,
-    get_mongodb_enabled_rarities,
-    get_model_context_window,
-)
+from .config import get_settings
 from .ollama_utils import assert_model_available
 from .mcp_client_stdio import BraveMCPClientStdio
 from .mongodb_mcp_client import MongoDBMCPClient
@@ -214,15 +199,16 @@ def init_brave_client():
     """Initialize Brave MCP client if enabled."""
     global _brave_client
 
-    if not is_brave_enabled():
+    brave_cfg = get_settings().brave
+    if not brave_cfg.enabled:
         logger.info("Brave MCP is disabled (no API key)")
         return
 
     try:
-        api_key = get_brave_api_key()
-        max_results = get_brave_max_results()
-        safesearch = get_brave_safesearch()
-        timeout = get_brave_search_timeout()
+        api_key = brave_cfg.api_key
+        max_results = brave_cfg.max_results
+        safesearch = brave_cfg.safesearch
+        timeout = brave_cfg.timeout
 
         _brave_client = BraveMCPClientStdio(
             image=os.getenv("BRAVE_MCP_IMAGE", "docker.io/mcp/brave-search"),
@@ -241,14 +227,15 @@ def init_mongodb_client():
     """Initialize MongoDB MCP client if enabled."""
     global _mongodb_client, _mongodb_cache, _mongodb_service
 
-    if not is_mongodb_enabled():
+    mongo_cfg = get_settings().mongodb
+    if not mongo_cfg.is_enabled:
         logger.info("MongoDB MCP is disabled (no URI or feature flag off)")
         return
 
     try:
-        mongodb_uri = get_mongodb_uri()
-        timeout = get_mongodb_timeout()
-        max_response_bytes = get_mongodb_max_response_bytes()
+        mongodb_uri = mongo_cfg.uri
+        timeout = mongo_cfg.timeout
+        max_response_bytes = mongo_cfg.max_response_bytes
 
         _mongodb_client = MongoDBMCPClient(
             connection_uri=mongodb_uri,
@@ -288,7 +275,7 @@ def init_memory_manager():
     """Initialize memory management components."""
     global _memory_manager, _conversation_summarizer
 
-    _memory_manager = MemoryManager(max_tokens=get_model_context_window())
+    _memory_manager = MemoryManager(max_tokens=get_settings().ollama.context_window)
     _conversation_summarizer = ConversationSummarizer()
     logger.info("Memory manager initialized (Phase 2)")
 
@@ -482,7 +469,7 @@ def initialize_all():
 
     # Check Ollama
     try:
-        assert_model_available(get_ollama_base(), get_persona_model())
+        assert_model_available(get_settings().ollama.base, get_settings().ollama.model)
         logger.info("Model check passed.")
     except Exception as e:
         logger.error(f"Model check failed: {e}")
@@ -516,7 +503,7 @@ def initialize_all():
     try:
         init_brave_client()
         if _brave_client:
-            enabled_rarities = get_brave_enabled_rarities()
+            enabled_rarities = get_settings().brave.enabled_rarities_set
             logger.info(f"Brave MCP enabled for rarities: {', '.join(enabled_rarities)}")
         else:
             logger.info("Brave MCP disabled (web search not available)")
@@ -527,7 +514,7 @@ def initialize_all():
     try:
         init_mongodb_client()
         if _mongodb_client:
-            enabled_rarities = get_mongodb_enabled_rarities()
+            enabled_rarities = get_settings().mongodb.enabled_rarities_set
             logger.info(f"MongoDB MCP enabled for rarities: {', '.join(enabled_rarities)}")
         else:
             logger.info("MongoDB MCP disabled (no URI or feature flag off)")

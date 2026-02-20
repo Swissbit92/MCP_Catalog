@@ -95,9 +95,11 @@ ollama pull nomic-embed-text:latest                        # Embeddings (RAG mem
 ```
 server.py, startup.py          # App entry, lifecycle
 config.py, schemas.py          # Settings, API schemas
-routes/                        # chat.py, sessions.py, personas.py, nephilim.py
-services/                      # Business logic (llm_completion, tool_calling, citation, etc.)
-repositories/                  # SQLite data access (session, message, summary, emotional_state, seeker_progression)
+routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py
+services/                      # Business logic (llm_completion, tool_calling, citation, chat_session, query_handler, wallet_*, strategy, etc.)
+repositories/                  # SQLite data access — ALL extend BaseRepository via db_adapter (connection pooling)
+                               #   session, message, summary, emotional_state, seeker_progression,
+                               #   user_profile, user (OAuth), trade_proposal, wallet
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
 tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
 mongodb/                       # MongoDB MCP client
@@ -116,8 +118,10 @@ mongodb/                       # MongoDB MCP client
 pages/                         # Chat.tsx, NephilimHome.tsx, NephilimOnboarding.tsx, CharacterCardV2Showcase.tsx, Dashboard.tsx
 components/                    # UI components (Header, MessageBubble, CharacterCard, SessionList, etc.)
 components/nephilim/           # NEPHILIM progression components (SeekerRankBadge, LoreCodex, etc.)
-context/                       # PersonaContext.tsx, AudioContext.tsx
-services/                      # API client (includes NEPHILIM progression API)
+context/                       # PersonaContext.tsx (composition wrapper), ChatContext.tsx, CollectionContext.tsx, AudioContext.tsx
+services/api/                  # Domain-split API client: base.ts, auth.ts, sessions.ts, chat.ts, nephilim.ts, wallet.ts, personas.ts
+services/api.ts                # Barrel re-export (backward compat: import from here as before)
+types/                         # personas.ts (canonical Persona type), index.ts barrel
 utils/                         # animations.ts, helpers, celestialOrder.ts
 ```
 
@@ -163,6 +167,9 @@ Optional (see `.env.docker` for full list):
 - `PascalCase` components, explicit types, strict mode
 - No semicolons, 2-space indent (ESLint enforced)
 - Tailwind for utilities, Framer Motion for animations
+- Canonical `Persona` type lives in `react-ui/src/types/personas.ts` — import from there, never redefine locally
+- New code should use `useChat()` / `useCollection()` hooks; `usePersona()` is kept for backward compat
+- API functions: import from `'../services/api'` (barrel) or the specific domain module in `services/api/`
 
 ### Design System
 - **Typography:** Outfit (display), Manrope (body), Space Mono (mono)
@@ -208,10 +215,18 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - Connection uses `check_same_thread=False`
 - Foreign key cascade deletes for cleanup
 
+### Backend Configuration
+- All config access via `get_settings()` returning a typed `AppSettings` Pydantic model
+- Legacy `get_*()` getter functions have been removed — use `get_settings().subsystem.field` instead
+- All repositories extend `BaseRepository` in `db_adapter.py` — never open raw `sqlite3.connect()` calls
+
 ### React Performance
 - `React.memo` for expensive components (MessageBubble, CharacterCard)
 - Virtualized message list with react-window
 - Hardware-accelerated Framer Motion animations
+- `useCallback` on all context CRUD functions (ChatContext) and event handlers (Chat.tsx, CharacterCardV2Showcase)
+- `useMemo` for derived state (search filtering in CharacterCardV2Showcase)
+- Authenticated API calls use `fetchWithAuth()` (auto-injects Bearer token, handles 401 refresh)
 
 ## Troubleshooting
 
@@ -418,11 +433,13 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 | Route | Component | Description |
 |-------|-----------|-------------|
 | `/` | NephilimHome | Landing portal |
-| `/onboarding` | NephilimOnboarding | New user flow |
-| `/select` | CharacterCardV2Showcase | Companion selection |
-| `/chat` | Chat | Chat interface |
-| `/chat/:sessionId` | Chat | Chat with specific session |
-| `/dashboard` | Dashboard | Seeker's Sanctum |
+| `/login` | LoginPage | Google OAuth login |
+| `/onboarding` | NephilimOnboarding | New user flow (ProtectedRoute) |
+| `/select` | CharacterCardV2Showcase | Companion selection (ProtectedRoute) |
+| `/chat` | Chat | Chat interface (ProtectedRoute) |
+| `/chat/:sessionId` | Chat | Chat with specific session (ProtectedRoute) |
+| `/dashboard` | Dashboard | Seeker's Sanctum (ProtectedRoute) |
+| `/*` | — | Redirects to `/` |
 
 **Tracking:** `archive/phase7/PHASE7_TRANSITION_PLAN.md` (complete ✅ Feb 17, 2026)
 

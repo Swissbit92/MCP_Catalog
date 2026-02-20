@@ -8,7 +8,7 @@ import os
 import logging
 from typing import Dict, List, Optional
 
-from .config import get_persona_dir
+from .config import get_settings
 from .models.persona_schema import load_persona_card_lenient
 
 # Setup logger
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def _iter_persona_files() -> List[str]:
     """Return absolute paths to all *.json in PERSONA_DIR (sorted, stable)."""
-    pdir = get_persona_dir()
+    pdir = get_settings().persona_dir
     try:
         files = [os.path.join(pdir, f) for f in os.listdir(pdir) if f.endswith(".json")]
     except FileNotFoundError:

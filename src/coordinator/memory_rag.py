@@ -41,12 +41,12 @@ class EpisodicMemoryRAG:
         Args:
             embedding_model: Ollama model for embeddings (default: from config)
         """
-        from .config import get_embedding_model, get_ollama_base
+        from .config import get_settings
         if embedding_model is None:
-            embedding_model = get_embedding_model()
+            embedding_model = get_settings().memory.embedding_model
         self.embeddings = OllamaEmbeddings(
             model=embedding_model,
-            base_url=get_ollama_base()
+            base_url=get_settings().ollama.base
         )
         self.vectorstores: Dict[str, FAISS] = {}  # session_id -> FAISS instance
         self.use_gpu = faiss.get_num_gpus() > 0

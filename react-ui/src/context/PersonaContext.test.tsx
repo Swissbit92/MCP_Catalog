@@ -4,6 +4,7 @@ import { PersonaProvider, usePersona } from './PersonaContext';
 
 // Mock all API functions
 jest.mock('../services/api', () => ({
+  fetchPersonas: jest.fn().mockResolvedValue([]),
   fetchSessions: jest.fn(),
   createSession: jest.fn(),
   getSessionWithMessages: jest.fn(),
@@ -65,6 +66,8 @@ describe('PersonaContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-apply fetchPersonas mock after clearAllMocks wipes the factory's mockResolvedValue
+    mockApi.fetchPersonas.mockResolvedValue([]);
     mockApi.fetchSessions.mockResolvedValue([mockSession]);
     mockApi.sendMessageToSession.mockResolvedValue(mockAssistantMessage);
   });
