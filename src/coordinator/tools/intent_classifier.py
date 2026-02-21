@@ -111,8 +111,9 @@ def classify_query_intent(
         "tell me the address", "tell me my address",
         "show my wallet", "show my balance",
         "my active", "do i have",
-        # Post-action queries
-        "wallets now", "happened to", "what happened",
+        # Post-action queries (must include wallet context to avoid hijacking unrelated queries)
+        "wallets now", "happened to my wallet", "what happened to my wallet",
+        "what happened with my wallet", "what happened to my balance",
         # Jupiter DEX (catch before Brave routes it as web search)
         "jupiter",
         # Wallet deletion follow-up
@@ -148,14 +149,14 @@ def classify_query_intent(
     has_web_search_intent = any(kw in query_lower for kw in SEARCH_KEYWORDS)
 
     # Check if query is asking for data despite having definition keywords
-    data_keywords = ["price", "value", "worth", "cost", "indicator"]
+    data_keywords = ["price", "value", "worth", "cost", "indicator", "analysis", "rsi", "macd"]
     has_data_intent = any(kw in query_lower for kw in data_keywords)
 
     if has_definition_intent and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
         # Pure educational/definition queries don't need MCPs
         return QueryIntent.NEEDS_NEITHER
 
-    if is_educational and not has_opinion_intent and not has_web_search_intent:
+    if is_educational and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
         # Educational queries like "Why was Bitcoin created?" should not trigger MCPs
         return QueryIntent.NEEDS_NEITHER
 
@@ -196,6 +197,9 @@ def classify_query_intent(
         # General web search keywords (but not if MongoDB already triggered for Bitcoin price)
         elif not needs_mongodb:
             if any(kw in query_lower for kw in SEARCH_KEYWORDS):
+                needs_web = True
+            # Opinion/sentiment queries need web search for current expert views
+            elif has_opinion_intent:
                 needs_web = True
 
         # "current" in Bitcoin context means MongoDB, not web search

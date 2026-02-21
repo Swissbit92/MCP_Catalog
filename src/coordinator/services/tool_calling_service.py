@@ -173,6 +173,44 @@ class ToolCallingService:
         if search_expected:
             logger.info(f"Keyword filter: SEARCH likely needed for query: '{user_prompt[:100]}'")
 
+        # If keyword filter determined search IS needed, force-execute it directly
+        # instead of relying on the local LLM to generate a JSON tool call
+        # (small models are unreliable at structured tool calling)
+        if search_expected:
+            brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
+            if brave_tool and self.search_executor and self.search_executor.mcp_client:
+                search_query = self.query_extractor.extract_latest_user_message(user_prompt)
+                logger.info(f"[Keyword Force Search] Executing search directly: '{search_query[:100]}'")
+
+                search_results = self.search_executor.execute_search(ToolCall(
+                    name="brave_web_search",
+                    arguments={"query": search_query, "reason": "Keyword filter determined search is needed"}
+                ))
+
+                if search_results:
+                    formatted_results = format_search_results_for_llm(search_results)
+                    conversation_history = [formatted_results, f"User: {user_prompt}"]
+
+                    synthesis_system = build_synthesis_prompt(persona_system, has_search_results=True)
+                    logger.info(f"[Synthesis] Using synthesis prompt (length: {len(synthesis_system)} chars, search_results: {len(search_results)})")
+
+                    llm_answer = self.llm_service.complete(synthesis_system, "\n\n".join(conversation_history))
+                    logger.info(f"[Synthesis] Generated answer (length: {len(llm_answer)} chars)")
+
+                    had_citations = any(marker in llm_answer for marker in ["🔍 Sources:", "Sources:", "**Sources:**"])
+                    llm_answer = self.citation_service.strip_hallucinated_citations(llm_answer)
+                    if had_citations:
+                        logger.warning("[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
+
+                    accurate_citations = self.citation_service.auto_generate_citations(search_results)
+                    final_response = llm_answer + accurate_citations
+
+                    return (final_response, ToolCall(name="brave_web_search", arguments={"query": search_query}), search_results)
+                else:
+                    logger.warning("[Anti-Hallucination] Keyword-forced search returned no results - admitting ignorance")
+                    honest_response = "I attempted to search for current information on this topic, but the search didn't return any results. I don't have up-to-date information to answer this question accurately. I'd rather admit I don't know than guess or use potentially outdated information."
+                    return (honest_response, None, None)
+
         # Build enhanced system prompt with tool definitions
         enhanced_system = build_tool_system_prompt(persona_system, tools)
         logger.debug(f"Enhanced system prompt length: {len(enhanced_system)} chars")

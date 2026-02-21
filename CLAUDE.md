@@ -115,6 +115,7 @@ mongodb/                       # MongoDB MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search
 - `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
+- `tools/keywords.py` - Keyword dictionaries for intent classification routing
 
 ### Frontend (`react-ui/src/`)
 
@@ -205,6 +206,17 @@ Optional (see `.env.docker` for full list):
 - **Long-Running (MongoDB):** Container stays alive for multiple requests
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
 
+### MCP Query Routing Pipeline
+Queries flow through a two-layer classification system:
+
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
+2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
+
+**Anti-hallucination guards:**
+- If keyword filter says search is needed but search returns no results → honest "I don't know" response
+- If LLM somehow bypasses force-search and doesn't call the tool → honest "I don't know" response
+- LLM-generated citations are stripped and replaced with verified citations from actual search results
+
 ## Important Implementation Details
 
 ### Celestial Order & Per-Persona MCP Access
@@ -246,6 +258,8 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - Verify Docker socket mounted
 - Check API keys set in `.env`
 - Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
+- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('weather in London', 'legendary', ['brave_search', 'mongodb']))"`
+- Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries
 
 ### Database issues
 - Backup and delete `chats.db` to reset
