@@ -14,19 +14,12 @@ from __future__ import annotations
 import os
 import logging
 from functools import lru_cache
-from typing import Optional, Set
+from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
-
-
-def _parse_rarities(csv: str) -> Set[str]:
-    """Parse a comma-separated rarity string into a lowercase set."""
-    if not csv.strip():
-        return set()
-    return {r.strip().lower() for r in csv.split(",") if r.strip()}
 
 
 class OllamaSettings(BaseSettings):
@@ -123,22 +116,11 @@ class BraveSettings(BaseSettings):
         description="Search timeout in seconds",
         alias="BRAVE_SEARCH_TIMEOUT"
     )
-    # Per-persona mcp_access field in persona JSON takes priority over these rarity-based settings
-    enabled_rarities: str = Field(
-        default="rare,epic,legendary",
-        description="Comma-separated list of rarities with search access",
-        alias="BRAVE_ENABLED_RARITIES"
-    )
 
     @property
     def enabled(self) -> bool:
         """Check if Brave search is enabled (API key is set)."""
         return bool(self.api_key.strip())
-
-    @property
-    def enabled_rarities_set(self) -> Set[str]:
-        """Get enabled rarities as a set."""
-        return _parse_rarities(self.enabled_rarities)
 
     @field_validator('safesearch')
     @classmethod
@@ -216,12 +198,6 @@ class MongoDBSettings(BaseSettings):
         description="Maximum response size in bytes",
         alias="MONGODB_MAX_RESPONSE_BYTES"
     )
-    # Per-persona mcp_access field in persona JSON takes priority over these rarity-based settings
-    enabled_rarities: str = Field(
-        default="epic,legendary",
-        description="Comma-separated list of rarities with MongoDB access",
-        alias="MONGODB_ENABLED_RARITIES"
-    )
     cache_current_price: int = Field(
         default=60,
         ge=0,
@@ -251,11 +227,6 @@ class MongoDBSettings(BaseSettings):
     def is_enabled(self) -> bool:
         """Check if MongoDB is enabled (flag true and URI set)."""
         return self.enabled and bool(self.uri.strip())
-
-    @property
-    def enabled_rarities_set(self) -> Set[str]:
-        """Get enabled rarities as a set."""
-        return _parse_rarities(self.enabled_rarities)
 
     def get_cache_ttl(self, tool_name: str) -> int:
         """Get cache TTL for a specific tool."""

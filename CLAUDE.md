@@ -163,8 +163,8 @@ PERSONA_DIR=personas
 ```
 
 Optional (see `.env.docker` for full list):
-- `BRAVE_API_KEY`, `BRAVE_ENABLED_RARITIES` - Web search (fallback; per-persona `mcp_access` takes priority)
-- `MONGODB_URI`, `MONGODB_ENABLED_RARITIES` - Trading data (fallback; per-persona `mcp_access` takes priority)
+- `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access` in persona JSON)
+- `MONGODB_URI` - Trading data (access controlled per-persona via `mcp_access` in persona JSON)
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings
 
 ## Code Style

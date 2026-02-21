@@ -355,7 +355,6 @@ GOOGLE_CLIENT_ID=your-client-id      # From Google Cloud Console
 
 # Optional: Brave Search
 BRAVE_API_KEY=
-BRAVE_ENABLED_RARITIES=rare,epic,legendary
 
 # Optional: MongoDB
 MONGODB_URI=

@@ -1029,7 +1029,7 @@ volumes:
 
 ## Celestial Order & Per-Persona MCP Access
 
-MCP access is now controlled **per-persona** via the `mcp_access` field in the persona's JSON file. The rarity/celestial-order env vars (`BRAVE_ENABLED_RARITIES`, `MONGODB_ENABLED_RARITIES`) serve as a fallback when a persona does not define `mcp_access` explicitly.
+MCP access is controlled **per-persona** via the `mcp_access` field in the persona's JSON file. All current personas define this field explicitly. When it is absent, the system falls back to hardcoded rarity-based sets in `intent_classifier.py` and `tool_utils.py` (the `BRAVE_ENABLED_RARITIES` / `MONGODB_ENABLED_RARITIES` env vars were removed in Feb 2026 — they were never read by routing code).
 
 ### Celestial Order Tiers
 
@@ -1086,13 +1086,13 @@ def get_tools_for_persona(
             tools.extend(MONGODB_TOOLS)
         return tools
 
-    # --- Fallback: celestial-order env var gating ---
-    brave_rarities = os.getenv("BRAVE_ENABLED_RARITIES", "sage,warden,archon").split(",")
-    if rarity.lower() in brave_rarities:
+    # --- Fallback: hardcoded rarity sets for personas without mcp_access field ---
+    # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026).
+    # All current personas define mcp_access explicitly; these sets are a safety net.
+    if rarity.lower() in {"rare", "epic", "legendary"}:
         tools.extend(BRAVE_TOOLS)
 
-    mongodb_rarities = os.getenv("MONGODB_ENABLED_RARITIES", "warden,archon").split(",")
-    if rarity.lower() in mongodb_rarities:
+    if rarity.lower() in {"epic", "legendary"}:
         tools.extend(MONGODB_TOOLS)
 
     return tools
@@ -1103,22 +1103,15 @@ def get_tools_for_persona(
 ```json
 {
   "key": "nephilim_cipher",
-  "rarity": "sage",
-  "mcp_access": ["brave", "mongodb"],
+  "celestial_order": "sage",
+  "mcp_access": ["brave_search", "mongodb"],
   ...
 }
 ```
 
-Personas without `mcp_access` defined (including all Wanderer/legacy personas) fall back to the celestial-order-based env var logic.
-
-### Configuration
-
-```bash
-# .env — fallback for personas without mcp_access field
-BRAVE_ENABLED_RARITIES=sage,warden,archon
-MONGODB_ENABLED_RARITIES=warden,archon
-YOUR_MCP_ENABLED_RARITIES=archon  # Only Archon-tier personas get access via fallback
-```
+Personas without `mcp_access` defined (including all Wanderer/legacy personas) fall back to
+hardcoded rarity-based gating in `intent_classifier.py` and `tool_utils.py`. New personas
+should always set `mcp_access` explicitly.
 
 ### Testing MCP Access
 

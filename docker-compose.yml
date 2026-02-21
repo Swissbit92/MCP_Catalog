@@ -64,7 +64,6 @@ services:
 
       # Brave MCP (optional - requires API key)
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
-      BRAVE_ENABLED_RARITIES: ${BRAVE_ENABLED_RARITIES:-rare,epic,legendary}
       BRAVE_MAX_RESULTS: ${BRAVE_MAX_RESULTS:-5}
       BRAVE_MCP_URL: http://brave-mcp:8080  # HTTP transport to MCP service
 

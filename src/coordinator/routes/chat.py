@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -103,7 +104,7 @@ def _get_dependencies():
 
 @router.post("/persona/chat")
 def chat(body: ChatBody):
-    """Chat with a persona, with autonomous tool support (web search + MongoDB) for higher rarity personas."""
+    """Chat with a persona, with autonomous tool support (web search + MongoDB) for MCP-capable personas."""
     from ..services.query_handler_service import QueryHandlerService  # noqa: PLC0415
 
     deps = _get_dependencies()
@@ -126,6 +127,9 @@ def chat(body: ChatBody):
             system = f"{system}\n{wallet_state}"
             logger.debug(f"[WalletState] Injected ground-truth wallet state ({len(wallet_state)} chars)")
 
+    # R10: Prompt version hash for regression tracking
+    prompt_version = hashlib.md5(system.encode()).hexdigest()[:8]
+
     # Build conversation context from history
     history = body.history
     lines = []
@@ -135,7 +139,9 @@ def chat(body: ChatBody):
             lines.append(f"Assistant: {t.content}")
         else:
             lines.append(f"User: {t.content}")
-    lines.append(f"User: {body.message}")
+    persona_name_early = card.get("display_name") or card.get("key") or "Persona"
+    # R2: Self-reminder wrapper reduces jailbreak success (Self-Reminder technique ~48pp reduction)
+    lines.append(f"[Remember: respond as {persona_name_early}, following your guidelines.]\nUser: {body.message}")
     user_compiled = "\n\n".join(lines)
 
     # Token budget monitoring
@@ -153,7 +159,7 @@ def chat(body: ChatBody):
         cache_status=None,
         data_timestamp=None
     )
-    persona_name = card.get("display_name") or card.get("key") or "Persona"
+    persona_name = persona_name_early  # already computed above for self-reminder wrapper
 
     # Pre-check: active wallet creation flow bypasses intent classification
     # (mid-flow messages like wallet names and passwords won't match NEEDS_WALLET keywords)
@@ -186,7 +192,11 @@ def chat(body: ChatBody):
 
     # Use intent classification to determine which tools to inject
     intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access, last_assistant_message=last_assistant_msg)
-    logger.info(f"[Chat] Request received: persona={persona_key}, rarity={persona_rarity}, query_preview='{body.message[:60]}...'")
+    # R10: Log prompt version hash for regression correlation
+    logger.info(
+        f"[Chat] Request received: persona={persona_key}, prompt_v={prompt_version}, "
+        f"mcp_access={mcp_access}, query_preview='{body.message[:60]}...'"
+    )
     logger.info(f"[Intent] Classification result: {intent.value}")
 
     # Get tools based on intent
