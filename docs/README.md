@@ -62,10 +62,7 @@ BRAVE_SEARCH_TOOL = {
 }
 
 # Primary: set mcp_access field on the persona JSON
-# { "mcp_access": ["brave", "mongodb"] }
-
-# Fallback env var (used when persona has no mcp_access field)
-BRAVE_ENABLED_RARITIES=sage,warden,archon
+# { "mcp_access": ["brave_search", "mongodb"] }
 ```
 
 ### [development/TESTING_GUIDE.md](development/TESTING_GUIDE.md)

@@ -165,11 +165,12 @@ def get_tools_for_persona(
             from .wallet_tool_generators import get_wallet_tools
             tools.extend(get_wallet_tools())
     else:
-        # Fallback to rarity-based access for personas without mcp_access field
-        # Brave MCP: rare, epic, legendary
+        # Fallback: rarity-based access for personas that have no mcp_access field.
+        # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026)
+        # because they were never read — all current personas define mcp_access explicitly.
+        # These hardcoded sets are intentional safety nets for edge-cases.
         if persona_rarity.lower() in {"rare", "epic", "legendary"}:
             tools.append(get_brave_search_tool())
-        # MongoDB MCP: epic, legendary only
         if persona_rarity.lower() in {"epic", "legendary"}:
             tools.extend(get_mongodb_tools())
 
