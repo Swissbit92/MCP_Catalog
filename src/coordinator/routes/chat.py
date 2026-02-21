@@ -145,8 +145,8 @@ def chat(body: ChatBody):
     # Pre-check: active wallet creation flow bypasses intent classification
     # (mid-flow messages like wallet names and passwords won't match NEEDS_WALLET keywords)
     from ..services.query_handler_service import has_active_wallet_flow
-    # ChatBody has no session_id — wallet flows are only active in session-based chat
-    _active_flow_session = None
+    # session_id is set by handle_session_chat for session-based flows
+    _active_flow_session = body.session_id
     if has_active_wallet_flow(_active_flow_session) and "solana_wallet" in (mcp_access or []):
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
@@ -188,7 +188,6 @@ def chat(body: ChatBody):
             mongodb_service=deps.get("mongodb_service"),
         )
         user_id = "default_user"
-        session_id = None
         return handler.handle_wallet_query(
             message=body.message,
             system_prompt=system,
@@ -197,7 +196,7 @@ def chat(body: ChatBody):
             metadata=metadata,
             persona_name=persona_name,
             persona_card=card,
-            session_id=session_id,
+            session_id=body.session_id,
             user_id=user_id,
         )
 
