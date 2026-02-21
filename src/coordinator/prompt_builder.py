@@ -576,7 +576,16 @@ def build_system_prompt(selector: Optional[str]) -> str:
     ])
 
     parts.extend(["", BASE_ROUTING_RULES])
-    return "\n".join(parts)
+    prompt = "\n".join(parts)
+
+    # R3: Prompt size observability — log estimated token count on first build (cached thereafter)
+    estimated_tokens = int(len(prompt.split()) * 1.33)
+    logger.info(
+        f"[PromptBuilder] Built system prompt for '{selector}': "
+        f"~{estimated_tokens} estimated tokens, {len(prompt)} chars"
+    )
+
+    return prompt
 
 
 def build_greeting_user_prompt(selector: Optional[str]) -> str:
