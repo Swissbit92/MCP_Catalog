@@ -78,6 +78,9 @@ cd react-ui && npx playwright test --headed           # Run with browser visible
 pytest tests/backend/                    # Backend unit tests
 pytest tests/integration/                # Integration tests
 pytest tests/evaluation/ -v              # RAGAS persona quality
+
+# Manual E.E.V.A. quality test (requires running backend on port 8000)
+python tests/manual/eeva_chat_test.py    # 50-question automated quality suite
 ```
 
 ### Ollama Setup
@@ -106,11 +109,12 @@ mongodb/                       # MongoDB MCP client
 ```
 
 **Key files:**
-- `llm_client.py` - LLM orchestration facade
-- `prompt_builder.py` - System prompt construction from persona JSON
+- `llm_client.py` - LLM orchestration facade (passes per-persona sampling overrides)
+- `prompt_builder.py` - System prompt construction from persona JSON (XML-tagged sections with bookend pattern)
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search
+- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
 
 ### Frontend (`react-ui/src/`)
 
@@ -188,10 +192,13 @@ Optional (see `.env.docker` for full list):
 
 ### Chat Flow
 1. Frontend POST `/greet` creates session
-2. User message → POST `/chat` with session_id, persona, content
-3. Backend builds system prompt from persona JSON + cached CV summary
-4. Ollama generates response, stored in SQLite
-5. Frontend renders with Celestial Order theming
+2. User message → POST `/sessions/{session_id}/chat` with persona, message
+3. Backend builds system prompt from persona JSON + cached CV summary (XML-tagged sections)
+4. For wallet-capable personas: ground-truth wallet state injected into system prompt (anti-hallucination)
+5. Intent classifier routes query → wallet / brave / mongodb / pure LLM
+6. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
+7. Post-processor strips leaked tool names via regex, enforces first-person
+8. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
@@ -291,8 +298,22 @@ NEPHILIM personas include additional fields:
 ```
 > Note: `unlockable_lore[].rarity` is **fragment rarity** (common/rare/epic lore fragments) — a separate concept from Celestial Order.
 
-### Prompt Integration
-`prompt_builder.py` automatically injects NEPHILIM context for personas with:
+### Prompt Architecture
+`prompt_builder.py` constructs system prompts using XML-tagged sections with a bookend pattern (critical rules at beginning AND end):
+
+```
+<identity>       — Core identity + anti-hallucination rules (primacy position)
+<response_format> — Multi-message <msg> rules (condensed)
+<companion_behavior> — Behavioral rules and conversational style
+<world_context>  — NEPHILIM lore (only for nephilim_ personas)
+<tools>          — Financial co-pilot block + anti-hallucination rules (wallet-capable personas)
+<memory>         — Conversation memory rules
+<checklist>      — Pre-response verification checklist (recency position)
+```
+
+**Anti-hallucination for wallet personas:** Ground-truth wallet state is injected into the system prompt on every message (not just wallet queries). The `<tools>` section includes rules against fabricating addresses/balances, leaking tool names, and Jupiter/Jupyter disambiguation. A regex post-processor in `query_handler_service.py` strips any leaked tool names from responses.
+
+NEPHILIM context is automatically injected for personas with:
 - Keys starting with `nephilim_`
 - The `nephilim_lore` field populated
 

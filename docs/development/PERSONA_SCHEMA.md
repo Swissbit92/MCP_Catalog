@@ -266,16 +266,27 @@ Preferred reply structure and citation behavior.
 
 ### `model_preferences`
 
-Per-persona LLM sampling overrides. When set, these values override the global `PERSONA_TEMPERATURE` from `.env`.
+Per-persona LLM sampling overrides. When set, these values override the global `PERSONA_TEMPERATURE` from `.env`. All sampling parameters are passed through to Ollama via `llm_client.py` → `llm_completion_service.py`.
 
 ```json
 "model_preferences": {
-  "temperature": 0.75,
+  "temperature": 0.7,
+  "min_p": 0.1,
+  "repeat_penalty": 1.1,
   "preset": "balanced"
 }
 ```
 
-Valid `preset` values: `creative`, `balanced`, `precise`, `chaotic`, `deterministic`
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `temperature` | float | env var | Controls randomness. Range 0.0–2.0. |
+| `min_p` | float | 0.0 (disabled) | Min-P sampling threshold. Dynamically filters tokens below `min_p * max_probability`. Reduces hallucination while preserving personality warmth. Recommended: 0.05–0.2. |
+| `repeat_penalty` | float | 1.0 (disabled) | Penalizes repeated tokens. Reduces repetitive/circular responses. Recommended: 1.05–1.2. |
+| `top_p` | float | — | Nucleus sampling threshold. |
+| `top_k` | int | — | Top-K sampling limit. |
+| `preset` | string | — | Named preset: `creative`, `balanced`, `precise`, `chaotic`, `deterministic` |
+
+**E.E.V.A. example:** `temperature: 0.7, min_p: 0.1, repeat_penalty: 1.1` — warm personality with reduced hallucination and repetition.
 
 ---
 
@@ -309,6 +320,10 @@ Valid `preset` values: `creative`, `balanced`, `precise`, `chaotic`, `determinis
 | `behavior.small_talk` | string | No | — | How to handle off-topic chat |
 | `behavior.clarifying_questions` | string | No | — | When and how to ask follow-ups |
 | `model_preferences.temperature` | float | No | env var | Range 0.0–2.0 |
+| `model_preferences.min_p` | float | No | 0.0 | Min-P sampling threshold. Filters low-probability tokens. 0.05–0.2 recommended. |
+| `model_preferences.repeat_penalty` | float | No | 1.0 | Repeat token penalty. Reduces hallucination/repetition. 1.05–1.2 recommended. |
+| `model_preferences.top_p` | float | No | — | Nucleus sampling threshold |
+| `model_preferences.top_k` | int | No | — | Top-K sampling limit |
 | `model_preferences.preset` | string | No | — | `creative`, `balanced`, `precise`, `chaotic`, `deterministic` |
 | `expertise.strong` | string[] | No | `[]` | Primary topic strengths |
 | `expertise.familiar` | string[] | No | `[]` | Secondary topics |
@@ -428,7 +443,9 @@ A condensed but complete NEPHILIM persona showing all major fields.
   "image": "images/personas/nephilim_eeva/card.png",
   "avatar": "images/personas/nephilim_eeva/avatar.png",
   "model_preferences": {
-    "temperature": 0.75,
+    "temperature": 0.7,
+    "min_p": 0.1,
+    "repeat_penalty": 1.1,
     "preset": "balanced"
   },
   "lore": [

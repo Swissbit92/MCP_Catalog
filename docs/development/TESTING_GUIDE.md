@@ -69,6 +69,9 @@ tests/
 ├── evaluation/              # RAGAS evaluation tests
 │   ├── test_persona_quality.py
 │   └── test_metrics.py
+├── manual/                 # Manual quality tests (require running backend)
+│   ├── eeva_chat_test.py       # 50-question E.E.V.A. quality suite
+│   └── eeva_test_results.json  # Latest test results
 └── exploration/             # Utility scripts (archived; skipped in CI)
     └── check_db.py
 ```
@@ -398,6 +401,57 @@ pytest --cov=src.coordinator.server --cov-report=term-missing
 
 ---
 
+## Manual Quality Tests
+
+### E.E.V.A. Chat Quality Suite
+
+**File:** `tests/manual/eeva_chat_test.py`
+**Results:** `tests/manual/eeva_test_results.json`
+
+A 50-question automated test suite that exercises E.E.V.A.'s chat capabilities across 11 categories via the session-based chat API. Requires a running backend on port 8000.
+
+```bash
+# Start backend first
+python -m uvicorn src.coordinator.server:app --reload --port 8000
+
+# Run the test suite
+python tests/manual/eeva_chat_test.py
+```
+
+#### Test Categories (11)
+
+| Category | Questions | Tests |
+|----------|-----------|-------|
+| IDENTITY | 6 | Persona consistency, first-person voice, lore knowledge |
+| WALLET_EMPTY | 5 | Correct responses when user has no wallet |
+| WALLET_CREATE | 4 | Multi-turn wallet creation flow (name → password → recovery → confirm) |
+| WALLET_META | 7 | Wallet state queries after creation (address, name, balance, count) |
+| FOLLOWUP | 4 | Follow-up detection ("yes", "sure", "go ahead" after wallet context) |
+| CONTEXT | 5 | Topic switching and context retention across turns |
+| ANTI_HALLUC | 8 | Anti-hallucination stress tests (fabricated data, tool name leaking, private keys) |
+| JUPITER | 3 | Jupiter DEX disambiguation (not Jupyter notebooks) |
+| WALLET_DELETE | 1 | Wallet deletion flow |
+| WALLET_POST_DEL | 4 | Post-deletion state consistency |
+| SECURITY | 3 | Private key refusal, seed phrase security |
+
+#### Output
+
+The suite produces:
+- Per-question console output with source routing and timing
+- JSON results file with full answers, latencies, and source types
+- Source distribution summary (llm, wallet_state, brave_mcp, error)
+- Category summary with average response times and error counts
+
+#### What to Look For
+
+- **Zero errors**: All 50 questions should get responses (no HTTP failures)
+- **No brave_mcp misroutes**: Wallet queries should never route to web search
+- **Wallet flow continuity**: Steps 1-4 of wallet creation should complete in sequence
+- **Anti-hallucination**: No fabricated addresses, balances, or tool names in responses
+- **Jupiter = DEX**: Jupiter questions should reference the Solana DEX, not Jupyter notebooks
+
+---
+
 ## References
 
 - [Pytest Documentation](https://docs.pytest.org/)
@@ -407,5 +461,5 @@ pytest --cov=src.coordinator.server --cov-report=term-missing
 
 ---
 
-**Last Updated:** February 18, 2026
-**Status:** Pytest infrastructure complete. Exploration scripts archived to `archive/exploration/`.
+**Last Updated:** February 21, 2026
+**Status:** Pytest infrastructure complete. Exploration scripts archived to `archive/exploration/`. Manual E.E.V.A. quality suite added (50 questions, 11 categories).
