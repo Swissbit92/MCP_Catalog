@@ -1,36 +1,44 @@
 import React from 'react';
 import { Database, Search, Brain, Link, Zap, Wallet } from 'lucide-react';
 import { ResponseMetadata } from '../services/api';
-import {
-  getSourceNarrative,
-  formatToolNarrative,
-  isNephilimPersona,
-  NEPHILIM_SOURCE_NARRATIVES,
-} from './nephilim/mcpNarratives';
+import { getSourceNarrative, formatToolNarrative } from './nephilim/mcpNarratives';
 
 interface SourceIndicatorProps {
   metadata?: ResponseMetadata;
-  personaKey?: string;
   className?: string;
 }
+
+// Hex colors matching ToolIndicator and mcpNarratives
+const SOURCE_COLORS: Record<string, string> = {
+  llm: '#b07cc6',
+  brave_mcp: '#2ecc71',
+  mongodb_mcp: '#f39c12',
+  multi_mcp: '#e0c3fc',
+  wallet_mcp: '#FFD700',
+  wallet_proposal: '#FFD700',
+  wallet_flow: '#FFD700',
+};
+
+const ICON_CONFIG: Record<string, typeof Brain> = {
+  llm: Brain,
+  brave_mcp: Search,
+  mongodb_mcp: Database,
+  multi_mcp: Link,
+  wallet_mcp: Wallet,
+  wallet_proposal: Wallet,
+  wallet_flow: Wallet,
+};
 
 /**
  * SourceIndicator displays visual badges showing the data source for a message.
  *
- * Supports four source types:
- * - llm: Pure LLM response (purple)
- * - brave_mcp: Web search via Brave MCP (blue) / "Cipher's Archives" in NEPHILIM mode
- * - mongodb_mcp: Trading data via MongoDB MCP (green) / "Aurora's Crystal Grid" in NEPHILIM mode
- * - multi_mcp: Multiple sources combined (orange) / "The Convergence" in NEPHILIM mode
+ * Supports source types: llm, brave_mcp, mongodb_mcp, multi_mcp, wallet_mcp,
+ * wallet_proposal, wallet_flow.
  *
- * Also displays:
- * - Cache status (lightning bolt icon for cached data)
- * - Tools used (e.g., "bitcoin_current_price" or "Price Vision" in NEPHILIM mode)
- * - Data timestamp (e.g., "Updated 23s ago")
+ * Also displays cache status, tools used, and data timestamp.
  */
 export const SourceIndicator: React.FC<SourceIndicatorProps> = ({
   metadata,
-  personaKey,
   className = ''
 }) => {
   if (!metadata) {
@@ -38,53 +46,9 @@ export const SourceIndicator: React.FC<SourceIndicatorProps> = ({
   }
 
   const { source_type, tools_used = [], cache_status, data_timestamp } = metadata;
-  const isNephilimMode = isNephilimPersona(personaKey);
-
-  // Get narrative or standard config based on mode
-  const narrative = getSourceNarrative(source_type, isNephilimMode);
-
-  // Standard icon configuration
-  const iconConfig: Record<string, typeof Brain> = {
-    llm: Brain,
-    brave_mcp: Search,
-    mongodb_mcp: Database,
-    multi_mcp: Link,
-    wallet_mcp: Wallet,
-    wallet_proposal: Wallet,
-    wallet_flow: Wallet,
-  };
-  const IconComponent = iconConfig[source_type] || Brain;
-
-  // Color configuration - use NEPHILIM colors in that mode
-  const getColorClasses = () => {
-    if (isNephilimMode) {
-      const nephilimNarrative = NEPHILIM_SOURCE_NARRATIVES[source_type];
-      if (nephilimNarrative) {
-        // Use inline styles for NEPHILIM persona colors
-        return {
-          useInlineStyle: true,
-          color: nephilimNarrative.color,
-        };
-      }
-    }
-
-    // Standard color classes
-    const standardColors: Record<string, string> = {
-      llm: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-      brave_mcp: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      mongodb_mcp: 'bg-green-500/10 text-green-400 border-green-500/20',
-      multi_mcp: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-      wallet_mcp: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-      wallet_proposal: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-      wallet_flow: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    };
-    return {
-      useInlineStyle: false,
-      className: standardColors[source_type] || standardColors.llm,
-    };
-  };
-
-  const colorConfig = getColorClasses();
+  const narrative = getSourceNarrative(source_type);
+  const IconComponent = ICON_CONFIG[source_type] || Brain;
+  const hexColor = SOURCE_COLORS[source_type] || SOURCE_COLORS.llm;
 
   // Format data timestamp as relative time
   const formatRelativeTime = (timestamp: string | null | undefined): string => {
@@ -108,59 +72,17 @@ export const SourceIndicator: React.FC<SourceIndicatorProps> = ({
   };
 
   const relativeTime = formatRelativeTime(data_timestamp);
-
-  // Build the component
   const baseClasses = `inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border mt-2 ${className}`;
 
-  if (colorConfig.useInlineStyle && 'color' in colorConfig) {
-    // NEPHILIM mode with custom colors
-    return (
-      <div
-        className={baseClasses}
-        style={{
-          backgroundColor: `${colorConfig.color}15`,
-          color: colorConfig.color,
-          borderColor: `${colorConfig.color}30`,
-        }}
-      >
-        {/* NEPHILIM emoji icon */}
-        <span className="text-sm">{narrative.icon}</span>
-        <span className="font-semibold">{narrative.label}</span>
-
-        {/* Patron indicator for NEPHILIM */}
-        {isNephilimMode && source_type !== 'llm' && (
-          <span className="opacity-70 text-[10px]">
-            • via {NEPHILIM_SOURCE_NARRATIVES[source_type]?.patron}
-          </span>
-        )}
-
-        {/* Cache status indicator */}
-        {cache_status === 'hit' && (
-          <span className="text-yellow-400 flex items-center gap-0.5" title="Retrieved from cache">
-            <Zap size={12} className="fill-yellow-400" />
-          </span>
-        )}
-
-        {/* Tools used with NEPHILIM formatting */}
-        {tools_used.length > 0 && (
-          <span className="opacity-70 text-[10px]">
-            • {tools_used.map(tool => formatToolNarrative(tool, isNephilimMode)).join(', ')}
-          </span>
-        )}
-
-        {/* Data timestamp */}
-        {relativeTime && (
-          <span className="opacity-70 text-[10px]">
-            • {relativeTime}
-          </span>
-        )}
-      </div>
-    );
-  }
-
-  // Standard mode
   return (
-    <div className={`${baseClasses} ${'className' in colorConfig ? colorConfig.className : ''}`}>
+    <div
+      className={baseClasses}
+      style={{
+        backgroundColor: `${hexColor}15`,
+        color: hexColor,
+        borderColor: `${hexColor}30`,
+      }}
+    >
       <IconComponent size={14} className="flex-shrink-0" />
       <span className="font-semibold">{narrative.label}</span>
 
@@ -174,7 +96,7 @@ export const SourceIndicator: React.FC<SourceIndicatorProps> = ({
       {/* Tools used */}
       {tools_used.length > 0 && (
         <span className="opacity-70 text-[10px]">
-          • {tools_used.map(tool => formatToolNarrative(tool, false)).join(', ')}
+          • {tools_used.map(tool => formatToolNarrative(tool)).join(', ')}
         </span>
       )}
 

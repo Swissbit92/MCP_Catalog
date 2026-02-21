@@ -87,7 +87,7 @@ describe('MessageBubble - Citation Rendering', () => {
 
       render(<MessageBubble message={message} />);
 
-      expect(screen.getByText(/Web Search/)).toBeInTheDocument();
+      expect(screen.getByText(/The Outer Archives/)).toBeInTheDocument();
     });
   });
 

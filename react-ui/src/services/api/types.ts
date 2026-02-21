@@ -12,7 +12,7 @@ export interface PersonaJson {
   logo: string;
   bg?: string;
   emoji: string;
-  allowed_mcp: string[];
+  mcp_access: string[];
   lore: string[];
   voice: Record<string, unknown>;
   do: string[];
