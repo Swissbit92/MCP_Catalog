@@ -4,11 +4,16 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from ..config import get_settings
 from .llm_completion_service import LLMCompletionService
 
 logger = logging.getLogger(__name__)
+
+# Strip role prefix leaks (e.g. "Assistant:", "<assistant>", "</assistant>")
+_ROLE_PREFIX_PATTERN = re.compile(r'^(?:</?[Aa]ssistant>|[Aa]ssistant:\s*)', re.IGNORECASE)
+_ROLE_SUFFIX_PATTERN = re.compile(r'</[Aa]ssistant>\s*$', re.IGNORECASE)
 
 
 def detect_third_person(answer: str, persona_name: str) -> tuple[bool, list[str]]:
@@ -118,6 +123,10 @@ def post_process_first_person(answer: str, persona_name: str) -> tuple[str, bool
     Returns:
         Tuple of (processed_answer, was_rewritten)
     """
+    # Strip role prefix/suffix leaks (e.g. "Assistant: ...", "<assistant>...</assistant>")
+    answer = _ROLE_PREFIX_PATTERN.sub('', answer)
+    answer = _ROLE_SUFFIX_PATTERN.sub('', answer).strip()
+
     has_third_person, violations = detect_third_person(answer, persona_name)
 
     if not has_third_person:

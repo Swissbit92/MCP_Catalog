@@ -118,6 +118,9 @@ def classify_query_intent(
         "jupiter",
         # Wallet deletion follow-up
         "deleted wallet", "deleted wallets",
+        # Internal tool names (route to wallet context so LLM doesn't hallucinate)
+        "wallet_get_balances", "solana_propose_swap", "solana_get_quote",
+        "solana_rsi_check", "wallet_create_guided", "solana_trade_history",
     ]
 
     if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):

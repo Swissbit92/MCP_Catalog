@@ -39,7 +39,19 @@ def _build_llm_response(
     metadata: ResponseMetadata,
 ) -> dict:
     """Post-process LLM output into a standard response dict."""
+    import re as _re
     answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+    # Convert <Assistant> separators to <msg> tags (LLM sometimes uses them as message delimiters)
+    if _re.search(r'<[Aa]ssistant>', answer):
+        answer = _re.sub(r'</?[Aa]ssistant>\s*', '</msg>\n<msg>', answer)
+        answer = _re.sub(r'^</msg>\s*', '', answer)
+        answer = _re.sub(r'\n<msg>\s*$', '', answer)
+        if '<msg>' in answer and not answer.strip().startswith('<msg>'):
+            answer = f'<msg>{answer}'
+        if '</msg>' in answer and not answer.strip().endswith('</msg>'):
+            answer = f'{answer}</msg>'
+
     answer = force_multi_message_split(answer, user_message)
     messages, flow_type = parse_multi_message_response(answer)
 
