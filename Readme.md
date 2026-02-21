@@ -229,7 +229,10 @@ docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterate
 # 3. Pull embedding model (for memory features)
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 
-# 4. Open browser
+# 4. Verify all subsystems are healthy
+python scripts/docker/verify_startup.py
+
+# 5. Open browser
 start http://localhost:3000    # Windows
 open http://localhost:3000     # Mac/Linux
 ```
@@ -281,6 +284,7 @@ docker compose restart backend
 # Rebuild after code changes
 docker compose --env-file .env.docker build --no-cache
 docker compose --env-file .env.docker up -d
+python scripts/docker/verify_startup.py    # Always verify after rebuild
 
 # Backup database
 cp data/chats.db data/chats.db.backup

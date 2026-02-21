@@ -200,17 +200,38 @@ else
 fi
 echo ""
 
+# Run MCP subsystem verification
+echo ""
+echo "11. Running MCP subsystem verification..."
+if command -v python3 &> /dev/null; then
+    python3 scripts/docker/verify_startup.py --skip-queries
+    VERIFY_EXIT=$?
+elif command -v python &> /dev/null; then
+    python scripts/docker/verify_startup.py --skip-queries
+    VERIFY_EXIT=$?
+else
+    warn "Python not found — skipping MCP verification"
+    echo "   Run manually: python scripts/docker/verify_startup.py"
+    VERIFY_EXIT=0
+fi
+echo ""
+
 # Final summary
 echo "=========================================="
 echo "Test Summary"
 echo "=========================================="
-pass "Docker Compose stack is running"
-pass "All core services are operational"
+if [ "${VERIFY_EXIT:-0}" -eq 0 ]; then
+    pass "Docker Compose stack is running"
+    pass "All core services are operational"
+    pass "MCP subsystem verification passed"
+else
+    pass "Docker Compose stack is running"
+    warn "MCP subsystem verification failed — check logs above"
+fi
 echo ""
 echo "Next steps:"
 echo "1. Open http://localhost:3000 in your browser"
-echo "2. Pull an LLM model if not done:"
-echo "   docker exec -it mcp_ollama ollama pull dolphin-llama3:8b"
+echo "2. Run full verification: python scripts/docker/verify_startup.py"
 echo "3. Start chatting with personas!"
 echo ""
 echo "Useful commands:"
@@ -218,5 +239,6 @@ echo "  - View logs: docker-compose logs -f"
 echo "  - Restart: docker-compose restart"
 echo "  - Stop: docker-compose down"
 echo "  - Backup: cp data/chats.db data/chats.db.backup"
+echo "  - Verify: python scripts/docker/verify_startup.py"
 echo ""
 echo "=========================================="

@@ -405,7 +405,45 @@ pytest --cov=src.coordinator.server --cov-report=term-missing
 
 ---
 
+## Docker Startup Verification
+
+**File:** `scripts/docker/verify_startup.py`
+
+**Mandatory after every Docker rebuild.** This script validates that all backend subsystems initialized correctly. Without it, broken MCP subsystems can silently return 500 errors.
+
+```bash
+# Full verification (subsystem checks + live MCP test queries)
+python scripts/docker/verify_startup.py
+
+# Quick mode (subsystem checks only — no LLM queries, ~3s)
+python scripts/docker/verify_startup.py --skip-queries
+
+# Custom timeout for slow starts
+python scripts/docker/verify_startup.py --timeout 120
+```
+
+### What it checks
+
+| Phase | Check | Details |
+|-------|-------|---------|
+| 1 | `/ready` endpoint | Polls until 200 or timeout (DB + Ollama must be healthy) |
+| 2 | Brave MCP status | If `BRAVE_API_KEY` set in `.env.docker`, asserts `enabled` |
+| 2 | MongoDB MCP status | If `MONGODB_ENABLED=true`, asserts `enabled` |
+| 3 | Persona load | `GET /personas` returns non-empty list |
+| 3 | LLM greet | `POST /persona/greet` returns valid response |
+| 3 | Brave query | Chat query routed through web search returns reply |
+| 3 | MongoDB query | Chat query routed through trading data returns reply |
+
+**Exit codes:** `0` = all checks passed, `1` = one or more failed.
+
+---
+
 ## Manual Quality Tests
+
+> **Pre-flight:** Before running manual tests against Docker, always verify the stack first:
+> ```bash
+> python scripts/docker/verify_startup.py --skip-queries
+> ```
 
 ### E.E.V.A. Chat Quality Suite
 
@@ -513,4 +551,4 @@ print("All intent classification checks passed!")
 ---
 
 **Last Updated:** February 21, 2026
-**Status:** Pytest infrastructure complete. Manual test suite: E.E.V.A. quality (50q), all-persona intent classification (210/210 offline), all-persona live API (210/210 live). MCP initialization bugs fixed (Alembic logging hijack + UnboundLocalError in chat.py).
+**Status:** Pytest infrastructure complete. Docker startup verification (`verify_startup.py`) mandatory after every rebuild. Manual test suite: E.E.V.A. quality (50q), all-persona intent classification (210/210 offline), all-persona live API (210/210 live). MCP initialization bugs fixed (Alembic logging hijack + UnboundLocalError in chat.py).
