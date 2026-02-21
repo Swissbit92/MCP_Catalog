@@ -33,6 +33,12 @@ docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 docker-compose logs -f backend       # View logs
 docker-compose restart backend       # Restart
 docker-compose down                  # Stop all
+
+# Rebuild backend (ALWAYS verify after rebuild)
+docker-compose --env-file .env.docker build --no-cache backend
+docker-compose --env-file .env.docker up -d backend
+python scripts/docker/verify_startup.py          # Mandatory post-rebuild check
+python scripts/docker/verify_startup.py --skip-queries  # Quick mode (subsystems only)
 ```
 
 **Access:** Frontend `http://localhost:3000` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
@@ -271,7 +277,21 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 ```bash
 docker-compose down && docker network prune -f
 docker-compose --env-file .env.docker up -d
+python scripts/docker/verify_startup.py    # Always verify after rebuild
 ```
+
+### Post-rebuild verification
+**Mandatory after every Docker rebuild.** The `verify_startup.py` script checks:
+- `/ready` endpoint returns 200 (DB + Ollama healthy)
+- Brave MCP and MongoDB MCP match `.env.docker` config
+- Live test queries (LLM greet, Brave search, MongoDB query) return valid responses
+
+```bash
+python scripts/docker/verify_startup.py              # Full check (subsystems + test queries)
+python scripts/docker/verify_startup.py --skip-queries  # Quick check (subsystems only)
+python scripts/docker/verify_startup.py --timeout 120   # Custom timeout for slow starts
+```
+If any check fails, investigate `docker logs ai-companion-api` before proceeding.
 
 ## NEPHILIM Worldbuilding System
 

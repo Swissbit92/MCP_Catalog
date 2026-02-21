@@ -127,6 +127,7 @@ Once all services are running:
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
+- **Readiness Check**: http://localhost:8000/ready (subsystem-level status)
 
 ---
 
@@ -181,11 +182,14 @@ docker-compose down -v
 # Rebuild backend
 docker-compose build backend
 docker-compose up -d backend
+python scripts/docker/verify_startup.py    # Mandatory: verify MCP subsystems
 
 # Rebuild frontend
 docker-compose build frontend
 docker-compose up -d frontend
 ```
+
+> **Important:** Always run `verify_startup.py` after rebuilding the backend. This checks that the database, Ollama, Brave MCP, and MongoDB MCP all initialized correctly. Without this step, broken MCP subsystems can silently return 500 errors.
 
 ---
 
@@ -328,6 +332,9 @@ docker exec -it ai-companion-brain ollama list
 
 **Solution**:
 ```bash
+# Run the readiness check for detailed subsystem status
+python scripts/docker/verify_startup.py --skip-queries
+
 # Check backend logs
 docker-compose logs backend
 
@@ -481,6 +488,9 @@ If you're making code changes:
 # Rebuild and restart (with hot reload)
 docker-compose restart backend
 
+# Verify subsystems are healthy after restart
+python scripts/docker/verify_startup.py --skip-queries
+
 # Watch logs
 docker-compose logs -f backend
 ```
@@ -490,6 +500,7 @@ docker-compose logs -f backend
 ```bash
 docker-compose build backend
 docker-compose up -d backend
+python scripts/docker/verify_startup.py    # Full verification after rebuild
 ```
 
 ---
@@ -534,6 +545,9 @@ rm -rf data/ logs/ personas/_summaries/
 
 # Rebuild from scratch
 docker-compose up -d --build
+
+# Verify everything works
+python scripts/docker/verify_startup.py
 ```
 
 ---

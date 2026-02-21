@@ -15,6 +15,10 @@ LABEL version="1.0.0-sqlite"
 # Set working directory
 WORKDIR /app
 
+# Force unbuffered stdout/stderr so `docker logs -f` shows output in real time
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Install system dependencies
 # - curl: health checks
 # - git: some Python packages require it
@@ -70,7 +74,7 @@ RUN useradd -m -u 1000 coordinator && \
 
 # Health check - verifies backend is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/ready || exit 1
 
 # Expose port
 EXPOSE 8000

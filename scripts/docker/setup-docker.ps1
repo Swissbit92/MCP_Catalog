@@ -142,7 +142,7 @@ try {
 
 # Check Backend
 try {
-    $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing -TimeoutSec 5
+    $response = Invoke-WebRequest -Uri "http://localhost:8000/ready" -UseBasicParsing -TimeoutSec 5
     if ($response.StatusCode -eq 200) {
         Write-Success "ai-companion-api (Backend)"
     } else {
@@ -221,4 +221,15 @@ if ($servicesOk) {
 
     # Open browser automatically
     Start-Process "http://localhost:3000"
+}
+
+# Step 7: Run post-startup verification
+Write-Host ""
+Write-Info "Running post-startup verification..."
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCmd) {
+    python scripts/docker/verify_startup.py --skip-queries
+} else {
+    Write-Warning "Python not found — skipping automated verification"
+    Write-Host "       You can run it manually: python scripts/docker/verify_startup.py" -ForegroundColor Gray
 }
