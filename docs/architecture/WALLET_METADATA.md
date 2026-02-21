@@ -50,7 +50,7 @@ RULES:
 | Slot number per wallet (1, 2, or 3) | `wallet_registry` | Yes — ordering |
 | Wallet name | `wallet_registry` | Yes |
 | Public address (full + shortened) | `wallet_registry` | Yes |
-| Wallet status (active / deleted / creating) | `wallet_registry` | Yes (active only) |
+| Wallet status (active / deleted / creating) | `wallet_registry` | Yes (active AND deleted — deleted wallets shown with DELETED status and full address) |
 | Creation timestamp | `wallet_registry` | No (available via repo query) |
 | Deletion timestamp (soft-delete) | `wallet_registry` | No (available via repo query) |
 | Full wallet history (including deleted) | `wallet_registry` | No (available via repo query) |
@@ -128,6 +128,38 @@ These constraints are enforced in Python code, not by LLM prompting. Even if the
 | Mnemonic never persisted to disk | Flow state only (in-memory dict) | Not in SQLite, not in chat messages content |
 | Password minimum 8 characters | `_handle_wallet_creation_step()` step 2 | Rejects with user-friendly message |
 | Deleted wallets don't count toward limit | `wallet_registry WHERE status = 'active'` | Only active rows counted |
+| Session_id continuity for wallet flows | `ChatBody.session_id` → `_wallet_flows` dict | Multi-turn creation flow tracks state by session_id |
+| Tool name stripping | `query_handler_service._TOOL_NAME_PATTERN` regex | Internal tool names (wallet_get_balances, etc.) removed from LLM responses |
+| Private key refusal | Anti-hallucination block in `prompt_builder.py` | LLM instructed to never reveal private keys; backed by prompt rules |
+| Jupiter DEX disambiguation | Anti-hallucination block in `prompt_builder.py` | "Jupiter" always interpreted as Jupiter DEX on Solana, not Jupyter notebooks |
+
+---
+
+## Session_id Continuity for Wallet Flows
+
+The wallet creation flow is a multi-turn state machine stored in `_wallet_flows` (module-level dict in `query_handler_service.py`), keyed by `session_id`. For this to work, the `session_id` must be passed through the entire request chain:
+
+```
+Frontend POST /sessions/{session_id}/chat
+  → handle_session_chat() builds ChatBody with session_id field
+    → chat() reads body.session_id
+      → has_active_wallet_flow(session_id) checks _wallet_flows dict
+      → handle_wallet_query(session_id=...) continues the flow
+```
+
+Without `session_id` in `ChatBody`, flows were stored under `""` and never found on subsequent turns (fixed Feb 2026).
+
+---
+
+## Anti-Hallucination Layer
+
+Three levels of protection prevent the AI from fabricating wallet data:
+
+1. **Prompt-level (system prompt):** Ground-truth wallet state block injected on every message for wallet-capable personas. Includes `ANTI-HALLUCINATION (ABSOLUTE)` rules: no fabricated addresses, no tool name leaking, Jupiter = DEX, private key refusal.
+
+2. **Post-processing (regex):** `_TOOL_NAME_PATTERN` in `query_handler_service.py` strips internal tool names (`wallet_get_balances`, `solana_propose_swap`, etc.) from LLM responses before they reach the user. Zero-latency guardrail.
+
+3. **Intent classification:** Expanded wallet keyword coverage ensures wallet-related queries route to the wallet handler (with ground-truth context) rather than falling through to Brave web search or pure LLM.
 
 ---
 
