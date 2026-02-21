@@ -20,6 +20,7 @@ class ChatBody(BaseModel):
     persona: Optional[str] = None
     history: List[ChatTurn] = Field(default=[], max_length=100)
     message: str = Field(..., max_length=10_000)
+    session_id: Optional[str] = None  # Set by handle_session_chat for wallet flow continuity
 
 
 class GreetBody(BaseModel):

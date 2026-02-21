@@ -61,7 +61,7 @@ def classify_query_intent(
             "absolutely", "definitely", "of course", "y",
         ]
         _WALLET_CONTEXT_KEYWORDS = [
-            "wallet", "balance", "swap", "trade", "sol ", "usdc",
+            "wallet", "balance", "swap", "trade", "sol", "usdc",
             "address", "create", "strategy", "rsi", "jupiter",
         ]
         query_stripped = query_lower.strip().rstrip("!.?")
@@ -107,10 +107,16 @@ def classify_query_intent(
         # Natural queries that previously missed
         "active wallet", "active wallets",
         "have a wallet", "have any wallet", "have wallets",
-        "how many wallet",
+        "how many wallet", "how many wallets",
         "tell me the address", "tell me my address",
         "show my wallet", "show my balance",
         "my active", "do i have",
+        # Post-action queries
+        "wallets now", "happened to", "what happened",
+        # Jupiter DEX (catch before Brave routes it as web search)
+        "jupiter",
+        # Wallet deletion follow-up
+        "deleted wallet", "deleted wallets",
     ]
 
     if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):

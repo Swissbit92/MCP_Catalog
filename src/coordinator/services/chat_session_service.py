@@ -208,7 +208,8 @@ def handle_session_chat(
     chat_body = ChatBody(
         persona=persona_key,
         history=history_turns,
-        message=message
+        message=message,
+        session_id=session_id,
     )
     response = chat_function(chat_body)
 
