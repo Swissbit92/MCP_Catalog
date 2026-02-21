@@ -175,21 +175,6 @@ const CharacterCardV2Showcase: React.FC = () => {
                   />
                 </div>
 
-                {/* Order Legend */}
-                <div className="flex flex-wrap justify-center gap-4 mb-6">
-                  {[
-                    { order: 'archon', color: 'from-yellow-400 to-amber-600', label: 'Archon' },
-                    { order: 'warden', color: 'from-purple-400 to-pink-600', label: 'Warden' },
-                    { order: 'sage', color: 'from-cyan-400 to-blue-600', label: 'Sage' },
-                    { order: 'wanderer', color: 'from-gray-400 to-slate-600', label: 'Wanderer' }
-                  ].map(({ order, color, label }) => (
-                    <div key={order} className="flex items-center gap-2 bg-[#141418]/80 backdrop-blur-sm rounded-full px-4 py-2 border border-white/[0.1]">
-                      <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${color}`}></div>
-                      <span className="text-gray-200 font-medium text-sm">{label}</span>
-                    </div>
-                  ))}
-                </div>
-
                 {/* Main Layout: Grid + Preview Panel */}
                 <div className="flex gap-6">
                   {/* Cards Grid - 60% on desktop */}
