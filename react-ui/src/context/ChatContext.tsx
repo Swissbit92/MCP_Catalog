@@ -40,7 +40,7 @@ export interface ChatContextType {
   importSessionData: (exportData: ExportData) => Promise<ChatSession>
   // Tool status
   isSearching: boolean
-  toolType: 'brave' | 'mongodb' | 'none'
+  toolType: 'brave' | 'mongodb' | 'wallet' | 'none'
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -52,7 +52,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [isSearching, setIsSearching] = useState<boolean>(false)
-  const [toolType, setToolType] = useState<'brave' | 'mongodb' | 'none'>('none')
+  const [toolType, setToolType] = useState<'brave' | 'mongodb' | 'wallet' | 'none'>('none')
 
   const loadSessions = useCallback(async () => {
     try {
@@ -78,7 +78,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         rarity: p.rarity,
         celestial_order: p.celestial_order,
         coordinator_label: p.coordinator_label,
-        mcp_access: p.allowed_mcp,
+        mcp_access: p.mcp_access,
         voice: p.voice?.greeting ? { greeting: String(p.voice.greeting) } : undefined,
       }))
       setPersonas(processed)
@@ -167,7 +167,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const shouldUpdateUI = !sessionId || targetSessionId === currentSession?.id
 
     // Predict if web search will be used (client-side heuristic)
-    const prediction = predictWebSearch(message, selectedPersona?.rarity)
+    const prediction = predictWebSearch(message, selectedPersona?.rarity, selectedPersona?.mcp_access)
     console.log(formatPredictionLog(prediction, message))
 
     console.log('[ChatContext] Sending message:', {
@@ -187,14 +187,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role: 'user',
         content: message,
         timestamp: new Date(),
-        status: 'sending',
       }
       setMessages(prev => [...prev, userMessage])
 
       // Use heuristic to decide which indicator to show
-      // Show ToolIndicator for brave/mongodb, TypingIndicator otherwise
-      if ((prediction.toolType === 'brave' || prediction.toolType === 'mongodb') && prediction.confidence === 'high') {
-        const toolName = prediction.toolType === 'brave' ? 'Web Search' : 'MongoDB'
+      // Show ToolIndicator for brave/mongodb/wallet, TypingIndicator otherwise
+      if ((prediction.toolType === 'brave' || prediction.toolType === 'mongodb' || prediction.toolType === 'wallet') && prediction.confidence === 'high') {
+        const toolNames: Record<string, string> = { brave: 'Web Search', mongodb: 'MongoDB', wallet: 'Wallet' }
+        const toolName = toolNames[prediction.toolType] || prediction.toolType
         console.log(`[ChatContext] Showing ToolIndicator (${toolName}, high confidence prediction)`)
         setIsSearching(true)
         setToolType(prediction.toolType)
@@ -226,13 +226,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       })
 
       if (shouldUpdateUI) {
-        // Update the user message status to sent
-        setMessages(prev => prev.map(msg =>
-          msg.id.startsWith('user-') && msg.content === message && msg.status === 'sending'
-            ? { ...msg, status: 'sent' }
-            : msg
-        ))
-
         // Phase 2: Handle multi-message responses with staggered rendering
         if (apiResponse.message_flow === 'multi' && Array.isArray(apiResponse.answer)) {
           console.log('[ChatContext] Phase 2: Rendering multi-message response with staggering')
@@ -344,7 +337,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Update the user message status to failed
         setMessages(prev => prev.map(msg =>
-          msg.id.startsWith('user-') && msg.content === message && msg.status === 'sending'
+          msg.id.startsWith('user-') && msg.content === message && !msg.status
             ? { ...msg, status: 'failed', retryCount }
             : msg
         ))

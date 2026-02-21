@@ -390,6 +390,19 @@ const Chat: React.FC = () => {
                     personaRarity={selectedPersona.rarity}
                     personaName={selectedPersona.display_name}
                     onRetry={handleRetryMessage}
+                    loadingIndicator={
+                      !initializingSession ? (
+                        isSearching && toolType !== 'none' ? (
+                          <ToolIndicator
+                            toolType={toolType}
+                            personaName={selectedPersona?.display_name}
+                            personaKey={selectedPersona?.key}
+                          />
+                        ) : loading ? (
+                          <TypingIndicator personaName={selectedPersona.display_name} />
+                        ) : null
+                      ) : null
+                    }
                   />
                 )}
 
@@ -405,24 +418,6 @@ const Chat: React.FC = () => {
                     >
                       <ResonanceToast amount={5} />
                     </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Indicators */}
-                <AnimatePresence mode="wait">
-                  {isSearching && !initializingSession && toolType !== 'none' && (
-                    <div className="absolute bottom-4 left-4 md:left-6 z-50 pointer-events-none">
-                      <ToolIndicator
-                        toolType={toolType}
-                        personaName={selectedPersona?.display_name}
-                        celestial_order={selectedPersona?.celestial_order ?? 'wanderer'}
-                      />
-                    </div>
-                  )}
-                  {!isSearching && loading && !initializingSession && (
-                    <div className="absolute bottom-4 left-4 md:left-6 z-50 pointer-events-none">
-                      <TypingIndicator personaName={selectedPersona.display_name} />
-                    </div>
                   )}
                 </AnimatePresence>
               </div>

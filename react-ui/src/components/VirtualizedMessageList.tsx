@@ -18,6 +18,7 @@ interface VirtualizedMessageListProps {
   onRetry: (messageId: string) => Promise<void>
   showTypingIndicator?: boolean
   typingIndicatorComponent?: React.ReactNode
+  loadingIndicator?: React.ReactNode
 }
 
 export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
@@ -28,16 +29,17 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   personaName,
   onRetry,
   showTypingIndicator,
-  typingIndicatorComponent
+  typingIndicatorComponent,
+  loadingIndicator
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or loading indicator changes
   useEffect(() => {
-    if (scrollRef.current && messages.length > 0) {
+    if (scrollRef.current && (messages.length > 0 || loadingIndicator)) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages.length])
+  }, [messages.length, loadingIndicator])
 
   // Handle empty state
   if (messages.length === 0) {
@@ -69,6 +71,11 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
           />
         </div>
       ))}
+      {loadingIndicator && (
+        <div className="px-4 md:px-6 py-2">
+          {loadingIndicator}
+        </div>
+      )}
     </div>
   )
 }
