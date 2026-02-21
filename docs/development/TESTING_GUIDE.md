@@ -70,8 +70,10 @@ tests/
 │   ├── test_persona_quality.py
 │   └── test_metrics.py
 ├── manual/                 # Manual quality tests (require running backend)
-│   ├── eeva_chat_test.py       # 50-question E.E.V.A. quality suite
-│   └── eeva_test_results.json  # Latest test results
+│   ├── eeva_chat_test.py           # 50-question E.E.V.A. quality suite
+│   ├── eeva_test_results.json      # Latest test results
+│   ├── test_all_personas_intent.py # 30-query offline intent test, all 7 personas
+│   └── test_live_all_personas.py   # 30-query live API test, all 7 personas
 └── exploration/             # Utility scripts (archived; skipped in CI)
     └── check_db.py
 ```
@@ -456,10 +458,10 @@ The suite produces:
 
 ## MCP Intent Classification Testing
 
-The MCP query routing pipeline (`tools/intent_classifier.py` + `tools/keywords.py`) determines which MCP service handles each user query. After fixing Brave MCP force-search and multiple intent classification bugs (Feb 2026), the system was validated with:
+The MCP query routing pipeline (`tools/intent_classifier.py` + `tools/keywords.py`) determines which MCP service handles each user query. Access is controlled **per-persona** via the `mcp_access` field in persona JSONs — not by rarity. After fixing Brave MCP force-search, intent classification bugs, and backend initialization bugs (Feb 2026), the system was validated with:
 
-- **100-query offline intent classification test**: Tests `classify_query_intent()` directly across all categories (45 Brave, 20 MongoDB, 5 Wallet, 30 LLM) with multiple persona configurations (E.E.V.A./Archon, Cipher/Sage, Wanderer/no-MCP). **Result: 100/100 PASS.**
-- **50-query live API test**: End-to-end HTTP tests against running Docker backend (28 Brave, 10 MongoDB, 12 LLM). **Result: 50/50 PASS, avg 5.9s/query.**
+- **Offline intent test** (`test_all_personas_intent.py`): Tests `classify_query_intent()` directly, 30 queries × 7 personas (Aegis, Aurora, Cipher, Solace, Nyx, Frieren, Gojo). **Result: 210/210 PASS.**
+- **Live API test** (`test_live_all_personas.py`): End-to-end HTTP tests against running backend, same 30 queries × 7 personas. **Result: 210/210 PASS, avg 5.0s/query.**
 
 ### Quick Intent Classification Test
 
@@ -480,6 +482,8 @@ print("All intent classification checks passed!")
 
 ### Key Fixes Applied (Feb 2026)
 
+#### Intent Classification Fixes
+
 | Issue | Root Cause | Fix |
 |-------|-----------|-----|
 | Brave MCP never executing | LLM (Gemma 9B) unreliable at generating JSON tool calls | Force-execute Brave search when keyword filter detects search intent (`tool_calling_service.py`) |
@@ -488,6 +492,14 @@ print("All intent classification checks passed!")
 | "Trading summary" routed to LLM | `"trading summary"` not in MongoDB keywords | Added `"trading summary"`, `"summary"` to `MONGODB_TRADING_KEYWORDS` |
 | "Tomorrow" queries not searching | `"tomorrow"` missing from search keywords | Added `"tomorrow"`, `"2026"` to `SEARCH_KEYWORDS` |
 | Analyst opinion queries not searching | No web search fallback for opinion-intent queries | Added opinion intent fallback in web search block; added `"analysts think"`, `"analysts"` to `SEARCH_KEYWORDS` |
+
+#### MCP Initialization Fixes
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| All MCP queries return HTTP 500, no error traceback visible | `alembic/env.py` calls `fileConfig()` with `disable_existing_loggers=True` (default), disabling all `src.coordinator.*` loggers after migrations run — errors invisible | Added `disable_existing_loggers=False` to `fileConfig()` call in `alembic/env.py` |
+| Startup INFO messages (Brave/MongoDB init) not appearing | `alembic.ini` sets `[logger_root] level = WARN`, silencing all INFO log messages globally after migration | Changed root logger level to `INFO` in `alembic.ini` |
+| `UnboundLocalError` on all Brave/MongoDB queries | `QueryHandlerService` imported inside `if "solana_wallet"` block in `chat.py` — Python treats it as local throughout the function; crashes when condition is False | Moved import to top of `chat()` function (always executes) |
 
 ---
 
@@ -501,4 +513,4 @@ print("All intent classification checks passed!")
 ---
 
 **Last Updated:** February 21, 2026
-**Status:** Pytest infrastructure complete. Exploration scripts archived to `archive/exploration/`. Manual E.E.V.A. quality suite added (50 questions, 11 categories). MCP intent classification validated (100/100 offline, 50/50 live API).
+**Status:** Pytest infrastructure complete. Manual test suite: E.E.V.A. quality (50q), all-persona intent classification (210/210 offline), all-persona live API (210/210 live). MCP initialization bugs fixed (Alembic logging hijack + UnboundLocalError in chat.py).
