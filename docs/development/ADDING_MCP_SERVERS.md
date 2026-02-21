@@ -1,6 +1,6 @@
 # Adding MCP Servers to MCP Coordinator
 
-**Last Updated:** December 28, 2025
+**Last Updated:** February 21, 2026
 
 This guide explains how to integrate new Model Context Protocol (MCP) servers into the MCP Coordinator project. We document the two proven patterns and provide step-by-step instructions for adding your own MCP servers.
 
@@ -1308,6 +1308,22 @@ When adding a new MCP server, ensure:
 
 ---
 
+## Keyword Force-Search Pattern (Feb 2026)
+
+When using small local LLMs (e.g., Gemma 9B via Ollama), the model may be unreliable at generating structured JSON tool calls. The project addresses this with a **keyword force-search** pattern in `tool_calling_service.py`:
+
+1. **Intent classifier** (`tools/intent_classifier.py`) uses keyword dictionaries (`tools/keywords.py`) to determine which MCP should handle a query
+2. **Keyword filter** (`tool_utils.py:should_use_keyword_filter()`) independently checks if web search is needed
+3. When the keyword filter confirms search is needed, `tool_calling_service.py` **force-executes** the Brave search directly — bypassing the LLM tool-calling loop entirely
+4. Search results are fed to the LLM for synthesis, and citations are auto-generated from actual results (not LLM-hallucinated)
+
+This pattern is recommended for any new MCP integration where the local LLM cannot reliably generate tool calls. The keyword dictionaries in `tools/keywords.py` can be extended for new MCP services.
+
+---
+
 **Questions?** Check the troubleshooting section or examine the reference implementations:
 - Brave MCP: `src/coordinator/mcp_client_stdio.py`
 - MongoDB MCP: `src/coordinator/mongodb/`
+- Intent classifier: `src/coordinator/tools/intent_classifier.py`
+- Keywords: `src/coordinator/tools/keywords.py`
+- Force-search: `src/coordinator/services/tool_calling_service.py` (lines 176-212)

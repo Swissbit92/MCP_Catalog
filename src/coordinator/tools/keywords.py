@@ -24,8 +24,8 @@ NO_SEARCH_KEYWORDS = {
 # Keywords that indicate web search IS needed
 SEARCH_KEYWORDS = {
     # Current/recent information
-    "current", "latest", "recent", "today", "now", "this week", "this month",
-    "2024", "2025", "breaking", "update", "news",
+    "current", "latest", "recent", "today", "tomorrow", "now", "this week", "this month",
+    "2024", "2025", "2026", "breaking", "update", "news",
 
     # Market/price data (general web search, not MongoDB)
     "stock market", "nasdaq", "dow jones", "s&p 500",
@@ -44,8 +44,8 @@ SEARCH_KEYWORDS = {
     "latest on", "developments", "progress",
 
     # Expert opinions/predictions
-    "saying", "experts say", "analysts say", "predictions",
-    "forecasts", "outlook", "opinions", "views", "thoughts on",
+    "saying", "experts say", "analysts say", "analysts think", "analysts",
+    "predictions", "forecasts", "outlook", "opinions", "views", "thoughts on",
     "expect", "expecting", "anticipated",
 
     # Social/community sentiment
@@ -84,6 +84,7 @@ MONGODB_HISTORICAL_KEYWORDS = {
 
 MONGODB_TRADING_KEYWORDS = {
     "bought", "purchased", "dca", "dollar cost averaging", "trading stats",
+    "trading summary", "summary",
     "my portfolio", "my bitcoin", "total btc", "how much btc",
     "purchase history", "buy history",
 
