@@ -1,4 +1,4 @@
-import { fetchPersonas, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession, fetchCharacterBio } from './api';
+import { fetchPersonas, fetchSessions, createSession, getSessionWithMessages, updateSession, deleteSession, sendMessageToSession, exportSession, importSession } from './api';
 
 // Mock the global fetch function
 global.fetch = jest.fn();
@@ -337,63 +337,4 @@ describe('API Service', () => {
     });
   });
 
-  describe('Character Showcase API', () => {
-    it('fetchCharacterBio should return character bio from API', async () => {
-      const mockBio = {
-        key: 'eeva',
-        summary: 'Eeva is a brilliant Bitcoin expert with a passion for cryptocurrency...',
-        hash: 'abc123',
-        updated: '2024-01-01T10:00:00Z',
-      };
-
-      (fetch as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockBio),
-        })
-      );
-
-      const bio = await fetchCharacterBio('eeva');
-      expect(bio).toEqual(mockBio);
-      expect(fetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8000/persona/summary',
-        expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ persona: 'eeva' }),
-        })
-      );
-    });
-
-    it('fetchCharacterBio should throw error on API failure', async () => {
-      (fetch as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: false,
-          statusText: 'Not Found',
-        })
-      );
-
-      await expect(fetchCharacterBio('nonexistent')).rejects.toThrow('Failed to fetch character bio: Not Found');
-    });
-
-    it('fetchCharacterBio should handle different persona keys', async () => {
-      const mockBio = {
-        key: 'frieren',
-        summary: 'Frieren is an ancient elf mage with centuries of experience...',
-        hash: 'def456',
-        updated: '2024-01-01T11:00:00Z',
-      };
-
-      (fetch as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockBio),
-        })
-      );
-
-      const bio = await fetchCharacterBio('frieren');
-      expect(bio.key).toBe('frieren');
-      expect(bio.summary).toContain('ancient elf mage');
-    });
-  });
 });

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { usePersona } from '../context/PersonaContext'
 import { useAudio } from '../context/AudioContext'
 import { Persona } from '../types/personas'
+import { ORDER_COLORS, formatOrderLabel } from '../utils/celestialOrder'
 
 type SummoningPhase = 'idle' | 'commitment' | 'anticipation' | 'rarity_gate' | 'identity_reveal' | 'celebration'
 
@@ -15,20 +16,6 @@ const ORDER_WEIGHTS = {
   sage: 30,
   warden: 15,
   archon: 5,
-}
-
-const ORDER_COLORS: Record<string, string> = {
-  wanderer: '#C0C0C0',
-  sage: '#00BFFF',
-  warden: '#DA70D6',
-  archon: '#FFD700',
-}
-
-const ORDER_LABELS: Record<string, string> = {
-  wanderer: 'Wanderer',
-  sage: 'Sage',
-  warden: 'Warden',
-  archon: 'Archon',
 }
 
 const SOFT_PITY_THRESHOLD = 5
@@ -626,7 +613,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
               >
-                {ORDER_LABELS[revealedOrder]}
+                {formatOrderLabel(revealedOrder)}
               </motion.div>
             </motion.div>
           )}
@@ -800,7 +787,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                 animate={{ opacity: 0.8 }}
                 transition={{ delay: 0.4 }}
               >
-                {revealedOrder ? ORDER_LABELS[revealedOrder] : ORDER_LABELS.wanderer}
+                {formatOrderLabel(revealedOrder || 'wanderer')}
               </motion.div>
 
               {/* Bond status */}

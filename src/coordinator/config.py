@@ -22,6 +22,13 @@ from pydantic_settings import BaseSettings
 logger = logging.getLogger(__name__)
 
 
+def _parse_rarities(csv: str) -> Set[str]:
+    """Parse a comma-separated rarity string into a lowercase set."""
+    if not csv.strip():
+        return set()
+    return {r.strip().lower() for r in csv.split(",") if r.strip()}
+
+
 class OllamaSettings(BaseSettings):
     """Ollama LLM configuration."""
 
@@ -123,9 +130,7 @@ class BraveSettings(BaseSettings):
     @property
     def enabled_rarities_set(self) -> Set[str]:
         """Get enabled rarities as a set."""
-        if not self.enabled_rarities.strip():
-            return set()
-        return {r.strip().lower() for r in self.enabled_rarities.split(",") if r.strip()}
+        return _parse_rarities(self.enabled_rarities)
 
     @field_validator('safesearch')
     @classmethod
@@ -242,9 +247,7 @@ class MongoDBSettings(BaseSettings):
     @property
     def enabled_rarities_set(self) -> Set[str]:
         """Get enabled rarities as a set."""
-        if not self.enabled_rarities.strip():
-            return set()
-        return {r.strip().lower() for r in self.enabled_rarities.split(",") if r.strip()}
+        return _parse_rarities(self.enabled_rarities)
 
     def get_cache_ttl(self, tool_name: str) -> int:
         """Get cache TTL for a specific tool."""
@@ -306,10 +309,6 @@ class JupiterSettings(BaseSettings):
         description="MongoDB URI for writing trade history",
         alias="MONGODB_WRITE_URI"
     )
-
-    @property
-    def is_enabled(self) -> bool:
-        return self.enabled
 
     model_config = {
         "env_file": ".env",

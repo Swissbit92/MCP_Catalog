@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../utils/cn'; // We'll create this utility
+import { cn } from '../utils/cn';
 
 interface Avatar2DProps {
   src?: string;

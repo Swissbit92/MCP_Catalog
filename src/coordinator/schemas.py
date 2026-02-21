@@ -32,24 +32,6 @@ class SummaryBody(BaseModel):
     persona: Optional[str] = None  # label/key; None resolves to first card
 
 
-# ----------------- Legacy Chat Schemas (Deprecated) -----------------
-
-class CreateChatBody(BaseModel):
-    """Legacy: Create a new chat."""
-    persona: str
-    title: str = "New Chat"
-
-
-class RenameChatBody(BaseModel):
-    """Legacy: Rename a chat."""
-    title: str
-
-
-class SelectChatBody(BaseModel):
-    """Legacy: Select a chat."""
-    persona: str
-
-
 # ----------------- Session Schemas -----------------
 
 class CreateSessionBody(BaseModel):

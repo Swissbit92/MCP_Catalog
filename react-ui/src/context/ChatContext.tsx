@@ -13,6 +13,7 @@ import {
   importSession,
   clearSessionMessages as clearSessionMessagesApi,
   ChatApiResponse,
+  ExportData,
 } from '../services/api'
 import { Message } from '../components/MessageBubble'
 import { predictWebSearch, formatPredictionLog } from '../utils/searchHeuristics'
@@ -36,7 +37,7 @@ export interface ChatContextType {
   sendMessage: (message: string, sessionId?: string) => Promise<Message>
   retryMessage: (messageId: string) => Promise<void>
   exportCurrentSession: () => Promise<string>
-  importSessionData: (exportData: any) => Promise<ChatSession>
+  importSessionData: (exportData: ExportData) => Promise<ChatSession>
   // Tool status
   isSearching: boolean
   toolType: 'brave' | 'mongodb' | 'none'
@@ -156,7 +157,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [])
 
-  const sendMessage = async (message: string, sessionId?: string, retryCount = 0): Promise<Message> => {
+  const sendMessage = useCallback(async (message: string, sessionId?: string, retryCount = 0): Promise<Message> => {
     const targetSessionId = sessionId || currentSession?.id
     if (!targetSessionId) {
       throw new Error('No session selected')
@@ -351,7 +352,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       throw error
     }
-  }
+  }, [currentSession, selectedPersona, loadSessions])
 
   const retryMessage = async (messageId: string): Promise<void> => {
     const messageToRetry = messages.find(msg => msg.id === messageId)
@@ -379,7 +380,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return JSON.stringify(exportData, null, 2)
   }, [currentSession])
 
-  const importSessionData = useCallback(async (exportData: any): Promise<ChatSession> => {
+  const importSessionData = useCallback(async (exportData: ExportData): Promise<ChatSession> => {
     const newSession = await importSession(exportData)
     setSessions(prev => [newSession, ...prev])
     return newSession

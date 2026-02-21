@@ -7,7 +7,6 @@ interface AudioContextType {
   playSummoningStart: () => void;
   playAnticipationLoop: () => void;
   playRarityReveal: (order: string) => void;
-  // Phase 7D: Summoning Ritual phase-based audio
   playCommitSound: () => void;
   playAnticipationSound: () => void;
   playRarityRevealSound: (order: string) => void;
@@ -98,138 +97,74 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [createTone]);
 
-  // Phase 7D: Summoning Ritual audio methods
-  const playSummoningStart = useCallback(() => {
-    // Deep bass thud (80-120Hz, 0.5s, sine)
+  /** Create an oscillator with gain envelope — reduces boilerplate across audio functions. */
+  const createEnvelopedTone = useCallback((
+    setup: (ctx: AudioContext, osc: OscillatorNode, gain: GainNode) => void,
+    duration: number,
+  ) => {
     if (isMuted) return;
     try {
-      const audioContext = initAudio();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.setValueAtTime(80, audioContext.currentTime);
-      oscillator.frequency.linearRampToValueAtTime(120, audioContext.currentTime + 0.15);
-      oscillator.frequency.linearRampToValueAtTime(80, audioContext.currentTime + 0.5);
-      oscillator.type = 'sine';
-
-      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
+      const ctx = initAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      setup(ctx, osc, gain);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
     } catch (error) {
       console.warn('Audio playback failed:', error);
     }
   }, [isMuted, initAudio]);
+
+  const playSummoningStart = useCallback(() => {
+    // Deep bass thud (80-120Hz, 0.5s, sine)
+    createEnvelopedTone((ctx, osc, gain) => {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(80, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.15);
+      osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    }, 0.5);
+  }, [createEnvelopedTone]);
 
   const playAnticipationLoop = useCallback(() => {
     // Ascending tone sweep (200->800Hz over 2s, sawtooth)
-    if (isMuted) return;
-    try {
-      const audioContext = initAudio();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 2);
-      oscillator.type = 'sawtooth';
-
-      gainNode.gain.setValueAtTime(0.06, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.12, audioContext.currentTime + 1.5);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 2);
-    } catch (error) {
-      console.warn('Audio playback failed:', error);
-    }
-  }, [isMuted, initAudio]);
-
-  const playRarityReveal = useCallback((order: string) => {
-    if (isMuted) return;
-    switch (order) {
-      case 'archon':
-        // Full fanfare (523->659->784->1047Hz, durations 0.3, 0.3, 0.5, 0.8, triangle)
-        createTone(523, 0.3, 'triangle');
-        setTimeout(() => createTone(659, 0.3, 'triangle'), 300);
-        setTimeout(() => createTone(784, 0.5, 'triangle'), 600);
-        setTimeout(() => createTone(1047, 0.8, 'triangle'), 1100);
-        break;
-      case 'warden':
-        // Three-note arpeggio (784->988->1175Hz, 0.2s each, sine)
-        createTone(784, 0.2, 'sine');
-        setTimeout(() => createTone(988, 0.2, 'sine'), 200);
-        setTimeout(() => createTone(1175, 0.2, 'sine'), 400);
-        break;
-      case 'sage':
-        // Two-note chime (659->831Hz, 0.3s each, triangle)
-        createTone(659, 0.3, 'triangle');
-        setTimeout(() => createTone(831, 0.3, 'triangle'), 300);
-        break;
-      default:
-        // Single bell (523Hz, 0.3s, sine)
-        createTone(523, 0.3, 'sine');
-    }
-  }, [isMuted, createTone]);
+    createEnvelopedTone((ctx, osc, gain) => {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 2);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 1.5);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
+    }, 2);
+  }, [createEnvelopedTone]);
 
   // Phase 7D: Summoning Ritual phase-based audio
 
-  // Deep bass thud for commitment (low frequency oscillator 80-120Hz, 0.3s)
+  // Deep bass thud for commitment (100->80Hz, 0.3s)
   const playCommitSound = useCallback(() => {
-    if (isMuted) return;
-    try {
-      const audioContext = initAudio();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.3);
-
-      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (error) {
-      console.warn('Audio playback failed:', error);
-    }
-  }, [isMuted, initAudio]);
+    createEnvelopedTone((ctx, osc, gain) => {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(100, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    }, 0.3);
+  }, [createEnvelopedTone]);
 
   // Ascending tone sweep for anticipation (200->2000Hz over 2s)
   const playAnticipationSound = useCallback(() => {
-    if (isMuted) return;
-    try {
-      const audioContext = initAudio();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(2000, audioContext.currentTime + 2);
-
-      gainNode.gain.setValueAtTime(0.06, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.12, audioContext.currentTime + 1.5);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 2);
-    } catch (error) {
-      console.warn('Audio playback failed:', error);
-    }
-  }, [isMuted, initAudio]);
+    createEnvelopedTone((ctx, osc, gain) => {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 2);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 1.5);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
+    }, 2);
+  }, [createEnvelopedTone]);
 
   // Order-specific stinger for rarity gate
   const playRarityRevealSound = useCallback((order: string) => {
@@ -312,7 +247,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       playCelebrationSound,
       playSummoningStart,
       playAnticipationLoop,
-      playRarityReveal,
+      playRarityReveal: playRarityRevealSound,
       playCommitSound,
       playAnticipationSound,
       playRarityRevealSound,

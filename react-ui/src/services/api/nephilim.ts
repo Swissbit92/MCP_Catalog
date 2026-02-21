@@ -160,7 +160,7 @@ export const awardResonance = async (
 export const getResonanceHistory = async (
   userId: string,
   limit: number = 50
-): Promise<{ events: any[] }> => {
+): Promise<{ events: Record<string, unknown>[] }> => {
   const response = await fetch(`${API_BASE_URL}/nephilim/seeker/${userId}/resonance/history?limit=${limit}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch resonance history: ${response.statusText}`)
@@ -211,7 +211,7 @@ export const getPersonaLoreWithContent = async (userId: string, personaKey: stri
 export const checkLoreUnlocks = async (
   userId: string,
   personaKey: string
-): Promise<{ newly_unlocked: number; fragments: any[] }> => {
+): Promise<{ newly_unlocked: number; fragments: LoreFragment[] }> => {
   const response = await fetch(`${API_BASE_URL}/nephilim/seeker/${userId}/lore/${personaKey}/check`, {
     method: 'POST',
   })

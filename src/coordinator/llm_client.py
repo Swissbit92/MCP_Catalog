@@ -103,6 +103,34 @@ def log_context_stats(system_prompt: str, history: List[Any], query: str, model_
     return stats
 
 
+def create_llm_client(
+    persona_card: dict,
+    *,
+    mcp_client: Optional[BraveMCPClientStdio] = None,
+    temperature: Optional[float] = None,
+) -> "LC_OllamaClient":
+    """Factory for LC_OllamaClient with standard settings.
+
+    Centralises the 3-line construction pattern used across routes and services.
+
+    Args:
+        persona_card: Persona JSON dict (used for per-persona temperature override).
+        mcp_client: Optional Brave MCP client for web search.
+        temperature: Explicit temperature override; if None, uses persona override
+                     or global default.
+    """
+    from .config import get_settings, get_persona_temperature_override  # noqa: PLC0415
+
+    cfg = get_settings()
+    temp = temperature if temperature is not None else get_persona_temperature_override(persona_card)
+    return LC_OllamaClient(
+        base=cfg.ollama.base,
+        model=cfg.ollama.model,
+        temperature=temp,
+        mcp_client=mcp_client,
+    )
+
+
 class LC_OllamaClient:
     """DEPRECATED: Backward compatibility facade for legacy code.
 

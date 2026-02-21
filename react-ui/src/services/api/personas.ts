@@ -1,7 +1,7 @@
 // ── Persona listing / loading API ────────────────────────────────────────────
 
-import { API_BASE_URL, fetchWithAuth } from './base'
-import type { PersonaJson, CharacterBio } from './types'
+import { API_BASE_URL } from './base'
+import type { PersonaJson } from './types'
 
 export const fetchPersonas = async (): Promise<PersonaJson[]> => {
   try {
@@ -16,17 +16,4 @@ export const fetchPersonas = async (): Promise<PersonaJson[]> => {
     // Fallback to empty array if API fails
     return []
   }
-}
-
-// Character showcase functions
-export const fetchCharacterBio = async (personaKey: string): Promise<CharacterBio> => {
-  const response = await fetchWithAuth(`${API_BASE_URL}/persona/summary`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ persona: personaKey })
-  })
-  if (!response.ok) {
-    throw new Error(`Failed to fetch character bio: ${response.statusText}`)
-  }
-  return response.json()
 }

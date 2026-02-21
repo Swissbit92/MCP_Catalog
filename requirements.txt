@@ -33,6 +33,7 @@ sqlalchemy==2.0.41
 
 # Jupiter / Solana Wallet Integration
 solders==0.26.0             # Solana keypair primitives
+mnemonic>=0.21              # BIP39 mnemonic phrase generation for wallet recovery
 aiosmtplib==3.0.0           # Async SMTP for trade email notifications
 apscheduler==3.10.4         # Background scheduler for autonomous strategy execution
 cryptography>=42.0.0        # AES-GCM encryption for private key storage

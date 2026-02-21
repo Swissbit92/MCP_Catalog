@@ -20,6 +20,10 @@ from .repositories.summary_repository import SummaryRepository
 from .repositories.emotional_state_repository import EmotionalStateRepository
 from .repositories.user_profile_repository import UserProfileRepository
 from .repositories.seeker_progression_repository import SeekerProgressionRepository
+from .repositories.user_repository import UserRepository
+from .repositories.wallet_registry_repository import WalletRegistryRepository
+from .repositories.wallet_summary_repository import WalletSummaryRepository
+from .repositories.trade_history_repository import TradeHistoryRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .services.mongodb_handlers import MongoDBService
 from .memory_rag import EpisodicMemoryRAG
@@ -54,6 +58,12 @@ _summary_repo: Optional[SummaryRepository] = None
 _emotional_state_repo: Optional[EmotionalStateRepository] = None
 _user_profile_repo: Optional[UserProfileRepository] = None
 _seeker_progression_repo: Optional[SeekerProgressionRepository] = None
+_user_repo: Optional[UserRepository] = None
+
+# Wallet Metadata Layer
+_wallet_registry_repo: Optional[WalletRegistryRepository] = None
+_wallet_summary_repo: Optional[WalletSummaryRepository] = None
+_trade_history_repo: Optional[TradeHistoryRepository] = None
 
 # Memory Management (Phase 2)
 _memory_manager: Optional[MemoryManager] = None
@@ -135,11 +145,33 @@ def get_user_profile_repo() -> UserProfileRepository:
     return _user_profile_repo
 
 
+def get_user_repo() -> UserRepository:
+    """Get the OAuth user repository."""
+    if _user_repo is None:
+        raise RuntimeError("UserRepository not initialized — server startup incomplete")
+    return _user_repo
+
+
 def get_seeker_progression_repo() -> SeekerProgressionRepository:
     """Get the NEPHILIM seeker progression repository."""
     if _seeker_progression_repo is None:
         raise RuntimeError("SeekerProgressionRepository not initialized — server startup incomplete")
     return _seeker_progression_repo
+
+
+def get_wallet_registry_repo() -> Optional[WalletRegistryRepository]:
+    """Get the wallet registry repository."""
+    return _wallet_registry_repo
+
+
+def get_wallet_summary_repo() -> Optional[WalletSummaryRepository]:
+    """Get the wallet summary repository."""
+    return _wallet_summary_repo
+
+
+def get_trade_history_repo() -> Optional[TradeHistoryRepository]:
+    """Get the trade history repository."""
+    return _trade_history_repo
 
 
 def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
@@ -260,7 +292,9 @@ def init_mongodb_client():
 
 def init_repositories():
     """Initialize database repositories."""
-    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo, _user_profile_repo, _seeker_progression_repo
+    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
+    global _user_profile_repo, _seeker_progression_repo, _user_repo
+    global _wallet_registry_repo, _wallet_summary_repo, _trade_history_repo
 
     _session_repo = SessionRepository(_DB_PATH)
     _message_repo = MessageRepository(_DB_PATH)
@@ -268,7 +302,18 @@ def init_repositories():
     _emotional_state_repo = EmotionalStateRepository(_DB_PATH)
     _user_profile_repo = UserProfileRepository(_DB_PATH)
     _seeker_progression_repo = SeekerProgressionRepository(_DB_PATH)
-    logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression)")
+    _user_repo = UserRepository(_DB_PATH)
+    _user_repo._ensure_tables()
+
+    # Wallet Metadata Layer
+    _wallet_registry_repo = WalletRegistryRepository(_DB_PATH)
+    _wallet_summary_repo = WalletSummaryRepository(_DB_PATH)
+    _trade_history_repo = TradeHistoryRepository(_DB_PATH)
+
+    # Reset all wallet unlock states on startup (wallets are locked until user provides password)
+    _wallet_summary_repo.reset_all_unlock_states()
+
+    logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression + OAuth + Wallet Metadata)")
 
 
 def init_memory_manager():
@@ -324,33 +369,7 @@ def init_db():
         # Repositories with _ensure_tables() will self-initialize schema
         logger.warning(f"Alembic migration skipped ({e}), repositories will auto-initialize schema")
 
-    # Ensure users table exists for OAuth-authenticated users (idempotent CREATE IF NOT EXISTS)
-    try:
-        conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_sub TEXT UNIQUE NOT NULL,
-                email TEXT,
-                display_name TEXT,
-                avatar_url TEXT,
-                onboarding_completed BOOLEAN DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login TIMESTAMP
-            )
-        """)
-        # Backfill column for existing databases that lack it
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT 0")
-            logger.info("Added onboarding_completed column to users table")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
-        conn.commit()
-        conn.close()
-        logger.info("Users table initialized (OAuth)")
-    except Exception as e:
-        logger.warning(f"Users table initialization failed: {e}")
+    # Users table creation is handled by UserRepository._ensure_tables() in init_repositories()
 
 
 def init_jupiter():
@@ -361,7 +380,7 @@ def init_jupiter():
     from .config import get_settings
     jupiter_cfg = get_settings().jupiter
 
-    if not jupiter_cfg.is_enabled:
+    if not jupiter_cfg.enabled:
         logger.info("Jupiter MCP is disabled (JUPITER_ENABLED=false)")
         return
 
@@ -400,6 +419,8 @@ def init_jupiter():
         _wallet_execution_service = WalletExecutionService(
             jupiter_ops=_jupiter_ops,
             mongo_write_client=_mongo_write_client,
+            trade_history_repo=_trade_history_repo,
+            wallet_summary_repo=_wallet_summary_repo,
         )
         _strategy_service = StrategyService(
             strategies_dir=jupiter_cfg.strategies_dir,

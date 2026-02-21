@@ -24,7 +24,7 @@ export interface CollectionContextType {
   collectedPersonas: Set<string>
   addToCollection: (personaKey: string) => void
   isCollected: (personaKey: string) => boolean
-  collectionStats: { total: number; legendary: number; epic: number; rare: number; common: number }
+  collectionStats: { total: number }
   // Pull history
   pullHistory: PullRecord[]
   addPullRecord: (record: Omit<PullRecord, 'timestamp'>) => void
@@ -61,11 +61,7 @@ export const CollectionProvider: React.FC<{ children: ReactNode }> = ({ children
   }
 
   // Calculate collection stats
-  const collectionStats = React.useMemo(() => {
-    const stats = { total: collectedPersonas.size, legendary: 0, epic: 0, rare: 0, common: 0 }
-    // Note: We'd need persona data to calculate rarity stats, but for now just return total
-    return stats
-  }, [collectedPersonas])
+  const collectionStats = React.useMemo(() => ({ total: collectedPersonas.size }), [collectedPersonas])
 
   // Pull history functions
   const addPullRecord = (record: Omit<PullRecord, 'timestamp'>) => {

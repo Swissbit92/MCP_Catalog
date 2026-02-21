@@ -304,7 +304,17 @@
       "WebFetch(domain:docs.databricks.com)",
       "WebFetch(domain:www.k2view.com)",
       "Bash(git reset:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(docker compose:*)",
+      "Bash(# Look at the tests/backend directory structure ls /c/Users/rzehn/desktop/MCP_Catalog/tests/backend/ # Look for any test_tool_calling or test_chat_session tests in pycache ls /c/Users/rzehn/desktop/MCP_Catalog/tests/backend/coordinator/__pycache__/)",
+      "Bash(# Check for nginx config in docker or scripts find /c/Users/rzehn/desktop/MCP_Catalog -name \"\"nginx*\"\" -o -name \"\"*.nginx\"\" -o -name \"\"nginx.conf\"\")",
+      "Bash(cd C:/Users/rzehn/desktop/MCP_Catalog/react-ui && npx eslint src/components/CharacterCardV2.tsx src/context/AudioContext.tsx src/services/api/types.ts src/services/api/nephilim.ts --max-warnings 100 2>&1)",
+      "WebFetch(domain:aws.amazon.com)",
+      "WebFetch(domain:www.leanware.co)",
+      "WebFetch(domain:www.coinbase.com)",
+      "WebFetch(domain:stripe.dev)",
+      "Bash(mkdir -p C:/Users/rzehn/desktop/MCP_Catalog/react-ui/test-screenshots && cd C:/Users/rzehn/desktop/MCP_Catalog/react-ui && python tests/e2e-user-flow.py 2>&1)",
+      "Bash(cd C:/Users/rzehn/desktop/MCP_Catalog/react-ui && PYTHONIOENCODING=utf-8 python tests/e2e-user-flow.py 2>&1)"
     ],
     "deny": [],
     "ask": []

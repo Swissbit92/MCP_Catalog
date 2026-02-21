@@ -18,11 +18,12 @@ describe('predictWebSearch', () => {
       expect(result.keywords_matched).toContain('news');
     });
 
-    it('predicts search for 2024/2025 queries', () => {
-      const result = predictWebSearch('Who won the 2024 election?', 'legendary');
+    it('predicts search for current/last year queries', () => {
+      const year = new Date().getFullYear();
+      const result = predictWebSearch(`Who won the ${year} election?`, 'legendary');
       expect(result.willSearch).toBe(true);
       expect(result.confidence).toBe('high');
-      expect(result.keywords_matched).toContain('2024');
+      expect(result.keywords_matched).toContain(String(year));
     });
   });
 

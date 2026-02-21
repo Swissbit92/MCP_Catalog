@@ -28,7 +28,7 @@ const NO_SEARCH_KEYWORDS = [
 const SEARCH_KEYWORDS = [
   // Current/recent information
   'current', 'latest', 'recent', 'today', 'now', 'this week', 'this month',
-  '2024', '2025', 'breaking', 'update', 'news',
+  String(new Date().getFullYear()), String(new Date().getFullYear() - 1), 'breaking', 'update', 'news',
 
   // Market/price data
   'price', 'cost', 'worth', 'value', 'stock market', 'nasdaq', 'dow jones',

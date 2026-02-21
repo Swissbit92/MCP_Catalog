@@ -2,7 +2,6 @@
 
 export * from './base'
 export * from './types'
-export * from './auth'
 export * from './sessions'
 export * from './chat'
 export * from './nephilim'

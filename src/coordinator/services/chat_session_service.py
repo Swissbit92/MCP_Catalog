@@ -17,9 +17,9 @@ from __future__ import annotations
 import time
 import uuid
 import logging
-from datetime import datetime
-
 from fastapi import HTTPException
+
+from ..repositories.base_repository import utc_now_iso
 
 from ..schemas import ChatBody, ChatTurn, AppendMessageBody
 from ..config import get_settings
@@ -67,7 +67,7 @@ def handle_session_chat(
         HTTPException: If session not found (404)
     """
     # Lazy imports to break circular dependency at module load time
-    from ..llm_client import estimate_tokens, LC_OllamaClient  # noqa: PLC0415
+    from ..llm_client import estimate_tokens, create_llm_client  # noqa: PLC0415
 
     # Extract dependencies
     session_repo = deps["session_repo"]
@@ -213,7 +213,7 @@ def handle_session_chat(
     response = chat_function(chat_body)
 
     # Save messages
-    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    now = utc_now_iso()
 
     user_msg_body = AppendMessageBody(role="user", content=message, ts=now, source_type="llm")
     add_message_function(session_id, user_msg_body)
@@ -304,10 +304,8 @@ def handle_session_chat(
 
                 # Initialize fact extractor with LLM client if needed
                 if fact_extractor is None:
-                    llm_client = LC_OllamaClient(
-                        base=get_settings().ollama.base,
-                        model=get_settings().ollama.model,
-                        temperature=get_settings().ollama.temp_fact_extraction
+                    llm_client = create_llm_client(
+                        {}, temperature=get_settings().ollama.temp_fact_extraction
                     )
                     from ..fact_extractor import FactExtractor
                     fact_extractor = FactExtractor(llm_client)
@@ -476,11 +474,7 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
             # Set LLM client if not already set
             if not conversation_summarizer.llm_client:
                 conversation_summarizer.set_llm_client(
-                    LC_OllamaClient(
-                        base=cfg.ollama.base,
-                        model=cfg.ollama.model,
-                        temperature=cfg.ollama.temp_summarization
-                    )
+                    create_llm_client({}, temperature=cfg.ollama.temp_summarization)
                 )
 
             card = get_persona_card(persona_key)

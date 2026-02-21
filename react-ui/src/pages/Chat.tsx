@@ -46,8 +46,8 @@ const Chat: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
   const [showResonanceToast, setShowResonanceToast] = useState<boolean>(false)
   const [loreFragment, setLoreFragment] = useState<{ title: string; content: string; rarity: string } | null>(null)
-  const [touchStartX, setTouchStartX] = useState<number>(0)
-  const [touchEndX, setTouchEndX] = useState<number>(0)
+  const touchStartX = useRef<number>(0)
+  const touchEndX = useRef<number>(0)
   const initializingRef = useRef<string | null>(null)
   const resonanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { personas, selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching, toolType } = usePersona()
@@ -242,25 +242,25 @@ const Chat: React.FC = () => {
 
   // Touch handlers for swipe gestures
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.targetTouches[0].clientX)
+    touchStartX.current = e.targetTouches[0].clientX
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEndX(e.targetTouches[0].clientX)
+    touchEndX.current = e.targetTouches[0].clientX
   }
 
   const handleTouchEnd = () => {
-    if (!touchStartX || !touchEndX) return
+    if (!touchStartX.current || !touchEndX.current) return
 
-    const distance = touchStartX - touchEndX
+    const distance = touchStartX.current - touchEndX.current
     const isLeftSwipe = distance > 50
 
     if (isLeftSwipe && isSidebarOpen) {
       setIsSidebarOpen(false)
     }
 
-    setTouchStartX(0)
-    setTouchEndX(0)
+    touchStartX.current = 0
+    touchEndX.current = 0
   }
 
   // Derive persona name for NephilimBackground

@@ -4,8 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 
 from .keywords import (
     NO_SEARCH_KEYWORDS,
@@ -24,19 +23,6 @@ class QueryIntent(Enum):
     NEEDS_BOTH = "both"            # Multi-MCP
     NEEDS_NEITHER = "llm"          # Pure LLM
     NEEDS_WALLET = "wallet"        # Jupiter wallet / Solana trading
-
-
-@dataclass
-class ToolCall:
-    """Represents a function call from the LLM."""
-    name: str
-    arguments: Dict[str, Any]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "name": self.name,
-            "arguments": self.arguments
-        }
 
 
 def classify_query_intent(

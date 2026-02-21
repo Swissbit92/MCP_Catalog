@@ -77,7 +77,6 @@ app.include_router(auth_router)
 def health():
     """Health check endpoint."""
     try:
-        base = get_settings().ollama.base
         model = get_settings().ollama.model
         # DB ping
         get_session_repo().get_all_sessions()
