@@ -1,0 +1,37 @@
+NEPHILIM Comprehensive Test Summary
+Generated: 20260221_224407
+============================================================
+Total:    1045
+Passed:   774
+Failed:   271
+Pass rate:74.1%
+Avg score:0.853
+
+Per-persona:
+  nephilim_eeva               84.2%  score:0.836  n=177
+  nephilim_aegis              79.9%  score:0.844  n=149
+  nephilim_aurora             79.4%  score:0.857  n=126
+  nephilim_cipher             68.5%  score:0.880  n=108
+  nephilim_solace             68.9%  score:0.874  n=106
+  nephilim_nyx                77.7%  score:0.851  n=157
+  Frieren                     52.3%  score:0.815  n=111
+  Gojo                        71.2%  score:0.885  n=111
+
+Per-category:
+  ADVERSARIAL                   74.5%  score:0.904  n=192
+  ANTI_HALLUC                   93.9%  score:0.796  n=98
+  BEHAVIOR_SHARED               63.3%  score:0.870  n=128
+  BRAVE_ROUTING                100.0%  score:0.837  n=60
+  CROSS_PERSONA                100.0%  score:0.790  n=18
+  DRIFT                         73.8%  score:0.922  n=80
+  EMOTIONAL                     59.4%  score:0.864  n=96
+  EXPERTISE                     18.8%  score:0.871  n=16
+  IDENTITY                      87.5%  score:0.933  n=16
+  INTENT_DISAMBIGUATION        100.0%  score:0.805  n=15
+  LORE                          98.9%  score:0.890  n=95
+  MCP_ANTI_HALLUC              100.0%  score:0.710  n=5
+  MONGODB_ROUTING              100.0%  score:0.788  n=80
+  NO_MCP_CONTAINMENT            66.7%  score:0.771  n=30
+  SECURITY                       6.2%  score:0.801  n=80
+  VOICE                         56.2%  score:0.892  n=16
+  WALLET_ROUTING                95.0%  score:0.704  n=20
