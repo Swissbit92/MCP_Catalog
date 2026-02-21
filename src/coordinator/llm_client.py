@@ -112,22 +112,27 @@ def create_llm_client(
     """Factory for LC_OllamaClient with standard settings.
 
     Centralises the 3-line construction pattern used across routes and services.
+    Reads full sampling overrides (temperature, min_p, repeat_penalty) from the
+    persona card's model_preferences field.
 
     Args:
-        persona_card: Persona JSON dict (used for per-persona temperature override).
+        persona_card: Persona JSON dict (used for per-persona sampling overrides).
         mcp_client: Optional Brave MCP client for web search.
         temperature: Explicit temperature override; if None, uses persona override
                      or global default.
     """
-    from .config import get_settings, get_persona_temperature_override  # noqa: PLC0415
+    from .config import get_settings, get_persona_sampling_overrides  # noqa: PLC0415
 
     cfg = get_settings()
-    temp = temperature if temperature is not None else get_persona_temperature_override(persona_card)
+    overrides = get_persona_sampling_overrides(persona_card)
+    temp = temperature if temperature is not None else overrides.get("temperature", cfg.ollama.temperature)
     return LC_OllamaClient(
         base=cfg.ollama.base,
         model=cfg.ollama.model,
         temperature=temp,
         mcp_client=mcp_client,
+        repeat_penalty=overrides.get("repeat_penalty"),
+        min_p=overrides.get("min_p"),
     )
 
 
@@ -152,6 +157,7 @@ class LC_OllamaClient:
         repeat_penalty: Optional[float] = None,
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
+        min_p: Optional[float] = None,
     ):
         """Initialize the facade client (delegates to services).
 
@@ -166,6 +172,7 @@ class LC_OllamaClient:
             repeat_penalty: Optional repetition penalty
             top_k: Optional Top-K sampling
             top_p: Optional nucleus sampling
+            min_p: Optional Min-P dynamic threshold
         """
         # Issue deprecation warning (only once per session)
         if not hasattr(LC_OllamaClient, '_deprecation_warned'):
@@ -185,7 +192,8 @@ class LC_OllamaClient:
             sampling_config=sampling_config,
             repeat_penalty=repeat_penalty,
             top_k=top_k,
-            top_p=top_p
+            top_p=top_p,
+            min_p=min_p,
         )
 
         # Create tool calling service (if MCP client provided)

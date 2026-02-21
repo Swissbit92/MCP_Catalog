@@ -103,6 +103,16 @@ def chat(body: ChatBody):
     mcp_access = card.get("mcp_access", None)
     system = build_system_prompt(body.persona)
 
+    # Inject wallet ground-truth state for wallet-capable personas (anti-hallucination).
+    # This must happen HERE (not in handle_session_chat) because this function
+    # rebuilds the system prompt — any injection upstream gets discarded.
+    if "solana_wallet" in (mcp_access or []):
+        from ..services.query_handler_service import QueryHandlerService
+        wallet_state = QueryHandlerService._build_wallet_state_context("default_user")
+        if wallet_state:
+            system = f"{system}\n{wallet_state}"
+            logger.debug(f"[WalletState] Injected ground-truth wallet state ({len(wallet_state)} chars)")
+
     # Build conversation context from history
     history = body.history
     lines = []
@@ -154,8 +164,15 @@ def chat(body: ChatBody):
             user_id="default_user",
         )
 
+    # Extract last assistant message for follow-up detection
+    last_assistant_msg = None
+    for t in reversed(history):
+        if (t.role or "").lower() == "assistant":
+            last_assistant_msg = t.content
+            break
+
     # Use intent classification to determine which tools to inject
-    intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access)
+    intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access, last_assistant_message=last_assistant_msg)
     logger.info(f"[Chat] Request received: persona={persona_key}, rarity={persona_rarity}, query_preview='{body.message[:60]}...'")
     logger.info(f"[Intent] Classification result: {intent.value}")
 

@@ -34,7 +34,8 @@ def get_wallet_get_balances_tool() -> Dict[str, Any]:
                 "Get the user's Solana wallet balances — SOL and all token holdings. "
                 "Use when user asks: 'what's my balance', 'how much SOL do I have', "
                 "'show me my wallet', 'what tokens do I hold'.\n\n"
-                "Returns: SOL balance, token balances with symbols and USDC values."
+                "Returns real wallet data. Present results in persona voice. "
+                "If this tool has NOT been called, never fabricate balance information."
             ),
             "parameters": {
                 "type": "object",
@@ -63,7 +64,8 @@ def get_wallet_create_guided_tool() -> Dict[str, Any]:
             "description": (
                 "Start the guided wallet creation flow. Use when user says "
                 "'create a wallet', 'I need a Solana wallet', 'set up my wallet'. "
-                "This initiates a step-by-step chat flow — no private key is generated yet."
+                "This initiates a step-by-step chat flow — no private key is generated yet. "
+                "Frame wallet creation with appropriate gravitas. This is a trust moment."
             ),
             "parameters": {
                 "type": "object",
@@ -131,7 +133,8 @@ def get_solana_rsi_check_tool() -> Dict[str, Any]:
                 "Check the current RSI for a token. If an active RSI strategy exists, "
                 "this may trigger autonomous execution (per approved guardrails). "
                 "Otherwise returns current RSI value. "
-                "Use when user asks about RSI, technical signals, or 'what does the RSI say'."
+                "Use when user asks about RSI, technical signals, or 'what does the RSI say'. "
+                "Present RSI findings in persona voice. If near threshold (30/70), mention the signal."
             ),
             "parameters": {
                 "type": "object",
@@ -166,7 +169,8 @@ def get_solana_propose_swap_tool() -> Dict[str, Any]:
                 "Propose an ad-hoc token swap that requires explicit user confirmation. "
                 "Use when user says: 'swap X SOL for USDC', 'buy some SOL', 'sell my USDC'. "
                 "Creates a ProposalCard in chat — NEVER executes automatically. "
-                "User must click Confirm before any transaction occurs."
+                "User must click Confirm before any transaction occurs. "
+                "Always provide brief market context before calling. The Seeker must confirm — never suggest executing directly."
             ),
             "parameters": {
                 "type": "object",

@@ -10,7 +10,7 @@ import logging
 from typing import Optional, Any
 
 from ..schemas import ResponseMetadata
-from ..config import get_settings
+from ..config import get_settings, get_persona_temperature_override
 from .llm_completion_service import LLMCompletionService
 # LC_OllamaClient imported lazily inside methods to break circular import with llm_client.py
 from ..tool_definitions import build_mongodb_synthesis_prompt
@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 # session_id -> {"step": int, "user_id": str, "wallet_name": str}
 # Cleared on server restart (acceptable for guided UI flow)
 _wallet_flows: dict[str, dict] = {}
+
+# Regex to strip leaked internal tool names from LLM responses (zero-latency guardrail)
+_TOOL_NAME_PATTERN = re.compile(
+    r'\b(wallet_get_balances|wallet_create_guided|solana_get_quote|'
+    r'solana_rsi_check|solana_propose_swap|solana_propose_strategy|'
+    r'solana_trade_history|brave_web_search|bitcoin_current_price|'
+    r'bitcoin_historical_prices|bitcoin_trading_summary|bitcoin_technical_analysis)\b'
+)
 
 
 def has_active_wallet_flow(session_id: Optional[str]) -> bool:
@@ -50,7 +58,7 @@ class QueryHandlerService:
     def _build_wallet_state_context(user_id: str) -> str:
         """Build a ground-truth wallet state block to inject into the LLM system prompt.
 
-        Enriched version: includes multi-wallet state, slot counts, unlock status,
+        Includes active wallets (with full addresses), deleted wallets (history),
         cached balances, and trading activity summary. Prevents hallucination by
         giving the LLM real wallet data (or explicit "no wallet" signal).
         """
@@ -58,16 +66,18 @@ class QueryHandlerService:
 
         # Fetch wallet registry (multi-wallet aware)
         registry_wallets = []
+        all_wallets = []
         try:
             from ..startup import get_wallet_registry_repo
             registry_repo = get_wallet_registry_repo()
             if registry_repo:
                 registry_wallets = registry_repo.get_active_wallets(user_id)
+                all_wallets = registry_repo.get_all_wallets(user_id)
         except Exception:
             pass
 
         # Fallback: if registry is empty, try legacy single-wallet repo
-        if not registry_wallets:
+        if not registry_wallets and not all_wallets:
             try:
                 from ..startup import get_wallet_repo
                 wallet_repo = get_wallet_repo()
@@ -75,8 +85,12 @@ class QueryHandlerService:
                     legacy = wallet_repo.get_active_wallet(user_id)
                     if legacy:
                         registry_wallets = [legacy]
+                        all_wallets = [legacy]
             except Exception as e:
                 logger.warning(f"[WalletState] Failed to fetch wallet for state injection: {e}")
+
+        # Identify deleted wallets
+        deleted_wallets = [w for w in all_wallets if w.get("status") == "deleted"]
 
         # Fetch balance cache and activity summary
         balance_map: dict = {}
@@ -108,7 +122,6 @@ class QueryHandlerService:
             for i, w in enumerate(registry_wallets, 1):
                 addr = w.get("public_address", "")
                 name = w.get("wallet_name", "My Wallet")
-                short_addr = f"{addr[:8]}...{addr[-4:]}" if len(addr) > 12 else addr
                 w_id = w.get("wallet_id", "")
 
                 # Unlock state
@@ -122,7 +135,7 @@ class QueryHandlerService:
                 checked = bc.get("last_checked", "never")
 
                 lines.append(
-                    f"- Wallet {i}: \"{name}\" ({short_addr}) — {lock_str}, {bal_str}, checked {checked}"
+                    f"- Wallet {i}: \"{name}\" | Address: {addr} | {lock_str}, {bal_str}, checked {checked}"
                 )
 
             lines.append(f"- Available slots: {remaining} remaining")
@@ -147,6 +160,7 @@ class QueryHandlerService:
                 "- For CURRENT balances, ALWAYS call wallet_get_balances. Above values are cached.",
                 "- If a wallet shows LOCKED, tell the Seeker to unlock it before trading.",
                 "- Never invent wallet addresses, names, balances, or trade history.",
+                "- When asked for a wallet address, give the FULL address shown above — never truncate it.",
             ])
         else:
             lines.extend([
@@ -154,6 +168,17 @@ class QueryHandlerService:
                 "Do NOT invent wallet addresses, names, or balances.",
                 "If asked about their wallet, tell them they need to create one first.",
             ])
+
+        # Include deleted wallet history so LLM can accurately answer about past wallets
+        if deleted_wallets:
+            lines.append("")
+            lines.append("DELETED WALLETS (no longer active — for reference only):")
+            for dw in deleted_wallets:
+                d_name = dw.get("wallet_name", "Unknown")
+                d_addr = dw.get("public_address", "")
+                d_at = dw.get("deleted_at", "unknown date")
+                lines.append(f"- \"{d_name}\" | Address: {d_addr} | Deleted: {d_at}")
+            lines.append("These wallets are DELETED and cannot be used. Do not present them as active.")
 
         return "\n".join(lines)
 
@@ -184,6 +209,9 @@ class QueryHandlerService:
         """
         # Apply first-person voice enforcement
         answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+        # Strip leaked internal tool names from response
+        answer = _TOOL_NAME_PATTERN.sub('', answer).strip()
 
         # Import message processing functions
         from .message_processing_service import force_multi_message_split, parse_multi_message_response
