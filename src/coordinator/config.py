@@ -49,6 +49,14 @@ class OllamaSettings(BaseSettings):
         description="Default sampling temperature (0.0-2.0)",
         alias="PERSONA_TEMPERATURE"
     )
+    min_p: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Default Min-P sampling threshold (0.0 = disabled). "
+                    "Dynamically filters low-probability tokens based on top token confidence.",
+        alias="PERSONA_MIN_P"
+    )
     context_window: int = Field(
         default=4096,
         ge=512,
@@ -520,3 +528,46 @@ def get_persona_temperature_override(persona_card: dict) -> float:
             )
 
     return settings.ollama.temperature
+
+
+def get_persona_sampling_overrides(persona_card: dict) -> dict:
+    """Get all sampling parameter overrides from a persona card.
+
+    Reads model_preferences from the persona JSON and returns a dict of
+    sampling params (temperature, min_p, repeat_penalty) that should be
+    passed to the LLM client. Only includes values explicitly set in the
+    persona card; missing values are omitted so callers can apply their
+    own defaults.
+
+    Args:
+        persona_card: Persona dictionary from JSON
+
+    Returns:
+        Dict with keys like 'temperature', 'min_p', 'repeat_penalty' (only present if set)
+    """
+    model_prefs = persona_card.get("model_preferences", {})
+    if not isinstance(model_prefs, dict):
+        return {"temperature": settings.ollama.temperature}
+
+    overrides: dict = {}
+
+    # Temperature
+    temp = model_prefs.get("temperature")
+    if isinstance(temp, (int, float)) and 0.0 <= temp <= 2.0:
+        overrides["temperature"] = float(temp)
+    else:
+        overrides["temperature"] = settings.ollama.temperature
+
+    # Min-P
+    min_p = model_prefs.get("min_p")
+    if isinstance(min_p, (int, float)) and 0.0 < min_p <= 1.0:
+        overrides["min_p"] = float(min_p)
+    elif settings.ollama.min_p > 0.0:
+        overrides["min_p"] = settings.ollama.min_p
+
+    # Repeat penalty
+    repeat_penalty = model_prefs.get("repeat_penalty")
+    if isinstance(repeat_penalty, (int, float)) and 1.0 <= repeat_penalty <= 2.0:
+        overrides["repeat_penalty"] = float(repeat_penalty)
+
+    return overrides

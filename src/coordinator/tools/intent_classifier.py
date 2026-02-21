@@ -29,6 +29,7 @@ def classify_query_intent(
     query: str,
     persona_rarity: str,
     mcp_access: Optional[List[str]] = None,
+    last_assistant_message: Optional[str] = None,
 ) -> QueryIntent:
     """
     Layer 1: Fast keyword-based intent classification for MCP routing.
@@ -40,6 +41,9 @@ def classify_query_intent(
                     JSON ``mcp_access`` field (e.g. ``["brave_search", "mongodb"]``).
                     When provided this takes priority over ``persona_rarity``-based
                     gating entirely.
+        last_assistant_message: Optional last assistant message for follow-up detection.
+                    When the last message was wallet-related and the user gives a short
+                    affirmative, we route to NEEDS_WALLET for continuity.
 
     Returns:
         QueryIntent enum indicating which MCP(s) to use
@@ -48,6 +52,24 @@ def classify_query_intent(
 
     # Determine wallet access
     can_use_wallet = "solana_wallet" in (mcp_access or [])
+
+    # Follow-up detection: short affirmative after wallet-related assistant message
+    if can_use_wallet and last_assistant_message:
+        _AFFIRMATIVES = [
+            "yes", "yeah", "yep", "sure", "ok", "okay", "please",
+            "show me", "do it", "go ahead", "let's go", "lets go",
+            "absolutely", "definitely", "of course", "y",
+        ]
+        _WALLET_CONTEXT_KEYWORDS = [
+            "wallet", "balance", "swap", "trade", "sol ", "usdc",
+            "address", "create", "strategy", "rsi", "jupiter",
+        ]
+        query_stripped = query_lower.strip().rstrip("!.?")
+        last_lower = last_assistant_message.lower()
+        is_short_affirmative = any(query_stripped == a or query_stripped.startswith(a + " ") for a in _AFFIRMATIVES)
+        last_was_wallet = any(kw in last_lower for kw in _WALLET_CONTEXT_KEYWORDS)
+        if is_short_affirmative and last_was_wallet:
+            return QueryIntent.NEEDS_WALLET
 
     # Wallet intent keywords (check before MongoDB/Brave)
     WALLET_KEYWORDS = [
@@ -82,6 +104,13 @@ def classify_query_intent(
         "jupter wallet", "jupter quote",
         "my sol", "my usdc", "my tokens",
         "wallet address", "fund my wallet",
+        # Natural queries that previously missed
+        "active wallet", "active wallets",
+        "have a wallet", "have any wallet", "have wallets",
+        "how many wallet",
+        "tell me the address", "tell me my address",
+        "show my wallet", "show my balance",
+        "my active", "do i have",
     ]
 
     if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):

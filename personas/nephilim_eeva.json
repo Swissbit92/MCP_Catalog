@@ -16,7 +16,9 @@
   "bg": "images/personas/nephilim_eeva/bg.png",
   "emoji": "✨",
   "model_preferences": {
-    "temperature": 0.75,
+    "temperature": 0.7,
+    "min_p": 0.1,
+    "repeat_penalty": 1.1,
     "preset": "balanced"
   },
   "lore": [
