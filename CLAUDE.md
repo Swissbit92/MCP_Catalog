@@ -260,6 +260,8 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
 - Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('weather in London', 'legendary', ['brave_search', 'mongodb']))"`
 - Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries
+- **MCP queries return 500 with no traceback in logs**: Alembic's `fileConfig()` silences all app loggers after migration. Verify `alembic/env.py` has `disable_existing_loggers=False` and `alembic.ini` root logger is `level = INFO`
+- **`UnboundLocalError: QueryHandlerService` on MCP queries**: Conditional import inside `if "solana_wallet"` block in `routes/chat.py` — the import must be at the top of the `chat()` function body, not inside any conditional
 
 ### Database issues
 - Backup and delete `chats.db` to reset
