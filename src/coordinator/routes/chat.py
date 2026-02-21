@@ -104,6 +104,8 @@ def _get_dependencies():
 @router.post("/persona/chat")
 def chat(body: ChatBody):
     """Chat with a persona, with autonomous tool support (web search + MongoDB) for higher rarity personas."""
+    from ..services.query_handler_service import QueryHandlerService  # noqa: PLC0415
+
     deps = _get_dependencies()
 
     card = get_persona_card(body.persona)
@@ -119,7 +121,6 @@ def chat(body: ChatBody):
     # This must happen HERE (not in handle_session_chat) because this function
     # rebuilds the system prompt — any injection upstream gets discarded.
     if "solana_wallet" in (mcp_access or []):
-        from ..services.query_handler_service import QueryHandlerService
         wallet_state = QueryHandlerService._build_wallet_state_context("default_user")
         if wallet_state:
             system = f"{system}\n{wallet_state}"

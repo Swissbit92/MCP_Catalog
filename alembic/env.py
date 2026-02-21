@@ -16,9 +16,10 @@ database_url = f"sqlite:///{db_path}"
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# NOTE: disable_existing_loggers=False prevents Alembic from killing
+# all application loggers (src.coordinator.*) after migrations run.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
