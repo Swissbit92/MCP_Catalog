@@ -98,6 +98,15 @@ CREATE TABLE conversation_summaries (
 
 See `alembic/versions/3nephilim_progression.py` for full DDL.
 
+### Wallet Metadata Tables
+
+**`wallet_registry`** — Per-user multi-wallet registry with 3-wallet limit enforcement and slot management
+**`wallet_activity_summary`** — Pre-computed trading activity summary (trade count, volume, last trade)
+**`wallet_balance_cache`** — Per-wallet cached SOL balance, token count, and lock/unlock state
+**`wallet_trades_local`** — SQLite trade history fallback (dual-write with MongoDB)
+
+See [WALLET_METADATA.md](WALLET_METADATA.md) for full DDL, data flow, and what the AI companion can see.
+
 ### Cascade Deletes
 
 Foreign keys use `ON DELETE CASCADE` so deleting a session automatically removes all associated messages, summaries, and emotional state records. This keeps cleanup simple.
