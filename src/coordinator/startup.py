@@ -249,7 +249,16 @@ def init_brave_client():
             safesearch=safesearch,
             timeout=timeout
         )
-        logger.info(f"Brave MCP STDIO client initialized (image={_brave_client.image}, max_results={max_results}, timeout={timeout}s)")
+
+        # Verify Docker daemon is reachable (Brave MCP requires Docker)
+        if not _brave_client.health_check():
+            logger.error(
+                "Brave MCP client created but Docker is NOT running. "
+                "Web search will fail until Docker Desktop is started."
+            )
+            _brave_client = None
+        else:
+            logger.info(f"Brave MCP STDIO client initialized (image={_brave_client.image}, max_results={max_results}, timeout={timeout}s)")
     except Exception as e:
         logger.error(f"Failed to initialize Brave MCP client: {e}")
         _brave_client = None
