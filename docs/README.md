@@ -136,6 +136,18 @@ pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 - Schema: core tables, NEPHILIM progression tables
 - Migration approach and adding new tables
 
+### [architecture/WALLET_METADATA.md](architecture/WALLET_METADATA.md)
+
+**Wallet metadata & AI context layer**
+
+**Contents:**
+- What data the AI companion can see per-message (wallet inventory, balances, trade history, lock state)
+- Hard guardrails: 3-wallet limit, secret key ceremony, mnemonic wipe
+- SQLite tables: wallet_registry, wallet_activity_summary, wallet_balance_cache, wallet_trades_local
+- 4-step wallet creation flow with BIP39 mnemonic
+- Dual-write trade pattern (MongoDB + SQLite fallback)
+- Multi-companion access design
+
 ### [architecture/CELESTIAL_ORDER.md](architecture/CELESTIAL_ORDER.md)
 
 **Four-tier Celestial Order system design**

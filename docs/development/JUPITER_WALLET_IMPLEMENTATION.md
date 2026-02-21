@@ -362,6 +362,21 @@ _wallet_flows: dict[str, dict] = {
 
 ---
 
+## Wallet Metadata Layer (Post-Wave 2)
+
+The wallet system now includes a **Wallet Metadata & AI Context Layer** that gives all companions reliable, deterministic awareness of wallet state. This resolves the original gaps: single-wallet limit, no secret key ceremony, no cross-session context, and MongoDB-only trade history.
+
+**Key additions:**
+- 3-wallet limit (hard backend guardrail, not LLM prompt)
+- 4-step wallet creation with BIP39 mnemonic ceremony (show once, confirm, wipe)
+- Enriched prompt injection: multi-wallet state, slot counts, balances, trade summary, lock status
+- SQLite dual-write for trades (never lost, even without MongoDB)
+- Multi-companion access (any persona with `"solana_wallet"` in `mcp_access` gets the same context)
+
+**Full reference:** [docs/architecture/WALLET_METADATA.md](../architecture/WALLET_METADATA.md)
+
+---
+
 ## Notes & Decisions Log
 
 | Date | Note |
