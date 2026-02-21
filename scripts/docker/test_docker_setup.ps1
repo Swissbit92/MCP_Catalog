@@ -213,17 +213,36 @@ try {
 }
 Write-Host ""
 
+# Run MCP subsystem verification
+Write-Host ""
+Write-Host "11. Running MCP subsystem verification..." -ForegroundColor White
+$verifyExitCode = 0
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCmd) {
+    python scripts/docker/verify_startup.py --skip-queries
+    $verifyExitCode = $LASTEXITCODE
+} else {
+    Warn "Python not found — skipping MCP verification"
+    Write-Host "   Run manually: python scripts/docker/verify_startup.py" -ForegroundColor Gray
+}
+Write-Host ""
+
 # Final summary
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "Test Summary" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
-Pass "Docker Compose stack is running"
-Pass "All core services are operational"
+if ($verifyExitCode -eq 0) {
+    Pass "Docker Compose stack is running"
+    Pass "All core services are operational"
+    Pass "MCP subsystem verification passed"
+} else {
+    Pass "Docker Compose stack is running"
+    Warn "MCP subsystem verification failed — check logs above"
+}
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor White
 Write-Host "1. Open http://localhost:3000 in your browser" -ForegroundColor Gray
-Write-Host "2. Pull an LLM model if not done:" -ForegroundColor Gray
-Write-Host "   docker exec -it mcp_ollama ollama pull dolphin-llama3:8b" -ForegroundColor Gray
+Write-Host "2. Run full verification: python scripts/docker/verify_startup.py" -ForegroundColor Gray
 Write-Host "3. Start chatting with personas!" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Useful commands:" -ForegroundColor White
@@ -231,5 +250,6 @@ Write-Host "  - View logs: docker-compose logs -f" -ForegroundColor Gray
 Write-Host "  - Restart: docker-compose restart" -ForegroundColor Gray
 Write-Host "  - Stop: docker-compose down" -ForegroundColor Gray
 Write-Host "  - Backup: Copy-Item data\chats.db data\chats.db.backup" -ForegroundColor Gray
+Write-Host "  - Verify: python scripts/docker/verify_startup.py" -ForegroundColor Gray
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan

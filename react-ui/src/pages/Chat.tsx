@@ -10,7 +10,7 @@ import SessionList from '../components/SessionList'
 import { ResonanceToast } from '../components/ResonanceToast'
 import { LoreRevealOverlay } from '../components/LoreRevealOverlay'
 import NephilimBackground from '../components/NephilimBackground'
-import { fetchPersonas, greetWithSession, checkLoreUnlocks } from '../services/api'
+import { greetWithSession, checkLoreUnlocks } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -43,15 +43,14 @@ const Chat: React.FC = () => {
   const [input, setInput] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [initializingSession, setInitializingSession] = useState<boolean>(false)
-  const [personas, setPersonas] = useState<any[]>([])
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
   const [showResonanceToast, setShowResonanceToast] = useState<boolean>(false)
   const [loreFragment, setLoreFragment] = useState<{ title: string; content: string; rarity: string } | null>(null)
-  const [touchStartX, setTouchStartX] = useState<number>(0)
-  const [touchEndX, setTouchEndX] = useState<number>(0)
+  const touchStartX = useRef<number>(0)
+  const touchEndX = useRef<number>(0)
   const initializingRef = useRef<string | null>(null)
   const resonanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching, toolType } = usePersona()
+  const { personas, selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching, toolType } = usePersona()
 
   useEffect(() => {
     return () => {
@@ -60,29 +59,7 @@ const Chat: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    const loadPersonas = async () => {
-      try {
-        const fetchedPersonas = await fetchPersonas()
-        const processedPersonas = fetchedPersonas.map(p => ({
-          key: p.key,
-          display_name: p.display_name || p.key,
-          style: p.style,
-          image: p.image.replace('images/', ''),
-          avatar: p.avatar ? p.avatar.replace('images/', '') : undefined,
-          bg: p.bg ? p.bg.replace('images/', '') : undefined,
-          rarity: p.rarity,
-          coordinator_label: p.coordinator_label,
-          voice: p.voice,
-        }))
-        setPersonas(processedPersonas)
-        if (refreshSessions) {
-          await refreshSessions()
-        }
-      } catch (error) {
-        console.error('Failed to load personas:', error)
-      }
-    }
-    loadPersonas()
+    if (refreshSessions) refreshSessions()
   }, [refreshSessions])
 
   // Auto-select persona from constellation/dashboard navigation
@@ -132,7 +109,7 @@ const Chat: React.FC = () => {
     initializeChat()
   }, [selectedPersona, currentSession, sessions, loadSessionMessages, createNewSession])
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (input.trim() && currentSession && selectedPersona && !initializingSession) {
       setInput('')
       setLoading(true)
@@ -152,8 +129,8 @@ const Chat: React.FC = () => {
               const frag = loreResult.fragments[0]
               setTimeout(() => {
                 setLoreFragment({
-                  title: frag.fragment_title || frag.title || 'Unknown Fragment',
-                  content: frag.fragment || frag.content || '',
+                  title: frag.fragment_title || 'Unknown Fragment',
+                  content: frag.fragment || '',
                   rarity: frag.rarity || 'common',
                 })
               }, 2500)
@@ -168,7 +145,7 @@ const Chat: React.FC = () => {
         setLoading(false)
       }
     }
-  }
+  }, [input, currentSession, selectedPersona, initializingSession, sendMessage, user])
 
   const handleRetryMessage = useCallback(async (messageId: string) => {
     try {
@@ -178,6 +155,15 @@ const Chat: React.FC = () => {
       alert('Failed to retry message. Please try again.')
     }
   }, [retryMessage])
+
+  const handleSessionSelect = useCallback(async (session: { id: string; persona_key: string }) => {
+    const sessionPersona = personas.find(p => p.key === session.persona_key)
+    if (sessionPersona) {
+      setSelectedPersona(sessionPersona)
+    }
+    await loadSessionMessages(session.id)
+    setIsSidebarOpen(false)
+  }, [personas, setSelectedPersona, loadSessionMessages])
 
   // No persona selected — void-themed prompt
   if (!selectedPersona) {
@@ -254,36 +240,27 @@ const Chat: React.FC = () => {
     }
   }
 
-  const handleSessionSelect = async (session: any) => {
-    const sessionPersona = personas.find(p => p.key === session.persona_key)
-    if (sessionPersona) {
-      setSelectedPersona(sessionPersona)
-    }
-    await loadSessionMessages(session.id)
-    setIsSidebarOpen(false)
-  }
-
   // Touch handlers for swipe gestures
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.targetTouches[0].clientX)
+    touchStartX.current = e.targetTouches[0].clientX
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEndX(e.targetTouches[0].clientX)
+    touchEndX.current = e.targetTouches[0].clientX
   }
 
   const handleTouchEnd = () => {
-    if (!touchStartX || !touchEndX) return
+    if (!touchStartX.current || !touchEndX.current) return
 
-    const distance = touchStartX - touchEndX
+    const distance = touchStartX.current - touchEndX.current
     const isLeftSwipe = distance > 50
 
     if (isLeftSwipe && isSidebarOpen) {
       setIsSidebarOpen(false)
     }
 
-    setTouchStartX(0)
-    setTouchEndX(0)
+    touchStartX.current = 0
+    touchEndX.current = 0
   }
 
   // Derive persona name for NephilimBackground
@@ -413,6 +390,19 @@ const Chat: React.FC = () => {
                     personaRarity={selectedPersona.rarity}
                     personaName={selectedPersona.display_name}
                     onRetry={handleRetryMessage}
+                    loadingIndicator={
+                      !initializingSession ? (
+                        isSearching && toolType !== 'none' ? (
+                          <ToolIndicator
+                            toolType={toolType}
+                            personaName={selectedPersona?.display_name}
+                            personaKey={selectedPersona?.key}
+                          />
+                        ) : loading ? (
+                          <TypingIndicator personaName={selectedPersona.display_name} />
+                        ) : null
+                      ) : null
+                    }
                   />
                 )}
 
@@ -428,24 +418,6 @@ const Chat: React.FC = () => {
                     >
                       <ResonanceToast amount={5} />
                     </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Indicators */}
-                <AnimatePresence mode="wait">
-                  {isSearching && !initializingSession && toolType !== 'none' && (
-                    <div className="absolute bottom-4 left-4 md:left-6 z-50 pointer-events-none">
-                      <ToolIndicator
-                        toolType={toolType}
-                        personaName={selectedPersona?.display_name}
-                        celestial_order={selectedPersona?.celestial_order ?? 'wanderer'}
-                      />
-                    </div>
-                  )}
-                  {!isSearching && loading && !initializingSession && (
-                    <div className="absolute bottom-4 left-4 md:left-6 z-50 pointer-events-none">
-                      <TypingIndicator personaName={selectedPersona.display_name} />
-                    </div>
                   )}
                 </AnimatePresence>
               </div>

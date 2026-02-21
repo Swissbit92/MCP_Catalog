@@ -11,8 +11,8 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
   const parts: React.ReactNode[] = [];
   let key = 0;
 
-  // Split by lines to handle bullet points
-  const lines = text.split('\n');
+  // Strip all leading/trailing whitespace (spaces, tabs, newlines), preserve mid-content blank lines
+  const lines = text.trim().split('\n');
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];

@@ -1,8 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { usePersona } from '../context/PersonaContext'
-import { fetchPersonas } from '../services/api'
-import { formatOrderLabel } from '../utils/celestialOrder'
+import { formatOrderLabel, ORDER_COLORS, ORDER_TEXT_CLASSES } from '../utils/celestialOrder'
 
 interface BondsForgedProps {
   onCharacterSelect: (personaKey: string) => void
@@ -10,38 +9,9 @@ interface BondsForgedProps {
   selectedPersonaKey?: string | null
 }
 
-const ORDER_COLORS: Record<string, string> = {
-  wanderer: '#C0C0C0',
-  sage: '#00BFFF',
-  warden: '#DA70D6',
-  archon: '#FFD700',
-}
-
-const ORDER_TEXT_CLASSES: Record<string, string> = {
-  wanderer: 'text-gray-400',
-  sage: 'text-cyan-400',
-  warden: 'text-purple-400',
-  archon: 'text-yellow-400',
-}
-
 const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, selectedPersonaKey }) => {
-  const { isCollected, collectionStats, pullHistory } = usePersona()
-  const [personas, setPersonas] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    const loadPersonas = async () => {
-      try {
-        const data = await fetchPersonas()
-        setPersonas(data)
-      } catch (error) {
-        console.error('Failed to load personas:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadPersonas()
-  }, [])
+  const { personas, isCollected, collectionStats, pullHistory } = usePersona()
+  const loading = personas.length === 0
 
   // Calculate bond level (duplicate count) for each persona
   const getBondLevel = (personaKey: string): number => {
@@ -131,7 +101,7 @@ const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, 
                       {/* Character image */}
                       <div className="aspect-[3/4] overflow-hidden">
                         <img
-                          src={`/images/${persona.image.replace('images/', '')}`}
+                          src={`/images/${persona.image}`}
                           alt={persona.display_name || persona.key}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
@@ -213,7 +183,7 @@ const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, 
                     {/* Silhouette */}
                     <div className="aspect-[3/4] overflow-hidden relative">
                       <img
-                        src={`/images/${persona.image.replace('images/', '')}`}
+                        src={`/images/${persona.image}`}
                         alt="Unknown"
                         className="w-full h-full object-cover"
                         style={{ filter: 'brightness(0) contrast(0.8)' }}

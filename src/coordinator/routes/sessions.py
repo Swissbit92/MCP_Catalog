@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import logging
 
 from fastapi import APIRouter, HTTPException
+
+from ..repositories.base_repository import utc_now_iso
 
 from ..schemas import (
     CreateSessionBody,
@@ -167,7 +168,7 @@ def export_session(session_id: str):
 
     export_data = {
         "version": "1.0",
-        "exported_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "exported_at": utc_now_iso(),
         "app_version": "1.0.0",
         "persona": {
             "key": persona_card.get("key"),
@@ -202,7 +203,7 @@ def import_session(body: ImportBody):
     )
     session_title = data.session.get("title") if isinstance(data.session, dict) else getattr(data.session, 'title', 'Imported Chat')
     session_created_at = data.session.get("created_at") if isinstance(data.session, dict) else getattr(data.session, 'created_at', None)
-    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    now = utc_now_iso()
 
     # Create session
     created_session_id = session_repo.create_session(
@@ -268,7 +269,7 @@ def greet_with_session(session_id: str, body: GreetBody):
     greeting_msg_body = AppendMessageBody(
         role="assistant",
         content=response["answer"],
-        ts=datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        ts=utc_now_iso()
     )
     add_message(session_id, greeting_msg_body)
 

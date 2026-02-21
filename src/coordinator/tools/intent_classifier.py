@@ -4,8 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 
 from .keywords import (
     NO_SEARCH_KEYWORDS,
@@ -26,23 +25,11 @@ class QueryIntent(Enum):
     NEEDS_WALLET = "wallet"        # Jupiter wallet / Solana trading
 
 
-@dataclass
-class ToolCall:
-    """Represents a function call from the LLM."""
-    name: str
-    arguments: Dict[str, Any]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "name": self.name,
-            "arguments": self.arguments
-        }
-
-
 def classify_query_intent(
     query: str,
     persona_rarity: str,
     mcp_access: Optional[List[str]] = None,
+    last_assistant_message: Optional[str] = None,
 ) -> QueryIntent:
     """
     Layer 1: Fast keyword-based intent classification for MCP routing.
@@ -54,6 +41,9 @@ def classify_query_intent(
                     JSON ``mcp_access`` field (e.g. ``["brave_search", "mongodb"]``).
                     When provided this takes priority over ``persona_rarity``-based
                     gating entirely.
+        last_assistant_message: Optional last assistant message for follow-up detection.
+                    When the last message was wallet-related and the user gives a short
+                    affirmative, we route to NEEDS_WALLET for continuity.
 
     Returns:
         QueryIntent enum indicating which MCP(s) to use
@@ -62,6 +52,24 @@ def classify_query_intent(
 
     # Determine wallet access
     can_use_wallet = "solana_wallet" in (mcp_access or [])
+
+    # Follow-up detection: short affirmative after wallet-related assistant message
+    if can_use_wallet and last_assistant_message:
+        _AFFIRMATIVES = [
+            "yes", "yeah", "yep", "sure", "ok", "okay", "please",
+            "show me", "do it", "go ahead", "let's go", "lets go",
+            "absolutely", "definitely", "of course", "y",
+        ]
+        _WALLET_CONTEXT_KEYWORDS = [
+            "wallet", "balance", "swap", "trade", "sol", "usdc",
+            "address", "create", "strategy", "rsi", "jupiter",
+        ]
+        query_stripped = query_lower.strip().rstrip("!.?")
+        last_lower = last_assistant_message.lower()
+        is_short_affirmative = any(query_stripped == a or query_stripped.startswith(a + " ") for a in _AFFIRMATIVES)
+        last_was_wallet = any(kw in last_lower for kw in _WALLET_CONTEXT_KEYWORDS)
+        if is_short_affirmative and last_was_wallet:
+            return QueryIntent.NEEDS_WALLET
 
     # Wallet intent keywords (check before MongoDB/Brave)
     WALLET_KEYWORDS = [
@@ -96,6 +104,23 @@ def classify_query_intent(
         "jupter wallet", "jupter quote",
         "my sol", "my usdc", "my tokens",
         "wallet address", "fund my wallet",
+        # Natural queries that previously missed
+        "active wallet", "active wallets",
+        "have a wallet", "have any wallet", "have wallets",
+        "how many wallet", "how many wallets",
+        "tell me the address", "tell me my address",
+        "show my wallet", "show my balance",
+        "my active", "do i have",
+        # Post-action queries (must include wallet context to avoid hijacking unrelated queries)
+        "wallets now", "happened to my wallet", "what happened to my wallet",
+        "what happened with my wallet", "what happened to my balance",
+        # Jupiter DEX (catch before Brave routes it as web search)
+        "jupiter",
+        # Wallet deletion follow-up
+        "deleted wallet", "deleted wallets",
+        # Internal tool names (route to wallet context so LLM doesn't hallucinate)
+        "wallet_get_balances", "solana_propose_swap", "solana_get_quote",
+        "solana_rsi_check", "wallet_create_guided", "solana_trade_history",
     ]
 
     if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):
@@ -127,14 +152,14 @@ def classify_query_intent(
     has_web_search_intent = any(kw in query_lower for kw in SEARCH_KEYWORDS)
 
     # Check if query is asking for data despite having definition keywords
-    data_keywords = ["price", "value", "worth", "cost", "indicator"]
+    data_keywords = ["price", "value", "worth", "cost", "indicator", "analysis", "rsi", "macd"]
     has_data_intent = any(kw in query_lower for kw in data_keywords)
 
     if has_definition_intent and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
         # Pure educational/definition queries don't need MCPs
         return QueryIntent.NEEDS_NEITHER
 
-    if is_educational and not has_opinion_intent and not has_web_search_intent:
+    if is_educational and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
         # Educational queries like "Why was Bitcoin created?" should not trigger MCPs
         return QueryIntent.NEEDS_NEITHER
 
@@ -175,6 +200,9 @@ def classify_query_intent(
         # General web search keywords (but not if MongoDB already triggered for Bitcoin price)
         elif not needs_mongodb:
             if any(kw in query_lower for kw in SEARCH_KEYWORDS):
+                needs_web = True
+            # Opinion/sentiment queries need web search for current expert views
+            elif has_opinion_intent:
                 needs_web = True
 
         # "current" in Bitcoin context means MongoDB, not web search

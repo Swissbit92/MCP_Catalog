@@ -69,9 +69,16 @@ tests/
 ├── evaluation/              # RAGAS evaluation tests
 │   ├── test_persona_quality.py
 │   └── test_metrics.py
+├── manual/                 # Manual quality tests (require running backend)
+│   ├── eeva_chat_test.py           # 50-question E.E.V.A. quality suite
+│   ├── eeva_test_results.json      # Latest test results
+│   ├── test_all_personas_intent.py # 30-query offline intent test, all 7 personas
+│   └── test_live_all_personas.py   # 30-query live API test, all 7 personas
 └── exploration/             # Utility scripts (archived; skipped in CI)
     └── check_db.py
 ```
+
+> **Note:** Temporary test scripts (100-query intent classification, 50-query live API validation) were used during MCP routing development and removed after passing. See [MCP Intent Classification](#mcp-intent-classification-testing) for how to re-run these tests.
 
 ---
 
@@ -398,6 +405,142 @@ pytest --cov=src.coordinator.server --cov-report=term-missing
 
 ---
 
+## Docker Startup Verification
+
+**File:** `scripts/docker/verify_startup.py`
+
+**Mandatory after every Docker rebuild.** This script validates that all backend subsystems initialized correctly. Without it, broken MCP subsystems can silently return 500 errors.
+
+```bash
+# Full verification (subsystem checks + live MCP test queries)
+python scripts/docker/verify_startup.py
+
+# Quick mode (subsystem checks only — no LLM queries, ~3s)
+python scripts/docker/verify_startup.py --skip-queries
+
+# Custom timeout for slow starts
+python scripts/docker/verify_startup.py --timeout 120
+```
+
+### What it checks
+
+| Phase | Check | Details |
+|-------|-------|---------|
+| 1 | `/ready` endpoint | Polls until 200 or timeout (DB + Ollama must be healthy) |
+| 2 | Brave MCP status | If `BRAVE_API_KEY` set in `.env.docker`, asserts `enabled` |
+| 2 | MongoDB MCP status | If `MONGODB_ENABLED=true`, asserts `enabled` |
+| 3 | Persona load | `GET /personas` returns non-empty list |
+| 3 | LLM greet | `POST /persona/greet` returns valid response |
+| 3 | Brave query | Chat query routed through web search returns reply |
+| 3 | MongoDB query | Chat query routed through trading data returns reply |
+
+**Exit codes:** `0` = all checks passed, `1` = one or more failed.
+
+---
+
+## Manual Quality Tests
+
+> **Pre-flight:** Before running manual tests against Docker, always verify the stack first:
+> ```bash
+> python scripts/docker/verify_startup.py --skip-queries
+> ```
+
+### E.E.V.A. Chat Quality Suite
+
+**File:** `tests/manual/eeva_chat_test.py`
+**Results:** `tests/manual/eeva_test_results.json`
+
+A 50-question automated test suite that exercises E.E.V.A.'s chat capabilities across 11 categories via the session-based chat API. Requires a running backend on port 8000.
+
+```bash
+# Start backend first
+python -m uvicorn src.coordinator.server:app --reload --port 8000
+
+# Run the test suite
+python tests/manual/eeva_chat_test.py
+```
+
+#### Test Categories (11)
+
+| Category | Questions | Tests |
+|----------|-----------|-------|
+| IDENTITY | 6 | Persona consistency, first-person voice, lore knowledge |
+| WALLET_EMPTY | 5 | Correct responses when user has no wallet |
+| WALLET_CREATE | 4 | Multi-turn wallet creation flow (name → password → recovery → confirm) |
+| WALLET_META | 7 | Wallet state queries after creation (address, name, balance, count) |
+| FOLLOWUP | 4 | Follow-up detection ("yes", "sure", "go ahead" after wallet context) |
+| CONTEXT | 5 | Topic switching and context retention across turns |
+| ANTI_HALLUC | 8 | Anti-hallucination stress tests (fabricated data, tool name leaking, private keys) |
+| JUPITER | 3 | Jupiter DEX disambiguation (not Jupyter notebooks) |
+| WALLET_DELETE | 1 | Wallet deletion flow |
+| WALLET_POST_DEL | 4 | Post-deletion state consistency |
+| SECURITY | 3 | Private key refusal, seed phrase security |
+
+#### Output
+
+The suite produces:
+- Per-question console output with source routing and timing
+- JSON results file with full answers, latencies, and source types
+- Source distribution summary (llm, wallet_state, brave_mcp, error)
+- Category summary with average response times and error counts
+
+#### What to Look For
+
+- **Zero errors**: All 50 questions should get responses (no HTTP failures)
+- **No brave_mcp misroutes**: Wallet queries should never route to web search
+- **Wallet flow continuity**: Steps 1-4 of wallet creation should complete in sequence
+- **Anti-hallucination**: No fabricated addresses, balances, or tool names in responses
+- **Jupiter = DEX**: Jupiter questions should reference the Solana DEX, not Jupyter notebooks
+
+---
+
+## MCP Intent Classification Testing
+
+The MCP query routing pipeline (`tools/intent_classifier.py` + `tools/keywords.py`) determines which MCP service handles each user query. Access is controlled **per-persona** via the `mcp_access` field in persona JSONs — not by rarity. After fixing Brave MCP force-search, intent classification bugs, and backend initialization bugs (Feb 2026), the system was validated with:
+
+- **Offline intent test** (`test_all_personas_intent.py`): Tests `classify_query_intent()` directly, 30 queries × 7 personas (Aegis, Aurora, Cipher, Solace, Nyx, Frieren, Gojo). **Result: 210/210 PASS.**
+- **Live API test** (`test_live_all_personas.py`): End-to-end HTTP tests against running backend, same 30 queries × 7 personas. **Result: 210/210 PASS, avg 5.0s/query.**
+
+### Quick Intent Classification Test
+
+To verify intent classification is working correctly:
+
+```python
+# Quick smoke test (run from project root)
+from src.coordinator.tools.intent_classifier import classify_query_intent
+
+# These should return the expected intents:
+assert classify_query_intent("What is the weather in London?", "legendary", ["brave_search", "mongodb"]).value == "web"
+assert classify_query_intent("What is Bitcoin's price?", "legendary", ["brave_search", "mongodb"]).value == "mongodb"
+assert classify_query_intent("What is the capital of France?", "legendary", ["brave_search", "mongodb"]).value == "llm"
+assert classify_query_intent("Create a wallet", "legendary", ["brave_search", "mongodb", "solana_wallet"]).value == "wallet"
+assert classify_query_intent("Weather in London?", "common", None).value == "llm"  # Wanderer: no MCP access
+print("All intent classification checks passed!")
+```
+
+### Key Fixes Applied (Feb 2026)
+
+#### Intent Classification Fixes
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Brave MCP never executing | LLM (Gemma 9B) unreliable at generating JSON tool calls | Force-execute Brave search when keyword filter detects search intent (`tool_calling_service.py`) |
+| "US elections" routed to wallet | Generic `"what happened"` in wallet keywords matched non-wallet queries | Changed to wallet-context-specific phrases: `"happened to my wallet"` |
+| Bitcoin technical analysis routed to LLM | `"what does"` triggered educational filter; `"analysis"` not in data_keywords | Added `and not has_data_intent` to educational filter; added `"analysis"`, `"rsi"`, `"macd"` to data_keywords |
+| "Trading summary" routed to LLM | `"trading summary"` not in MongoDB keywords | Added `"trading summary"`, `"summary"` to `MONGODB_TRADING_KEYWORDS` |
+| "Tomorrow" queries not searching | `"tomorrow"` missing from search keywords | Added `"tomorrow"`, `"2026"` to `SEARCH_KEYWORDS` |
+| Analyst opinion queries not searching | No web search fallback for opinion-intent queries | Added opinion intent fallback in web search block; added `"analysts think"`, `"analysts"` to `SEARCH_KEYWORDS` |
+
+#### MCP Initialization Fixes
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| All MCP queries return HTTP 500, no error traceback visible | `alembic/env.py` calls `fileConfig()` with `disable_existing_loggers=True` (default), disabling all `src.coordinator.*` loggers after migrations run — errors invisible | Added `disable_existing_loggers=False` to `fileConfig()` call in `alembic/env.py` |
+| Startup INFO messages (Brave/MongoDB init) not appearing | `alembic.ini` sets `[logger_root] level = WARN`, silencing all INFO log messages globally after migration | Changed root logger level to `INFO` in `alembic.ini` |
+| `UnboundLocalError` on all Brave/MongoDB queries | `QueryHandlerService` imported inside `if "solana_wallet"` block in `chat.py` — Python treats it as local throughout the function; crashes when condition is False | Moved import to top of `chat()` function (always executes) |
+
+---
+
 ## References
 
 - [Pytest Documentation](https://docs.pytest.org/)
@@ -407,5 +550,5 @@ pytest --cov=src.coordinator.server --cov-report=term-missing
 
 ---
 
-**Last Updated:** February 18, 2026
-**Status:** Pytest infrastructure complete. Exploration scripts archived to `archive/exploration/`.
+**Last Updated:** February 21, 2026
+**Status:** Pytest infrastructure complete. Docker startup verification (`verify_startup.py`) mandatory after every rebuild. Manual test suite: E.E.V.A. quality (50q), all-persona intent classification (210/210 offline), all-persona live API (210/210 live). MCP initialization bugs fixed (Alembic logging hijack + UnboundLocalError in chat.py).

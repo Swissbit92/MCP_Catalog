@@ -27,10 +27,37 @@ chmod +x setup-docker.sh
 - ✅ Pulls required AI models (gemma-2-9b, nomic-embed-text)
 - ✅ Creates persistent volumes for database and persona summaries
 - ✅ Validates health of all services
+- ✅ Runs post-startup verification (`verify_startup.py`)
 
-## Validation Scripts
+## Post-Startup Verification (Mandatory)
 
-Test your Docker setup after installation:
+**Run after every Docker rebuild.** This is the primary validation tool.
+
+```bash
+# Full verification (subsystem checks + live MCP test queries)
+python scripts/docker/verify_startup.py
+
+# Quick mode (subsystem checks only, no LLM queries)
+python scripts/docker/verify_startup.py --skip-queries
+
+# Custom timeout for slow starts
+python scripts/docker/verify_startup.py --timeout 120
+```
+
+**What it checks:**
+1. `/ready` endpoint returns 200 (database + Ollama healthy)
+2. Brave MCP status matches `.env.docker` config (`BRAVE_API_KEY` set → must be `enabled`)
+3. MongoDB MCP status matches config (`MONGODB_ENABLED=true` → must be `enabled`)
+4. Persona list loads successfully
+5. LLM greet returns a valid response
+6. Brave search query returns a valid response (if enabled)
+7. MongoDB query returns a valid response (if enabled)
+
+**Exit codes:** `0` = all checks passed, `1` = one or more checks failed.
+
+## Legacy Validation Scripts
+
+Basic Docker infrastructure tests (containers, ports, files). For MCP-level verification, use `verify_startup.py` instead.
 
 **Windows:**
 ```powershell

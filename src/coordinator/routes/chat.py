@@ -3,26 +3,13 @@
 
 from __future__ import annotations
 
-import time
 import logging
-from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
 from ..schemas import ChatBody, GreetBody, ChatTurn, AppendMessageBody, ResponseMetadata
-from ..config import (
-    get_ollama_base,
-    get_persona_model,
-    get_persona_temperature,
-    get_persona_temperature_override,
-    get_model_context_window,
-    get_summarization_interval,
-    get_fact_extraction_interval,
-    get_temp_summarization,
-    get_temp_fact_extraction,
-)
-from ..llm_client import LC_OllamaClient, estimate_tokens, log_context_stats
+from ..config import get_settings
+from ..llm_client import create_llm_client, estimate_tokens, log_context_stats
 from ..persona_memory import (
     build_system_prompt,
     build_greeting_user_prompt,
@@ -43,6 +30,43 @@ from ..services.chat_session_service import handle_session_chat
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger(__name__)
+
+
+def _build_llm_response(
+    answer: str,
+    user_message: str,
+    persona_name: str,
+    metadata: ResponseMetadata,
+) -> dict:
+    """Post-process LLM output into a standard response dict."""
+    import re as _re
+    answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+    # Convert <Assistant> separators to <msg> tags (LLM sometimes uses them as message delimiters)
+    if _re.search(r'<[Aa]ssistant>', answer):
+        answer = _re.sub(r'</?[Aa]ssistant>\s*', '</msg>\n<msg>', answer)
+        answer = _re.sub(r'^</msg>\s*', '', answer)
+        answer = _re.sub(r'\n<msg>\s*$', '', answer)
+        if '<msg>' in answer and not answer.strip().startswith('<msg>'):
+            answer = f'<msg>{answer}'
+        if '</msg>' in answer and not answer.strip().endswith('</msg>'):
+            answer = f'{answer}</msg>'
+
+    answer = force_multi_message_split(answer, user_message)
+    messages, flow_type = parse_multi_message_response(answer)
+
+    metadata_dict = metadata.model_dump()
+    metadata_dict["is_multi_message"] = (flow_type == "multi")
+    metadata_dict["message_count"] = len(messages)
+
+    return {
+        "answer": messages if flow_type == "multi" else messages[0],
+        "message_flow": flow_type,
+        "message_count": len(messages),
+        "used_search": False,
+        "metadata": metadata_dict,
+        "rewritten": was_rewritten,
+    }
 
 
 def _get_dependencies():
@@ -80,6 +104,8 @@ def _get_dependencies():
 @router.post("/persona/chat")
 def chat(body: ChatBody):
     """Chat with a persona, with autonomous tool support (web search + MongoDB) for higher rarity personas."""
+    from ..services.query_handler_service import QueryHandlerService  # noqa: PLC0415
+
     deps = _get_dependencies()
 
     card = get_persona_card(body.persona)
@@ -90,6 +116,15 @@ def chat(body: ChatBody):
     persona_rarity = card.get("rarity", "common").lower()
     mcp_access = card.get("mcp_access", None)
     system = build_system_prompt(body.persona)
+
+    # Inject wallet ground-truth state for wallet-capable personas (anti-hallucination).
+    # This must happen HERE (not in handle_session_chat) because this function
+    # rebuilds the system prompt — any injection upstream gets discarded.
+    if "solana_wallet" in (mcp_access or []):
+        wallet_state = QueryHandlerService._build_wallet_state_context("default_user")
+        if wallet_state:
+            system = f"{system}\n{wallet_state}"
+            logger.debug(f"[WalletState] Injected ground-truth wallet state ({len(wallet_state)} chars)")
 
     # Build conversation context from history
     history = body.history
@@ -108,14 +143,24 @@ def chat(body: ChatBody):
         system_prompt=system,
         history=history,
         query=body.message,
-        model_context_window=get_model_context_window()
+        model_context_window=get_settings().ollama.context_window
     )
+
+    # Prepare metadata and persona_name early (needed by wallet pre-check and all downstream paths)
+    metadata = ResponseMetadata(
+        source_type="llm",
+        tools_used=[],
+        cache_status=None,
+        data_timestamp=None
+    )
+    persona_name = card.get("display_name") or card.get("key") or "Persona"
 
     # Pre-check: active wallet creation flow bypasses intent classification
     # (mid-flow messages like wallet names and passwords won't match NEEDS_WALLET keywords)
-    from ..services.query_handler_service import _wallet_flows
-    _active_flow_session = getattr(body, "session_id", None)
-    if _wallet_flows.get(_active_flow_session) and "solana_wallet" in (mcp_access or []):
+    from ..services.query_handler_service import has_active_wallet_flow
+    # session_id is set by handle_session_chat for session-based flows
+    _active_flow_session = body.session_id
+    if has_active_wallet_flow(_active_flow_session) and "solana_wallet" in (mcp_access or []):
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
             mongodb_service=deps.get("mongodb_service"),
@@ -129,11 +174,18 @@ def chat(body: ChatBody):
             persona_name=persona_name,
             persona_card=card,
             session_id=_active_flow_session,
-            user_id=getattr(body, "user_id", "default_user"),
+            user_id="default_user",
         )
 
+    # Extract last assistant message for follow-up detection
+    last_assistant_msg = None
+    for t in reversed(history):
+        if (t.role or "").lower() == "assistant":
+            last_assistant_msg = t.content
+            break
+
     # Use intent classification to determine which tools to inject
-    intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access)
+    intent = classify_query_intent(body.message, persona_rarity, mcp_access=mcp_access, last_assistant_message=last_assistant_msg)
     logger.info(f"[Chat] Request received: persona={persona_key}, rarity={persona_rarity}, query_preview='{body.message[:60]}...'")
     logger.info(f"[Intent] Classification result: {intent.value}")
 
@@ -142,25 +194,13 @@ def chat(body: ChatBody):
     tool_names = [t["function"]["name"] for t in tools] if tools else []
     logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
 
-    # Prepare metadata
-    metadata = ResponseMetadata(
-        source_type="llm",
-        tools_used=[],
-        cache_status=None,
-        data_timestamp=None
-    )
-
-    persona_name = card.get("display_name") or card.get("key") or "Persona"
-
     # Route wallet intent before MongoDB/Brave checks
     if intent == QueryIntent.NEEDS_WALLET:
-        from ..startup import get_wallet_repo, get_jupiter_ops, get_wallet_execution_service, get_strategy_service
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
             mongodb_service=deps.get("mongodb_service"),
         )
-        user_id = body.user_id if hasattr(body, "user_id") else "default_user"
-        session_id = body.session_id if hasattr(body, "session_id") else None
+        user_id = "default_user"
         return handler.handle_wallet_query(
             message=body.message,
             system_prompt=system,
@@ -169,42 +209,16 @@ def chat(body: ChatBody):
             metadata=metadata,
             persona_name=persona_name,
             persona_card=card,
-            session_id=session_id,
+            session_id=body.session_id,
             user_id=user_id,
         )
 
     if not tools:
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
-        client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
-            temperature=get_persona_temperature_override(card)
-        )
+        client = create_llm_client(card)
         answer = client.complete(system=system, user_prompt=user_compiled)
-
-        # Post-process to enforce first-person
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, body.message)
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-
-        # Update metadata with multi-message info
-        metadata_dict = metadata.model_dump()
-        metadata_dict["is_multi_message"] = (flow_type == 'multi')
-        metadata_dict["message_count"] = len(messages)
-
-        return {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": False,
-            "metadata": metadata_dict,
-            "rewritten": was_rewritten
-        }
+        return _build_llm_response(answer, body.message, persona_name, metadata)
 
     # Tools needed - check if MongoDB tools are included
     mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "").startswith("bitcoin_")]
@@ -252,31 +266,9 @@ def chat(body: ChatBody):
 
     else:
         # Fallback to regular completion
-        client = LC_OllamaClient(
-            base=get_ollama_base(),
-            model=get_persona_model(),
-            temperature=get_persona_temperature_override(card)
-        )
+        client = create_llm_client(card)
         answer = client.complete(system=system, user_prompt=user_compiled)
-        answer, was_rewritten = post_process_first_person(answer, persona_name)
-
-        # PHASE 2: Force-split into multi-message if LLM didn't use <msg> tags
-        answer = force_multi_message_split(answer, body.message)
-
-        # PHASE 2: Parse for multi-message format
-        messages, flow_type = parse_multi_message_response(answer)
-        metadata_dict = metadata.model_dump()
-        metadata_dict["is_multi_message"] = (flow_type == 'multi')
-        metadata_dict["message_count"] = len(messages)
-
-        return {
-            "answer": messages if flow_type == 'multi' else messages[0],
-            "message_flow": flow_type,
-            "message_count": len(messages),
-            "used_search": False,
-            "metadata": metadata_dict,
-            "rewritten": was_rewritten
-        }
+        return _build_llm_response(answer, body.message, persona_name, metadata)
 
 
 @router.post("/sessions/{session_id}/chat")
@@ -310,11 +302,7 @@ def greet(body: GreetBody):
     system = build_system_prompt(body.persona)
     user_prompt = build_greeting_user_prompt(body.persona)
 
-    client = LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
-        temperature=get_persona_temperature_override(card),
-    )
+    client = create_llm_client(card)
     answer = client.complete(system=system, user_prompt=user_prompt)
 
     # Post-process to enforce first-person

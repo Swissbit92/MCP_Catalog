@@ -20,6 +20,7 @@ class ChatBody(BaseModel):
     persona: Optional[str] = None
     history: List[ChatTurn] = Field(default=[], max_length=100)
     message: str = Field(..., max_length=10_000)
+    session_id: Optional[str] = None  # Set by handle_session_chat for wallet flow continuity
 
 
 class GreetBody(BaseModel):
@@ -30,24 +31,6 @@ class GreetBody(BaseModel):
 class SummaryBody(BaseModel):
     """Request body for persona summary endpoint."""
     persona: Optional[str] = None  # label/key; None resolves to first card
-
-
-# ----------------- Legacy Chat Schemas (Deprecated) -----------------
-
-class CreateChatBody(BaseModel):
-    """Legacy: Create a new chat."""
-    persona: str
-    title: str = "New Chat"
-
-
-class RenameChatBody(BaseModel):
-    """Legacy: Rename a chat."""
-    title: str
-
-
-class SelectChatBody(BaseModel):
-    """Legacy: Select a chat."""
-    persona: str
 
 
 # ----------------- Session Schemas -----------------

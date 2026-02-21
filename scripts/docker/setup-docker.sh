@@ -116,7 +116,7 @@ else
 fi
 
 # Check Backend
-if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+if curl -f http://localhost:8000/ready > /dev/null 2>&1; then
     echo -e "${GREEN}✓ ai-companion-api (Backend)${NC}"
 else
     echo -e "${YELLOW}⚠ ai-companion-api (not ready yet)${NC}"
@@ -167,4 +167,16 @@ else
     echo "View logs to troubleshoot:"
     echo "   docker-compose logs -f"
     echo ""
+fi
+
+# Step 6: Run post-startup verification
+echo ""
+echo -e "${BLUE}🔍 Running post-startup verification...${NC}"
+if command -v python3 &> /dev/null; then
+    python3 scripts/docker/verify_startup.py --skip-queries
+elif command -v python &> /dev/null; then
+    python scripts/docker/verify_startup.py --skip-queries
+else
+    echo -e "${YELLOW}⚠ Python not found — skipping automated verification${NC}"
+    echo "   You can run it manually: python scripts/docker/verify_startup.py"
 fi

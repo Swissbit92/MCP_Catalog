@@ -8,22 +8,7 @@ import sqlite3
 import logging
 from typing import Optional
 
-from .config import (
-    get_ollama_base,
-    get_persona_model,
-    is_brave_enabled,
-    get_brave_api_key,
-    get_brave_max_results,
-    get_brave_safesearch,
-    get_brave_search_timeout,
-    get_brave_enabled_rarities,
-    is_mongodb_enabled,
-    get_mongodb_uri,
-    get_mongodb_timeout,
-    get_mongodb_max_response_bytes,
-    get_mongodb_enabled_rarities,
-    get_model_context_window,
-)
+from .config import get_settings
 from .ollama_utils import assert_model_available
 from .mcp_client_stdio import BraveMCPClientStdio
 from .mongodb_mcp_client import MongoDBMCPClient
@@ -35,6 +20,10 @@ from .repositories.summary_repository import SummaryRepository
 from .repositories.emotional_state_repository import EmotionalStateRepository
 from .repositories.user_profile_repository import UserProfileRepository
 from .repositories.seeker_progression_repository import SeekerProgressionRepository
+from .repositories.user_repository import UserRepository
+from .repositories.wallet_registry_repository import WalletRegistryRepository
+from .repositories.wallet_summary_repository import WalletSummaryRepository
+from .repositories.trade_history_repository import TradeHistoryRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .services.mongodb_handlers import MongoDBService
 from .memory_rag import EpisodicMemoryRAG
@@ -69,6 +58,12 @@ _summary_repo: Optional[SummaryRepository] = None
 _emotional_state_repo: Optional[EmotionalStateRepository] = None
 _user_profile_repo: Optional[UserProfileRepository] = None
 _seeker_progression_repo: Optional[SeekerProgressionRepository] = None
+_user_repo: Optional[UserRepository] = None
+
+# Wallet Metadata Layer
+_wallet_registry_repo: Optional[WalletRegistryRepository] = None
+_wallet_summary_repo: Optional[WalletSummaryRepository] = None
+_trade_history_repo: Optional[TradeHistoryRepository] = None
 
 # Memory Management (Phase 2)
 _memory_manager: Optional[MemoryManager] = None
@@ -150,11 +145,33 @@ def get_user_profile_repo() -> UserProfileRepository:
     return _user_profile_repo
 
 
+def get_user_repo() -> UserRepository:
+    """Get the OAuth user repository."""
+    if _user_repo is None:
+        raise RuntimeError("UserRepository not initialized — server startup incomplete")
+    return _user_repo
+
+
 def get_seeker_progression_repo() -> SeekerProgressionRepository:
     """Get the NEPHILIM seeker progression repository."""
     if _seeker_progression_repo is None:
         raise RuntimeError("SeekerProgressionRepository not initialized — server startup incomplete")
     return _seeker_progression_repo
+
+
+def get_wallet_registry_repo() -> Optional[WalletRegistryRepository]:
+    """Get the wallet registry repository."""
+    return _wallet_registry_repo
+
+
+def get_wallet_summary_repo() -> Optional[WalletSummaryRepository]:
+    """Get the wallet summary repository."""
+    return _wallet_summary_repo
+
+
+def get_trade_history_repo() -> Optional[TradeHistoryRepository]:
+    """Get the trade history repository."""
+    return _trade_history_repo
 
 
 def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
@@ -214,15 +231,16 @@ def init_brave_client():
     """Initialize Brave MCP client if enabled."""
     global _brave_client
 
-    if not is_brave_enabled():
+    brave_cfg = get_settings().brave
+    if not brave_cfg.enabled:
         logger.info("Brave MCP is disabled (no API key)")
         return
 
     try:
-        api_key = get_brave_api_key()
-        max_results = get_brave_max_results()
-        safesearch = get_brave_safesearch()
-        timeout = get_brave_search_timeout()
+        api_key = brave_cfg.api_key
+        max_results = brave_cfg.max_results
+        safesearch = brave_cfg.safesearch
+        timeout = brave_cfg.timeout
 
         _brave_client = BraveMCPClientStdio(
             image=os.getenv("BRAVE_MCP_IMAGE", "docker.io/mcp/brave-search"),
@@ -231,7 +249,16 @@ def init_brave_client():
             safesearch=safesearch,
             timeout=timeout
         )
-        logger.info(f"Brave MCP STDIO client initialized (image={_brave_client.image}, max_results={max_results}, timeout={timeout}s)")
+
+        # Verify Docker daemon is reachable (Brave MCP requires Docker)
+        if not _brave_client.health_check():
+            logger.error(
+                "Brave MCP client created but Docker is NOT running. "
+                "Web search will fail until Docker Desktop is started."
+            )
+            _brave_client = None
+        else:
+            logger.info(f"Brave MCP STDIO client initialized (image={_brave_client.image}, max_results={max_results}, timeout={timeout}s)")
     except Exception as e:
         logger.error(f"Failed to initialize Brave MCP client: {e}")
         _brave_client = None
@@ -241,14 +268,15 @@ def init_mongodb_client():
     """Initialize MongoDB MCP client if enabled."""
     global _mongodb_client, _mongodb_cache, _mongodb_service
 
-    if not is_mongodb_enabled():
+    mongo_cfg = get_settings().mongodb
+    if not mongo_cfg.is_enabled:
         logger.info("MongoDB MCP is disabled (no URI or feature flag off)")
         return
 
     try:
-        mongodb_uri = get_mongodb_uri()
-        timeout = get_mongodb_timeout()
-        max_response_bytes = get_mongodb_max_response_bytes()
+        mongodb_uri = mongo_cfg.uri
+        timeout = mongo_cfg.timeout
+        max_response_bytes = mongo_cfg.max_response_bytes
 
         _mongodb_client = MongoDBMCPClient(
             connection_uri=mongodb_uri,
@@ -273,7 +301,9 @@ def init_mongodb_client():
 
 def init_repositories():
     """Initialize database repositories."""
-    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo, _user_profile_repo, _seeker_progression_repo
+    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
+    global _user_profile_repo, _seeker_progression_repo, _user_repo
+    global _wallet_registry_repo, _wallet_summary_repo, _trade_history_repo
 
     _session_repo = SessionRepository(_DB_PATH)
     _message_repo = MessageRepository(_DB_PATH)
@@ -281,14 +311,25 @@ def init_repositories():
     _emotional_state_repo = EmotionalStateRepository(_DB_PATH)
     _user_profile_repo = UserProfileRepository(_DB_PATH)
     _seeker_progression_repo = SeekerProgressionRepository(_DB_PATH)
-    logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression)")
+    _user_repo = UserRepository(_DB_PATH)
+    _user_repo._ensure_tables()
+
+    # Wallet Metadata Layer
+    _wallet_registry_repo = WalletRegistryRepository(_DB_PATH)
+    _wallet_summary_repo = WalletSummaryRepository(_DB_PATH)
+    _trade_history_repo = TradeHistoryRepository(_DB_PATH)
+
+    # Reset all wallet unlock states on startup (wallets are locked until user provides password)
+    _wallet_summary_repo.reset_all_unlock_states()
+
+    logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression + OAuth + Wallet Metadata)")
 
 
 def init_memory_manager():
     """Initialize memory management components."""
     global _memory_manager, _conversation_summarizer
 
-    _memory_manager = MemoryManager(max_tokens=get_model_context_window())
+    _memory_manager = MemoryManager(max_tokens=get_settings().ollama.context_window)
     _conversation_summarizer = ConversationSummarizer()
     logger.info("Memory manager initialized (Phase 2)")
 
@@ -337,33 +378,7 @@ def init_db():
         # Repositories with _ensure_tables() will self-initialize schema
         logger.warning(f"Alembic migration skipped ({e}), repositories will auto-initialize schema")
 
-    # Ensure users table exists for OAuth-authenticated users (idempotent CREATE IF NOT EXISTS)
-    try:
-        conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_sub TEXT UNIQUE NOT NULL,
-                email TEXT,
-                display_name TEXT,
-                avatar_url TEXT,
-                onboarding_completed BOOLEAN DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login TIMESTAMP
-            )
-        """)
-        # Backfill column for existing databases that lack it
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT 0")
-            logger.info("Added onboarding_completed column to users table")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
-        conn.commit()
-        conn.close()
-        logger.info("Users table initialized (OAuth)")
-    except Exception as e:
-        logger.warning(f"Users table initialization failed: {e}")
+    # Users table creation is handled by UserRepository._ensure_tables() in init_repositories()
 
 
 def init_jupiter():
@@ -374,7 +389,7 @@ def init_jupiter():
     from .config import get_settings
     jupiter_cfg = get_settings().jupiter
 
-    if not jupiter_cfg.is_enabled:
+    if not jupiter_cfg.enabled:
         logger.info("Jupiter MCP is disabled (JUPITER_ENABLED=false)")
         return
 
@@ -413,6 +428,8 @@ def init_jupiter():
         _wallet_execution_service = WalletExecutionService(
             jupiter_ops=_jupiter_ops,
             mongo_write_client=_mongo_write_client,
+            trade_history_repo=_trade_history_repo,
+            wallet_summary_repo=_wallet_summary_repo,
         )
         _strategy_service = StrategyService(
             strategies_dir=jupiter_cfg.strategies_dir,
@@ -482,7 +499,7 @@ def initialize_all():
 
     # Check Ollama
     try:
-        assert_model_available(get_ollama_base(), get_persona_model())
+        assert_model_available(get_settings().ollama.base, get_settings().ollama.model)
         logger.info("Model check passed.")
     except Exception as e:
         logger.error(f"Model check failed: {e}")
@@ -516,8 +533,7 @@ def initialize_all():
     try:
         init_brave_client()
         if _brave_client:
-            enabled_rarities = get_brave_enabled_rarities()
-            logger.info(f"Brave MCP enabled for rarities: {', '.join(enabled_rarities)}")
+            logger.info("Brave MCP enabled (web search available)")
         else:
             logger.info("Brave MCP disabled (web search not available)")
     except Exception as e:
@@ -527,8 +543,7 @@ def initialize_all():
     try:
         init_mongodb_client()
         if _mongodb_client:
-            enabled_rarities = get_mongodb_enabled_rarities()
-            logger.info(f"MongoDB MCP enabled for rarities: {', '.join(enabled_rarities)}")
+            logger.info("MongoDB MCP enabled (trading data available)")
         else:
             logger.info("MongoDB MCP disabled (no URI or feature flag off)")
     except Exception as e:

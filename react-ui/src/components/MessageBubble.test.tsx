@@ -110,7 +110,7 @@ describe('MessageBubble', () => {
       />
     );
 
-    expect(screen.getByText('Trading Data (MongoDB MCP)')).toBeInTheDocument();
+    expect(screen.getByText('The Crystal Grid')).toBeInTheDocument();
     expect(screen.getByTitle('Retrieved from cache')).toBeInTheDocument();
   });
 

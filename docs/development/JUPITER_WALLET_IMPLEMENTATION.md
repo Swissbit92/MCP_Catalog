@@ -362,6 +362,21 @@ _wallet_flows: dict[str, dict] = {
 
 ---
 
+## Wallet Metadata Layer (Post-Wave 2)
+
+The wallet system now includes a **Wallet Metadata & AI Context Layer** that gives all companions reliable, deterministic awareness of wallet state. This resolves the original gaps: single-wallet limit, no secret key ceremony, no cross-session context, and MongoDB-only trade history.
+
+**Key additions:**
+- 3-wallet limit (hard backend guardrail, not LLM prompt)
+- 4-step wallet creation with BIP39 mnemonic ceremony (show once, confirm, wipe)
+- Enriched prompt injection: multi-wallet state, slot counts, balances, trade summary, lock status
+- SQLite dual-write for trades (never lost, even without MongoDB)
+- Multi-companion access (any persona with `"solana_wallet"` in `mcp_access` gets the same context)
+
+**Full reference:** [docs/architecture/WALLET_METADATA.md](../architecture/WALLET_METADATA.md)
+
+---
+
 ## Notes & Decisions Log
 
 | Date | Note |
@@ -377,5 +392,6 @@ _wallet_flows: dict[str, dict] = {
 | 2026-02-18 | UI Testing baseline complete. Playwright test `jupiter-wallet-flow.spec.ts` created with 6 test cases (5 passed, 1 skipped pending Wave 2 wiring). Screenshots captured in `react-ui/tests/screenshots/jupiter-*.png`. Key finding: `/chat?persona=nephilim_eeva` URL param not read by Chat.tsx — card-click path required to set PersonaContext. Documented in `docs/development/UI_TESTING_BASELINE.md`. |
 | 2026-02-18 | Wave 2 Wiring complete: scheduler, intent classifier (NEEDS_WALLET), query handler, wallet routes, startup wiring, prompt co-pilot block, nephilim_eeva.json updated |
 | 2026-02-18 | Playwright tests: 6/6 passing. E.E.V.A. responds to all 5 wallet conversation turns. ProposalCards pending JUPITER_ENABLED=true + live wallet. Known: ChatBody missing session_id/user_id for multi-turn wallet creation flow — future wave fix. |
+| 2026-02-21 | **Chat Quality & Anti-Hallucination improvements (Phase 8).** (1) Min-P sampling (0.1) + repeat_penalty (1.1) for E.E.V.A. — reduces hallucination via nucleus/tail filtering. (2) Prompt architecture restructured to XML-tagged sections with bookend pattern (~500 token savings). (3) Anti-hallucination block: no fabricated data, no tool name leaking, Jupiter = DEX, private key refusal. (4) Regex post-processor strips leaked tool names. (5) Wallet state ground-truth injected on every message (not just wallet queries). (6) `session_id` now passed through ChatBody — fixes multi-turn wallet creation flow continuity. (7) 10+ new wallet keywords in intent classifier. (8) 50-question automated test suite (`tests/manual/eeva_chat_test.py`) — 0 errors, 0 misroutes. |
 | 2026-02-18 | E2E test run complete: 3/7 passed. See E2E_TEST_RUN.md. Steps 1, 2, 7 passed. Steps 3, 4, 6 failed due to DB path mismatch between Python seed helper (data/chats.db) and running backend (chats.db root). Step 5 failed due to HTTP 500 on /wallet/balance + non-JSON body parse error. Fix: switch seed mechanism from direct Python DB write to POST /wallet/create REST endpoint. |
 | 2026-02-18 | E2E + Security fixes applied. (1) Switched jupiter-wallet-e2e.spec.ts from Python/SQLite seed to REST-based restSeedWallet()/restCleanWallet() — eliminates DB path mismatch. (2) restGet/restDelete now guard .json() behind r.ok check. (3) query_handler_service.py: wallet deletion via chat blocked by _DELETION_TRIGGERS guard. (4) Pre-flight wallet existence check added to _CREATION_TRIGGERS path — returns 409-style message if user already has a wallet. See EDGE_CASE_TEST_RESULTS.md for full security findings. |

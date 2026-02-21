@@ -88,6 +88,11 @@
   --text-3xl: 1.875rem;   /* 30px */
   --text-4xl: 2.25rem;    /* 36px */
   --text-5xl: 3rem;       /* 48px */
+
+  /* Glassmorphism Constants */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: rgba(0, 0, 0, 0.3);
 }
 
 body {
@@ -125,13 +130,6 @@ code, pre, .font-mono {
 /* ============================================ */
 /* Option 6: Glassmorphic + Rarity Hybrid System */
 /* ============================================ */
-
-/* Glassmorphism Constants (rarity-independent) */
-:root {
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: rgba(0, 0, 0, 0.3);
-}
 
 /* Body transition for smooth rarity switching */
 body {
@@ -556,6 +554,13 @@ body.nephilim-aurora {
 
 .nephilim-animate-flicker {
   animation: nephilim-flicker 4s ease-in-out infinite;
+}
+
+/* ProtectedRoute loading spinner keyframes */
+@keyframes pr-orb { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+@keyframes pr-core-p {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 22px rgba(0, 191, 255, .6); }
+  50% { transform: scale(1.18); box-shadow: 0 0 44px rgba(0, 191, 255, .9); }
 }
 
 .nephilim-animate-float {

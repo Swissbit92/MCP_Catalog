@@ -34,7 +34,7 @@ describe('SessionList', () => {
       coordinator_label: 'Eeva',
       logo: 'eeva_logo.png',
       emoji: '🤖',
-      allowed_mcp: ['chat'],
+      mcp_access: ['chat'],
       lore: ['Bitcoin expert'],
       voice: {},
       do: ['Be helpful'],
@@ -59,7 +59,7 @@ describe('SessionList', () => {
       coordinator_label: 'Frieren',
       logo: 'frieren_logo.png',
       emoji: '🧙',
-      allowed_mcp: ['chat'],
+      mcp_access: ['chat'],
       lore: ['Elf mage'],
       voice: {},
       do: ['Be wise'],
@@ -102,6 +102,7 @@ describe('SessionList', () => {
     jest.clearAllMocks();
     mockFetchPersonas.mockResolvedValue(mockPersonas);
     mockUsePersona.mockReturnValue({
+      personas: mockPersonas,
       sessions: mockSessions,
       currentSession: mockSessions[0],
       deleteSessionById: mockDeleteSessionById,
@@ -127,6 +128,7 @@ describe('SessionList', () => {
 
   it('shows empty state when no sessions', async () => {
     mockUsePersona.mockReturnValue({
+      personas: mockPersonas,
       sessions: [],
       currentSession: null,
       deleteSessionById: mockDeleteSessionById,
@@ -259,15 +261,6 @@ describe('SessionList', () => {
     expect(mockOnSessionSelect).not.toHaveBeenCalled();
   });
 
-  it('displays fallback avatars when personas are not loaded', async () => {
-    render(<SessionList onSessionSelect={mockOnSessionSelect} />);
-
-    await waitFor(() => {
-      const fallbackIcons = screen.getAllByText('🎭');
-      expect(fallbackIcons).toHaveLength(2);
-    });
-  });
-
   it('applies correct rarity theming to sessions', async () => {
     // Mock personas to load properly for this test
     mockFetchPersonas.mockResolvedValue(mockPersonas);
@@ -332,6 +325,7 @@ describe('SessionList', () => {
   it('applies dynamic background animations based on persona rarity', async () => {
     // Test with legendary persona
     mockUsePersona.mockReturnValue({
+      personas: mockPersonas,
       sessions: mockSessions,
       currentSession: mockSessions[0],
       deleteSessionById: mockDeleteSessionById,

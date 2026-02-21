@@ -18,15 +18,23 @@ class WalletExecutionService:
     - Scheduler detects a strategy signal (autonomous)
 
     Never called directly from chat handler.
+
+    Dual-write pattern: trades are written to both MongoDB (if configured)
+    and SQLite wallet_trades_local (always). Activity summary is updated
+    on every trade.
     """
 
     def __init__(
         self,
         jupiter_ops: Any,  # JupiterOperations
         mongo_write_client: Any = None,  # pymongo client, optional
+        trade_history_repo: Any = None,  # TradeHistoryRepository, optional
+        wallet_summary_repo: Any = None,  # WalletSummaryRepository, optional
     ):
         self.jupiter_ops = jupiter_ops
         self.mongo_write = mongo_write_client
+        self.trade_history_repo = trade_history_repo
+        self.wallet_summary_repo = wallet_summary_repo
 
     async def execute_swap(
         self,
@@ -124,6 +132,12 @@ class WalletExecutionService:
         # Write to MongoDB
         await self._persist_trade(trade_doc)
 
+        # Dual-write to SQLite (local fallback)
+        await self._persist_trade_local(trade_doc)
+
+        # Update activity summary
+        await self._update_summary(trade_doc)
+
         logger.info(f"[WalletExecution] Trade complete: tx={tx_signature}")
         return trade_doc
 
@@ -140,6 +154,64 @@ class WalletExecutionService:
         except Exception as e:
             logger.error(f"[WalletExecution] MongoDB write failed: {e}")
             # Non-fatal: trade executed, just not recorded
+
+    async def _persist_trade_local(self, trade_doc: dict) -> None:
+        """Write trade to SQLite wallet_trades_local table (dual-write fallback)."""
+        if self.trade_history_repo is None:
+            logger.debug("[WalletExecution] No trade history repo — skipping local persistence")
+            return
+        try:
+            # Resolve wallet_id from registry by looking up the user's active wallet address
+            wallet_id = ""
+            try:
+                from ..startup import get_wallet_registry_repo
+                registry_repo = get_wallet_registry_repo()
+                if registry_repo:
+                    wallets = registry_repo.get_active_wallets(trade_doc.get("user_id", ""))
+                    if wallets:
+                        wallet_id = wallets[0].get("wallet_id", "")
+            except Exception:
+                pass
+
+            self.trade_history_repo.record_trade(
+                user_id=trade_doc.get("user_id", ""),
+                wallet_id=wallet_id,
+                pair=trade_doc.get("pair", ""),
+                action=trade_doc.get("action", ""),
+                amount_in=trade_doc.get("amount_in", 0.0),
+                amount_in_token=trade_doc.get("amount_in_token", ""),
+                amount_out_token=trade_doc.get("amount_out_token", ""),
+                timestamp=trade_doc.get("timestamp", ""),
+                tx_signature=trade_doc.get("tx_signature"),
+                amount_out=trade_doc.get("amount_out"),
+                slippage_bps=trade_doc.get("slippage_bps"),
+                execution_mode=trade_doc.get("execution_mode"),
+                strategy_id=trade_doc.get("strategy_id"),
+            )
+        except Exception as e:
+            logger.error(f"[WalletExecution] SQLite trade write failed: {e}")
+
+    async def _update_summary(self, trade_doc: dict) -> None:
+        """Update wallet activity summary after a trade."""
+        if self.wallet_summary_repo is None:
+            return
+        try:
+            # Estimate USDC volume
+            volume = 0.0
+            if trade_doc.get("amount_in_token", "").upper() in ("USDC", "USDT"):
+                volume = trade_doc.get("amount_in", 0.0)
+            elif trade_doc.get("amount_out_token", "").upper() in ("USDC", "USDT"):
+                volume = trade_doc.get("amount_out", 0.0) or 0.0
+
+            self.wallet_summary_repo.increment_trade(
+                user_id=trade_doc.get("user_id", ""),
+                volume_usdc=volume,
+                pair=trade_doc.get("pair", ""),
+                action=trade_doc.get("action", ""),
+                timestamp=trade_doc.get("timestamp", ""),
+            )
+        except Exception as e:
+            logger.error(f"[WalletExecution] Summary update failed: {e}")
 
     async def open_position(
         self,

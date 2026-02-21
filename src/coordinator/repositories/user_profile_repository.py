@@ -36,26 +36,18 @@ class UserProfileRepository(BaseRepository):
         profile = UserProfile(user_id)
         now = datetime.utcnow().isoformat()
 
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        try:
+            self._execute("""
+                INSERT INTO user_profiles (user_id, created_at, updated_at, profile_data)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, now, now, profile.to_json()))
 
-            try:
-                cur.execute("""
-                    INSERT INTO user_profiles (user_id, created_at, updated_at, profile_data)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, now, now, profile.to_json()))
+            logger.info(f"[UserProfileRepo] Created profile for user: {user_id}")
 
-                conn.commit()
-                logger.info(f"[UserProfileRepo] Created profile for user: {user_id}")
-
-            except sqlite3.IntegrityError:
-                logger.warning(f"[UserProfileRepo] Profile already exists for user: {user_id}")
-                # Return existing profile
-                return self.get_profile(user_id)
-            finally:
-                conn.close()
+        except sqlite3.IntegrityError:
+            logger.warning(f"[UserProfileRepo] Profile already exists for user: {user_id}")
+            # Return existing profile
+            return self.get_profile(user_id)
 
         return profile
 
@@ -68,26 +60,15 @@ class UserProfileRepository(BaseRepository):
         Returns:
             UserProfile instance or None if not found
         """
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        row = self._fetchone_dict("""
+            SELECT profile_data FROM user_profiles WHERE user_id = ?
+        """, (user_id,))
 
-            try:
-                cur.execute("""
-                    SELECT profile_data FROM user_profiles WHERE user_id = ?
-                """, (user_id,))
-
-                row = cur.fetchone()
-
-                if row:
-                    profile = UserProfile.from_json(user_id, row["profile_data"])
-                    return profile
-                else:
-                    return None
-
-            finally:
-                conn.close()
+        if row:
+            profile = UserProfile.from_json(user_id, row["profile_data"])
+            return profile
+        else:
+            return None
 
     def update_profile(self, profile: UserProfile) -> None:
         """Update an existing user profile.
@@ -97,26 +78,16 @@ class UserProfileRepository(BaseRepository):
         """
         now = datetime.utcnow().isoformat()
 
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        cur = self._execute("""
+            UPDATE user_profiles
+            SET profile_data = ?, updated_at = ?
+            WHERE user_id = ?
+        """, (profile.to_json(), now, profile.user_id))
 
-            try:
-                cur.execute("""
-                    UPDATE user_profiles
-                    SET profile_data = ?, updated_at = ?
-                    WHERE user_id = ?
-                """, (profile.to_json(), now, profile.user_id))
-
-                if cur.rowcount == 0:
-                    logger.warning(f"[UserProfileRepo] Profile not found for update: {profile.user_id}")
-                else:
-                    conn.commit()
-                    logger.debug(f"[UserProfileRepo] Updated profile for user: {profile.user_id}")
-
-            finally:
-                conn.close()
+        if cur.rowcount == 0:
+            logger.warning(f"[UserProfileRepo] Profile not found for update: {profile.user_id}")
+        else:
+            logger.debug(f"[UserProfileRepo] Updated profile for user: {profile.user_id}")
 
     def delete_profile(self, user_id: str) -> bool:
         """Delete a user profile.
@@ -129,25 +100,15 @@ class UserProfileRepository(BaseRepository):
         Returns:
             True if deleted, False if not found
         """
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        cur = self._execute("DELETE FROM user_profiles WHERE user_id = ?", (user_id,))
+        deleted = cur.rowcount > 0
 
-            try:
-                cur.execute("DELETE FROM user_profiles WHERE user_id = ?", (user_id,))
-                deleted = cur.rowcount > 0
-                conn.commit()
+        if deleted:
+            logger.info(f"[UserProfileRepo] Deleted profile for user: {user_id}")
+        else:
+            logger.warning(f"[UserProfileRepo] Profile not found for deletion: {user_id}")
 
-                if deleted:
-                    logger.info(f"[UserProfileRepo] Deleted profile for user: {user_id}")
-                else:
-                    logger.warning(f"[UserProfileRepo] Profile not found for deletion: {user_id}")
-
-                return deleted
-
-            finally:
-                conn.close()
+        return deleted
 
     def get_or_create_profile(self, user_id: str) -> UserProfile:
         """Get existing profile or create new one if doesn't exist.
@@ -171,34 +132,24 @@ class UserProfileRepository(BaseRepository):
         Returns:
             List of profile summary dicts
         """
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        rows = self._fetchall_list("""
+            SELECT user_id, created_at, updated_at, profile_data
+            FROM user_profiles
+            ORDER BY updated_at DESC
+        """)
 
-            try:
-                cur.execute("""
-                    SELECT user_id, created_at, updated_at, profile_data
-                    FROM user_profiles
-                    ORDER BY updated_at DESC
-                """)
+        profiles = []
 
-                rows = cur.fetchall()
-                profiles = []
+        for row in rows:
+            profile = UserProfile.from_json(row["user_id"], row["profile_data"])
+            stats = profile.get_stats()
+            stats.update({
+                "created_at": row["created_at"],
+                "db_updated_at": row["updated_at"]
+            })
+            profiles.append(stats)
 
-                for row in rows:
-                    profile = UserProfile.from_json(row["user_id"], row["profile_data"])
-                    stats = profile.get_stats()
-                    stats.update({
-                        "created_at": row["created_at"],
-                        "db_updated_at": row["updated_at"]
-                    })
-                    profiles.append(stats)
-
-                return profiles
-
-            finally:
-                conn.close()
+        return profiles
 
     def link_session_to_user(self, user_id: str, session_id: str) -> None:
         """Link a chat session to a user profile.
@@ -209,25 +160,15 @@ class UserProfileRepository(BaseRepository):
         """
         now = datetime.utcnow().isoformat()
 
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        cur = self._execute("""
+            INSERT OR IGNORE INTO user_sessions (user_id, session_id, created_at)
+            VALUES (?, ?, ?)
+        """, (user_id, session_id, now))
 
-            try:
-                cur.execute("""
-                    INSERT OR IGNORE INTO user_sessions (user_id, session_id, created_at)
-                    VALUES (?, ?, ?)
-                """, (user_id, session_id, now))
-
-                if cur.rowcount > 0:
-                    conn.commit()
-                    logger.debug(f"[UserProfileRepo] Linked session {session_id} to user {user_id}")
-                else:
-                    logger.debug(f"[UserProfileRepo] Session {session_id} already linked to user {user_id}")
-
-            finally:
-                conn.close()
+        if cur.rowcount > 0:
+            logger.debug(f"[UserProfileRepo] Linked session {session_id} to user {user_id}")
+        else:
+            logger.debug(f"[UserProfileRepo] Session {session_id} already linked to user {user_id}")
 
     def get_user_sessions(self, user_id: str) -> List[str]:
         """Get all session IDs associated with a user.
@@ -238,23 +179,13 @@ class UserProfileRepository(BaseRepository):
         Returns:
             List of session IDs
         """
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        rows = self._fetchall_list("""
+            SELECT session_id FROM user_sessions
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        """, (user_id,))
 
-            try:
-                cur.execute("""
-                    SELECT session_id FROM user_sessions
-                    WHERE user_id = ?
-                    ORDER BY created_at DESC
-                """, (user_id,))
-
-                rows = cur.fetchall()
-                return [row["session_id"] for row in rows]
-
-            finally:
-                conn.close()
+        return [row["session_id"] for row in rows]
 
     def get_session_user(self, session_id: str) -> Optional[str]:
         """Get the user ID associated with a session.
@@ -265,21 +196,11 @@ class UserProfileRepository(BaseRepository):
         Returns:
             User ID or None if not linked
         """
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        row = self._fetchone_dict("""
+            SELECT user_id FROM user_sessions WHERE session_id = ?
+        """, (session_id,))
 
-            try:
-                cur.execute("""
-                    SELECT user_id FROM user_sessions WHERE session_id = ?
-                """, (session_id,))
-
-                row = cur.fetchone()
-                return row["user_id"] if row else None
-
-            finally:
-                conn.close()
+        return row["user_id"] if row else None
 
     def unlink_session_from_user(self, user_id: str, session_id: str) -> bool:
         """Unlink a session from a user.
@@ -291,27 +212,17 @@ class UserProfileRepository(BaseRepository):
         Returns:
             True if unlinked, False if association didn't exist
         """
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        cur = self._execute("""
+            DELETE FROM user_sessions
+            WHERE user_id = ? AND session_id = ?
+        """, (user_id, session_id))
 
-            try:
-                cur.execute("""
-                    DELETE FROM user_sessions
-                    WHERE user_id = ? AND session_id = ?
-                """, (user_id, session_id))
+        deleted = cur.rowcount > 0
 
-                deleted = cur.rowcount > 0
-                conn.commit()
+        if deleted:
+            logger.debug(f"[UserProfileRepo] Unlinked session {session_id} from user {user_id}")
 
-                if deleted:
-                    logger.debug(f"[UserProfileRepo] Unlinked session {session_id} from user {user_id}")
-
-                return deleted
-
-            finally:
-                conn.close()
+        return deleted
 
     def get_user_by_name(self, name: str) -> Optional[str]:
         """Find user ID by name (fuzzy search).
@@ -326,25 +237,14 @@ class UserProfileRepository(BaseRepository):
         """
         name_lower = name.lower()
 
-        with self._lock:
-            conn = sqlite3.connect(self._db_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+        rows = self._fetchall_list("""
+            SELECT user_id, profile_data FROM user_profiles
+        """)
 
-            try:
-                cur.execute("""
-                    SELECT user_id, profile_data FROM user_profiles
-                """)
+        for row in rows:
+            profile = UserProfile.from_json(row["user_id"], row["profile_data"])
+            if profile.data.get("name"):
+                if profile.data["name"].lower() == name_lower:
+                    return row["user_id"]
 
-                rows = cur.fetchall()
-
-                for row in rows:
-                    profile = UserProfile.from_json(row["user_id"], row["profile_data"])
-                    if profile.data.get("name"):
-                        if profile.data["name"].lower() == name_lower:
-                            return row["user_id"]
-
-                return None
-
-            finally:
-                conn.close()
+        return None

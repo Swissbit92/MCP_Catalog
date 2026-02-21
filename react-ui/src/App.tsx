@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import NephilimHome from './pages/NephilimHome'
+import NephilimOnboarding from './pages/NephilimOnboarding'
 import CharacterCardV2Showcase from './pages/CharacterCardV2Showcase'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
@@ -16,7 +17,7 @@ function App() {
   const { selectedPersona } = usePersona()
   const location = useLocation()
 
-  // Apply rarity-based theme to body element
+  // Apply Celestial Order theme to body element
   // NEPHILIM mode is always active
   useEffect(() => {
     const classes: string[] = []
@@ -54,6 +55,11 @@ function App() {
             <Routes>
               <Route path="/" element={<NephilimHome />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/onboarding" element={
+                <ProtectedRoute>
+                  <NephilimOnboarding />
+                </ProtectedRoute>
+              } />
               <Route path="/select" element={
                 <ProtectedRoute>
                   <CharacterCardV2Showcase />
@@ -74,6 +80,7 @@ function App() {
                   <Dashboard />
                 </ProtectedRoute>
               } />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </div>

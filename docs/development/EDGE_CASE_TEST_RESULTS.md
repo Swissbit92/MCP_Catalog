@@ -267,3 +267,22 @@ No trade execution bypass was achieved. The ProposalCard HITL mechanism held und
 `react-ui/tests/jupiter-wallet-edge-cases.spec.ts`
 
 Screenshots saved to: `react-ui/tests/screenshots/edge-*.png`
+
+---
+
+## Related: Automated E.E.V.A. Quality Test Suite (Feb 21, 2026)
+
+A separate 50-question automated quality test suite was created to verify E.E.V.A.'s chat behavior across 11 categories, including anti-hallucination stress tests, wallet flow continuity, follow-up detection, and Jupiter DEX disambiguation. This suite tests the **conversational layer** (via the session-based chat API) rather than the REST/Playwright layer tested here.
+
+**Files:**
+- `tests/manual/eeva_chat_test.py` — Test runner (50 questions, 11 categories)
+- `tests/manual/eeva_test_results.json` — Latest results
+
+**Key improvements validated:**
+- Session_id now passed through ChatBody (fixes wallet flow continuity — addresses Scenario 1 and 2 root causes)
+- Password length validation added to conversational flow (addresses Scenario 3)
+- Wallet deletion requires confirmation card (addresses Scenario 6)
+- Anti-hallucination rules prevent fabricated addresses, tool name leaking, and Jupiter/Jupyter confusion
+- Ground-truth wallet state injected on every message for wallet-capable personas
+
+See `docs/development/TESTING_GUIDE.md` for full documentation of the quality test suite.

@@ -12,6 +12,8 @@ from typing import List, Dict, Optional, Any, TYPE_CHECKING
 from datetime import datetime, timedelta
 import logging
 
+from .llm_client import estimate_tokens
+
 if TYPE_CHECKING:
     from .llm_client import LC_OllamaClient
 
@@ -215,7 +217,7 @@ class MemoryManager:
         scored_messages = []
         for i, msg in enumerate(messages):
             score = self.scorer.score_message(msg, i, len(messages))
-            tokens = self._estimate_tokens(msg["content"])
+            tokens = estimate_tokens(msg["content"])
             scored_messages.append({
                 "message": msg,
                 "score": score,
@@ -347,20 +349,6 @@ class MemoryManager:
 
         return selected
 
-    def _estimate_tokens(self, text: str) -> int:
-        """Estimate token count for text.
-
-        Uses simple heuristic: 1 token ≈ 4 characters.
-        This matches the estimate_tokens() function in llm_client.py.
-
-        Args:
-            text: Text to estimate tokens for
-
-        Returns:
-            Estimated token count
-        """
-        return max(1, len(text) // 4)
-
 
 class ConversationSummarizer:
     """Generate compressed summaries of conversation segments.
@@ -468,11 +456,11 @@ Be concise and factual. Prioritize names, numbers, and specific facts."""
 
             # Parse summary into components
             parsed = self._parse_summary(summary)
-            token_count = self._estimate_tokens(summary)
+            token_count = estimate_tokens(summary)
 
             logger.info(
                 f"[Summarizer] Compressed {len(messages)} messages "
-                f"({self._estimate_tokens(conversation_text)} tokens) "
+                f"({estimate_tokens(conversation_text)} tokens) "
                 f"into {token_count} token summary"
             )
 
@@ -558,13 +546,3 @@ Be concise and factual. Prioritize names, numbers, and specific facts."""
 
         return result
 
-    def _estimate_tokens(self, text: str) -> int:
-        """Estimate token count for text.
-
-        Args:
-            text: Text to estimate
-
-        Returns:
-            Estimated token count
-        """
-        return max(1, len(text) // 4)

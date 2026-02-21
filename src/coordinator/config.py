@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import os
 import logging
-import warnings
 from functools import lru_cache
 from typing import Optional, Set
 
@@ -21,6 +20,13 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_rarities(csv: str) -> Set[str]:
+    """Parse a comma-separated rarity string into a lowercase set."""
+    if not csv.strip():
+        return set()
+    return {r.strip().lower() for r in csv.split(",") if r.strip()}
 
 
 class OllamaSettings(BaseSettings):
@@ -42,6 +48,14 @@ class OllamaSettings(BaseSettings):
         le=2.0,
         description="Default sampling temperature (0.0-2.0)",
         alias="PERSONA_TEMPERATURE"
+    )
+    min_p: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Default Min-P sampling threshold (0.0 = disabled). "
+                    "Dynamically filters low-probability tokens based on top token confidence.",
+        alias="PERSONA_MIN_P"
     )
     context_window: int = Field(
         default=4096,
@@ -124,9 +138,7 @@ class BraveSettings(BaseSettings):
     @property
     def enabled_rarities_set(self) -> Set[str]:
         """Get enabled rarities as a set."""
-        if not self.enabled_rarities.strip():
-            return set()
-        return {r.strip().lower() for r in self.enabled_rarities.split(",") if r.strip()}
+        return _parse_rarities(self.enabled_rarities)
 
     @field_validator('safesearch')
     @classmethod
@@ -243,9 +255,7 @@ class MongoDBSettings(BaseSettings):
     @property
     def enabled_rarities_set(self) -> Set[str]:
         """Get enabled rarities as a set."""
-        if not self.enabled_rarities.strip():
-            return set()
-        return {r.strip().lower() for r in self.enabled_rarities.split(",") if r.strip()}
+        return _parse_rarities(self.enabled_rarities)
 
     def get_cache_ttl(self, tool_name: str) -> int:
         """Get cache TTL for a specific tool."""
@@ -307,10 +317,6 @@ class JupiterSettings(BaseSettings):
         description="MongoDB URI for writing trade history",
         alias="MONGODB_WRITE_URI"
     )
-
-    @property
-    def is_enabled(self) -> bool:
-        return self.enabled
 
     model_config = {
         "env_file": ".env",
@@ -497,192 +503,10 @@ settings = get_settings()
 
 
 # ============================================================================
-# BACKWARD COMPATIBILITY FUNCTIONS (DEPRECATED)
-# These functions maintain compatibility with existing code that uses the
-# function-based API. They delegate to the Pydantic settings object.
-#
-# DEPRECATION NOTICE (Phase 1 Quick Wins - Dec 2025):
-# These getter functions are deprecated. Instead of calling get_ollama_base(),
-# use get_settings().ollama.base directly. This provides better type safety,
-# IDE autocomplete, and reduces code complexity.
-#
-# Migration example:
-#   OLD: base = get_ollama_base()
-#   NEW: base = get_settings().ollama.base
-#
-# All functions will be removed in a future version.
+# HELPER FUNCTIONS
 # ============================================================================
 
 
-def _deprecated_config_getter(func):
-    """Decorator to mark config getter functions as deprecated."""
-    def wrapper(*args, **kwargs):
-        warnings.warn(
-            f"{func.__name__}() is deprecated. Use get_settings() with structured "
-            f"config objects instead. See config.py for migration examples.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__
-    wrapper.__doc__ = func.__doc__
-    return wrapper
-
-
-def _required(name: str) -> str:
-    """Legacy helper for required env vars (kept for compatibility)."""
-    val = os.getenv(name, "").strip()
-    if not val:
-        raise RuntimeError(
-            f"Missing required environment variable: {name}\n"
-            f"Set it in your .env (e.g. {name}=value)"
-        )
-    return val
-
-
-@_deprecated_config_getter
-def get_ollama_base() -> str:
-    """Get Ollama base URL."""
-    return settings.ollama.base
-
-
-@_deprecated_config_getter
-def get_persona_model() -> str:
-    """Get default persona model."""
-    return settings.ollama.model
-
-
-@_deprecated_config_getter
-def get_persona_dir() -> str:
-    """Get persona directory path."""
-    return settings.persona_dir
-
-
-@_deprecated_config_getter
-def get_persona_temperature() -> float:
-    """Get default sampling temperature."""
-    return settings.ollama.temperature
-
-
-@_deprecated_config_getter
-def get_model_context_window() -> int:
-    """Get model context window size in tokens."""
-    return settings.ollama.context_window
-
-
-# Brave MCP Configuration
-@_deprecated_config_getter
-def get_brave_api_key() -> str:
-    """Get Brave API key."""
-    return settings.brave.api_key
-
-
-@_deprecated_config_getter
-def get_brave_max_results() -> int:
-    """Get max results for Brave search."""
-    return settings.brave.max_results
-
-
-@_deprecated_config_getter
-def get_brave_safesearch() -> str:
-    """Get Brave safesearch setting."""
-    return settings.brave.safesearch
-
-
-@_deprecated_config_getter
-def get_brave_search_timeout() -> int:
-    """Get Brave search timeout in seconds."""
-    return settings.brave.timeout
-
-
-@_deprecated_config_getter
-def get_brave_enabled_rarities() -> set:
-    """Get set of persona rarities with web search enabled."""
-    return settings.brave.enabled_rarities_set
-
-
-@_deprecated_config_getter
-def is_brave_enabled() -> bool:
-    """Check if Brave MCP is enabled."""
-    return settings.brave.enabled
-
-
-# MongoDB MCP Configuration
-@_deprecated_config_getter
-def get_mongodb_uri() -> str:
-    """Get MongoDB connection URI."""
-    return settings.mongodb.uri
-
-
-@_deprecated_config_getter
-def get_mongodb_timeout() -> int:
-    """Get MongoDB operation timeout in seconds."""
-    return settings.mongodb.timeout
-
-
-@_deprecated_config_getter
-def get_mongodb_max_response_bytes() -> int:
-    """Get max response size in bytes."""
-    return settings.mongodb.max_response_bytes
-
-
-@_deprecated_config_getter
-def get_mongodb_enabled_rarities() -> set:
-    """Get set of persona rarities with MongoDB access enabled."""
-    return settings.mongodb.enabled_rarities_set
-
-
-@_deprecated_config_getter
-def is_mongodb_enabled() -> bool:
-    """Check if MongoDB MCP is enabled."""
-    return settings.mongodb.is_enabled
-
-
-@_deprecated_config_getter
-def get_mongodb_cache_ttl(tool_name: str) -> int:
-    """Get cache TTL for a specific MongoDB tool."""
-    return settings.mongodb.get_cache_ttl(tool_name)
-
-
-# Memory & RAG Configuration
-@_deprecated_config_getter
-def get_embedding_model() -> str:
-    """Get Ollama embedding model for RAG semantic search."""
-    return settings.memory.embedding_model
-
-
-@_deprecated_config_getter
-def get_summarization_interval() -> int:
-    """Get number of messages before triggering auto-summarization."""
-    return settings.memory.summarization_interval
-
-
-@_deprecated_config_getter
-def get_fact_extraction_interval() -> int:
-    """Get number of messages before triggering fact extraction."""
-    return settings.memory.fact_extraction_interval
-
-
-# Ollama Temperature Overrides
-@_deprecated_config_getter
-def get_temp_rewrite() -> float:
-    """Get temperature for first-person rewrites."""
-    return settings.ollama.temp_rewrite
-
-
-@_deprecated_config_getter
-def get_temp_summarization() -> float:
-    """Get temperature for conversation summarization."""
-    return settings.ollama.temp_summarization
-
-
-@_deprecated_config_getter
-def get_temp_fact_extraction() -> float:
-    """Get temperature for fact extraction."""
-    return settings.ollama.temp_fact_extraction
-
-
-@_deprecated_config_getter
 def get_persona_temperature_override(persona_card: dict) -> float:
     """Get persona-specific temperature or fallback to global default.
 
@@ -691,18 +515,10 @@ def get_persona_temperature_override(persona_card: dict) -> float:
 
     Returns:
         Per-persona temperature if defined, otherwise global PERSONA_TEMPERATURE
-
-    Example:
-        >>> card = {"model_preferences": {"temperature": 0.7}}
-        >>> get_persona_temperature_override(card)
-        0.7
-        >>> get_persona_temperature_override({})  # Uses global default
-        0.9
     """
     model_prefs = persona_card.get("model_preferences", {})
     if isinstance(model_prefs, dict) and "temperature" in model_prefs:
         temp = model_prefs["temperature"]
-        # Validate it's a reasonable number
         if isinstance(temp, (int, float)) and 0.0 <= temp <= 2.0:
             return float(temp)
         else:
@@ -711,5 +527,47 @@ def get_persona_temperature_override(persona_card: dict) -> float:
                 f"Using global default {settings.ollama.temperature}"
             )
 
-    # Fallback to global setting
     return settings.ollama.temperature
+
+
+def get_persona_sampling_overrides(persona_card: dict) -> dict:
+    """Get all sampling parameter overrides from a persona card.
+
+    Reads model_preferences from the persona JSON and returns a dict of
+    sampling params (temperature, min_p, repeat_penalty) that should be
+    passed to the LLM client. Only includes values explicitly set in the
+    persona card; missing values are omitted so callers can apply their
+    own defaults.
+
+    Args:
+        persona_card: Persona dictionary from JSON
+
+    Returns:
+        Dict with keys like 'temperature', 'min_p', 'repeat_penalty' (only present if set)
+    """
+    model_prefs = persona_card.get("model_preferences", {})
+    if not isinstance(model_prefs, dict):
+        return {"temperature": settings.ollama.temperature}
+
+    overrides: dict = {}
+
+    # Temperature
+    temp = model_prefs.get("temperature")
+    if isinstance(temp, (int, float)) and 0.0 <= temp <= 2.0:
+        overrides["temperature"] = float(temp)
+    else:
+        overrides["temperature"] = settings.ollama.temperature
+
+    # Min-P
+    min_p = model_prefs.get("min_p")
+    if isinstance(min_p, (int, float)) and 0.0 < min_p <= 1.0:
+        overrides["min_p"] = float(min_p)
+    elif settings.ollama.min_p > 0.0:
+        overrides["min_p"] = settings.ollama.min_p
+
+    # Repeat penalty
+    repeat_penalty = model_prefs.get("repeat_penalty")
+    if isinstance(repeat_penalty, (int, float)) and 1.0 <= repeat_penalty <= 2.0:
+        overrides["repeat_penalty"] = float(repeat_penalty)
+
+    return overrides

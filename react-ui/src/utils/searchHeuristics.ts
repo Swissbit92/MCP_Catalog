@@ -28,7 +28,7 @@ const NO_SEARCH_KEYWORDS = [
 const SEARCH_KEYWORDS = [
   // Current/recent information
   'current', 'latest', 'recent', 'today', 'now', 'this week', 'this month',
-  '2024', '2025', 'breaking', 'update', 'news',
+  String(new Date().getFullYear()), String(new Date().getFullYear() - 1), 'breaking', 'update', 'news',
 
   // Market/price data
   'price', 'cost', 'worth', 'value', 'stock market', 'nasdaq', 'dow jones',
@@ -60,6 +60,41 @@ const SEARCH_KEYWORDS = [
   'market watch', 'crypto watch'
 ];
 
+// Wallet-specific keywords (mirrors backend intent_classifier.py WALLET_KEYWORDS)
+const WALLET_KEYWORDS = [
+  // Direct commands
+  'swap ', 'swap usdc', 'swap sol', 'buy sol', 'sell sol',
+  'buy usdc', 'exchange usdc', 'exchange sol',
+  // Portfolio queries
+  'my balance', 'my wallet', 'my portfolio', 'my holdings',
+  'how much sol', "what's in my wallet", 'wallet balance',
+  // Advisory conversations
+  'should i buy', 'good time to buy', 'good time to sell',
+  'dca into', 'dollar cost average', 'accumulate sol',
+  'is this a good time', 'what do you think about buying',
+  // Strategy management
+  'rsi strategy', 'dca strategy', 'set up a strategy',
+  'automate my', 'start trading', 'stop trading',
+  'pause strategy', 'pause my strategy', 'stop my strategy',
+  'cancel strategy', 'resume strategy',
+  // Performance review
+  'trade history', 'my trades', 'strategy performance',
+  'how did my strategy', 'how are my trades',
+  'p&l', 'profit and loss', 'trading returns',
+  // Wallet management
+  'create wallet', 'new wallet', 'solana wallet',
+  'my address', 'public address', 'private key',
+  'create a wallet', 'set up a wallet',
+  // Quote/price
+  'solana quote', 'jupiter quote', 'swap quote',
+  'get a quote', 'check rsi', 'sol rsi',
+  // Common misspellings / aliases
+  'jupyter wallet', 'jupyter quote', 'jupyter swap',
+  'jupter wallet', 'jupter quote',
+  'my sol', 'my usdc', 'my tokens',
+  'wallet address', 'fund my wallet',
+];
+
 // MongoDB-specific keywords (epic/legendary personas only)
 const MONGODB_KEYWORDS = [
   'bitcoin price', 'btc price', 'price of bitcoin',
@@ -73,7 +108,7 @@ export interface SearchPrediction {
   confidence: 'high' | 'medium' | 'low';
   reason: string;
   keywords_matched: string[];
-  toolType: 'brave' | 'mongodb' | 'none';
+  toolType: 'brave' | 'mongodb' | 'wallet' | 'none';
 }
 
 /**
@@ -81,13 +116,25 @@ export interface SearchPrediction {
  *
  * @param query - User's message
  * @param personaRarity - Persona rarity (common/rare/epic/legendary)
+ * @param mcpAccess - Persona's mcp_access array (e.g. ['brave_search', 'solana_wallet'])
  * @returns Prediction object with confidence level
  */
-export function predictWebSearch(query: string, personaRarity?: string): SearchPrediction {
+export function predictWebSearch(query: string, personaRarity?: string, mcpAccess?: string[]): SearchPrediction {
   const queryLower = query.toLowerCase();
   const matchedSearchKeywords: string[] = [];
   const matchedNoSearchKeywords: string[] = [];
+  const matchedWalletKeywords: string[] = [];
   const matchedMongoKeywords: string[] = [];
+
+  // Check for wallet keywords (requires solana_wallet mcp_access)
+  const canUseWallet = mcpAccess?.includes('solana_wallet') ?? false;
+  if (canUseWallet) {
+    for (const keyword of WALLET_KEYWORDS) {
+      if (queryLower.includes(keyword)) {
+        matchedWalletKeywords.push(keyword);
+      }
+    }
+  }
 
   // Check for MongoDB keywords (epic/legendary only)
   const canUseMongoDB = personaRarity === 'epic' || personaRarity === 'legendary';
@@ -113,7 +160,18 @@ export function predictWebSearch(query: string, personaRarity?: string): SearchP
     }
   }
 
-  // Decision logic (mirrors backend tool_definitions.py)
+  // Decision logic (mirrors backend intent_classifier.py)
+
+  // Wallet queries take priority (same as backend: checked before MongoDB/Brave)
+  if (matchedWalletKeywords.length > 0) {
+    return {
+      willSearch: false,
+      confidence: 'high',
+      reason: `Wallet query detected: ${matchedWalletKeywords.slice(0, 3).join(', ')}`,
+      keywords_matched: matchedWalletKeywords,
+      toolType: 'wallet'
+    };
+  }
 
   // MongoDB queries don't need web search
   if (matchedMongoKeywords.length > 0) {

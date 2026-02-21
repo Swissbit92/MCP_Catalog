@@ -32,8 +32,6 @@ export const NephilimOnboarding: React.FC = () => {
   const [step, setStep] = useState<OnboardingStep>('portal')
   const [userName, setUserName] = useState('')
   const [faction, setFaction] = useState('')
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedPersona, setSelectedPersona] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,7 +76,6 @@ export const NephilimOnboarding: React.FC = () => {
 
   // Handle persona selection and start first chat
   const handlePersonaSelect = async (personaKey: string) => {
-    setSelectedPersona(personaKey)
     setIsLoading(true)
     setError(null)
 

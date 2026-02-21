@@ -42,6 +42,7 @@ class LLMCompletionService:
         repeat_penalty: Optional[float] = None,
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
+        min_p: Optional[float] = None,
     ):
         """Initialize the LLM completion service.
 
@@ -53,6 +54,7 @@ class LLMCompletionService:
             repeat_penalty: Optional repetition penalty (1.0-2.0)
             top_k: Optional Top-K sampling (0-100)
             top_p: Optional nucleus sampling threshold (0.0-1.0)
+            min_p: Optional Min-P dynamic threshold (0.0-1.0)
         """
         # Build Ollama params
         ollama_params = {
@@ -73,6 +75,8 @@ class LLMCompletionService:
                 ollama_params["top_k"] = config_params["top_k"]
             if "top_p" in config_params:
                 ollama_params["top_p"] = config_params["top_p"]
+            if "min_p" in config_params:
+                ollama_params["min_p"] = config_params["min_p"]
 
         # Individual params override sampling_config
         if repeat_penalty is not None:
@@ -81,6 +85,8 @@ class LLMCompletionService:
             ollama_params["top_k"] = top_k
         if top_p is not None:
             ollama_params["top_p"] = top_p
+        if min_p is not None:
+            ollama_params["min_p"] = min_p
 
         self.llm = OllamaLLM(**ollama_params)
         self.sampling_config = sampling_config
@@ -93,6 +99,8 @@ class LLMCompletionService:
             sampling_info += f", top_k={ollama_params['top_k']}"
         if "top_p" in ollama_params:
             sampling_info += f", top_p={ollama_params['top_p']}"
+        if "min_p" in ollama_params:
+            sampling_info += f", min_p={ollama_params['min_p']}"
 
         preset_name = sampling_config.name if sampling_config else "custom"
         logger.info(

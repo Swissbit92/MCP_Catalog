@@ -10,7 +10,7 @@ Phase 3: NEPHILIM Gamification System
 from __future__ import annotations
 
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..schemas import (
     SetFactionBody,
@@ -24,8 +24,17 @@ from ..schemas import (
 )
 from ..startup import get_seeker_progression_repo
 from ..persona_memory import get_persona_card
+from ..repositories.seeker_progression_repository import SeekerProgressionRepository
 
 router = APIRouter(prefix="/nephilim", tags=["nephilim"])
+
+
+def _require_progression_repo() -> SeekerProgressionRepository:
+    """FastAPI dependency — returns repo or raises 503."""
+    try:
+        return get_seeker_progression_repo()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Progression system not initialized")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -33,73 +42,55 @@ router = APIRouter(prefix="/nephilim", tags=["nephilim"])
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/seeker/{user_id}", response_model=SeekerProfileResponse)
-def get_seeker_profile(user_id: str):
+def get_seeker_profile(user_id: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get seeker profile by user ID.
 
     Creates a new profile if one doesn't exist.
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
-    try:
-        profile = repo.get_or_create_seeker(user_id)
-        return SeekerProfileResponse(**profile)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get seeker profile: {e}")
+    profile = repo.get_or_create_seeker(user_id)
+    return SeekerProfileResponse(**profile)
 
 
 @router.get("/seeker/{user_id}/summary", response_model=SeekerSummaryResponse)
-def get_seeker_summary(user_id: str):
+def get_seeker_summary(user_id: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get comprehensive seeker summary.
 
     Includes rank, resonance, affinities, and unlocked lore.
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
+    summary = repo.get_seeker_summary(user_id)
 
-    try:
-        summary = repo.get_seeker_summary(user_id)
+    # Convert affinities to response models
+    affinities = [
+        PersonaAffinityResponse(**a)
+        for a in summary.get('persona_affinities', [])
+    ]
 
-        # Convert affinities to response models
-        affinities = [
-            PersonaAffinityResponse(**a)
-            for a in summary.get('persona_affinities', [])
-        ]
+    # Build rank progress response if exists
+    rank_progress = None
+    if summary.get('rank_progress'):
+        rank_progress = RankProgressResponse(**summary['rank_progress'])
 
-        # Build rank progress response if exists
-        rank_progress = None
-        if summary.get('rank_progress'):
-            rank_progress = RankProgressResponse(**summary['rank_progress'])
-
-        return SeekerSummaryResponse(
-            exists=summary['exists'],
-            user_id=summary['user_id'],
-            rank=summary.get('rank'),
-            total_resonance=summary.get('total_resonance'),
-            faction_primary=summary.get('faction_primary'),
-            faction_secondary=summary.get('faction_secondary'),
-            rank_progress=rank_progress,
-            persona_affinities=affinities,
-            unlocked_lore_count=summary.get('unlocked_lore_count', 0),
-            created_at=summary.get('created_at'),
-            updated_at=summary.get('updated_at'),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get seeker summary: {e}")
+    return SeekerSummaryResponse(
+        exists=summary['exists'],
+        user_id=summary['user_id'],
+        rank=summary.get('rank'),
+        total_resonance=summary.get('total_resonance'),
+        faction_primary=summary.get('faction_primary'),
+        faction_secondary=summary.get('faction_secondary'),
+        rank_progress=rank_progress,
+        persona_affinities=affinities,
+        unlocked_lore_count=summary.get('unlocked_lore_count', 0),
+        created_at=summary.get('created_at'),
+        updated_at=summary.get('updated_at'),
+    )
 
 
 @router.post("/seeker/{user_id}/faction")
-def set_seeker_faction(user_id: str, body: SetFactionBody):
+def set_seeker_faction(user_id: str, body: SetFactionBody, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Set or update seeker's faction affiliation.
 
     Valid factions: lumina, ironclad, sanctuary, prism, archive, horizon
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
     valid_factions = ['lumina', 'ironclad', 'sanctuary', 'prism', 'archive', 'horizon']
 
     if body.faction_primary.lower() not in valid_factions:
@@ -114,26 +105,20 @@ def set_seeker_faction(user_id: str, body: SetFactionBody):
             detail=f"Invalid secondary faction. Must be one of: {', '.join(valid_factions)}"
         )
 
-    try:
-        # Ensure seeker exists
-        repo.get_or_create_seeker(user_id)
+    # Ensure seeker exists
+    repo.get_or_create_seeker(user_id)
 
-        # Update faction
-        updated = repo.update_seeker_faction(
-            user_id,
-            body.faction_primary.lower(),
-            body.faction_secondary.lower() if body.faction_secondary else None
-        )
+    # Update faction
+    updated = repo.update_seeker_faction(
+        user_id,
+        body.faction_primary.lower(),
+        body.faction_secondary.lower() if body.faction_secondary else None
+    )
 
-        if not updated:
-            raise HTTPException(status_code=404, detail="Seeker not found")
+    if not updated:
+        raise HTTPException(status_code=404, detail="Seeker not found")
 
-        return {"status": "success", "faction_primary": body.faction_primary.lower()}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to set faction: {e}")
+    return {"status": "success", "faction_primary": body.faction_primary.lower()}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -141,69 +126,48 @@ def set_seeker_faction(user_id: str, body: SetFactionBody):
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/seeker/{user_id}/rank", response_model=RankProgressResponse)
-def get_rank_progress(user_id: str):
+def get_rank_progress(user_id: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get seeker's rank and progress to next rank."""
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
-    try:
-        progress = repo.get_resonance_to_next_rank(user_id)
-        return RankProgressResponse(**progress)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get rank progress: {e}")
+    progress = repo.get_resonance_to_next_rank(user_id)
+    return RankProgressResponse(**progress)
 
 
 @router.post("/seeker/{user_id}/resonance")
-def award_resonance(user_id: str, body: AwardResonanceBody):
+def award_resonance(user_id: str, body: AwardResonanceBody, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Award resonance points to a seeker.
 
     This endpoint is typically called internally by the chat system,
     but can be used manually for special events or corrections.
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
     if body.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    try:
-        result = repo.award_resonance(
-            user_id,
-            body.amount,
-            body.reason,
-            persona_key=body.persona_key,
-            session_id=body.session_id
-        )
+    result = repo.award_resonance(
+        user_id,
+        body.amount,
+        body.reason,
+        persona_key=body.persona_key,
+        session_id=body.session_id
+    )
 
-        return {
-            "status": "success",
-            "new_resonance": result['new_resonance'],
-            "new_rank": result['new_rank'],
-            "rank_changed": result['rank_changed'],
-            "previous_rank": result.get('previous_rank'),
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to award resonance: {e}")
+    return {
+        "status": "success",
+        "new_resonance": result['new_resonance'],
+        "new_rank": result['new_rank'],
+        "rank_changed": result['rank_changed'],
+        "previous_rank": result.get('previous_rank'),
+    }
 
 
 @router.get("/seeker/{user_id}/resonance/history")
 def get_resonance_history(
     user_id: str,
-    limit: int = Query(default=50, ge=1, le=200)
+    limit: int = Query(default=50, ge=1, le=200),
+    repo: SeekerProgressionRepository = Depends(_require_progression_repo),
 ):
     """Get recent resonance events for a seeker."""
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
-    try:
-        history = repo.get_resonance_history(user_id, limit)
-        return {"events": history}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get resonance history: {e}")
+    history = repo.get_resonance_history(user_id, limit)
+    return {"events": history}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -211,31 +175,17 @@ def get_resonance_history(
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/seeker/{user_id}/affinity", response_model=List[PersonaAffinityResponse])
-def get_all_affinities(user_id: str):
+def get_all_affinities(user_id: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get all persona affinities for a seeker."""
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
-    try:
-        affinities = repo.get_all_affinities(user_id)
-        return [PersonaAffinityResponse(**a) for a in affinities]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get affinities: {e}")
+    affinities = repo.get_all_affinities(user_id)
+    return [PersonaAffinityResponse(**a) for a in affinities]
 
 
 @router.get("/seeker/{user_id}/affinity/{persona_key}", response_model=PersonaAffinityResponse)
-def get_persona_affinity(user_id: str, persona_key: str):
+def get_persona_affinity(user_id: str, persona_key: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get affinity with a specific Nephilim."""
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
-    try:
-        affinity = repo.get_or_create_affinity(user_id, persona_key)
-        return PersonaAffinityResponse(**affinity)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get affinity: {e}")
+    affinity = repo.get_or_create_affinity(user_id, persona_key)
+    return PersonaAffinityResponse(**affinity)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -245,108 +195,82 @@ def get_persona_affinity(user_id: str, persona_key: str):
 @router.get("/seeker/{user_id}/lore", response_model=List[UnlockedLoreResponse])
 def get_unlocked_lore(
     user_id: str,
-    persona_key: Optional[str] = Query(default=None)
+    persona_key: Optional[str] = Query(default=None),
+    repo: SeekerProgressionRepository = Depends(_require_progression_repo),
 ):
     """Get all unlocked lore fragments for a seeker.
 
     Optionally filter by persona.
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
-
-    try:
-        lore = repo.get_unlocked_lore(user_id, persona_key)
-        return [UnlockedLoreResponse(**l) for l in lore]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get unlocked lore: {e}")
+    lore = repo.get_unlocked_lore(user_id, persona_key)
+    return [UnlockedLoreResponse(**l) for l in lore]
 
 
 @router.get("/seeker/{user_id}/lore/{persona_key}/full", response_model=List[LoreFragmentContent])
-def get_persona_lore_with_content(user_id: str, persona_key: str):
+def get_persona_lore_with_content(user_id: str, persona_key: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get all lore fragments for a persona with content and unlock status.
 
     Returns both unlocked and locked fragments, with content only for unlocked ones.
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
+    # Get persona card to get lore fragment definitions
+    card = get_persona_card(persona_key)
+    if not card:
+        raise HTTPException(status_code=404, detail="Persona not found")
 
-    try:
-        # Get persona card to get lore fragment definitions
-        card = get_persona_card(persona_key)
-        if not card:
-            raise HTTPException(status_code=404, detail="Persona not found")
+    fragments = card.get('unlockable_lore', [])
+    if not fragments:
+        return []
 
-        fragments = card.get('unlockable_lore', [])
-        if not fragments:
-            return []
+    # Get unlocked lore for this persona
+    unlocked = repo.get_unlocked_lore(user_id, persona_key)
+    unlocked_ids = {l['fragment_id']: l['unlocked_at'] for l in unlocked}
 
-        # Get unlocked lore for this persona
-        unlocked = repo.get_unlocked_lore(user_id, persona_key)
-        unlocked_ids = {l['fragment_id']: l['unlocked_at'] for l in unlocked}
+    result = []
+    for frag in fragments:
+        fragment_id = frag.get('fragment_id', '')
+        is_unlocked = fragment_id in unlocked_ids
 
-        result = []
-        for frag in fragments:
-            fragment_id = frag.get('fragment_id', '')
-            is_unlocked = fragment_id in unlocked_ids
+        result.append(LoreFragmentContent(
+            fragment_id=fragment_id,
+            fragment_title=frag.get('fragment_title', 'Unknown'),
+            fragment=frag.get('fragment', '') if is_unlocked else '[Locked - Requires more conversations]',
+            messages_required=frag.get('messages_required', 0),
+            rarity=frag.get('rarity', 'common'),
+            unlocked=is_unlocked,
+            unlocked_at=unlocked_ids.get(fragment_id),
+        ))
 
-            result.append(LoreFragmentContent(
-                fragment_id=fragment_id,
-                fragment_title=frag.get('fragment_title', 'Unknown'),
-                fragment=frag.get('fragment', '') if is_unlocked else '[Locked - Requires more conversations]',
-                messages_required=frag.get('messages_required', 0),
-                rarity=frag.get('rarity', 'common'),
-                unlocked=is_unlocked,
-                unlocked_at=unlocked_ids.get(fragment_id),
-            ))
-
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get lore content: {e}")
+    return result
 
 
 @router.post("/seeker/{user_id}/lore/{persona_key}/check")
-def check_lore_unlocks(user_id: str, persona_key: str):
+def check_lore_unlocks(user_id: str, persona_key: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Check and unlock any newly available lore fragments.
 
     Called after conversations to see if message thresholds have been met.
     """
-    repo = get_seeker_progression_repo()
-    if repo is None:
-        raise HTTPException(status_code=503, detail="Progression system not initialized")
+    # Get persona card
+    card = get_persona_card(persona_key)
+    if not card:
+        raise HTTPException(status_code=404, detail="Persona not found")
 
-    try:
-        # Get persona card
-        card = get_persona_card(persona_key)
-        if not card:
-            raise HTTPException(status_code=404, detail="Persona not found")
+    fragments = card.get('unlockable_lore', [])
 
-        fragments = card.get('unlockable_lore', [])
+    # Check and unlock
+    newly_unlocked = repo.check_and_unlock_lore(user_id, persona_key, fragments)
 
-        # Check and unlock
-        newly_unlocked = repo.check_and_unlock_lore(user_id, persona_key, fragments)
-
-        return {
-            "newly_unlocked": len(newly_unlocked),
-            "fragments": [
-                {
-                    "fragment_id": f.get('fragment_id'),
-                    "fragment_title": f.get('fragment_title'),
-                    "fragment": f.get('fragment', ''),
-                    "rarity": f.get('rarity', 'common'),
-                }
-                for f in newly_unlocked
-            ]
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to check lore unlocks: {e}")
+    return {
+        "newly_unlocked": len(newly_unlocked),
+        "fragments": [
+            {
+                "fragment_id": f.get('fragment_id'),
+                "fragment_title": f.get('fragment_title'),
+                "fragment": f.get('fragment', ''),
+                "rarity": f.get('rarity', 'common'),
+            }
+            for f in newly_unlocked
+        ]
+    }
 
 
 # ─────────────────────────────────────────────────────────────

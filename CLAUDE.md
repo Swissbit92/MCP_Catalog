@@ -33,6 +33,12 @@ docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 docker-compose logs -f backend       # View logs
 docker-compose restart backend       # Restart
 docker-compose down                  # Stop all
+
+# Rebuild backend (ALWAYS verify after rebuild)
+docker-compose --env-file .env.docker build --no-cache backend
+docker-compose --env-file .env.docker up -d backend
+python scripts/docker/verify_startup.py          # Mandatory post-rebuild check
+python scripts/docker/verify_startup.py --skip-queries  # Quick mode (subsystems only)
 ```
 
 **Access:** Frontend `http://localhost:3000` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
@@ -78,6 +84,9 @@ cd react-ui && npx playwright test --headed           # Run with browser visible
 pytest tests/backend/                    # Backend unit tests
 pytest tests/integration/                # Integration tests
 pytest tests/evaluation/ -v              # RAGAS persona quality
+
+# Manual E.E.V.A. quality test (requires running backend on port 8000)
+python tests/manual/eeva_chat_test.py    # 50-question automated quality suite
 ```
 
 ### Ollama Setup
@@ -95,20 +104,24 @@ ollama pull nomic-embed-text:latest                        # Embeddings (RAG mem
 ```
 server.py, startup.py          # App entry, lifecycle
 config.py, schemas.py          # Settings, API schemas
-routes/                        # chat.py, sessions.py, personas.py, nephilim.py
-services/                      # Business logic (llm_completion, tool_calling, citation, etc.)
-repositories/                  # SQLite data access (session, message, summary, emotional_state, seeker_progression)
+routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py
+services/                      # Business logic (llm_completion, tool_calling, citation, chat_session, query_handler, wallet_*, strategy, etc.)
+repositories/                  # SQLite data access — ALL extend BaseRepository via db_adapter (connection pooling)
+                               #   session, message, summary, emotional_state, seeker_progression,
+                               #   user_profile, user (OAuth), trade_proposal, wallet
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
 tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
 mongodb/                       # MongoDB MCP client
 ```
 
 **Key files:**
-- `llm_client.py` - LLM orchestration facade
-- `prompt_builder.py` - System prompt construction from persona JSON
+- `llm_client.py` - LLM orchestration facade (passes per-persona sampling overrides)
+- `prompt_builder.py` - System prompt construction from persona JSON (XML-tagged sections with bookend pattern)
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search
+- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
+- `tools/keywords.py` - Keyword dictionaries for intent classification routing
 
 ### Frontend (`react-ui/src/`)
 
@@ -116,8 +129,10 @@ mongodb/                       # MongoDB MCP client
 pages/                         # Chat.tsx, NephilimHome.tsx, NephilimOnboarding.tsx, CharacterCardV2Showcase.tsx, Dashboard.tsx
 components/                    # UI components (Header, MessageBubble, CharacterCard, SessionList, etc.)
 components/nephilim/           # NEPHILIM progression components (SeekerRankBadge, LoreCodex, etc.)
-context/                       # PersonaContext.tsx, AudioContext.tsx
-services/                      # API client (includes NEPHILIM progression API)
+context/                       # PersonaContext.tsx (composition wrapper), ChatContext.tsx, CollectionContext.tsx, AudioContext.tsx
+services/api/                  # Domain-split API client: base.ts, auth.ts, sessions.ts, chat.ts, nephilim.ts, wallet.ts, personas.ts
+services/api.ts                # Barrel re-export (backward compat: import from here as before)
+types/                         # personas.ts (canonical Persona type), index.ts barrel
 utils/                         # animations.ts, helpers, celestialOrder.ts
 ```
 
@@ -163,6 +178,9 @@ Optional (see `.env.docker` for full list):
 - `PascalCase` components, explicit types, strict mode
 - No semicolons, 2-space indent (ESLint enforced)
 - Tailwind for utilities, Framer Motion for animations
+- Canonical `Persona` type lives in `react-ui/src/types/personas.ts` — import from there, never redefine locally
+- New code should use `useChat()` / `useCollection()` hooks; `usePersona()` is kept for backward compat
+- API functions: import from `'../services/api'` (barrel) or the specific domain module in `services/api/`
 
 ### Design System
 - **Typography:** Outfit (display), Manrope (body), Space Mono (mono)
@@ -181,15 +199,29 @@ Optional (see `.env.docker` for full list):
 
 ### Chat Flow
 1. Frontend POST `/greet` creates session
-2. User message → POST `/chat` with session_id, persona, content
-3. Backend builds system prompt from persona JSON + cached CV summary
-4. Ollama generates response, stored in SQLite
-5. Frontend renders with Celestial Order theming
+2. User message → POST `/sessions/{session_id}/chat` with persona, message
+3. Backend builds system prompt from persona JSON + cached CV summary (XML-tagged sections)
+4. For wallet-capable personas: ground-truth wallet state injected into system prompt (anti-hallucination)
+5. Intent classifier routes query → wallet / brave / mongodb / pure LLM
+6. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
+7. Post-processor strips leaked tool names via regex, enforces first-person
+8. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
 - **Long-Running (MongoDB):** Container stays alive for multiple requests
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
+
+### MCP Query Routing Pipeline
+Queries flow through a two-layer classification system:
+
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
+2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
+
+**Anti-hallucination guards:**
+- If keyword filter says search is needed but search returns no results → honest "I don't know" response
+- If LLM somehow bypasses force-search and doesn't call the tool → honest "I don't know" response
+- LLM-generated citations are stripped and replaced with verified citations from actual search results
 
 ## Important Implementation Details
 
@@ -208,10 +240,18 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - Connection uses `check_same_thread=False`
 - Foreign key cascade deletes for cleanup
 
+### Backend Configuration
+- All config access via `get_settings()` returning a typed `AppSettings` Pydantic model
+- Legacy `get_*()` getter functions have been removed — use `get_settings().subsystem.field` instead
+- All repositories extend `BaseRepository` in `db_adapter.py` — never open raw `sqlite3.connect()` calls
+
 ### React Performance
 - `React.memo` for expensive components (MessageBubble, CharacterCard)
 - Virtualized message list with react-window
 - Hardware-accelerated Framer Motion animations
+- `useCallback` on all context CRUD functions (ChatContext) and event handlers (Chat.tsx, CharacterCardV2Showcase)
+- `useMemo` for derived state (search filtering in CharacterCardV2Showcase)
+- Authenticated API calls use `fetchWithAuth()` (auto-injects Bearer token, handles 401 refresh)
 
 ## Troubleshooting
 
@@ -224,6 +264,10 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - Verify Docker socket mounted
 - Check API keys set in `.env`
 - Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
+- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('weather in London', 'legendary', ['brave_search', 'mongodb']))"`
+- Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries
+- **MCP queries return 500 with no traceback in logs**: Alembic's `fileConfig()` silences all app loggers after migration. Verify `alembic/env.py` has `disable_existing_loggers=False` and `alembic.ini` root logger is `level = INFO`
+- **`UnboundLocalError: QueryHandlerService` on MCP queries**: Conditional import inside `if "solana_wallet"` block in `routes/chat.py` — the import must be at the top of the `chat()` function body, not inside any conditional
 
 ### Database issues
 - Backup and delete `chats.db` to reset
@@ -233,16 +277,35 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 ```bash
 docker-compose down && docker network prune -f
 docker-compose --env-file .env.docker up -d
+python scripts/docker/verify_startup.py    # Always verify after rebuild
 ```
+
+### Post-rebuild verification
+**Mandatory after every Docker rebuild.** The `verify_startup.py` script checks:
+- `/ready` endpoint returns 200 (DB + Ollama healthy)
+- Brave MCP and MongoDB MCP match `.env.docker` config
+- Live test queries (LLM greet, Brave search, MongoDB query) return valid responses
+
+```bash
+python scripts/docker/verify_startup.py              # Full check (subsystems + test queries)
+python scripts/docker/verify_startup.py --skip-queries  # Quick check (subsystems only)
+python scripts/docker/verify_startup.py --timeout 120   # Custom timeout for slow starts
+```
+If any check fails, investigate `docker logs ai-companion-api` before proceeding.
 
 ## NEPHILIM Worldbuilding System
 
 The project includes a comprehensive immersive AI companion experience with worldbuilding, progression, and gamification.
 
-### Lore Documents (`personas/`)
-- `NEPHILIM_LORE.md` - World bible with creation myth, the Fall, and realm geography
-- `NEPHILIM_FACTIONS.md` - Six Houses aligned with Nephilim patrons
-- `NEPHILIM_RANKS.md` - Seeker progression system (Initiate → Nephilim)
+### Lore Documents (`docs/lore/`)
+- `docs/lore/BUSINESS_PLAN.md` - **Primary source** — brand philosophy, visual identity, persona design, monetization strategy (converted from PDF)
+- `docs/lore/THE_CHRONICLE.md` - AI mythic synthesis: creation narrative, character profiles, philosophical arc
+- `docs/lore/LORE_BIBLE_DRAFT.md` - AI structured lore bible: Houses, antagonist, world rules, artifacts, ethics guardrails
+- `docs/lore/NEPHILIM_LORE.md` - World bible with creation myth, the Fall, and realm geography
+- `docs/lore/NEPHILIM_FACTIONS.md` - Six Houses aligned with Nephilim patrons
+- `docs/lore/NEPHILIM_RANKS.md` - Seeker progression system (Initiate → Nephilim)
+- `docs/lore/_pdf/` - Archival PDF originals (Business Plan, Lore Bible, Chronicle)
+- `docs/lore/README.md` - Document map, hierarchy, and when to use each file
 
 ### NEPHILIM Personas
 Six interconnected personas with deep backstories:
@@ -276,8 +339,22 @@ NEPHILIM personas include additional fields:
 ```
 > Note: `unlockable_lore[].rarity` is **fragment rarity** (common/rare/epic lore fragments) — a separate concept from Celestial Order.
 
-### Prompt Integration
-`prompt_builder.py` automatically injects NEPHILIM context for personas with:
+### Prompt Architecture
+`prompt_builder.py` constructs system prompts using XML-tagged sections with a bookend pattern (critical rules at beginning AND end):
+
+```
+<identity>       — Core identity + anti-hallucination rules (primacy position)
+<response_format> — Multi-message <msg> rules (condensed)
+<companion_behavior> — Behavioral rules and conversational style
+<world_context>  — NEPHILIM lore (only for nephilim_ personas)
+<tools>          — Financial co-pilot block + anti-hallucination rules (wallet-capable personas)
+<memory>         — Conversation memory rules
+<checklist>      — Pre-response verification checklist (recency position)
+```
+
+**Anti-hallucination for wallet personas:** Ground-truth wallet state is injected into the system prompt on every message (not just wallet queries). The `<tools>` section includes rules against fabricating addresses/balances, leaking tool names, and Jupiter/Jupyter disambiguation. A regex post-processor in `query_handler_service.py` strips any leaked tool names from responses.
+
+NEPHILIM context is automatically injected for personas with:
 - Keys starting with `nephilim_`
 - The `nephilim_lore` field populated
 
@@ -418,11 +495,13 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 | Route | Component | Description |
 |-------|-----------|-------------|
 | `/` | NephilimHome | Landing portal |
-| `/onboarding` | NephilimOnboarding | New user flow |
-| `/select` | CharacterCardV2Showcase | Companion selection |
-| `/chat` | Chat | Chat interface |
-| `/chat/:sessionId` | Chat | Chat with specific session |
-| `/dashboard` | Dashboard | Seeker's Sanctum |
+| `/login` | LoginPage | Google OAuth login |
+| `/onboarding` | NephilimOnboarding | New user flow (ProtectedRoute) |
+| `/select` | CharacterCardV2Showcase | Companion selection (ProtectedRoute) |
+| `/chat` | Chat | Chat interface (ProtectedRoute) |
+| `/chat/:sessionId` | Chat | Chat with specific session (ProtectedRoute) |
+| `/dashboard` | Dashboard | Seeker's Sanctum (ProtectedRoute) |
+| `/*` | — | Redirects to `/` |
 
 **Tracking:** `archive/phase7/PHASE7_TRANSITION_PLAN.md` (complete ✅ Feb 17, 2026)
 
@@ -432,4 +511,12 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 - `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment
 - `docs/development/ADDING_MCP_SERVERS.md` - MCP integration guide
 - `docs/development/TESTING_GUIDE.md` - Testing guide
-- `personas/NEPHILIM_*.md` - Worldbuilding lore documents
+- `docs/lore/` - All NEPHILIM worldbuilding and lore documents (see `docs/lore/README.md`)
+
+### Protected Reference Files (do NOT delete)
+
+These files have **no build dependency** and are never imported, so automated cleanup passes may flag them as dead code. **Do not delete them.** Open directly in a browser for visual reference during CSS iteration.
+
+| File | Purpose |
+|------|---------|
+| `react-ui/rarity-effects-showcase.html` | **Canonical VFX reference** — gacha-quality card effect showcase (12 variants). Use this when iterating on card effects without needing the dev server. Uses legacy `.rarity-*` class names — see the file header for mapping to current `.order-*` equivalents. Live implementations: `CharacterCard.module.css` (V1) and `CharacterCardV2.module.css` (V2). |

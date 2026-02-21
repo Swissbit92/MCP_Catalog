@@ -20,13 +20,13 @@ describe('SourceIndicator', () => {
 
     it('should display Pure LLM Response label', () => {
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText('Pure LLM Response')).toBeInTheDocument();
+      expect(screen.getByText('Inner Wisdom')).toBeInTheDocument();
     });
 
-    it('should apply purple color class', () => {
+    it('should apply purple hex color', () => {
       const { container } = render(<SourceIndicator metadata={metadata} />);
       const badge = container.firstChild as HTMLElement;
-      expect(badge).toHaveClass('text-purple-400');
+      expect(badge.style.color).toBe('rgb(176, 124, 198)');
     });
   });
 
@@ -38,13 +38,13 @@ describe('SourceIndicator', () => {
 
     it('should display Web Search label', () => {
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText('Web Search (Brave MCP)')).toBeInTheDocument();
+      expect(screen.getByText('The Outer Archives')).toBeInTheDocument();
     });
 
-    it('should apply blue color class', () => {
+    it('should apply green hex color', () => {
       const { container } = render(<SourceIndicator metadata={metadata} />);
       const badge = container.firstChild as HTMLElement;
-      expect(badge).toHaveClass('text-blue-400');
+      expect(badge.style.color).toBe('rgb(46, 204, 113)');
     });
 
     it('should display tools used', () => {
@@ -64,13 +64,13 @@ describe('SourceIndicator', () => {
 
     it('should display Trading Data label', () => {
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText('Trading Data (MongoDB MCP)')).toBeInTheDocument();
+      expect(screen.getByText('The Crystal Grid')).toBeInTheDocument();
     });
 
-    it('should apply green color class', () => {
+    it('should apply amber hex color', () => {
       const { container } = render(<SourceIndicator metadata={metadata} />);
       const badge = container.firstChild as HTMLElement;
-      expect(badge).toHaveClass('text-green-400');
+      expect(badge.style.color).toBe('rgb(243, 156, 18)');
     });
 
     it('should display formatted tool name', () => {
@@ -93,13 +93,13 @@ describe('SourceIndicator', () => {
 
     it('should display Multi-Source Analysis label', () => {
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText('Multi-Source Analysis')).toBeInTheDocument();
+      expect(screen.getByText('Converged Insight')).toBeInTheDocument();
     });
 
-    it('should apply orange color class', () => {
+    it('should apply lavender hex color', () => {
       const { container } = render(<SourceIndicator metadata={metadata} />);
       const badge = container.firstChild as HTMLElement;
-      expect(badge).toHaveClass('text-orange-400');
+      expect(badge.style.color).toBe('rgb(224, 195, 252)');
     });
 
     it('should display multiple tools', () => {

@@ -1,20 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fetchPersonas } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { useAudio } from '../context/AudioContext'
-
-interface Persona {
-  key: string
-  display_name: string
-  style: string
-  image: string
-  rarity: string
-  celestial_order?: string
-  voice?: {
-    greeting: string
-  }
-}
+import { Persona } from '../types/personas'
+import { ORDER_COLORS, formatOrderLabel } from '../utils/celestialOrder'
 
 type SummoningPhase = 'idle' | 'commitment' | 'anticipation' | 'rarity_gate' | 'identity_reveal' | 'celebration'
 
@@ -29,25 +18,11 @@ const ORDER_WEIGHTS = {
   archon: 5,
 }
 
-const ORDER_COLORS: Record<string, string> = {
-  wanderer: '#C0C0C0',
-  sage: '#00BFFF',
-  warden: '#DA70D6',
-  archon: '#FFD700',
-}
-
-const ORDER_LABELS: Record<string, string> = {
-  wanderer: 'Wanderer',
-  sage: 'Sage',
-  warden: 'Warden',
-  archon: 'Archon',
-}
-
 const SOFT_PITY_THRESHOLD = 5
 const HARD_PITY_THRESHOLD = 10
 
 const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) => {
-  const { addToCollection, addPullRecord, isCollected } = usePersona()
+  const { personas, addToCollection, addPullRecord, isCollected } = usePersona()
   const {
     playCommitSound,
     playAnticipationSound,
@@ -61,7 +36,6 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
   const [pulledCharacter, setPulledCharacter] = useState<Persona | null>(null)
   const [isDuplicate, setIsDuplicate] = useState(false)
   const [revealedOrder, setRevealedOrder] = useState<string | null>(null)
-  const [allPersonas, setAllPersonas] = useState<Persona[]>([])
   const [nameRevealIndex, setNameRevealIndex] = useState(0)
 
   // Pity system
@@ -74,26 +48,6 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
   const holdStartRef = useRef<number>(0)
   const animationFrameRef = useRef<number>(0)
   const isHoldingRef = useRef(false)
-
-  // Load personas on mount
-  useEffect(() => {
-    const loadPersonas = async () => {
-      try {
-        const personas = await fetchPersonas()
-        setAllPersonas(personas.map(p => ({
-          key: p.key,
-          display_name: p.display_name || p.key,
-          style: p.style,
-          image: p.image.replace('images/', ''),
-          rarity: p.rarity,
-          celestial_order: p.celestial_order,
-        })))
-      } catch (error) {
-        console.error('Failed to load personas:', error)
-      }
-    }
-    loadPersonas()
-  }, [])
 
   // Save pity counter to localStorage
   useEffect(() => {
@@ -143,19 +97,19 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
   }, [pityCounter])
 
   const selectPersona = useCallback((): Persona | null => {
-    if (allPersonas.length === 0) return null
+    if (personas.length === 0) return null
 
     const isHardPity = pityCounter >= HARD_PITY_THRESHOLD - 1
     const selectedOrder = selectWeightedOrder()
     // Filter by celestial_order (prefer it over rarity-based mapping)
-    let candidates = allPersonas.filter(p => (p.celestial_order || 'wanderer') === selectedOrder)
+    let candidates = personas.filter(p => (p.celestial_order || 'wanderer') === selectedOrder)
     if (candidates.length === 0) {
-      candidates = allPersonas
+      candidates = personas
     }
 
     // Hard pity: guarantee unowned
     if (isHardPity) {
-      const unownedCandidates = allPersonas.filter(p => !isCollected(p.key))
+      const unownedCandidates = personas.filter(p => !isCollected(p.key))
       if (unownedCandidates.length > 0) {
         candidates = unownedCandidates
       }
@@ -170,7 +124,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
 
     const randomIndex = Math.floor(Math.random() * candidates.length)
     return candidates[randomIndex]
-  }, [allPersonas, pityCounter, selectWeightedOrder, isCollected])
+  }, [personas, pityCounter, selectWeightedOrder, isCollected])
 
   const runSummoningSequence = useCallback(async () => {
     const character = selectPersona()
@@ -659,7 +613,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
               >
-                {ORDER_LABELS[revealedOrder]}
+                {formatOrderLabel(revealedOrder)}
               </motion.div>
             </motion.div>
           )}
@@ -833,7 +787,7 @@ const SummoningRitual: React.FC<SummoningRitualProps> = ({ onCharacterSelect }) 
                 animate={{ opacity: 0.8 }}
                 transition={{ delay: 0.4 }}
               >
-                {revealedOrder ? ORDER_LABELS[revealedOrder] : ORDER_LABELS.wanderer}
+                {formatOrderLabel(revealedOrder || 'wanderer')}
               </motion.div>
 
               {/* Bond status */}

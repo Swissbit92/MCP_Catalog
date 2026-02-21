@@ -15,14 +15,16 @@ Provides endpoints for chat, greetings, persona CV summaries, and chat persisten
 from __future__ import annotations
 
 import logging
+import urllib.request
+import urllib.error
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import get_ollama_base, get_persona_model
-from .startup import initialize_all, get_session_repo
+from .config import get_settings
+from .startup import initialize_all, get_session_repo, get_brave_client, get_mongodb_service
 from .routes.chat import router as chat_router
 from .routes.sessions import router as sessions_router
 from .routes.personas import router as personas_router
@@ -77,13 +79,48 @@ app.include_router(auth_router)
 def health():
     """Health check endpoint."""
     try:
-        base = get_ollama_base()
-        model = get_persona_model()
+        model = get_settings().ollama.model
         # DB ping
         get_session_repo().get_all_sessions()
         return {"status": "ok", "model": model, "db": "ok"}
     except Exception as e:
         return JSONResponse(status_code=503, content={"status": "error", "detail": str(e)})
+
+
+@app.get("/ready")
+def ready():
+    """Subsystem readiness check — returns status of DB, Ollama, and MCP clients."""
+    checks = {}
+
+    # DB check: lightweight SELECT 1
+    try:
+        repo = get_session_repo()
+        repo._conn().execute("SELECT 1")
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {e}"
+
+    # Ollama check: HTTP GET /api/version with 3s timeout
+    try:
+        ollama_base = get_settings().ollama.base.rstrip("/")
+        req = urllib.request.Request(f"{ollama_base}/api/version", method="GET")
+        with urllib.request.urlopen(req, timeout=3):
+            checks["ollama"] = "ok"
+    except Exception as e:
+        checks["ollama"] = f"error: {e}"
+
+    # MCP subsystems: report enabled/disabled
+    checks["brave_mcp"] = "enabled" if get_brave_client() is not None else "disabled"
+    checks["mongodb_mcp"] = "enabled" if get_mongodb_service() is not None else "disabled"
+
+    # Critical path: DB + Ollama must be ok
+    critical_ok = checks["database"] == "ok" and checks["ollama"] == "ok"
+    status_code = 200 if critical_ok else 503
+
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": "ok" if critical_ok else "degraded", "checks": checks},
+    )
 
 
 # Note: initialization is handled by the lifespan context manager above.
