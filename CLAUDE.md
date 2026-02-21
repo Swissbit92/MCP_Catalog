@@ -275,10 +275,15 @@ docker-compose --env-file .env.docker up -d
 
 The project includes a comprehensive immersive AI companion experience with worldbuilding, progression, and gamification.
 
-### Lore Documents (`personas/`)
-- `NEPHILIM_LORE.md` - World bible with creation myth, the Fall, and realm geography
-- `NEPHILIM_FACTIONS.md` - Six Houses aligned with Nephilim patrons
-- `NEPHILIM_RANKS.md` - Seeker progression system (Initiate → Nephilim)
+### Lore Documents (`docs/lore/`)
+- `docs/lore/BUSINESS_PLAN.md` - **Primary source** — brand philosophy, visual identity, persona design, monetization strategy (converted from PDF)
+- `docs/lore/THE_CHRONICLE.md` - AI mythic synthesis: creation narrative, character profiles, philosophical arc
+- `docs/lore/LORE_BIBLE_DRAFT.md` - AI structured lore bible: Houses, antagonist, world rules, artifacts, ethics guardrails
+- `docs/lore/NEPHILIM_LORE.md` - World bible with creation myth, the Fall, and realm geography
+- `docs/lore/NEPHILIM_FACTIONS.md` - Six Houses aligned with Nephilim patrons
+- `docs/lore/NEPHILIM_RANKS.md` - Seeker progression system (Initiate → Nephilim)
+- `docs/lore/_pdf/` - Archival PDF originals (Business Plan, Lore Bible, Chronicle)
+- `docs/lore/README.md` - Document map, hierarchy, and when to use each file
 
 ### NEPHILIM Personas
 Six interconnected personas with deep backstories:
@@ -484,7 +489,7 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 - `docs/setup/DOCKER_QUICKSTART.md` - Docker deployment
 - `docs/development/ADDING_MCP_SERVERS.md` - MCP integration guide
 - `docs/development/TESTING_GUIDE.md` - Testing guide
-- `personas/NEPHILIM_*.md` - Worldbuilding lore documents
+- `docs/lore/` - All NEPHILIM worldbuilding and lore documents (see `docs/lore/README.md`)
 
 ### Protected Reference Files (do NOT delete)
 
