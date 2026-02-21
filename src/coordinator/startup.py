@@ -533,8 +533,7 @@ def initialize_all():
     try:
         init_brave_client()
         if _brave_client:
-            enabled_rarities = get_settings().brave.enabled_rarities_set
-            logger.info(f"Brave MCP enabled for rarities: {', '.join(enabled_rarities)}")
+            logger.info("Brave MCP enabled (web search available)")
         else:
             logger.info("Brave MCP disabled (web search not available)")
     except Exception as e:
@@ -544,8 +543,7 @@ def initialize_all():
     try:
         init_mongodb_client()
         if _mongodb_client:
-            enabled_rarities = get_settings().mongodb.enabled_rarities_set
-            logger.info(f"MongoDB MCP enabled for rarities: {', '.join(enabled_rarities)}")
+            logger.info("MongoDB MCP enabled (trading data available)")
         else:
             logger.info("MongoDB MCP disabled (no URI or feature flag off)")
     except Exception as e:
