@@ -247,7 +247,7 @@ const CharacterCardV2Showcase: React.FC = () => {
                               />
                               {/* Gradient overlay at bottom of image */}
                               <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0B0B0D] to-transparent" />
-                              {/* Rarity glow at top */}
+                              {/* Order glow at top */}
                               <div className={`absolute top-0 left-0 right-0 h-1 ${
                                 previewPersona.celestial_order === 'archon' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
                                 previewPersona.celestial_order === 'warden' ? 'bg-gradient-to-r from-purple-400 to-fuchsia-500' :

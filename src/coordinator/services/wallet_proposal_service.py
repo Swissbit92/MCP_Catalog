@@ -231,20 +231,25 @@ def build_wallet_deletion_proposal(
     }
 
 
-def build_wallet_creation_step(step: int, total_steps: int = 3, **kwargs) -> dict:
+def build_wallet_creation_step(step: int, total_steps: int = 4, **kwargs) -> dict:
     """Build a wallet creation guided flow message.
 
     Steps:
         1: Explain what we're creating, ask for wallet name
         2: Confirm — generate keypair, ask for password
-        3: Success — show public address, remind about backup
+        3: Show 12-word recovery phrase (mnemonic) — user must save it
+        4: User confirms they saved it — wipe mnemonic, show success
     """
+    slots_used = kwargs.get("slots_used", 0)
+    slots_max = kwargs.get("slots_max", 3)
+    slot_info = f" (wallet slot {slots_used + 1} of {slots_max})" if slots_used is not None else ""
+
     steps = {
         1: {
             "content": (
-                "I'll guide you through creating your Solana wallet. "
+                "I'll guide you through creating your Solana wallet" + slot_info + ". "
                 "This wallet will be stored encrypted on this device — only you control the keys. "
-                "**Step 1 of 3**: What would you like to name your wallet? (e.g. 'My Trading Wallet')"
+                f"**Step 1 of {total_steps}**: What would you like to name your wallet? (e.g. 'My Trading Wallet')"
             ),
             "metadata": {
                 "source_type": "wallet_flow",
@@ -254,7 +259,7 @@ def build_wallet_creation_step(step: int, total_steps: int = 3, **kwargs) -> dic
         },
         2: {
             "content": (
-                "**Step 2 of 3**: Choose a strong password to encrypt your private key. "
+                f"**Step 2 of {total_steps}**: Choose a strong password to encrypt your private key. "
                 "This password is never stored — you'll need it to unlock your wallet for trading. "
                 "Please type your password in the next message."
             ),
@@ -267,15 +272,35 @@ def build_wallet_creation_step(step: int, total_steps: int = 3, **kwargs) -> dic
         },
         3: {
             "content": (
+                f"**Step 3 of {total_steps}**: Your recovery phrase is ready.\n\n"
+                "**This is the ONLY time you will see this phrase. Copy it now and store it safely.**\n\n"
+                f"```\n{kwargs.get('mnemonic', 'ERROR — no mnemonic generated')}\n```\n\n"
+                f"**Address**: `{kwargs.get('public_address', 'N/A')}`\n\n"
+                "This 12-word phrase is the **only way** to recover your wallet if you forget your password. "
+                "Write it down on paper or save it in a password manager.\n\n"
+                "**When you've saved it, type 'I saved it' or 'confirm' to continue.**"
+            ),
+            "metadata": {
+                "source_type": "wallet_flow",
+                "wallet_step": 3,
+                "total_steps": total_steps,
+                "public_address": kwargs.get("public_address"),
+                "ephemeral": True,
+                "secret_displayed": True,
+            },
+        },
+        4: {
+            "content": (
                 f"**Wallet Created!** Your Solana wallet is ready.\n\n"
                 f"**Address**: `{kwargs.get('public_address', 'N/A')}`\n\n"
+                "Your recovery phrase has been permanently deleted from this system. "
                 "Your private key is encrypted and stored safely. "
                 "To start trading, send some SOL or USDC to this address. "
                 "Say 'what's my balance' anytime to check your holdings."
             ),
             "metadata": {
                 "source_type": "wallet_flow",
-                "wallet_step": 3,
+                "wallet_step": 4,
                 "total_steps": total_steps,
                 "public_address": kwargs.get("public_address"),
                 "wallet_created": True,

@@ -51,7 +51,7 @@ export async function cancelTrade(proposalId: string): Promise<TradeProposalResp
 
 export async function approveStrategy(
   proposalId: string,
-  strategyConfig: Record<string, any>
+  strategyConfig: Record<string, unknown>
 ): Promise<StrategyResponse> {
   const res = await fetch(`${API_BASE_URL}/wallet/strategy/approve`, {
     method: 'POST',
@@ -97,7 +97,7 @@ export async function cancelStrategy(strategyId: string): Promise<StrategyRespon
   return res.json()
 }
 
-export async function listStrategies(userId: string): Promise<{ strategies: any[] }> {
+export async function listStrategies(userId: string): Promise<{ strategies: Record<string, unknown>[] }> {
   const res = await fetch(`${API_BASE_URL}/wallet/strategies?user_id=${encodeURIComponent(userId)}`)
   if (!res.ok) throw new Error(`List strategies failed: ${res.status}`)
   return res.json()

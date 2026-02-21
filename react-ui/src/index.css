@@ -556,6 +556,13 @@ body.nephilim-aurora {
   animation: nephilim-flicker 4s ease-in-out infinite;
 }
 
+/* ProtectedRoute loading spinner keyframes */
+@keyframes pr-orb { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+@keyframes pr-core-p {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 22px rgba(0, 191, 255, .6); }
+  50% { transform: scale(1.18); box-shadow: 0 0 44px rgba(0, 191, 255, .9); }
+}
+
 .nephilim-animate-float {
   animation: nephilim-float 6s ease-in-out infinite;
 }

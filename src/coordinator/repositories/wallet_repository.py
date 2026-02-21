@@ -104,6 +104,35 @@ class WalletRepository(BaseRepository):
             (user_id,),
         )
 
+    def get_active_wallet_count(self, user_id: str) -> int:
+        """Get the number of active wallets for a user.
+
+        Args:
+            user_id: Seeker/user identifier
+
+        Returns:
+            Count of active wallets
+        """
+        row = self._fetchone_dict(
+            "SELECT COUNT(*) as cnt FROM user_wallets WHERE user_id = ? AND is_active = 1",
+            (user_id,),
+        )
+        return row["cnt"] if row else 0
+
+    def get_all_active_wallets(self, user_id: str) -> List[Dict]:
+        """Get all active wallets for a user.
+
+        Args:
+            user_id: Seeker/user identifier
+
+        Returns:
+            List of active wallet dicts ordered by creation time desc
+        """
+        return self._fetchall_list(
+            "SELECT * FROM user_wallets WHERE user_id = ? AND is_active = 1 ORDER BY id DESC",
+            (user_id,),
+        )
+
     def deactivate_wallet(self, wallet_id: int) -> bool:
         """Deactivate a wallet by ID (soft delete).
 

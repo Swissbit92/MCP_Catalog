@@ -1,26 +1,12 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { usePersona } from '../context/PersonaContext'
-import { formatOrderLabel } from '../utils/celestialOrder'
+import { formatOrderLabel, ORDER_COLORS, ORDER_TEXT_CLASSES } from '../utils/celestialOrder'
 
 interface BondsForgedProps {
   onCharacterSelect: (personaKey: string) => void
   onChoose?: (personaKey: string) => void
   selectedPersonaKey?: string | null
-}
-
-const ORDER_COLORS: Record<string, string> = {
-  wanderer: '#C0C0C0',
-  sage: '#00BFFF',
-  warden: '#DA70D6',
-  archon: '#FFD700',
-}
-
-const ORDER_TEXT_CLASSES: Record<string, string> = {
-  wanderer: 'text-gray-400',
-  sage: 'text-cyan-400',
-  warden: 'text-purple-400',
-  archon: 'text-yellow-400',
 }
 
 const BondsForged: React.FC<BondsForgedProps> = ({ onCharacterSelect, onChoose, selectedPersonaKey }) => {

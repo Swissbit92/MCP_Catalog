@@ -8,8 +8,8 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from ..schemas import ChatBody, GreetBody, ChatTurn, AppendMessageBody, ResponseMetadata
-from ..config import get_settings, get_persona_temperature_override
-from ..llm_client import LC_OllamaClient, estimate_tokens, log_context_stats
+from ..config import get_settings
+from ..llm_client import create_llm_client, estimate_tokens, log_context_stats
 from ..persona_memory import (
     build_system_prompt,
     build_greeting_user_prompt,
@@ -134,9 +134,10 @@ def chat(body: ChatBody):
 
     # Pre-check: active wallet creation flow bypasses intent classification
     # (mid-flow messages like wallet names and passwords won't match NEEDS_WALLET keywords)
-    from ..services.query_handler_service import _wallet_flows
-    _active_flow_session = getattr(body, "session_id", None)
-    if _wallet_flows.get(_active_flow_session) and "solana_wallet" in (mcp_access or []):
+    from ..services.query_handler_service import has_active_wallet_flow
+    # ChatBody has no session_id — wallet flows are only active in session-based chat
+    _active_flow_session = None
+    if has_active_wallet_flow(_active_flow_session) and "solana_wallet" in (mcp_access or []):
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
             mongodb_service=deps.get("mongodb_service"),
@@ -150,7 +151,7 @@ def chat(body: ChatBody):
             persona_name=persona_name,
             persona_card=card,
             session_id=_active_flow_session,
-            user_id=getattr(body, "user_id", "default_user"),
+            user_id="default_user",
         )
 
     # Use intent classification to determine which tools to inject
@@ -165,13 +166,12 @@ def chat(body: ChatBody):
 
     # Route wallet intent before MongoDB/Brave checks
     if intent == QueryIntent.NEEDS_WALLET:
-        from ..startup import get_wallet_repo, get_jupiter_ops, get_wallet_execution_service, get_strategy_service
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
             mongodb_service=deps.get("mongodb_service"),
         )
-        user_id = body.user_id if hasattr(body, "user_id") else "default_user"
-        session_id = body.session_id if hasattr(body, "session_id") else None
+        user_id = "default_user"
+        session_id = None
         return handler.handle_wallet_query(
             message=body.message,
             system_prompt=system,
@@ -187,11 +187,7 @@ def chat(body: ChatBody):
     if not tools:
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
-        client = LC_OllamaClient(
-            base=get_settings().ollama.base,
-            model=get_settings().ollama.model,
-            temperature=get_persona_temperature_override(card)
-        )
+        client = create_llm_client(card)
         answer = client.complete(system=system, user_prompt=user_compiled)
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
@@ -241,11 +237,7 @@ def chat(body: ChatBody):
 
     else:
         # Fallback to regular completion
-        client = LC_OllamaClient(
-            base=get_settings().ollama.base,
-            model=get_settings().ollama.model,
-            temperature=get_persona_temperature_override(card)
-        )
+        client = create_llm_client(card)
         answer = client.complete(system=system, user_prompt=user_compiled)
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
@@ -281,11 +273,7 @@ def greet(body: GreetBody):
     system = build_system_prompt(body.persona)
     user_prompt = build_greeting_user_prompt(body.persona)
 
-    client = LC_OllamaClient(
-        base=get_settings().ollama.base,
-        model=get_settings().ollama.model,
-        temperature=get_persona_temperature_override(card),
-    )
+    client = create_llm_client(card)
     answer = client.complete(system=system, user_prompt=user_prompt)
 
     # Post-process to enforce first-person

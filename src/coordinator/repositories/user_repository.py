@@ -16,6 +16,26 @@ logger = logging.getLogger(__name__)
 class UserRepository(BaseRepository):
     """Repository for OAuth user records (Google sub, email, display_name, avatar_url)."""
 
+    def _ensure_tables(self) -> None:
+        """Create the ``users`` table if it doesn't exist (idempotent)."""
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_sub TEXT UNIQUE NOT NULL,
+                email TEXT,
+                display_name TEXT,
+                avatar_url TEXT,
+                onboarding_completed BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            )
+        """)
+        # Backfill column for databases created before this field existed
+        try:
+            self._execute("ALTER TABLE users ADD COLUMN onboarding_completed BOOLEAN DEFAULT 0")
+        except Exception:
+            pass  # Column already exists
+
     def upsert_user(
         self,
         google_sub: str,

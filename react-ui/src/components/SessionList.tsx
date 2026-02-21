@@ -10,9 +10,9 @@ interface SessionListProps {
 }
 
 // Rarity-based color schemes matching the app's design system
-const getRarityStyles = (rarity?: string) => {
-  switch (rarity) {
-    case 'legendary':
+const getOrderStyles = (order?: string) => {
+  switch (order?.toLowerCase()) {
+    case 'archon':
       return {
         border: 'border-yellow-400/50',
         bg: 'bg-yellow-500/10',
@@ -20,7 +20,7 @@ const getRarityStyles = (rarity?: string) => {
         hover: 'hover:bg-yellow-500/20',
         accent: 'bg-yellow-500',
       }
-    case 'epic':
+    case 'warden':
       return {
         border: 'border-purple-400/50',
         bg: 'bg-purple-500/10',
@@ -28,7 +28,7 @@ const getRarityStyles = (rarity?: string) => {
         hover: 'hover:bg-purple-500/20',
         accent: 'bg-purple-500',
       }
-    case 'rare':
+    case 'sage':
       return {
         border: 'border-cyan-400/50',
         bg: 'bg-cyan-500/10',
@@ -36,7 +36,7 @@ const getRarityStyles = (rarity?: string) => {
         hover: 'hover:bg-cyan-500/20',
         accent: 'bg-cyan-500',
       }
-    case 'common':
+    case 'wanderer':
     default:
       return {
         border: 'border-gray-400/50',
@@ -119,7 +119,7 @@ const SessionList: React.FC<SessionListProps> = ({ onSessionSelect }) => {
         ) : (
           visibleSessions.map((session) => {
             const persona = getPersonaForSession(session.persona_key)
-            const rarityStyles = getRarityStyles(persona?.rarity)
+            const rarityStyles = getOrderStyles(persona?.celestial_order)
             const isActive = currentSession?.id === session.id
 
             return (

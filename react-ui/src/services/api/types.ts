@@ -14,17 +14,17 @@ export interface PersonaJson {
   emoji: string;
   allowed_mcp: string[];
   lore: string[];
-  voice: any; // Simplified for now
+  voice: Record<string, unknown>;
   do: string[];
   dont: string[];
-  behavior: any; // Simplified for now
-  emotional_profile: any; // Simplified for now
-  boundaries: any; // Simplified for now
-  dialogue_prefs: any; // Simplified for now
-  expertise: any; // Simplified for now
+  behavior: Record<string, unknown>;
+  emotional_profile: Record<string, unknown>;
+  boundaries: Record<string, unknown>;
+  dialogue_prefs: Record<string, unknown>;
+  expertise: Record<string, unknown>;
   signature_moves: string[];
   example_phrases: string[];
-  escalation_policy: any; // Simplified for now
+  escalation_policy: Record<string, unknown>;
 }
 
 export interface CharacterBio {
@@ -55,7 +55,7 @@ export interface ResponseMetadata {
   message_count?: number;
   // WALLET: Proposal card injection
   proposal_type?: 'trade_proposal' | 'strategy_proposal' | 'wallet_deletion';
-  proposal?: Record<string, any>;
+  proposal?: Record<string, unknown>;
 }
 
 // Phase 2.2: Emotional state tracking

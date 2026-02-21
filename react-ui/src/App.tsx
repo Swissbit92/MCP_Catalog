@@ -17,7 +17,7 @@ function App() {
   const { selectedPersona } = usePersona()
   const location = useLocation()
 
-  // Apply rarity-based theme to body element
+  // Apply Celestial Order theme to body element
   // NEPHILIM mode is always active
   useEffect(() => {
     const classes: string[] = []

@@ -47,11 +47,8 @@ def get_seeker_profile(user_id: str, repo: SeekerProgressionRepository = Depends
 
     Creates a new profile if one doesn't exist.
     """
-    try:
-        profile = repo.get_or_create_seeker(user_id)
-        return SeekerProfileResponse(**profile)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get seeker profile: {e}")
+    profile = repo.get_or_create_seeker(user_id)
+    return SeekerProfileResponse(**profile)
 
 
 @router.get("/seeker/{user_id}/summary", response_model=SeekerSummaryResponse)
@@ -60,35 +57,32 @@ def get_seeker_summary(user_id: str, repo: SeekerProgressionRepository = Depends
 
     Includes rank, resonance, affinities, and unlocked lore.
     """
-    try:
-        summary = repo.get_seeker_summary(user_id)
+    summary = repo.get_seeker_summary(user_id)
 
-        # Convert affinities to response models
-        affinities = [
-            PersonaAffinityResponse(**a)
-            for a in summary.get('persona_affinities', [])
-        ]
+    # Convert affinities to response models
+    affinities = [
+        PersonaAffinityResponse(**a)
+        for a in summary.get('persona_affinities', [])
+    ]
 
-        # Build rank progress response if exists
-        rank_progress = None
-        if summary.get('rank_progress'):
-            rank_progress = RankProgressResponse(**summary['rank_progress'])
+    # Build rank progress response if exists
+    rank_progress = None
+    if summary.get('rank_progress'):
+        rank_progress = RankProgressResponse(**summary['rank_progress'])
 
-        return SeekerSummaryResponse(
-            exists=summary['exists'],
-            user_id=summary['user_id'],
-            rank=summary.get('rank'),
-            total_resonance=summary.get('total_resonance'),
-            faction_primary=summary.get('faction_primary'),
-            faction_secondary=summary.get('faction_secondary'),
-            rank_progress=rank_progress,
-            persona_affinities=affinities,
-            unlocked_lore_count=summary.get('unlocked_lore_count', 0),
-            created_at=summary.get('created_at'),
-            updated_at=summary.get('updated_at'),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get seeker summary: {e}")
+    return SeekerSummaryResponse(
+        exists=summary['exists'],
+        user_id=summary['user_id'],
+        rank=summary.get('rank'),
+        total_resonance=summary.get('total_resonance'),
+        faction_primary=summary.get('faction_primary'),
+        faction_secondary=summary.get('faction_secondary'),
+        rank_progress=rank_progress,
+        persona_affinities=affinities,
+        unlocked_lore_count=summary.get('unlocked_lore_count', 0),
+        created_at=summary.get('created_at'),
+        updated_at=summary.get('updated_at'),
+    )
 
 
 @router.post("/seeker/{user_id}/faction")
@@ -111,26 +105,20 @@ def set_seeker_faction(user_id: str, body: SetFactionBody, repo: SeekerProgressi
             detail=f"Invalid secondary faction. Must be one of: {', '.join(valid_factions)}"
         )
 
-    try:
-        # Ensure seeker exists
-        repo.get_or_create_seeker(user_id)
+    # Ensure seeker exists
+    repo.get_or_create_seeker(user_id)
 
-        # Update faction
-        updated = repo.update_seeker_faction(
-            user_id,
-            body.faction_primary.lower(),
-            body.faction_secondary.lower() if body.faction_secondary else None
-        )
+    # Update faction
+    updated = repo.update_seeker_faction(
+        user_id,
+        body.faction_primary.lower(),
+        body.faction_secondary.lower() if body.faction_secondary else None
+    )
 
-        if not updated:
-            raise HTTPException(status_code=404, detail="Seeker not found")
+    if not updated:
+        raise HTTPException(status_code=404, detail="Seeker not found")
 
-        return {"status": "success", "faction_primary": body.faction_primary.lower()}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to set faction: {e}")
+    return {"status": "success", "faction_primary": body.faction_primary.lower()}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -140,11 +128,8 @@ def set_seeker_faction(user_id: str, body: SetFactionBody, repo: SeekerProgressi
 @router.get("/seeker/{user_id}/rank", response_model=RankProgressResponse)
 def get_rank_progress(user_id: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get seeker's rank and progress to next rank."""
-    try:
-        progress = repo.get_resonance_to_next_rank(user_id)
-        return RankProgressResponse(**progress)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get rank progress: {e}")
+    progress = repo.get_resonance_to_next_rank(user_id)
+    return RankProgressResponse(**progress)
 
 
 @router.post("/seeker/{user_id}/resonance")
@@ -157,25 +142,21 @@ def award_resonance(user_id: str, body: AwardResonanceBody, repo: SeekerProgress
     if body.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    try:
-        result = repo.award_resonance(
-            user_id,
-            body.amount,
-            body.reason,
-            persona_key=body.persona_key,
-            session_id=body.session_id
-        )
+    result = repo.award_resonance(
+        user_id,
+        body.amount,
+        body.reason,
+        persona_key=body.persona_key,
+        session_id=body.session_id
+    )
 
-        return {
-            "status": "success",
-            "new_resonance": result['new_resonance'],
-            "new_rank": result['new_rank'],
-            "rank_changed": result['rank_changed'],
-            "previous_rank": result.get('previous_rank'),
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to award resonance: {e}")
+    return {
+        "status": "success",
+        "new_resonance": result['new_resonance'],
+        "new_rank": result['new_rank'],
+        "rank_changed": result['rank_changed'],
+        "previous_rank": result.get('previous_rank'),
+    }
 
 
 @router.get("/seeker/{user_id}/resonance/history")
@@ -185,11 +166,8 @@ def get_resonance_history(
     repo: SeekerProgressionRepository = Depends(_require_progression_repo),
 ):
     """Get recent resonance events for a seeker."""
-    try:
-        history = repo.get_resonance_history(user_id, limit)
-        return {"events": history}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get resonance history: {e}")
+    history = repo.get_resonance_history(user_id, limit)
+    return {"events": history}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -199,21 +177,15 @@ def get_resonance_history(
 @router.get("/seeker/{user_id}/affinity", response_model=List[PersonaAffinityResponse])
 def get_all_affinities(user_id: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get all persona affinities for a seeker."""
-    try:
-        affinities = repo.get_all_affinities(user_id)
-        return [PersonaAffinityResponse(**a) for a in affinities]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get affinities: {e}")
+    affinities = repo.get_all_affinities(user_id)
+    return [PersonaAffinityResponse(**a) for a in affinities]
 
 
 @router.get("/seeker/{user_id}/affinity/{persona_key}", response_model=PersonaAffinityResponse)
 def get_persona_affinity(user_id: str, persona_key: str, repo: SeekerProgressionRepository = Depends(_require_progression_repo)):
     """Get affinity with a specific Nephilim."""
-    try:
-        affinity = repo.get_or_create_affinity(user_id, persona_key)
-        return PersonaAffinityResponse(**affinity)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get affinity: {e}")
+    affinity = repo.get_or_create_affinity(user_id, persona_key)
+    return PersonaAffinityResponse(**affinity)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -230,11 +202,8 @@ def get_unlocked_lore(
 
     Optionally filter by persona.
     """
-    try:
-        lore = repo.get_unlocked_lore(user_id, persona_key)
-        return [UnlockedLoreResponse(**l) for l in lore]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get unlocked lore: {e}")
+    lore = repo.get_unlocked_lore(user_id, persona_key)
+    return [UnlockedLoreResponse(**l) for l in lore]
 
 
 @router.get("/seeker/{user_id}/lore/{persona_key}/full", response_model=List[LoreFragmentContent])
@@ -243,41 +212,35 @@ def get_persona_lore_with_content(user_id: str, persona_key: str, repo: SeekerPr
 
     Returns both unlocked and locked fragments, with content only for unlocked ones.
     """
-    try:
-        # Get persona card to get lore fragment definitions
-        card = get_persona_card(persona_key)
-        if not card:
-            raise HTTPException(status_code=404, detail="Persona not found")
+    # Get persona card to get lore fragment definitions
+    card = get_persona_card(persona_key)
+    if not card:
+        raise HTTPException(status_code=404, detail="Persona not found")
 
-        fragments = card.get('unlockable_lore', [])
-        if not fragments:
-            return []
+    fragments = card.get('unlockable_lore', [])
+    if not fragments:
+        return []
 
-        # Get unlocked lore for this persona
-        unlocked = repo.get_unlocked_lore(user_id, persona_key)
-        unlocked_ids = {l['fragment_id']: l['unlocked_at'] for l in unlocked}
+    # Get unlocked lore for this persona
+    unlocked = repo.get_unlocked_lore(user_id, persona_key)
+    unlocked_ids = {l['fragment_id']: l['unlocked_at'] for l in unlocked}
 
-        result = []
-        for frag in fragments:
-            fragment_id = frag.get('fragment_id', '')
-            is_unlocked = fragment_id in unlocked_ids
+    result = []
+    for frag in fragments:
+        fragment_id = frag.get('fragment_id', '')
+        is_unlocked = fragment_id in unlocked_ids
 
-            result.append(LoreFragmentContent(
-                fragment_id=fragment_id,
-                fragment_title=frag.get('fragment_title', 'Unknown'),
-                fragment=frag.get('fragment', '') if is_unlocked else '[Locked - Requires more conversations]',
-                messages_required=frag.get('messages_required', 0),
-                rarity=frag.get('rarity', 'common'),
-                unlocked=is_unlocked,
-                unlocked_at=unlocked_ids.get(fragment_id),
-            ))
+        result.append(LoreFragmentContent(
+            fragment_id=fragment_id,
+            fragment_title=frag.get('fragment_title', 'Unknown'),
+            fragment=frag.get('fragment', '') if is_unlocked else '[Locked - Requires more conversations]',
+            messages_required=frag.get('messages_required', 0),
+            rarity=frag.get('rarity', 'common'),
+            unlocked=is_unlocked,
+            unlocked_at=unlocked_ids.get(fragment_id),
+        ))
 
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get lore content: {e}")
+    return result
 
 
 @router.post("/seeker/{user_id}/lore/{persona_key}/check")
@@ -286,34 +249,28 @@ def check_lore_unlocks(user_id: str, persona_key: str, repo: SeekerProgressionRe
 
     Called after conversations to see if message thresholds have been met.
     """
-    try:
-        # Get persona card
-        card = get_persona_card(persona_key)
-        if not card:
-            raise HTTPException(status_code=404, detail="Persona not found")
+    # Get persona card
+    card = get_persona_card(persona_key)
+    if not card:
+        raise HTTPException(status_code=404, detail="Persona not found")
 
-        fragments = card.get('unlockable_lore', [])
+    fragments = card.get('unlockable_lore', [])
 
-        # Check and unlock
-        newly_unlocked = repo.check_and_unlock_lore(user_id, persona_key, fragments)
+    # Check and unlock
+    newly_unlocked = repo.check_and_unlock_lore(user_id, persona_key, fragments)
 
-        return {
-            "newly_unlocked": len(newly_unlocked),
-            "fragments": [
-                {
-                    "fragment_id": f.get('fragment_id'),
-                    "fragment_title": f.get('fragment_title'),
-                    "fragment": f.get('fragment', ''),
-                    "rarity": f.get('rarity', 'common'),
-                }
-                for f in newly_unlocked
-            ]
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to check lore unlocks: {e}")
+    return {
+        "newly_unlocked": len(newly_unlocked),
+        "fragments": [
+            {
+                "fragment_id": f.get('fragment_id'),
+                "fragment_title": f.get('fragment_title'),
+                "fragment": f.get('fragment', ''),
+                "rarity": f.get('rarity', 'common'),
+            }
+            for f in newly_unlocked
+        ]
+    }
 
 
 # ─────────────────────────────────────────────────────────────

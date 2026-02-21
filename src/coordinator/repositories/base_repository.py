@@ -10,6 +10,11 @@ from datetime import datetime
 from .db_adapter import DatabaseAdapter, SQLiteAdapter
 
 
+def utc_now_iso() -> str:
+    """Return current UTC time as ``YYYY-MM-DDTHH:MM:SSZ`` string."""
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
 class BaseRepository:
     """Base repository class providing common database operations via adapter pattern."""
 
@@ -81,4 +86,4 @@ class BaseRepository:
     @staticmethod
     def _now() -> str:
         """Get current UTC timestamp in ISO format."""
-        return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        return utc_now_iso()

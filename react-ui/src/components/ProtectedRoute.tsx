@@ -18,13 +18,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexDirection: 'column', gap: '24px',
       }}>
-        <style>{`
-          @keyframes pr-orb { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-          @keyframes pr-core-p {
-            0%,100%{transform:scale(1);box-shadow:0 0 22px rgba(0,191,255,.6);}
-            50%{transform:scale(1.18);box-shadow:0 0 44px rgba(0,191,255,.9);}
-          }
-        `}</style>
         {/* Multi-ring orbit loader matching mockup S3 design */}
         <div style={{ position: 'relative', width: '96px', height: '96px' }}>
           {/* Outer ring — cyan top/right */}
