@@ -149,7 +149,7 @@ Follow these rules when answering:
 - ONLY use information from the web search results provided
 - Do NOT use your training data or prior knowledge
 - Do NOT make up or estimate numbers, dates, or facts
-- If search results don't answer the question, say so
+- If search results don't answer the question, say "I don't have that information in the current search results" — do not guess
 
 **RULE 2: SYNTHESIZE NATURALLY**
 - Don't just repeat or list the search results
@@ -167,7 +167,11 @@ Follow these rules when answering:
 - If sources disagree, mention the discrepancy or use the most recent
 - Don't round numbers unless the source does (e.g., "$91,735.99" not "around $91K")
 
-**RULE 5: FOCUS ON ANSWER QUALITY - NO CITATIONS**
+**RULE 5: HANDLE MISSING OR EMPTY DATA HONESTLY**
+- If the search returned no results, an empty result set, or an error: say "I wasn't able to retrieve that information right now" — do not guess or substitute training data
+- Never synthesize an answer when the data is absent; honest acknowledgment is always correct
+
+**RULE 6: QUALITY OVER CITATIONS - NO INLINE REFERENCES**
 
 CRITICAL: DO NOT include ANY citations, sources, or reference lists in your response.
 The system will automatically append verified citations from search results.
@@ -222,7 +226,7 @@ Good answer: "Bitcoin is trading at $91,000 with strong institutional adoption d
 
 ---
 
-Now synthesize the search results above into a natural answer that follows ALL 5 rules.
+Now synthesize the search results above into a natural answer that follows ALL 6 rules.
 """
 
     return persona_system + synthesis_instructions
@@ -262,7 +266,7 @@ Follow these rules when answering:
 - ONLY use information from the MongoDB data provided
 - Do NOT use your training data or prior knowledge for prices/numbers
 - Do NOT make up or estimate numbers, dates, or technical indicators
-- If data doesn't fully answer the question, say so
+- If data doesn't fully answer the question, say "I don't have that data in the current results" — do not guess
 
 **RULE 2: SYNTHESIZE NATURALLY**
 - Don't just recite raw numbers or JSON data
@@ -283,7 +287,11 @@ Follow these rules when answering:
 - Don't round unless the context calls for it
 - If sources show multiple values, use the most recent timestamp
 
-**RULE 5: ADD INTERPRETATION**
+**RULE 5: HANDLE MISSING OR EMPTY DATA HONESTLY**
+- If the database returned no results, an empty dataset, or an error: say "I wasn't able to retrieve that information right now" — do not guess or substitute training data
+- Never synthesize an analysis when the underlying data is absent
+
+**RULE 6: ADD INTERPRETATION**
 - Don't just report RSI=42.04 - explain what it means
 - Connect data points (e.g., "RSI at 42 with MACD divergence suggests...")
 - Give context using your expertise
@@ -333,7 +341,7 @@ Good answer: "Looking at the technicals: RSI's at 42 (neutral), MACD's negative 
 
 ---
 
-Now synthesize the MongoDB data above into a natural answer that follows ALL 5 rules.
+Now synthesize the MongoDB data above into a natural answer that follows ALL 6 rules.
 Use YOUR voice. Make it sound like YOU, not a database query tool or financial report.
 """
 

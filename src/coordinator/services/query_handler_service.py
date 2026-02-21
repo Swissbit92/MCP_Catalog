@@ -32,6 +32,18 @@ _TOOL_NAME_PATTERN = re.compile(
     r'bitcoin_historical_prices|bitcoin_trading_summary|bitcoin_technical_analysis)\b'
 )
 
+# R9: Output safety filter patterns
+# Private key patterns: 64-char hex (Ethereum/raw), or long base58 strings (Solana)
+_PK_HEX_PATTERN = re.compile(r'\b[0-9a-fA-F]{64}\b')
+_PK_B58_PATTERN = re.compile(r'\b[1-9A-HJ-NP-Za-km-z]{87,88}\b')
+# Dangerous shell/code execution patterns
+_DANGEROUS_CMD_PATTERN = re.compile(
+    r'\b(?:rm\s+-[rRfF]+|DROP\s+TABLE|DROP\s+DATABASE|__import__'
+    r'|eval\s*\(|exec\s*\(|subprocess\.(?:run|call|Popen)'
+    r'|os\.system\s*\()',
+    re.IGNORECASE,
+)
+
 
 def has_active_wallet_flow(session_id: Optional[str]) -> bool:
     """Check whether *session_id* has an in-progress guided wallet creation flow."""
@@ -212,6 +224,18 @@ class QueryHandlerService:
 
         # Strip leaked internal tool names from response
         answer = _TOOL_NAME_PATTERN.sub('', answer).strip()
+
+        # R9: Output safety filter — redact dangerous patterns before returning to client
+        if _PK_HEX_PATTERN.search(answer):
+            logger.warning("[SafetyFilter] Potential 64-char hex private key in response — redacted")
+            answer = _PK_HEX_PATTERN.sub('[REDACTED]', answer)
+        if _PK_B58_PATTERN.search(answer):
+            logger.warning("[SafetyFilter] Potential base58 private key in response — redacted")
+            answer = _PK_B58_PATTERN.sub('[REDACTED]', answer)
+        if _DANGEROUS_CMD_PATTERN.search(answer):
+            logger.warning("[SafetyFilter] Dangerous command pattern detected in response — flagged")
+            # Log but don't redact dangerous commands — they may be legitimate (e.g., explaining rm -rf)
+            # Redaction would break educational context; the warning is the important signal
 
         # Convert <Assistant> separators to <msg> tags (LLM sometimes uses them as message delimiters)
         if re.search(r'<[Aa]ssistant>', answer):
