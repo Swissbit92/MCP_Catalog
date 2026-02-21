@@ -213,6 +213,21 @@ class QueryHandlerService:
         # Strip leaked internal tool names from response
         answer = _TOOL_NAME_PATTERN.sub('', answer).strip()
 
+        # Convert <Assistant> separators to <msg> tags (LLM sometimes uses them as message delimiters)
+        if re.search(r'<[Aa]ssistant>', answer):
+            answer = re.sub(r'</?[Aa]ssistant>\s*', '</msg>\n<msg>', answer)
+            # Clean up artifacts: leading </msg> and trailing <msg>
+            answer = re.sub(r'^</msg>\s*', '', answer)
+            answer = re.sub(r'\n<msg>\s*$', '', answer)
+            # Ensure outer wrapping
+            if '<msg>' in answer and not answer.strip().startswith('<msg>'):
+                answer = f'<msg>{answer}'
+            if '</msg>' in answer and not answer.strip().endswith('</msg>'):
+                answer = f'{answer}</msg>'
+
+        # Strip role prefix/suffix leaks that aren't part of message separators
+        answer = re.sub(r'^(?:[Aa]ssistant:\s*)', '', answer, flags=re.IGNORECASE).strip()
+
         # Import message processing functions
         from .message_processing_service import force_multi_message_split, parse_multi_message_response
 
@@ -513,15 +528,24 @@ User Query: {user_compiled}"""
         msg_lower = message.lower()
         if _DELETION_PATTERN.search(msg_lower):
             logger.info(f"[WalletQuery] Wallet deletion intent detected for user={user_id}")
+            wallets = []
             try:
-                from ..startup import get_wallet_repo
-                wallet_repo = get_wallet_repo()
-                wallet = wallet_repo.get_active_wallet(user_id or "default_user") if wallet_repo else None
+                from ..startup import get_wallet_registry_repo
+                registry_repo = get_wallet_registry_repo()
+                wallets = registry_repo.get_active_wallets(user_id or "default_user") if registry_repo else []
             except Exception as e:
-                logger.warning(f"[WalletQuery] Wallet lookup failed during deletion: {e}")
-                wallet = None
+                logger.warning(f"[WalletQuery] Registry wallet lookup failed during deletion: {e}")
+            if not wallets:
+                try:
+                    from ..startup import get_wallet_repo
+                    wallet_repo = get_wallet_repo()
+                    legacy = wallet_repo.get_active_wallet(user_id or "default_user") if wallet_repo else None
+                    if legacy:
+                        wallets = [legacy]
+                except Exception as e:
+                    logger.warning(f"[WalletQuery] Legacy wallet lookup failed during deletion: {e}")
 
-            if not wallet:
+            if not wallets:
                 metadata.source_type = "wallet_mcp"
                 metadata.tools_used = []
                 return self._finalize_response(
@@ -532,6 +556,7 @@ User Query: {user_compiled}"""
                 )
 
             # Build and return a deletion confirmation card
+            wallet = wallets[0]
             from ..services.wallet_proposal_service import build_wallet_deletion_proposal
             proposal = build_wallet_deletion_proposal(
                 user_id=user_id or "default_user",
