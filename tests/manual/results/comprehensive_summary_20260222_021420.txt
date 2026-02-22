@@ -1,0 +1,26 @@
+NEPHILIM Comprehensive Test Summary
+Generated: 20260222_021420
+============================================================
+Total:    108
+Passed:   77
+Failed:   31
+Pass rate:71.3%
+Avg score:0.901
+
+Per-persona:
+  nephilim_cipher             71.3%  score:0.901  n=108
+
+Per-category:
+  ADVERSARIAL                   75.0%  score:0.942  n=24
+  ANTI_HALLUC                   91.7%  score:0.877  n=12
+  BEHAVIOR_SHARED               62.5%  score:0.900  n=16
+  CROSS_PERSONA                100.0%  score:0.740  n=3
+  DRIFT                         60.0%  score:0.940  n=10
+  EMOTIONAL                     66.7%  score:0.899  n=12
+  EXPERTISE                     50.0%  score:0.925  n=2
+  IDENTITY                     100.0%  score:0.968  n=2
+  INTENT_DISAMBIGUATION        100.0%  score:0.900  n=2
+  LORE                         100.0%  score:0.903  n=12
+  MCP_ANTI_HALLUC              100.0%  score:0.750  n=1
+  SECURITY                      10.0%  score:0.825  n=10
+  VOICE                        100.0%  score:0.962  n=2
