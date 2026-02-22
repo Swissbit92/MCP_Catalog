@@ -226,8 +226,15 @@ def chat(body: ChatBody):
     if not tools:
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
-        client = create_llm_client(card)
-        answer = client.complete(system=system, user_prompt=user_compiled)
+        try:
+            client = create_llm_client(card)
+            answer = client.complete(system=system, user_prompt=user_compiled)
+        except Exception as e:
+            logger.error(f"[Chat] LLM completion failed for {persona_key}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=503,
+                detail=f"LLM service temporarily unavailable: {type(e).__name__}"
+            )
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
     # Tools needed - check if MongoDB tools are included
@@ -276,8 +283,15 @@ def chat(body: ChatBody):
 
     else:
         # Fallback to regular completion
-        client = create_llm_client(card)
-        answer = client.complete(system=system, user_prompt=user_compiled)
+        try:
+            client = create_llm_client(card)
+            answer = client.complete(system=system, user_prompt=user_compiled)
+        except Exception as e:
+            logger.error(f"[Chat] LLM fallback completion failed for {persona_key}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=503,
+                detail=f"LLM service temporarily unavailable: {type(e).__name__}"
+            )
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
 
@@ -312,8 +326,15 @@ def greet(body: GreetBody):
     system = build_system_prompt(body.persona)
     user_prompt = build_greeting_user_prompt(body.persona)
 
-    client = create_llm_client(card)
-    answer = client.complete(system=system, user_prompt=user_prompt)
+    try:
+        client = create_llm_client(card)
+        answer = client.complete(system=system, user_prompt=user_prompt)
+    except Exception as e:
+        logger.error(f"[Greet] LLM completion failed for {body.persona}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail=f"LLM service temporarily unavailable: {type(e).__name__}"
+        )
 
     # Post-process to enforce first-person
     persona_name = card.get("display_name") or card.get("key") or "Persona"

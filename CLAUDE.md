@@ -26,7 +26,7 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 docker-compose --env-file .env.docker up -d
 
 # Pull models (required on first run)
-docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+docker exec -it ai-companion-brain ollama pull llama3.1:8b-instruct-q5_0
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 
 # Common operations
@@ -174,8 +174,9 @@ Pass threshold: composite â‰¥ 0.60 AND hard check passes. Overall suite pass: â‰
 
 ```bash
 ollama serve                                               # Start service
-ollama pull nchapman/gemma-2-9b-it-abliterated:9b         # Main model
+ollama pull llama3.1:8b-instruct-q5_0                     # Main model (best quality + safety)
 ollama pull nomic-embed-text:latest                        # Embeddings (RAG memory)
+# Optional: ollama pull nchapman/gemma-2-9b-it-abliterated:9b  # Alt model (PERSONA_MODEL_B)
 ```
 
 ## Project Structure
@@ -237,7 +238,7 @@ utils/                         # animations.ts, helpers, celestialOrder.ts
 Required in `.env`:
 ```bash
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b
+PERSONA_MODEL=llama3.1:8b-instruct-q5_0
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
