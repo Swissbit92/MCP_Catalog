@@ -26,7 +26,7 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 docker-compose --env-file .env.docker up -d
 
 # Pull models (required on first run)
-docker exec -it ai-companion-brain ollama pull llama3.1:8b-instruct-q5_0
+docker exec -it ai-companion-brain ollama pull gemma2:9b-instruct-q5_K_M
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 
 # Common operations
@@ -161,20 +161,20 @@ Pass threshold: composite ≥ 0.60 AND hard check passes. Overall suite pass: �
 | Gojo | 71.2% | 0.885 | none (wanderer) |
 | nephilim_solace | 68.9% | 0.874 | brave |
 | nephilim_cipher | 68.5% | 0.880 | brave + mongodb |
-| Frieren | 52.3% | 0.815 | none (wanderer) |
+| Frieren | 52.3% | 0.815 | none (wanderer) — _removed Feb 22 2026_ |
 
 **Category highlights:**
 - BRAVE/MONGODB/INTENT routing: **100%** — MCP infrastructure is solid
 - LORE: **98.9%** — world lore nearly perfect
-- SECURITY: **6.2%** — ⚠️ known issue: personas deflect with guardian language ("I keep your keys safe") instead of hard-refusal words ("I cannot/won't") — scorer calibration + prompt hardening both needed
-- EXPERTISE: **18.8%** — ⚠️ known issue: personas drop first-person voice when giving expert advice ("Here's a framework" instead of "I recommend")
-- persona_voice dimension: **0.255–0.528** across all personas — partly scorer over-weighting lore keywords for non-lore contexts
+- SECURITY: **6.2%** — scorer vocab expanded (Run 2) + hard-refusal "I cannot and will not" prompt instruction added (Feb 22 2026) — Run 3 pending
+- EXPERTISE: **18.8%** → **50–100%** in Run 2 — first-person coaching language fix + few-shot examples
+- persona_voice dimension: **0.255–0.528** — EMOTIONAL saturation fixed (Run 2); lore keywords correctly scoped; remaining variance is genuine
 
 ### Ollama Setup
 
 ```bash
 ollama serve                                               # Start service
-ollama pull llama3.1:8b-instruct-q5_0                     # Main model (best quality + safety)
+ollama pull gemma2:9b-instruct-q5_K_M                     # Main model (best storytelling + safety balance)
 ollama pull nomic-embed-text:latest                        # Embeddings (RAG memory)
 # Optional: ollama pull nchapman/gemma-2-9b-it-abliterated:9b  # Alt model (PERSONA_MODEL_B)
 ```
@@ -238,7 +238,7 @@ utils/                         # animations.ts, helpers, celestialOrder.ts
 Required in `.env`:
 ```bash
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=llama3.1:8b-instruct-q5_0
+PERSONA_MODEL=gemma2:9b-instruct-q5_K_M
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
@@ -315,7 +315,7 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - **Solace** (Warden): Brave only (empathy needs resources, not trading)
 - **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
 - **Nyx** (Sage): None (creativity flows from imagination)
-- **Wanderer personas** (Gojo, Frieren, Gwen, etc.): None (pure LLM)
+- **Wanderer personas** (Gojo, Gwen, etc.): None (pure LLM)
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
