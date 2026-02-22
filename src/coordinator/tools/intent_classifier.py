@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import List, Optional
 
@@ -13,6 +14,17 @@ from .keywords import (
     MONGODB_HISTORICAL_KEYWORDS,
     MONGODB_TRADING_KEYWORDS,
     MONGODB_TECHNICAL_KEYWORDS,
+)
+
+
+# Negation detection: action verbs prefixed with "not"/"don't" reverse intent.
+# Prevents "not buying Bitcoin" or "I'm not going to trade SOL" from triggering NEEDS_WALLET.
+# Handles: infinitives (buy), gerunds (buying), and multi-word bridges (going to, want to).
+_NEGATED_ACTION = re.compile(
+    r"\b(?:not|don't|dont|never)\s+"
+    r"(?:(?:going|want(?:ing)?|planning)\s+to\s+)?"
+    r"(?:buy(?:ing)?|sell(?:ing)?|swap(?:ping)?|trad(?:e|ing)|exchang(?:e|ing)|purchas(?:e|ing))\b",
+    re.IGNORECASE,
 )
 
 
@@ -124,7 +136,9 @@ def classify_query_intent(
     ]
 
     if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):
-        return QueryIntent.NEEDS_WALLET
+        # Negation guard: "not buying Bitcoin", "I'm not going to swap" → skip wallet routing
+        if not _NEGATED_ACTION.search(query_lower):
+            return QueryIntent.NEEDS_WALLET
 
     # Determine MCP permissions — per-persona mcp_access takes priority
     if mcp_access is not None:
@@ -132,7 +146,11 @@ def classify_query_intent(
         can_use_brave = "brave_search" in mcp_access
         can_use_mongodb = "mongodb" in mcp_access
     else:
-        # Fallback to rarity-based access for personas without mcp_access field
+        # Fallback: rarity-based access for personas that have no mcp_access field.
+        # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026)
+        # because they were never read — all current personas define mcp_access explicitly.
+        # These hardcoded sets are intentional; they cover edge-cases if a future persona
+        # lacks an mcp_access field (e.g. a quickly-added persona during development).
         can_use_mongodb = persona_rarity.lower() in {"epic", "legendary"}
         can_use_brave = persona_rarity.lower() in {"rare", "epic", "legendary"}
 
@@ -224,4 +242,24 @@ def classify_query_intent(
         # Don't fallback to web search - return NEITHER
         return QueryIntent.NEEDS_NEITHER
     else:
+        # R4: Semantic embedding fallback — catches ambiguous queries that miss all keywords.
+        # Only runs when the persona has at least one MCP capability; skips for pure-LLM personas.
+        if can_use_brave or can_use_mongodb or can_use_wallet:
+            try:
+                from .semantic_router import route_by_embedding
+                semantic_intent = route_by_embedding(
+                    query=query,
+                    can_use_brave=can_use_brave,
+                    can_use_mongodb=can_use_mongodb,
+                    can_use_wallet=can_use_wallet,
+                )
+                if semantic_intent == "wallet":
+                    return QueryIntent.NEEDS_WALLET
+                elif semantic_intent == "web_search":
+                    return QueryIntent.NEEDS_WEB_SEARCH
+                elif semantic_intent == "mongodb":
+                    return QueryIntent.NEEDS_MONGODB
+            except Exception:
+                pass  # Semantic router failure is non-fatal — fall through to NEEDS_NEITHER
+
         return QueryIntent.NEEDS_NEITHER

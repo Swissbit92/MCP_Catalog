@@ -60,15 +60,16 @@ The `mcp_access` field takes absolute priority over rarity-based env var fallbac
 
 ### Legacy Rarity Fallback
 
-When a persona JSON has no `mcp_access` field (legacy personas), the system falls back to env var–based rarity gating:
+When a persona JSON has no `mcp_access` field (legacy personas), the system falls back to
+hardcoded rarity-based gating in `intent_classifier.py` and `tool_utils.py`:
 
-```bash
-# .env
-BRAVE_ENABLED_RARITIES=sage,warden,archon
-MONGODB_ENABLED_RARITIES=epic,legendary
-```
+- Brave Search: `rare`, `epic`, `legendary`
+- MongoDB: `epic`, `legendary`
 
-This fallback uses the `rarity` field on the persona (which maps roughly to Celestial Order tiers but uses the old vocabulary `common/rare/epic/legendary`). New NEPHILIM personas should always use `mcp_access` instead.
+`BRAVE_ENABLED_RARITIES` / `MONGODB_ENABLED_RARITIES` env vars were removed in Feb 2026 — they
+were parsed into config fields that nothing ever read. All current personas define `mcp_access`
+explicitly, so the rarity fallback is a safety net only. New personas should always use
+`mcp_access` instead.
 
 ### How Intent Classifier Uses MCP Access
 

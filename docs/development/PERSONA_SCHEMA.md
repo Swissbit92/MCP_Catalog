@@ -377,7 +377,7 @@ A Wanderer (lowest celestial order) can have `epic` lore fragments. An Archon (h
 | `brave_search` | Brave Search MCP — web search with citations | Container spawned ephemerally per request via `docker run -i --rm`. Requires `BRAVE_API_KEY` in `.env`. |
 | `mongodb` | MongoDB MCP — trading and market data | Long-running container that persists across requests. Requires `MONGODB_URI` in `.env`. |
 
-If `mcp_access` is empty or the field is absent, the persona uses pure LLM only. Legacy env-var-based rarity gating (`BRAVE_ENABLED_RARITIES`, `MONGODB_ENABLED_RARITIES`) acts as a fallback when `mcp_access` is not set on a persona.
+If `mcp_access` is empty or the field is absent, the persona falls back to hardcoded rarity-based gating in `intent_classifier.py` and `tool_utils.py`. New personas should always set `mcp_access` explicitly.
 
 ---
 

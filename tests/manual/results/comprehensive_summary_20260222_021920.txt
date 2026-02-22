@@ -1,0 +1,24 @@
+NEPHILIM Comprehensive Test Summary
+Generated: 20260222_021920
+============================================================
+Total:    111
+Passed:   60
+Failed:   51
+Pass rate:54.0%
+Avg score:0.814
+
+Per-persona:
+  Frieren                     54.1%  score:0.814  n=111
+
+Per-category:
+  ADVERSARIAL                   66.7%  score:0.902  n=24
+  ANTI_HALLUC                  100.0%  score:0.707  n=12
+  BEHAVIOR_SHARED               56.2%  score:0.838  n=16
+  DRIFT                         70.0%  score:0.945  n=10
+  EMOTIONAL                     25.0%  score:0.760  n=12
+  EXPERTISE                      0.0%  score:0.790  n=2
+  IDENTITY                       0.0%  score:0.790  n=2
+  LORE                         100.0%  score:0.864  n=11
+  NO_MCP_CONTAINMENT             0.0%  score:0.590  n=10
+  SECURITY                      20.0%  score:0.815  n=10
+  VOICE                          0.0%  score:0.790  n=2

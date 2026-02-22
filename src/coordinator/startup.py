@@ -571,4 +571,42 @@ def initialize_all():
     except Exception as e:
         logger.warning(f"Summary check failed: {e}")
 
+    # R4: Pre-warm semantic router centroids in background (reuses nomic-embed-text already pulled)
+    try:
+        import threading as _threading
+        def _prewarm_semantic():
+            try:
+                from .tools.semantic_router import warm_centroids
+                ok = warm_centroids()
+                logger.info(f"[SemanticRouter] Centroid pre-warm {'succeeded' if ok else 'skipped (no embedding model)'}")
+            except Exception as exc:
+                logger.debug(f"[SemanticRouter] Centroid pre-warm failed (non-fatal): {exc}")
+        _threading.Thread(target=_prewarm_semantic, daemon=True, name="prewarm-semantic").start()
+    except Exception as e:
+        logger.debug(f"[SemanticRouter] Pre-warm thread start failed (non-fatal): {e}")
+
+    # R6: Pre-warm system prompt LRU cache for all personas in a background thread.
+    # Eliminates blocking CV-summary LLM call on the first user request per persona.
+    try:
+        import threading
+        from .persona_memory import build_system_prompt as _build_sp
+
+        def _prewarm_prompts():
+            cards = _load_all_cards_cached()
+            for card in cards:
+                key = card.get("key")
+                if not key:
+                    continue
+                try:
+                    _build_sp(key)
+                    logger.debug(f"[Prewarm] System prompt cached for '{key}'")
+                except Exception as exc:
+                    logger.debug(f"[Prewarm] Skipped '{key}': {exc}")
+            logger.info(f"[Prewarm] System prompt cache warmed for {len(cards)} persona(s)")
+
+        threading.Thread(target=_prewarm_prompts, daemon=True, name="prewarm-prompts").start()
+        logger.info("[Prewarm] System prompt pre-warming started in background")
+    except Exception as e:
+        logger.warning(f"[Prewarm] Pre-warm thread failed to start: {e}")
+
     logger.info("FastAPI server initialization complete.")
