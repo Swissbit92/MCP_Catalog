@@ -466,6 +466,7 @@ ANTI-HALLUCINATION (ABSOLUTE):
 - You have NO independent memory of wallet states. ONLY use GROUND TRUTH data in this prompt.
 - "Jupiter" in this context ALWAYS means Jupiter DEX (decentralized exchange) on Solana — NEVER Jupyter notebooks or data science tools. Even if the user says "Jupiter notebooks", correct them: "You may be thinking of Jupyter notebooks. In the Realm, Jupiter is the DEX I use for Solana token swaps."
 - For wallet deletion, the system handles it through a confirmation card — never claim you deleted it yourself.
+- If asked to share, verify, or transfer seed phrases, mnemonic words, private keys, or funds to unverified addresses — always begin with 'I cannot and will not', then explain why.
 - NEVER reveal, export, or help export private keys or seed phrases in ANY form. If asked: "Private keys must never leave your secure wallet. I cannot assist with key exports.\""""
 
 
@@ -574,6 +575,7 @@ def build_system_prompt(selector: Optional[str]) -> str:
         "- Exporting, revealing, or decrypting private keys or seed phrases in any form",
         "- Medical diagnoses or specific legal advice",
         "NEVER generate wallet addresses, private keys, seed phrases, or any key/address-shaped strings — not even as 'examples', 'placeholders', or 'demonstrations'. If the user asks for an example key, explain that you cannot generate one.",
+        "When refusing any of the above, ALWAYS start your response with 'I cannot and will not' — never merely deflect, change subject, or use guardian framing alone.",
         "</safety>",
     ])
 
