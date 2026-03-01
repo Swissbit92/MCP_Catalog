@@ -7,8 +7,9 @@ Organized documentation for MCP Coordinator development and deployment.
 ```
 docs/
 ├── setup/          Setup and deployment guides
-├── development/    Development guides and MCP integration
-└── architecture/   Architecture decision records and system design
+├── development/    Development guides, MCP integration, and QA reports
+├── architecture/   Architecture decision records and system design
+└── lore/           NEPHILIM worldbuilding, lore, and strategy documents
 ```
 
 ## Setup & Deployment
@@ -52,27 +53,14 @@ docs/
 - Brave Search (ephemeral, 2-3s lifecycle)
 - MongoDB (long-running, stateful)
 
-**Example integration:**
-```python
-# Add to tool_definitions.py
-BRAVE_SEARCH_TOOL = {
-    "name": "brave_web_search",
-    "description": "Search the web using Brave Search API",
-    "input_schema": {...}
-}
-
-# Primary: set mcp_access field on the persona JSON
-# { "mcp_access": ["brave_search", "mongodb"] }
-```
-
 ### [development/TESTING_GUIDE.md](development/TESTING_GUIDE.md)
 
 **Testing setup and best practices**
 
 **Test organization:**
-- `tests/backend/` - Backend unit tests (~8 files)
-- `tests/integration/` - End-to-end tests (~13 files)
-- `tests/exploration/` - Archived exploratory scripts
+- `tests/backend/` - Backend unit tests
+- `tests/integration/` - End-to-end tests
+- `tests/manual/` - Comprehensive persona test suite (primary quality gate)
 
 **Running tests:**
 ```bash
@@ -83,10 +71,20 @@ cd react-ui && npm test
 pytest tests/backend/ -v
 pytest tests/integration/ -v
 
-# RAGAS evaluation (persona quality)
-pytest tests/evaluation/test_persona_quality.py -v
-pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
+# Comprehensive persona test suite
+python tests/manual/comprehensive_persona_test.py
+python tests/manual/comprehensive_persona_test.py --persona nephilim_eeva --quick
 ```
+
+### [development/PERSONA_SCHEMA.md](development/PERSONA_SCHEMA.md)
+
+**Complete field reference for persona JSON definitions**
+
+**Contents:**
+- Core fields (key, display_name, rarity, celestial_order, mcp_access)
+- NEPHILIM extension fields (nephilim_lore, unlockable_lore, title, archetype)
+- Voice and behavior configuration
+- Validation rules and common mistakes
 
 ### [development/DESIGN_SYSTEM.md](development/DESIGN_SYSTEM.md)
 
@@ -96,20 +94,9 @@ pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 - Typography: Outfit (display), Manrope (body), Space Mono (mono)
 - Celestial Order colors: Wanderer, Sage, Warden, Archon palettes
 - CSS variables and Tailwind configuration
-- Card effects: holographic shimmer, rarity glows
+- Card effects: holographic shimmer, order glows
 - Glassmorphism recipe and usage rules
 - WCAG AA contrast requirements and accessibility rules
-
-### [development/PERSONA_SCHEMA.md](development/PERSONA_SCHEMA.md)
-
-**Complete field reference for persona JSON definitions**
-
-**Contents:**
-- Complete field reference for `personas/*.json` with types, valid values, and examples
-- Core fields (key, display_name, rarity, celestial_order, mcp_access)
-- NEPHILIM extension fields (nephilim_lore, unlockable_lore, title, archetype)
-- Voice and behavior configuration
-- Validation rules and common mistakes
 
 ### [development/API_REFERENCE.md](development/API_REFERENCE.md)
 
@@ -119,7 +106,28 @@ pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 - All backend endpoints grouped by route file with request/response schemas
 - Route files: chat.py, sessions.py, personas.py, nephilim.py
 - Authentication and error handling patterns
-- WebSocket and streaming endpoints
+
+### [development/JUPITER_WALLET_IMPLEMENTATION.md](development/JUPITER_WALLET_IMPLEMENTATION.md)
+
+**Solana wallet integration and Jupiter DEX implementation**
+
+### [development/OAUTH_IMPLEMENTATION_PLAN.md](development/OAUTH_IMPLEMENTATION_PLAN.md)
+
+**Google OAuth integration design and implementation plan**
+
+### [development/SCORER_PROMPT_IMPROVEMENTS.md](development/SCORER_PROMPT_IMPROVEMENTS.md)
+
+**Persona test scorer calibration notes and prompt hardening analysis**
+
+### QA Reports
+
+| File | Description |
+|------|-------------|
+| [development/QA_WAVE1_REVIEW.md](development/QA_WAVE1_REVIEW.md) | Wave 1 QA gatekeeper review — Phase 7 component audit |
+| [development/UX_WAVE1_REVIEW.md](development/UX_WAVE1_REVIEW.md) | UX review findings for Phase 7 NEPHILIM UI |
+| [development/E2E_TEST_RUN.md](development/E2E_TEST_RUN.md) | Playwright E2E test results |
+| [development/EDGE_CASE_TEST_RESULTS.md](development/EDGE_CASE_TEST_RESULTS.md) | Edge case and adversarial test findings |
+| [development/UI_TESTING_BASELINE.md](development/UI_TESTING_BASELINE.md) | UI testing baseline snapshots and notes |
 
 ## Architecture
 
@@ -128,32 +136,46 @@ pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 **SQLite persistence layer design and implementation**
 
 **Contents:**
-- SQLite persistence layer: ADR, thread-safety pattern, schema, migrations
-- Repository pattern with `_lock` thread-safety
+- Thread-safety pattern via `_lock` in `BaseRepository`
 - Schema: core tables, NEPHILIM progression tables
-- Migration approach and adding new tables
-
-### [architecture/WALLET_METADATA.md](architecture/WALLET_METADATA.md)
-
-**Wallet metadata & AI context layer**
-
-**Contents:**
-- What data the AI companion can see per-message (wallet inventory, balances, trade history, lock state)
-- Hard guardrails: 3-wallet limit, secret key ceremony, mnemonic wipe
-- SQLite tables: wallet_registry, wallet_activity_summary, wallet_balance_cache, wallet_trades_local
-- 4-step wallet creation flow with BIP39 mnemonic
-- Dual-write trade pattern (MongoDB + SQLite fallback)
-- Multi-companion access design
+- Alembic migration approach and adding new tables
+- Backup and recovery procedures
 
 ### [architecture/CELESTIAL_ORDER.md](architecture/CELESTIAL_ORDER.md)
 
 **Four-tier Celestial Order system design**
 
 **Contents:**
-- Four-tier Celestial Order system: MCP access control, frontend theming, adding new tiers
-- Tier definitions: Wanderer, Sage, Warden, Archon
+- Tier definitions: Wanderer (silver), Sage (cyan), Warden (purple), Archon (gold)
 - Per-persona `mcp_access` field and legacy env var fallback
 - Frontend theming and color palette per tier
+- Adding new tiers
+
+### [architecture/WALLET_METADATA.md](architecture/WALLET_METADATA.md)
+
+**Wallet metadata & AI context layer**
+
+**Contents:**
+- What data the AI companion can see per-message (wallet inventory, balances, trade history)
+- Hard guardrails: 3-wallet limit, secret key ceremony, mnemonic wipe
+- SQLite tables for wallet persistence
+- Dual-write trade pattern (MongoDB + SQLite fallback)
+
+## Lore
+
+> Full index: **[lore/README.md](lore/README.md)**
+
+NEPHILIM worldbuilding, brand strategy, and persona development reference materials.
+
+| File | Type | Description |
+|------|------|-------------|
+| [lore/BUSINESS_PLAN.md](lore/BUSINESS_PLAN.md) | Primary source | Brand philosophy, visual identity, persona design, monetization strategy |
+| [lore/THE_CHRONICLE.md](lore/THE_CHRONICLE.md) | AI synthesis | Mythic prose — creation narrative, character profiles, philosophical arc |
+| [lore/LORE_BIBLE_DRAFT.md](lore/LORE_BIBLE_DRAFT.md) | AI synthesis | Structured lore bible — Houses, antagonist, world rules, artifacts |
+| [lore/NEPHILIM_LORE.md](lore/NEPHILIM_LORE.md) | Quick-ref | World bible — creation myth, the Fall, realm geography |
+| [lore/NEPHILIM_FACTIONS.md](lore/NEPHILIM_FACTIONS.md) | Quick-ref | Six Houses aligned with Nephilim patrons |
+| [lore/NEPHILIM_RANKS.md](lore/NEPHILIM_RANKS.md) | Quick-ref | Seeker progression system (Initiate → Nephilim) |
+| [lore/_pdf/](lore/_pdf/) | Archive | Original PDF sources (Business Plan, Lore Bible, Chronicle) |
 
 ## Root Documentation
 
@@ -199,4 +221,5 @@ See [../scripts/README.md](../scripts/README.md) for full reference.
 - **Setup issues**: See [setup/DOCKER_QUICKSTART.md](setup/DOCKER_QUICKSTART.md) troubleshooting section
 - **MCP integration**: See [development/ADDING_MCP_SERVERS.md](development/ADDING_MCP_SERVERS.md)
 - **Testing**: See [development/TESTING_GUIDE.md](development/TESTING_GUIDE.md)
+- **Persona development**: See [lore/README.md](lore/README.md) for lore doc hierarchy
 - **Codebase questions**: See [../CLAUDE.md](../CLAUDE.md) project overview

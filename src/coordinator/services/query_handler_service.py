@@ -85,8 +85,8 @@ class QueryHandlerService:
             if registry_repo:
                 registry_wallets = registry_repo.get_active_wallets(user_id)
                 all_wallets = registry_repo.get_all_wallets(user_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[WalletState] Registry fetch failed: {e}")
 
         # Fallback: if registry is empty, try legacy single-wallet repo
         if not registry_wallets and not all_wallets:
@@ -114,8 +114,8 @@ class QueryHandlerService:
                 for bc in summary_repo.get_user_balances(user_id):
                     balance_map[bc.get("wallet_id", "")] = bc
                 summary = summary_repo.get_summary(user_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[WalletState] Balance summary fetch failed: {e}")
 
         # Check unlock state from session cache
         from ..jupiter.wallet_manager import wallet_unlocked
@@ -691,8 +691,8 @@ User Query: {user_compiled}"""
                             metadata=metadata,
                             used_search=False,
                         )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[WalletCreate] Slot validation failed, proceeding without cap check: {e}")
 
             from ..services.wallet_proposal_service import build_wallet_creation_step
             session_key = session_id or ""

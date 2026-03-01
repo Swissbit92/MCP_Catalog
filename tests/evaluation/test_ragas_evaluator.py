@@ -201,7 +201,7 @@ class TestPersonaRagasEvaluator:
 class TestPersonaRagasEvaluatorRealData:
     """Tests with real golden Q&A files."""
 
-    @pytest.mark.parametrize("persona_key", ["eeva", "frieren", "gojo"])
+    @pytest.mark.parametrize("persona_key", ["eeva", "gojo"])
     def test_evaluator_initialization_real_personas(self, persona_key):
         """Test initializing evaluator with real persona data."""
         try:
@@ -213,7 +213,7 @@ class TestPersonaRagasEvaluatorRealData:
             pytest.skip(f"Golden Q&A for {persona_key} not found")
 
     @pytest.mark.slow
-    @pytest.mark.parametrize("persona_key", ["eeva", "frieren", "gojo"])
+    @pytest.mark.parametrize("persona_key", ["eeva", "gojo"])
     def test_placeholder_evaluation_real_personas(self, persona_key):
         """Test placeholder evaluation with real persona data."""
         try:

@@ -19,7 +19,7 @@ Per-persona MCP access:
   nephilim_cipher → brave + mongodb
   nephilim_solace → brave only
   nephilim_nyx    → none
-  Gojo, Frieren   → none (wanderers)
+  Gojo            → none (wanderer)
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ PERSONA_MCP_ACCESS: dict[str, dict[str, bool]] = {
     "nephilim_solace": {"brave": True,  "mongodb": False, "wallet": False},
     "nephilim_nyx":    {"brave": False, "mongodb": False, "wallet": False},
     "Gojo":            {"brave": False, "mongodb": False, "wallet": False},
-    "Frieren":         {"brave": False, "mongodb": False, "wallet": False},
+
 }
 
 ALL_PERSONAS = list(PERSONA_MCP_ACCESS.keys())

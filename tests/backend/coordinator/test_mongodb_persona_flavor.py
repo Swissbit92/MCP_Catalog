@@ -61,8 +61,8 @@ Behavior:
     assert "Eeva style" in synthesis_prompt, "[FAIL] Missing Eeva style example"
     print("[PASS] Contains persona-specific example (Eeva)")
 
-    assert "Frieren style" in synthesis_prompt, "[FAIL] Missing Frieren style example"
-    print("[PASS] Contains persona-specific example (Frieren)")
+    assert "Gojo style" in synthesis_prompt, "[FAIL] Missing Gojo style example"
+    print("[PASS] Contains persona-specific example (Gojo)")
 
     # Verify MongoDB-specific content
     mongodb_keywords = [
@@ -117,7 +117,7 @@ Behavior:
     print("Expected Impact:")
     print("- MongoDB responses should now match persona personality")
     print("- Eeva: Sarcastic, sharp, crypto-savvy tone")
-    print("- Frieren: Formal, contemplative, analytical tone")
+    print("- Gojo: Confident, casual, bold tone")
     print("- All personas: Consistent with their defined voice/behavior")
     print()
 

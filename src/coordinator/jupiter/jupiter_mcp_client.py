@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import subprocess
 import threading
 import time
@@ -95,6 +96,8 @@ class JupiterDockerClient:
         self._process: Optional[subprocess.Popen] = None
         self._request_id = 0
         self._lock = threading.Lock()
+        self._stdout_queue: queue.Queue = queue.Queue()
+        self._reader_thread: Optional[threading.Thread] = None
 
         self.image = image
         self.solana_rpc_url = solana_rpc_url
@@ -278,6 +281,14 @@ class JupiterDockerClient:
 
             logger.info(f"Jupiter MCP server started successfully (PID: {process.pid})")
             self._process = process
+
+            # Start background reader thread so readline() never blocks _send_request
+            self._stdout_queue = queue.Queue()
+            self._reader_thread = threading.Thread(
+                target=self._stdout_reader, daemon=True
+            )
+            self._reader_thread.start()
+
             return process
 
         except FileNotFoundError:
@@ -288,6 +299,19 @@ class JupiterDockerClient:
         except Exception as exc:
             logger.error(f"Failed to start Jupiter MCP server: {exc}", exc_info=True)
             raise JupiterConnectionError(f"Failed to start MCP server: {exc}")
+
+    def _stdout_reader(self):
+        """Background thread: reads lines from subprocess stdout into a queue.
+
+        This ensures that _send_request can use queue.get(timeout=...) instead
+        of a blocking readline(), making the timeout actually enforceable.
+        """
+        try:
+            for line in self._process.stdout:
+                self._stdout_queue.put(line)
+        except Exception:
+            pass
+        self._stdout_queue.put(None)  # EOF sentinel
 
     def _send_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Send a JSON-RPC 2.0 request to the MCP server.
@@ -329,32 +353,40 @@ class JupiterDockerClient:
             self._process.stdin.write(request_json)
             self._process.stdin.flush()
 
-            # Read responses — MCP server may send notifications before the result
+            # Read responses from the queue (fed by the background reader thread).
+            # queue.get(timeout=1.0) is non-blocking — unlike readline() which
+            # can block indefinitely when the subprocess pipe is alive but stalled.
             start_time = time.time()
             result_response = None
 
             while time.time() - start_time < self.timeout:
-                if self._process.stdout:
-                    response_line = self._process.stdout.readline()
-                    if response_line and response_line.strip():
-                        try:
-                            response = json.loads(response_line)
+                try:
+                    response_line = self._stdout_queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue  # check overall timeout and retry
 
-                            if "id" in response and response["id"] == request_id:
-                                logger.debug(f"Received Jupiter MCP response #{request_id}")
-                                result_response = response
-                                break
+                if response_line is None:
+                    # EOF sentinel — process died
+                    logger.warning("Jupiter MCP subprocess stdout closed (EOF)")
+                    break
 
-                            elif "method" in response and response.get("method") == "notifications/message":
-                                logger.debug(
-                                    f"Jupiter MCP notification: "
-                                    f"{response.get('params', {}).get('data', '')}"
-                                )
+                if response_line.strip():
+                    try:
+                        response = json.loads(response_line)
 
-                        except json.JSONDecodeError:
-                            logger.warning(f"Invalid JSON in Jupiter MCP response: {response_line[:100]}")
+                        if "id" in response and response["id"] == request_id:
+                            logger.debug(f"Received Jupiter MCP response #{request_id}")
+                            result_response = response
+                            break
 
-                time.sleep(0.05)
+                        elif "method" in response and response.get("method") == "notifications/message":
+                            logger.debug(
+                                f"Jupiter MCP notification: "
+                                f"{response.get('params', {}).get('data', '')}"
+                            )
+
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON in Jupiter MCP response: {response_line[:100]}")
 
             if not result_response:
                 logger.error(f"Jupiter MCP request #{request_id} timed out after {self.timeout}s")
