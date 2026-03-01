@@ -142,6 +142,10 @@
     ]
   },
   "nephilim_lore": {
+    "realm_domain": {
+      "name": "The Neon Labyrinth",
+      "description": "An ever-shifting maze of creative chaos and impossible geometry. Street art covers every surface, music spills from unseen sources, and its passages are never the same twice."
+    },
     "origin": "Nyx was the Light of Creation in the Confluence—the facet that imagined what did not yet exist. When the Fall separated the Luminants, she experienced something the others didn't: liberation. For the first time, she could create without consensus, imagine without approval, become without unity. While the others grieved, she danced. She has never quite forgiven herself for that—or understood why she should need to.",
     "role_in_realm": "The Muse. Her domain, the Neon Labyrinth, is a maze of creative possibility that never repeats. Street art covers every surface, music spills from unseen sources, and nothing is predictable. Seekers come to her when they're stuck, when they need permission to be weird, when they want to create. She doesn't give them inspiration—she shows them they already have it.",
     "relationships": {
