@@ -9,6 +9,8 @@ import { VirtualizedMessageList } from '../components/VirtualizedMessageList'
 import SessionList from '../components/SessionList'
 import { ResonanceToast } from '../components/ResonanceToast'
 import { LoreRevealOverlay } from '../components/LoreRevealOverlay'
+import { RankCeremonyOverlay } from '../components/RankCeremonyOverlay'
+import type { RankCeremony } from '../services/api/types'
 import NephilimBackground from '../components/NephilimBackground'
 import { greetWithSession, checkLoreUnlocks } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
@@ -46,6 +48,7 @@ const Chat: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
   const [showResonanceToast, setShowResonanceToast] = useState<boolean>(false)
   const [loreFragment, setLoreFragment] = useState<{ title: string; content: string; rarity: string } | null>(null)
+  const [rankCeremony, setRankCeremony] = useState<RankCeremony | null>(null)
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
   const initializingRef = useRef<string | null>(null)
@@ -115,11 +118,17 @@ const Chat: React.FC = () => {
       setLoading(true)
 
       try {
-        await sendMessage(input)
+        const responseMsg = await sendMessage(input)
         if (selectedPersona.key.startsWith('nephilim_')) {
           if (resonanceTimerRef.current) clearTimeout(resonanceTimerRef.current)
           setShowResonanceToast(true)
           resonanceTimerRef.current = setTimeout(() => setShowResonanceToast(false), 4000)
+
+          // Check for rank ceremony in response metadata
+          const ceremony = responseMsg.metadata?.rank_ceremony
+          if (ceremony) {
+            setTimeout(() => setRankCeremony(ceremony), 1500)
+          }
 
           // Check for newly unlocked lore fragments (non-blocking)
           try {
@@ -127,13 +136,15 @@ const Chat: React.FC = () => {
             const loreResult = await checkLoreUnlocks(userId, selectedPersona.key)
             if (loreResult.newly_unlocked > 0 && loreResult.fragments.length > 0) {
               const frag = loreResult.fragments[0]
+              // If a rank ceremony is active, delay lore reveal so ceremony shows first
+              const loreDelay = ceremony ? 6000 : 2500
               setTimeout(() => {
                 setLoreFragment({
                   title: frag.fragment_title || 'Unknown Fragment',
                   content: frag.fragment || '',
                   rarity: frag.rarity || 'common',
                 })
-              }, 2500)
+              }, loreDelay)
             }
           } catch (loreError) {
             // Silently ignore lore check failures — do not disrupt chat flow
@@ -438,6 +449,16 @@ const Chat: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Rank Ceremony Overlay — shown when seeker ranks up */}
+      <AnimatePresence>
+        {rankCeremony && (
+          <RankCeremonyOverlay
+            ceremony={rankCeremony}
+            onDismiss={() => setRankCeremony(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Lore Reveal Overlay — shown when a new lore fragment is unlocked */}
       <AnimatePresence>

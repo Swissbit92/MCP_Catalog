@@ -31,7 +31,7 @@ def list_personas():
             cleanup_orphaned_sessions()
         personas = []
         for card in cards:
-            personas.append({
+            persona = {
                 "key": card.get("key"),
                 "display_name": card.get("display_name") or card.get("key"),
                 "style": card.get("style", ""),
@@ -43,7 +43,15 @@ def list_personas():
                 "avatar": card.get("avatar"),
                 "bg": card.get("bg"),
                 "voice": card.get("voice"),
-            })
+            }
+            # Include slim nephilim_lore (relationships + realm_domain only)
+            nephilim_lore = card.get("nephilim_lore")
+            if nephilim_lore:
+                persona["nephilim_lore"] = {
+                    "relationships": nephilim_lore.get("relationships", {}),
+                    "realm_domain": nephilim_lore.get("realm_domain"),
+                }
+            personas.append(persona)
         return JSONResponse(content=personas)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list personas: {e}")
