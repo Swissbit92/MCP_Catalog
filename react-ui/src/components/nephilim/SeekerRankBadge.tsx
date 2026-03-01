@@ -19,7 +19,7 @@ interface SeekerRankBadgeProps {
 }
 
 // Rank configuration with colors and icons
-const RANK_CONFIG: Record<string, { color: string; glow: string; icon: string }> = {
+export const RANK_CONFIG: Record<string, { color: string; glow: string; icon: string }> = {
   'Initiate': {
     color: 'from-slate-500 to-slate-600',
     glow: 'shadow-slate-500/30',

@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import React, { useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { SeekerSummary } from '../../services/api'
 
 // NEPHILIM persona colors
@@ -178,9 +178,11 @@ const ConstellationNode: React.FC<ConstellationNodeProps> = ({
 interface ConstellationMapProps {
   summary: SeekerSummary
   onPersonaClick?: (personaKey: string) => void
+  relationships?: Record<string, Record<string, string>>
 }
 
-export const ConstellationMap: React.FC<ConstellationMapProps> = ({ summary, onPersonaClick }) => {
+export const ConstellationMap: React.FC<ConstellationMapProps> = ({ summary, onPersonaClick, relationships }) => {
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const centerX = 200
   const centerY = 180
   const hexRadius = 120
@@ -220,7 +222,7 @@ export const ConstellationMap: React.FC<ConstellationMapProps> = ({ summary, onP
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
-      className="flex justify-center"
+      className="flex flex-col items-center"
     >
       <svg
         viewBox="0 0 400 360"
@@ -316,11 +318,79 @@ export const ConstellationMap: React.FC<ConstellationMapProps> = ({ summary, onP
               affinityLevel={aff?.level || 0}
               messagesCount={aff?.messages || 0}
               color={PERSONA_COLORS[key]}
-              onClick={() => onPersonaClick?.(key)}
+              onClick={() => setSelectedNode(prev => prev === key ? null : key)}
             />
           )
         })}
       </svg>
+
+      {/* Relationship panel — expands below SVG when a node is selected */}
+      <AnimatePresence>
+        {selectedNode && relationships?.[selectedNode] && (
+          <motion.div
+            key={selectedNode}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="w-full max-w-md overflow-hidden"
+          >
+            <div
+              className="mt-4 bg-white/[0.05] backdrop-blur-xl border rounded-xl p-5"
+              style={{ borderColor: `${PERSONA_COLORS[selectedNode]}30` }}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-3">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: PERSONA_COLORS[selectedNode] }}
+                />
+                <h4
+                  className="font-nephilim text-sm tracking-wide"
+                  style={{ color: PERSONA_COLORS[selectedNode] }}
+                >
+                  {PERSONA_NAMES[selectedNode]}&apos;s Bonds
+                </h4>
+              </div>
+
+              {/* Relationship list */}
+              <ul className="space-y-2.5">
+                {Object.entries(relationships[selectedNode]).map(([shortKey, description]) => {
+                  const fullKey = `nephilim_${shortKey}`
+                  const siblingColor = PERSONA_COLORS[fullKey] || '#ffffff'
+                  const siblingName = PERSONA_NAMES[fullKey] || shortKey
+                  return (
+                    <li key={shortKey} className="flex items-start gap-2">
+                      <div
+                        className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                        style={{ backgroundColor: siblingColor }}
+                      />
+                      <div>
+                        <span className="text-sm font-medium" style={{ color: siblingColor }}>
+                          {siblingName}
+                        </span>
+                        <span className="text-sm text-white/60"> &mdash; {description}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              {/* Chat button */}
+              <button
+                onClick={() => onPersonaClick?.(selectedNode)}
+                className="mt-4 w-full py-2 text-sm rounded-lg border transition-colors hover:bg-white/[0.08]"
+                style={{
+                  borderColor: `${PERSONA_COLORS[selectedNode]}30`,
+                  color: PERSONA_COLORS[selectedNode],
+                }}
+              >
+                Chat with {PERSONA_NAMES[selectedNode]} &rarr;
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

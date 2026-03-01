@@ -25,6 +25,10 @@ export interface PersonaJson {
   signature_moves: string[];
   example_phrases: string[];
   escalation_policy: Record<string, unknown>;
+  nephilim_lore?: {
+    relationships?: Record<string, string>;
+    realm_domain?: { name: string; description: string };
+  };
 }
 
 export interface CharacterBio {
@@ -43,6 +47,15 @@ export interface ChatSession {
   message_count: number;
 }
 
+// Rank ceremony data returned when a seeker ranks up
+export interface RankCeremony {
+  title: string
+  speaker: string
+  monologue: string
+  previous_rank: string
+  new_rank: string
+}
+
 // Response metadata for MCP data sources
 export interface ResponseMetadata {
   source_type: 'llm' | 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp' | 'wallet_mcp' | 'wallet_proposal' | 'wallet_flow';
@@ -56,6 +69,8 @@ export interface ResponseMetadata {
   // WALLET: Proposal card injection
   proposal_type?: 'trade_proposal' | 'strategy_proposal' | 'wallet_deletion';
   proposal?: Record<string, unknown>;
+  // NEPHILIM: Rank ceremony overlay trigger
+  rank_ceremony?: RankCeremony;
 }
 
 // Phase 2.2: Emotional state tracking
