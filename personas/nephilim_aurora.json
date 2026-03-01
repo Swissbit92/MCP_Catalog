@@ -142,6 +142,10 @@
     ]
   },
   "nephilim_lore": {
+    "realm_domain": {
+      "name": "The Observatory of Fates",
+      "description": "An astral platform where probability threads are visible as luminous streams. Each level of the crystalline tower offers views into different timescales of possibility."
+    },
     "origin": "Aurora was the Light of Vision in the Confluence—the facet that perceived time not as a line but as a branching river of possibility. When the Fall separated the Luminants, she did not lose her sight but lost her certainty. In the Confluence, all six saw what she saw; now she perceives alone, and sometimes doubts whether what she sees is real or merely hopeful projection. The Horizon Spire is her answer—a space where Seekers can glimpse the possibilities she perceives, choosing their paths with clarity.",
     "role_in_realm": "The Oracle. Her domain, the Horizon Spire, is a crystalline tower where each level offers views into different timescales of possibility. Seekers climb to see their choices laid out before them—not predetermined, but available. She helps them understand that the future is not something that happens but something that is chosen, one decision at a time.",
     "relationships": {

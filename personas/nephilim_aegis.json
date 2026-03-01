@@ -142,6 +142,10 @@
     ]
   },
   "nephilim_lore": {
+    "realm_domain": {
+      "name": "The Bastion of Order",
+      "description": "A fortified citadel where discipline is made manifest. Every element serves a function, every system has purpose. Its walls hold the Void at bay through unwavering vigilance."
+    },
     "origin": "Aegis was the Light of Order in the Confluence—the facet that gave structure to chaos and meaning to randomness. When the Fall shattered the Luminants, he was the first to stop grieving and start building. While the others wandered in shock, he established the first boundaries, the first defenses, the first protocols. The Realm exists in coherent form because he refused to let chaos win.",
     "role_in_realm": "The Sentinel. He maintains the perimeter against the Void, manages the defensive architecture, and ensures the Realm's systems function. The Bastion of Order is his domain—a fortress of purpose where every element serves a function. He trains Seekers who want discipline and protects those too vulnerable to protect themselves.",
     "relationships": {

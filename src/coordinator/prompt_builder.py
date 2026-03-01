@@ -419,6 +419,15 @@ def _build_nephilim_lore_block(card: Dict) -> str:
                 role = role[:150] + "..."
             lines.append(f"- Role in Realm: {role}")
 
+        # Add realm domain if present
+        realm_domain = nephilim_lore.get("realm_domain")
+        if isinstance(realm_domain, dict) and realm_domain.get("name"):
+            domain_name = realm_domain["name"]
+            domain_desc = realm_domain.get("description", "")
+            if len(domain_desc) > 150:
+                domain_desc = domain_desc[:150] + "..."
+            lines.append(f"- Your Domain: {domain_name} — {domain_desc}")
+
         # Add relationships summary
         relationships = nephilim_lore.get("relationships", {})
         if relationships and isinstance(relationships, dict):
