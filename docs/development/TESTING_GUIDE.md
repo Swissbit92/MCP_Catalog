@@ -342,6 +342,20 @@ def test_mcp_search(mock_popen):
     assert result == []
 ```
 
+**Critical: patch the name as it is imported, not where it is defined.**
+
+`@patch("module_under_test.ClassName")` patches the name `ClassName` in the module being tested. If the module imports `from services.foo import Bar`, you patch `module_under_test.Bar` — NOT `services.foo.Bar`.
+
+`@patch` raises `AttributeError` if the name does not exist in the target module (unless `create=True` is passed). This means ghost patches that reference non-existent names will error at test collection time, not silently pass.
+
+```python
+# WRONG — patches the source, not the consumer:
+@patch("src.coordinator.services.llm_completion_service.LLMCompletionService")
+
+# CORRECT — patches the name as imported in the file under test:
+@patch("src.coordinator.services.first_person_service.LLMCompletionService")
+```
+
 ### 5. Test Edge Cases
 
 ```python
@@ -498,8 +512,8 @@ The suite produces:
 
 The MCP query routing pipeline (`tools/intent_classifier.py` + `tools/keywords.py`) determines which MCP service handles each user query. Access is controlled **per-persona** via the `mcp_access` field in persona JSONs — not by rarity. After fixing Brave MCP force-search, intent classification bugs, and backend initialization bugs (Feb 2026), the system was validated with:
 
-- **Offline intent test** (`test_all_personas_intent.py`): Tests `classify_query_intent()` directly, 30 queries × 7 personas (Aegis, Aurora, Cipher, Solace, Nyx, Frieren, Gojo). **Result: 210/210 PASS.**
-- **Live API test** (`test_live_all_personas.py`): End-to-end HTTP tests against running backend, same 30 queries × 7 personas. **Result: 210/210 PASS, avg 5.0s/query.**
+- **Offline intent test** (`test_all_personas_intent.py`): Tests `classify_query_intent()` directly, 30 queries × 6 personas (Aegis, Aurora, Cipher, Solace, Nyx, Gojo). **Result: 180/180 PASS.**
+- **Live API test** (`test_live_all_personas.py`): End-to-end HTTP tests against running backend, same 30 queries × 6 personas. **Result: 180/180 PASS, avg 5.0s/query.**
 
 ### Quick Intent Classification Test
 
@@ -539,6 +553,14 @@ print("All intent classification checks passed!")
 | Startup INFO messages (Brave/MongoDB init) not appearing | `alembic.ini` sets `[logger_root] level = WARN`, silencing all INFO log messages globally after migration | Changed root logger level to `INFO` in `alembic.ini` |
 | `UnboundLocalError` on all Brave/MongoDB queries | `QueryHandlerService` imported inside `if "solana_wallet"` block in `chat.py` — Python treats it as local throughout the function; crashes when condition is False | Moved import to top of `chat()` function (always executes) |
 
+#### Correctness Fixes (Feb 22 2026)
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Connection pool double-use race in `db_adapter.py` | `get_connection()` dropped `_ConnectionFairy` immediately after extracting raw `conn`; CPython GC returned the pool slot while `conn` still in use | Added `_managed_connection()` context manager; `execute/fetchone/fetchall` hold `fairy` alive until query completes |
+| Wallet errors silently swallowed in `query_handler_service.py` | Three `except Exception: pass` blocks in wallet state/slot-cap paths — failures fell through invisibly | Converted to `except Exception as e: logger.warning(...)` with contextual messages |
+| Ghost patch targets in `test_first_person_service.py` | `@patch` decorators referenced `LC_OllamaClient`, `get_ollama_base`, etc. — names that don't exist in `first_person_service.py` — causing `AttributeError` at test setup | Replaced 4 patches per test with single `@patch("...first_person_service.LLMCompletionService")`; all 13 tests now pass |
+
 ---
 
 ## References
@@ -550,5 +572,5 @@ print("All intent classification checks passed!")
 
 ---
 
-**Last Updated:** February 21, 2026
-**Status:** Pytest infrastructure complete. Docker startup verification (`verify_startup.py`) mandatory after every rebuild. Manual test suite: E.E.V.A. quality (50q), all-persona intent classification (210/210 offline), all-persona live API (210/210 live). MCP initialization bugs fixed (Alembic logging hijack + UnboundLocalError in chat.py).
+**Last Updated:** February 22, 2026
+**Status:** Pytest infrastructure complete. Docker startup verification (`verify_startup.py`) mandatory after every rebuild. Manual test suite: E.E.V.A. quality (50q), all-persona intent classification (210/210 offline), all-persona live API (210/210 live). MCP initialization bugs fixed (Alembic logging hijack + UnboundLocalError in chat.py). Correctness fixes: db_adapter pool leak, 3x silent wallet error swallowing, ghost patch targets in first_person_service tests.

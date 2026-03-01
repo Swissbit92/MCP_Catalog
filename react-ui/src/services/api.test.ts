@@ -10,7 +10,7 @@ describe('API Service', () => {
 
   it('fetchPersonas should return a list of personas from API', async () => {
     const mockPersonas = [
-      { key: 'Frieren', display_name: 'Frieren', style: 'wise', rarity: 'epic', celestial_order: 'warden', mcp_access: [], image: 'images/personas/frieren/card.png' },
+      { key: 'Eeva', display_name: 'Eeva', style: 'strategic', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search', 'mongodb'], image: 'images/personas/nephilim_eeva/card.png' },
       { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search'], image: 'images/personas/gojo/card.png' },
     ];
 
@@ -23,8 +23,8 @@ describe('API Service', () => {
 
     const personas = await fetchPersonas();
     expect(personas.length).toBe(2);
-    expect(personas[0].key).toBe('Frieren');
-    expect(personas[0].rarity).toBe('epic');
+    expect(personas[0].key).toBe('Eeva');
+    expect(personas[0].rarity).toBe('legendary');
     expect(personas[1].key).toBe('Gojo');
     expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/personas');
   });

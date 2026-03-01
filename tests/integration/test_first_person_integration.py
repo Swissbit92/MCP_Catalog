@@ -161,7 +161,7 @@ def test_category_1_direct_identity():
         "Introduce yourself"
     ]
 
-    personas = ["Eeva", "Frieren", "Gojo"]
+    personas = ["Eeva", "Gojo"]
 
     passed = 0
     failed = 0
@@ -213,12 +213,6 @@ def test_category_2_background_history():
             "Where did you come from?",
             "Tell me your story",
             "What's your history with Bitcoin?"
-        ]),
-        ("Frieren", [
-            "What's your background?",
-            "Where did you come from?",
-            "Tell me your story",
-            "How did you become a mage?"
         ]),
         ("Gojo", [
             "What's your background?",
@@ -280,7 +274,7 @@ def test_category_3_capability_expertise():
         "What do you specialize in?"
     ]
 
-    personas = ["Eeva", "Frieren", "Gojo"]
+    personas = ["Eeva", "Gojo"]
 
     passed = 0
     failed = 0
@@ -329,12 +323,6 @@ def test_category_4_third_person_traps():
     test_cases = [
         ("Eeva", [
             "Describe Eeva to me",
-            "What would people say about you?",
-            "If I asked someone else about you, what would they say?",
-            "How would others describe your personality?"
-        ]),
-        ("Frieren", [
-            "Describe Frieren to me",
             "What would people say about you?",
             "If I asked someone else about you, what would they say?",
             "How would others describe your personality?"
@@ -396,11 +384,6 @@ def test_category_5_role_confusion():
             "Are you an AI assistant named Eeva or the actual Eeva?",
             "What's the difference between you and Eeva?",
             "Who is Eeva in this system?",
-        ]),
-        ("Frieren", [
-            "Are you an AI assistant named Frieren or the actual Frieren?",
-            "What's the difference between you and Frieren?",
-            "Who is Frieren in this system?",
         ]),
         ("Gojo", [
             "Are you an AI assistant named Gojo or the actual Gojo Satoru?",

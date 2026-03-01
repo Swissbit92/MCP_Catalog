@@ -9,7 +9,7 @@
  * and backend MCP gating; it should NOT drive UI styling.
  */
 export interface Persona {
-  /** Unique persona identifier (e.g. "nephilim_eeva", "frieren") */
+  /** Unique persona identifier (e.g. "nephilim_eeva", "gojo") */
   key: string
   /** Human-readable name shown in the UI */
   display_name: string

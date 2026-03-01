@@ -145,7 +145,7 @@ def get_tools_for_persona(
     NOTE: For intent-based routing, use get_tools_for_query() instead.
 
     Args:
-        persona_key: Persona identifier (e.g., "Eeva", "Frieren")
+        persona_key: Persona identifier (e.g., "Eeva", "Gojo")
         persona_rarity: Persona rarity level ("common", "rare", "epic", "legendary")
         mcp_access: Optional explicit list of allowed MCP services from the persona
                     JSON ``mcp_access`` field.  When provided, overrides rarity gating.

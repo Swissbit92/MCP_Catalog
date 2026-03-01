@@ -81,7 +81,7 @@ DEFAULT_PERSONAS = [
     "nephilim_cipher",
     "nephilim_solace",
     "nephilim_nyx",
-    "Frieren",
+
     "Gojo",
 ]
 

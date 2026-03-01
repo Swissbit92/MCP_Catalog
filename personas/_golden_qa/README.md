@@ -207,7 +207,6 @@ pytest tests/evaluation/test_persona_quality.py --persona=eeva -v
 ## File Checklist
 
 - [ ] `eeva_golden_qa.json` (10 questions: 3 easy, 4 medium, 3 hard)
-- [ ] `frieren_golden_qa.json` (10 questions: 3 easy, 4 medium, 3 hard)
 - [ ] `gojo_golden_qa.json` (10 questions: 3 easy, 4 medium, 3 hard)
 
 ## Maintenance
