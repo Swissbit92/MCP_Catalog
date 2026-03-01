@@ -2,7 +2,7 @@
 
 > **Created:** 2026-03-01
 > **Last Updated:** 2026-03-01
-> **Status:** Planning complete, implementation not started
+> **Status:** Features 1A, 2A, 2B, 2C implemented (Mar 1 2026). 1B, 2D, 3A-3C pending.
 > **Branch:** `dev`
 
 ---
@@ -16,7 +16,7 @@ Assessment of 7 lore documents (~235KB) against the full codebase revealed 10 im
 ## Priority 1 — HIGH
 
 ### 1A. Dynamic Lore Injection into System Prompt
-- **Status:** :red_circle: Not started
+- **Status:** :white_check_mark: Implemented (Mar 1 2026)
 - **Impact:** Biggest missed opportunity — persona doesn't "know" what the user has discovered
 - **What:** Fetch user's `unlocked_lore` fragments from DB and inject into `<world_context>` section of system prompt
 - **Industry pattern:** NovelAI Lorebook / SillyTavern keyword-triggered context injection
@@ -66,7 +66,7 @@ Assessment of 7 lore documents (~235KB) against the full codebase revealed 10 im
 ## Priority 2 — MEDIUM
 
 ### 2A. Expand Unlock Triggers Beyond Message Count
-- **Status:** :red_circle: Not started
+- **Status:** :white_check_mark: Implemented (Mar 1 2026)
 - **Impact:** Single-trigger progression feels flat; industry uses multi-trigger for sustained engagement
 - **What:** Add affinity-based, rank-based, and cross-persona unlock conditions to lore fragments
 - **Files to modify:**
@@ -93,7 +93,7 @@ Assessment of 7 lore documents (~235KB) against the full codebase revealed 10 im
   - [ ] Cross-persona unlocks work (talking to Aegis unlocks E.E.V.A. lore)
 
 ### 2B. Add Realm Domain Descriptions to Prompts
-- **Status:** :red_circle: Not started
+- **Status:** :white_check_mark: Implemented (Mar 1 2026)
 - **Impact:** Low effort, high immersion — spatial grounding from lore docs
 - **What:** Each Nephilim has a detailed domain (Central Nexus, Bastion of Order, Neon Labyrinth, etc.) from lore docs. Add to persona JSONs and inject into `<world_context>`.
 - **Files to modify:**
@@ -112,7 +112,7 @@ Assessment of 7 lore documents (~235KB) against the full codebase revealed 10 im
   - [ ] Persona naturally references their domain in conversation
 
 ### 2C. Rank Ceremony System
-- **Status:** :red_circle: Not started
+- **Status:** :white_check_mark: Implemented (Mar 1 2026, backend only — frontend rendering pending)
 - **Impact:** High emotional impact, low technical complexity
 - **What:** When a user crosses a rank threshold, generate a ceremony message from E.E.V.A. + patron Nephilim
 - **Files to modify:**
@@ -229,4 +229,9 @@ After each change:
 | Date | Change | Files | Result |
 |------|--------|-------|--------|
 | 2026-03-01 | Created tracking document | `docs/development/LORE_DEEPDIVE_PLAN.md` | — |
-| | | | |
+| 2026-03-01 | **2B. Realm Domains** — Added `realm_domain` to all 6 nephilim JSONs, injected via `_build_nephilim_lore_block()` | 6 persona JSONs, `prompt_builder.py` | ~40 extra tokens/persona |
+| 2026-03-01 | **1A. Dynamic Lore Injection** — Added `_build_unlocked_lore_context()`, injects `<unlocked_lore>` after emotional_context | `chat_session_service.py` | Max 5 fragments, 240 chars each |
+| 2026-03-01 | **2A. Expanded Unlock Triggers** — Rewrote `check_and_unlock_lore()` with rank/affinity/cross-persona triggers | `seeker_progression_repository.py`, `nephilim_eeva.json` | Backward compatible |
+| 2026-03-01 | **2C. Rank Ceremonies** — Added `RANK_CEREMONIES` dict, ceremony data in `response.metadata.rank_ceremony` | `chat_session_service.py` | Backend-only, frontend pending |
+| 2026-03-01 | **Bugfix** — Fixed keyword arg mismatch `fragments` vs `persona_lore_fragments` in `check_and_unlock_lore` call | `chat_session_service.py` | Was silently broken |
+| 2026-03-01 | **Test: eeva quick** — 29/30 pass (96.7%), avg 0.941, all categories 100% except DRIFT 80% | — | No regression |

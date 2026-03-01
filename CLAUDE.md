@@ -410,16 +410,31 @@ NEPHILIM personas include additional fields:
   "archetype": "The Oracle / The Sage",
   "domain": "Guidance, wisdom, life planning",
   "nephilim_lore": {
+    "realm_domain": { "name": "The Central Nexus", "description": "..." },
     "origin": "...",
     "role_in_realm": "...",
     "relationships": { "aegis": "...", "solace": "..." }
   },
   "unlockable_lore": [
-    { "messages_required": 10, "fragment_id": "...", "fragment_title": "...", "fragment": "...", "rarity": "common" }
+    {
+      "messages_required": 10,
+      "rank_required": "Acolyte",
+      "affinity_required": 3,
+      "cross_persona_required": ["aegis_fragment_1"],
+      "trigger_logic": "all",
+      "fragment_id": "...", "fragment_title": "...", "fragment": "...", "rarity": "common"
+    }
   ]
 }
 ```
 > Note: `unlockable_lore[].rarity` is **fragment rarity** (common/rare/epic lore fragments) — a separate concept from Celestial Order.
+
+**Unlock trigger fields** (all optional, backward compatible — `messages_required`-only fragments work as before):
+- `messages_required` (int): message count threshold
+- `rank_required` (str): seeker rank name (e.g. `"Adept"`)
+- `affinity_required` (int): persona affinity level
+- `cross_persona_required` (str|list): fragment_ids from other personas that must be unlocked first
+- `trigger_logic` (`"all"`|`"any"`): combine conditions with AND (default) or OR
 
 ### Prompt Architecture
 `prompt_builder.py` constructs system prompts using XML-tagged sections with a bookend pattern (critical rules at beginning AND end):
@@ -428,11 +443,16 @@ NEPHILIM personas include additional fields:
 <identity>       — Core identity + anti-hallucination rules (primacy position)
 <response_format> — Multi-message <msg> rules (condensed)
 <companion_behavior> — Behavioral rules and conversational style
-<world_context>  — NEPHILIM lore (only for nephilim_ personas)
+<world_context>  — NEPHILIM lore + realm domain (only for nephilim_ personas)
 <tools>          — Financial co-pilot block + anti-hallucination rules (wallet-capable personas)
 <memory>         — Conversation memory rules
 <checklist>      — Pre-response verification checklist (recency position)
 ```
+
+**Post-cache dynamic injections** (appended in `chat_session_service.py` after the `@lru_cache`'d base prompt):
+1. `user_profile_context` — cross-session memory facts
+2. `emotional_context` — current emotional state
+3. `<unlocked_lore>` — discovered lore fragments from DB, joined with persona JSON text (max 5 fragments, 240 chars each)
 
 **Anti-hallucination for wallet personas:** Ground-truth wallet state is injected into the system prompt on every message (not just wallet queries). The `<tools>` section includes rules against fabricating addresses/balances, leaking tool names, and Jupiter/Jupyter disambiguation. A regex post-processor in `query_handler_service.py` strips any leaked tool names from responses.
 
@@ -484,7 +504,22 @@ GET  /nephilim/factions                   - All faction info
 Progression is automatically tracked in `chat_session_service.py`:
 - Resonance awarded after each conversation
 - Message counts tracked for persona affinity
-- Lore unlocks checked after conversations
+- Lore unlocks checked after conversations (supports multi-trigger: message count, rank, affinity, cross-persona)
+- Unlocked lore fragments injected into system prompt via `_build_unlocked_lore_context()`
+- Rank-up ceremonies returned in `response["metadata"]["rank_ceremony"]` with pre-written E.E.V.A. monologues
+
+#### Rank Ceremonies
+When a seeker crosses a rank threshold, `_track_nephilim_progression()` returns ceremony data:
+```json
+{
+  "title": "Recognition",
+  "speaker": "E.E.V.A.",
+  "monologue": "Word has spread among us...",
+  "previous_rank": "Acolyte",
+  "new_rank": "Adept"
+}
+```
+Ceremony templates are in `RANK_CEREMONIES` dict in `chat_session_service.py`. Patron name is interpolated from `PERSONA_DISPLAY_NAMES`. Frontend can check `metadata.rank_ceremony` to render overlay (frontend rendering not yet implemented).
 
 ### Visual Theme (`react-ui/src/index.css`, `tailwind.config.js`)
 ```css
