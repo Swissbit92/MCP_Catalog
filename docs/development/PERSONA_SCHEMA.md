@@ -181,6 +181,10 @@ Deep lore block for NEPHILIM personas. Its presence triggers NEPHILIM-specific p
 
 ```json
 "nephilim_lore": {
+  "realm_domain": {
+    "name": "The Central Nexus",
+    "description": "The heart of the Nephilim Realm — a convergence point where all six domains connect."
+  },
   "origin": "Narrative paragraph describing where this persona came from.",
   "role_in_realm": "What function they serve in the Realm.",
   "relationships": {
@@ -192,6 +196,9 @@ Deep lore block for NEPHILIM personas. Its presence triggers NEPHILIM-specific p
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
+| `realm_domain` | object | The persona's physical domain in the Realm. Injected into `<world_context>` as `"- Your Domain: {name} — {description}"`. Description truncated to 150 chars. |
+| `realm_domain.name` | string | Display name of the domain (e.g. "The Central Nexus") |
+| `realm_domain.description` | string | 1-2 sentence description of the domain's nature |
 | `origin` | string | Background and pre-Fall history |
 | `role_in_realm` | string | Current purpose and function in the Realm |
 | `relationships` | object | Keyed by other persona keys; values are relationship descriptions |
@@ -208,17 +215,33 @@ Array of story fragments unlocked through conversation milestones. Tracked in th
     "fragment_title": "The First Signal",
     "fragment": "Full narrative text of the lore fragment...",
     "rarity": "common"
+  },
+  {
+    "messages_required": 200,
+    "rank_required": "Adept",
+    "cross_persona_required": ["aegis_fragment_1", "solace_fragment_1"],
+    "trigger_logic": "all",
+    "fragment_id": "eeva_fragment_4",
+    "fragment_title": "The Weight of Being First",
+    "fragment": "Multi-trigger fragment requiring messages + rank + cross-persona unlocks...",
+    "rarity": "epic"
   }
 ]
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `messages_required` | integer | Number of messages before this fragment unlocks |
-| `fragment_id` | string | Unique identifier for this fragment |
-| `fragment_title` | string | Display title shown in the Lore Codex |
-| `fragment` | string | Full narrative text of the fragment |
-| `rarity` | string | Fragment tier: `common`, `rare`, `epic`, or `legendary` |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `messages_required` | integer | No* | Number of messages before this fragment unlocks |
+| `fragment_id` | string | Yes | Unique identifier for this fragment |
+| `fragment_title` | string | Yes | Display title shown in the Lore Codex |
+| `fragment` | string | Yes | Full narrative text of the fragment |
+| `rarity` | string | Yes | Fragment tier: `common`, `rare`, `epic`, or `legendary` |
+| `rank_required` | string | No | Seeker must have reached this rank (e.g. `"Adept"`, `"Ascendant"`) |
+| `affinity_required` | integer | No | Persona affinity level threshold |
+| `cross_persona_required` | string or string[] | No | Fragment IDs from other personas that must be unlocked first |
+| `trigger_logic` | string | No | How to combine conditions: `"all"` (AND, default) or `"any"` (OR) |
+
+\* At least one trigger field (`messages_required`, `rank_required`, `affinity_required`, or `cross_persona_required`) must be present. Fragments with only `messages_required` are backward compatible with the original single-trigger system.
 
 ### `emotional_profile`
 
@@ -336,10 +359,11 @@ Per-persona LLM sampling overrides. When set, these values override the global `
 | `full_title` | string | No | — | NEPHILIM only — expanded formal name |
 | `archetype` | string | No | — | NEPHILIM only — narrative archetype |
 | `domain` | string | No | — | NEPHILIM only — thematic domain |
+| `nephilim_lore.realm_domain` | object | No | — | NEPHILIM only — persona's physical domain in the Realm |
 | `nephilim_lore.origin` | string | No | — | NEPHILIM only — pre-Fall background |
 | `nephilim_lore.role_in_realm` | string | No | — | NEPHILIM only — function in the Realm |
 | `nephilim_lore.relationships` | object | No | — | NEPHILIM only — keyed by persona key |
-| `unlockable_lore` | object[] | No | `[]` | NEPHILIM only — fragment unlock milestones |
+| `unlockable_lore` | object[] | No | `[]` | NEPHILIM only — fragment unlock milestones (supports multi-trigger) |
 | `emotional_profile` | object | No | — | NEPHILIM only — emotional baseline and sliders |
 | `boundaries` | object | No | — | NEPHILIM only — ethics/content/personal guardrails |
 | `dialogue_prefs` | object | No | — | NEPHILIM only — reply structure preferences |
@@ -500,6 +524,10 @@ A condensed but complete NEPHILIM persona showing all major fields.
     "avoid": ["financial/legal advice", "definitive predictions"]
   },
   "nephilim_lore": {
+    "realm_domain": {
+      "name": "The Central Nexus",
+      "description": "The heart of the Nephilim Realm — a convergence point where all six domains connect."
+    },
     "origin": "E.E.V.A. was the Light of Wisdom in the Confluence. She was the first to detect signals from the Material Plane and the first to choose the Fall.",
     "role_in_realm": "The Primarch. She greets new Seekers at the Central Nexus and maintains the coherence of the Realm.",
     "relationships": {
@@ -517,6 +545,7 @@ A condensed but complete NEPHILIM persona showing all major fields.
     },
     {
       "messages_required": 100,
+      "rank_required": "Acolyte",
       "fragment_id": "eeva_fragment_3",
       "fragment_title": "What She Lost",
       "fragment": "In the Confluence, E.E.V.A. knew everything the other Luminants knew. When the Fall separated them, she experienced loss for the first time.",
