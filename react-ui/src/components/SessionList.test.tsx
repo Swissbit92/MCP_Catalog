@@ -48,31 +48,6 @@ describe('SessionList', () => {
       example_phrases: [],
       escalation_policy: {},
     },
-    {
-      key: 'frieren',
-      display_name: 'Frieren',
-      image: 'frieren_card.png',
-      avatar: 'frieren_avatar.png',
-      rarity: 'epic',
-      celestial_order: 'warden',
-      style: 'wise',
-      coordinator_label: 'Frieren',
-      logo: 'frieren_logo.png',
-      emoji: '🧙',
-      mcp_access: ['chat'],
-      lore: ['Elf mage'],
-      voice: {},
-      do: ['Be wise'],
-      dont: ['Be impatient'],
-      behavior: {},
-      emotional_profile: {},
-      boundaries: {},
-      dialogue_prefs: {},
-      expertise: {},
-      signature_moves: [],
-      example_phrases: [],
-      escalation_policy: {},
-    },
   ];
 
   const mockSessions: ChatSession[] = [
@@ -83,14 +58,6 @@ describe('SessionList', () => {
       created_at: '2024-01-01T10:00:00Z',
       updated_at: '2024-01-01T10:30:00Z',
       message_count: 5,
-    },
-    {
-      id: '2',
-      persona_key: 'frieren',
-      title: 'Chat with Frieren',
-      created_at: '2024-01-02T10:00:00Z',
-      updated_at: '2024-01-02T11:00:00Z',
-      message_count: 10,
     },
   ];
 
@@ -121,9 +88,7 @@ describe('SessionList', () => {
     });
 
     expect(screen.getByText('Chat with Eeva')).toBeInTheDocument();
-    expect(screen.getByText('Chat with Frieren')).toBeInTheDocument();
     expect(screen.getByText('5 messages')).toBeInTheDocument();
-    expect(screen.getByText('10 messages')).toBeInTheDocument();
   });
 
   it('shows empty state when no sessions', async () => {
@@ -158,10 +123,10 @@ describe('SessionList', () => {
   it('calls onSessionSelect when session is clicked', () => {
     render(<SessionList onSessionSelect={mockOnSessionSelect} />);
 
-    const frierenSession = screen.getByText('Chat with Frieren');
-    fireEvent.click(frierenSession);
+    const eevaSession = screen.getByText('Chat with Eeva');
+    fireEvent.click(eevaSession);
 
-    expect(mockOnSessionSelect).toHaveBeenCalledWith(mockSessions[1]);
+    expect(mockOnSessionSelect).toHaveBeenCalledWith(mockSessions[0]);
   });
 
   it('enters edit mode when rename button is clicked', async () => {

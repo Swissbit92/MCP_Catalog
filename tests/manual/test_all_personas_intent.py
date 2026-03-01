@@ -32,10 +32,6 @@ PERSONAS = {
         "rarity": "rare",
         "mcp_access": [],
     },
-    "Frieren": {
-        "rarity": "epic",
-        "mcp_access": [],
-    },
     "Gojo": {
         "rarity": "common",
         "mcp_access": [],

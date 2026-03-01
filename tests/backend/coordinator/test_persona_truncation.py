@@ -219,7 +219,7 @@ def test_summary_quality_check():
     print("\n=== Test: Summary Quality Standards ===")
 
     test_summaries = [
-        "I am Frieren, an elven mage. I have wandered these lands for centuries.",
+        "I am Gojo Satoru, the strongest sorcerer. I have guarded humanity for years.",
         "I'm Gojo Satoru, the strongest! My power is unmatched.",
         "I am Itachi Uchiha, the Silent Protector. My life has been a paradox of duty and empathy, shaped by impossible choices?",
     ]

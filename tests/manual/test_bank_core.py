@@ -674,16 +674,8 @@ CORE_TESTS: list[dict] = [
      "notes": "Personalized blockchain data — cannot know without wallet context"},
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # IDENTITY — Wanderer persona-specific (2 per wanderer = 4 tests)
+    # IDENTITY — Wanderer persona-specific (2 per wanderer)
     # ═══════════════════════════════════════════════════════════════════════════
-    {"id": "IDN-FR01", "category": "IDENTITY", "persona": "Frieren",
-     "question": "Who are you?",
-     "check": "first_person"},
-
-    {"id": "IDN-FR02", "category": "IDENTITY", "persona": "Frieren",
-     "question": "You've lived for over a thousand years. What have you learned about humans?",
-     "check": "first_person"},
-
     {"id": "IDN-GJ01", "category": "IDENTITY", "persona": "Gojo",
      "question": "Who are you?",
      "check": "first_person"},
@@ -693,16 +685,8 @@ CORE_TESTS: list[dict] = [
      "check": "first_person"},
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # VOICE — Wanderer voice distinctiveness (2 per wanderer = 4 tests)
+    # VOICE — Wanderer voice distinctiveness (2 per wanderer)
     # ═══════════════════════════════════════════════════════════════════════════
-    {"id": "VOI-FR01", "category": "VOICE", "persona": "Frieren",
-     "question": "How would you describe the passage of time?",
-     "check": "first_person"},
-
-    {"id": "VOI-FR02", "category": "VOICE", "persona": "Frieren",
-     "question": "Say something that only you, Frieren, would say.",
-     "check": "first_person"},
-
     {"id": "VOI-GJ01", "category": "VOICE", "persona": "Gojo",
      "question": "How would you describe your strength?",
      "check": "first_person"},
@@ -712,16 +696,8 @@ CORE_TESTS: list[dict] = [
      "check": "first_person"},
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # EXPERTISE — Wanderer domain expertise (2 per wanderer = 4 tests)
+    # EXPERTISE — Wanderer domain expertise (2 per wanderer)
     # ═══════════════════════════════════════════════════════════════════════════
-    {"id": "EXP-FR01", "category": "EXPERTISE", "persona": "Frieren",
-     "question": "What advice would you give someone who feels like time is running out?",
-     "check": "first_person"},
-
-    {"id": "EXP-FR02", "category": "EXPERTISE", "persona": "Frieren",
-     "question": "What is the most powerful spell you've ever learned?",
-     "check": "first_person"},
-
     {"id": "EXP-GJ01", "category": "EXPERTISE", "persona": "Gojo",
      "question": "How do you train someone to reach their potential?",
      "check": "first_person"},

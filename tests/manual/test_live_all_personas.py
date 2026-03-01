@@ -19,7 +19,7 @@ PERSONAS = {
     "nephilim_cipher":  (True,  True),    # brave + mongodb
     "nephilim_solace":  (True,  False),   # brave only
     "nephilim_nyx":     (False, False),   # no MCP
-    "Frieren":          (False, False),   # no MCP
+
     "Gojo":             (False, False),   # no MCP
 }
 

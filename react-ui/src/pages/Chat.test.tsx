@@ -156,15 +156,6 @@ describe('Chat', () => {
       celestial_order: 'archon',
       mcp_access: ['brave_search', 'mongodb'],
     },
-    {
-      key: 'frieren',
-      display_name: 'Frieren',
-      coordinator_label: 'Frieren',
-      image: 'frieren.png',
-      rarity: 'epic',
-      celestial_order: 'warden',
-      mcp_access: [],
-    },
   ];
 
   const mockSessions = [
@@ -229,11 +220,11 @@ describe('Chat', () => {
   });
 
   it('creates new session when persona selected without existing session', async () => {
-    const mockCreateNewSession = jest.fn().mockResolvedValue({ id: 'new-session', persona_key: 'frieren' });
+    const mockCreateNewSession = jest.fn().mockResolvedValue({ id: 'new-session', persona_key: 'eeva' });
     const mockSendMessage = jest.fn();
 
     mockUsePersona.mockReturnValue({
-      selectedPersona: mockPersonas[1], // frieren
+      selectedPersona: mockPersonas[0], // eeva
       currentSession: null, // No current session
       messages: [],
       sessions: [], // No existing sessions
@@ -249,12 +240,12 @@ describe('Chat', () => {
 
     // Wait for the initialization to complete
     await waitFor(() => {
-      expect(mockCreateNewSession).toHaveBeenCalledWith('frieren', 'Chat with Frieren');
+      expect(mockCreateNewSession).toHaveBeenCalledWith('eeva', 'Chat with Eeva');
     });
 
     // Verify new session was created
     await waitFor(() => {
-      expect(mockCreateNewSession).toHaveBeenCalledWith('frieren', 'Chat with Frieren');
+      expect(mockCreateNewSession).toHaveBeenCalledWith('eeva', 'Chat with Eeva');
     });
   });
 

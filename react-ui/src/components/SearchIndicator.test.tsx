@@ -64,8 +64,8 @@ describe('SearchIndicator', () => {
 
   describe('Accessibility', () => {
     it('has descriptive text for screen readers', () => {
-      render(<SearchIndicator personaName="Frieren" celestial_order="archon" />);
-      const text = screen.getByText(/Frieren is searching the web/i);
+      render(<SearchIndicator personaName="Eeva" celestial_order="archon" />);
+      const text = screen.getByText(/Eeva is searching the web/i);
       expect(text).toBeInTheDocument();
     });
 

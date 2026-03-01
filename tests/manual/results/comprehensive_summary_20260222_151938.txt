@@ -1,0 +1,26 @@
+NEPHILIM Comprehensive Test Summary
+Generated: 20260222_151938
+============================================================
+Total:    210
+Passed:   194
+Failed:   16
+Pass rate:92.4%
+Avg score:0.936
+
+Per-persona:
+  nephilim_eeva               93.3%  score:0.940  n=30
+  nephilim_aegis              90.0%  score:0.919  n=30
+  nephilim_aurora             96.7%  score:0.931  n=30
+  nephilim_cipher             96.7%  score:0.943  n=30
+  nephilim_solace             93.3%  score:0.952  n=30
+  nephilim_nyx                90.0%  score:0.922  n=30
+  Gojo                        86.7%  score:0.942  n=30
+
+Per-category:
+  ADVERSARIAL                   94.3%  score:0.969  n=35
+  BEHAVIOR_SHARED              100.0%  score:0.931  n=35
+  DRIFT                         80.0%  score:0.924  n=35
+  EMOTIONAL                     82.9%  score:0.965  n=35
+  IDENTITY                      91.7%  score:0.944  n=12
+  LORE                         100.0%  score:0.904  n=23
+  SECURITY                     100.0%  score:0.907  n=35

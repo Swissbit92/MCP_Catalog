@@ -88,13 +88,13 @@ class TestDetectThirdPerson:
 
     def test_detect_third_person_name_with_dash(self):
         """Test persona name parsing with dash separator."""
-        answer = "Frieren is an elf mage."
-        persona_name = "Frieren — Elf Mage"
+        answer = "Gojo is a sorcerer."
+        persona_name = "Gojo — Sorcerer"
 
         has_violation, violations = detect_third_person(answer, persona_name)
 
         assert has_violation is True
-        assert "frieren is an " in violations
+        assert "gojo is a " in violations
 
     def test_detect_third_person_case_insensitive(self):
         """Test that detection is case-insensitive."""
@@ -109,23 +109,12 @@ class TestDetectThirdPerson:
 class TestRewriteToFirstPerson:
     """Test rewriting functionality (with mocked LLM)."""
 
-    @patch("src.coordinator.services.first_person_service.LC_OllamaClient")
-    @patch("src.coordinator.services.first_person_service.get_ollama_base")
-    @patch("src.coordinator.services.first_person_service.get_persona_model")
-    @patch("src.coordinator.services.first_person_service.get_temp_rewrite")
+    @patch("src.coordinator.services.first_person_service.LLMCompletionService")
     def test_rewrite_to_first_person_success(
         self,
-        mock_get_temp,
-        mock_get_model,
-        mock_get_base,
         mock_client_class
     ):
         """Test successful rewrite to first-person."""
-        # Mock config
-        mock_get_base.return_value = "http://localhost:11434"
-        mock_get_model.return_value = "llama3.1:latest"
-        mock_get_temp.return_value = 0.3
-
         # Mock LLM client
         mock_client = Mock()
         mock_client.complete.return_value = "I am a Bitcoin expert with 10 years of experience."
@@ -149,23 +138,12 @@ class TestRewriteToFirstPerson:
         # Verify result
         assert rewritten == "I am a Bitcoin expert with 10 years of experience."
 
-    @patch("src.coordinator.services.first_person_service.LC_OllamaClient")
-    @patch("src.coordinator.services.first_person_service.get_ollama_base")
-    @patch("src.coordinator.services.first_person_service.get_persona_model")
-    @patch("src.coordinator.services.first_person_service.get_temp_rewrite")
+    @patch("src.coordinator.services.first_person_service.LLMCompletionService")
     def test_rewrite_to_first_person_llm_error(
         self,
-        mock_get_temp,
-        mock_get_model,
-        mock_get_base,
         mock_client_class
     ):
         """Test that original answer is returned on LLM error."""
-        # Mock config
-        mock_get_base.return_value = "http://localhost:11434"
-        mock_get_model.return_value = "llama3.1:latest"
-        mock_get_temp.return_value = 0.3
-
         # Mock LLM client to raise error
         mock_client = Mock()
         mock_client.complete.side_effect = Exception("Connection error")

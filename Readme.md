@@ -44,7 +44,7 @@
 
 ### Key Capabilities
 
-- **10 AI Companions** (4 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
+- **9 AI Companions** (3 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
 - **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
 - **Advanced Memory System** — remembers you across sessions, extracts facts automatically
 - **Web Search with Citations** — personas autonomously search Brave API with mandatory sources
@@ -296,7 +296,7 @@ Key variables in `.env.docker`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PERSONA_MODEL` | `nchapman/gemma-2-9b-it-abliterated:9b` | Ollama LLM model |
+| `PERSONA_MODEL` | `gemma2:9b-instruct-q5_K_M` | Ollama LLM model |
 | `AUTH_REQUIRED` | `true` | Require Google OAuth login |
 | `AUTH_ENV` | `development` | `development` for HTTP, `production` for HTTPS |
 | `GOOGLE_CLIENT_ID` | — | Google OAuth Client ID |
@@ -344,7 +344,7 @@ Create a `.env` file in the project root:
 ```bash
 # Required
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=nchapman/gemma-2-9b-it-abliterated:9b
+PERSONA_MODEL=gemma2:9b-instruct-q5_K_M
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
@@ -469,14 +469,13 @@ See [docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS
 
 ## Available AI Companions
 
-**Current Roster (February 2026) — 10 Companions**
+**Current Roster (February 2026) — 9 Companions**
 
 ### Legacy Companions ("Wanderers")
 
 | Companion | Style | Order | Special Access |
 |-----------|-------|-------|----------------|
 | **Eeva** | Nerdy, charming, concise | Wanderer | None |
-| **Frieren** | Wise, analytical, methodical | Wanderer | None |
 | **Gojo** | Confident, powerful, playful | Wanderer | None |
 | **Hitler** | Authoritative, ideological | Wanderer | None |
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from typing import Any, List, Dict, Optional, Tuple
 import sqlite3
 from sqlalchemy import create_engine, pool
@@ -140,6 +141,30 @@ class SQLiteAdapter(DatabaseAdapter):
 
         return conn
 
+    @contextmanager
+    def _managed_connection(self):
+        """
+        Context manager that holds the SQLAlchemy fairy alive for the duration of a query.
+
+        Without this, get_connection() drops the fairy immediately after extracting the
+        raw sqlite3.Connection. CPython then calls fairy.__del__() which returns the
+        checkout to the pool — but the raw conn is still in use. The pool can hand out
+        the same underlying connection to another caller, causing a double-use race.
+
+        Yields:
+            Tuple of (fairy, conn) where fairy is the _ConnectionFairy keeping the pool
+            slot reserved and conn is the raw sqlite3.Connection with row_factory set.
+        """
+        engine = self._get_engine(self.db_path)
+        fairy = engine.raw_connection()
+        try:
+            conn = fairy.connection if hasattr(fairy, 'connection') else fairy
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            yield fairy, conn
+        finally:
+            fairy.close()
+
     def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         """
         Execute a query and return the cursor.
@@ -151,11 +176,11 @@ class SQLiteAdapter(DatabaseAdapter):
         Returns:
             Cursor object with query results
         """
-        conn = self.get_connection()
-        cur = conn.cursor()
-        cur.execute(query, params)
-        conn.commit()
-        return cur
+        with self._managed_connection() as (fairy, conn):
+            cur = conn.cursor()
+            cur.execute(query, params)
+            conn.commit()
+            return cur
 
     def fetchone(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         """
@@ -168,16 +193,14 @@ class SQLiteAdapter(DatabaseAdapter):
         Returns:
             Dictionary with query results or None
         """
-        conn = self.get_connection()
-        
-        # row_factory already set in get_connection(), create cursor
-        cur = conn.cursor()
-        cur.execute(query, params)
-        row = cur.fetchone()
+        with self._managed_connection() as (fairy, conn):
+            cur = conn.cursor()
+            cur.execute(query, params)
+            row = cur.fetchone()
 
         if not row:
             return None
-        
+
         return dict(row)
 
     def fetchall(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
@@ -191,12 +214,10 @@ class SQLiteAdapter(DatabaseAdapter):
         Returns:
             List of dictionaries with query results
         """
-        conn = self.get_connection()
-        
-        # row_factory already set in get_connection(), create cursor
-        cur = conn.cursor()
-        cur.execute(query, params)
-        rows = cur.fetchall()
+        with self._managed_connection() as (fairy, conn):
+            cur = conn.cursor()
+            cur.execute(query, params)
+            rows = cur.fetchall()
 
         return [dict(r) for r in rows]
 

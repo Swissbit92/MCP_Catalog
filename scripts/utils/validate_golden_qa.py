@@ -1,6 +1,6 @@
 """Validate all golden Q&A datasets.
 
-This script validates the golden Q&A examples for Eeva, Frieren, and Gojo,
+This script validates the golden Q&A examples for Eeva and Gojo,
 ensuring they meet quality standards for RAGAS evaluation.
 """
 
@@ -10,7 +10,7 @@ def main():
     """Validate all golden Q&A datasets."""
     manager = GoldenExamplesManager()
 
-    personas = ["eeva", "frieren", "gojo"]
+    personas = ["eeva", "gojo"]
 
     print("=" * 80)
     print("GOLDEN Q&A VALIDATION REPORT")

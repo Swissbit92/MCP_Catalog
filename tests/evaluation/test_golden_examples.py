@@ -211,7 +211,7 @@ class TestGoldenExamplesManager:
 class TestRealGoldenQAFiles:
     """Tests for actual golden Q&A files in the project."""
 
-    @pytest.mark.parametrize("persona_key", ["eeva", "frieren", "gojo"])
+    @pytest.mark.parametrize("persona_key", ["eeva", "gojo"])
     def test_real_dataset_loads(self, persona_key):
         """Test that real golden Q&A files load successfully."""
         manager = GoldenExamplesManager()  # Uses default path
@@ -224,7 +224,7 @@ class TestRealGoldenQAFiles:
         except FileNotFoundError:
             pytest.skip(f"Golden Q&A file for {persona_key} not found (expected during early development)")
 
-    @pytest.mark.parametrize("persona_key", ["eeva", "frieren", "gojo"])
+    @pytest.mark.parametrize("persona_key", ["eeva", "gojo"])
     def test_real_dataset_valid(self, persona_key):
         """Test that real golden Q&A files pass validation."""
         manager = GoldenExamplesManager()
@@ -256,7 +256,7 @@ class TestRealGoldenQAFiles:
         manager = GoldenExamplesManager()
         available = manager.list_available_datasets()
 
-        expected_personas = ["eeva", "frieren", "gojo"]
+        expected_personas = ["eeva", "gojo"]
 
         for persona in expected_personas:
             if persona not in available:
