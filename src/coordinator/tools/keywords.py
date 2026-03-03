@@ -99,5 +99,22 @@ MONGODB_TECHNICAL_KEYWORDS = {
 
     # Analysis/outlook
     "analysis", "trend analysis", "outlook", "technical outlook",
-    "market analysis", "signals"
+    "market analysis", "signals",
+
+    # Extended indicators (Phase: Multi-Asset)
+    "adx", "supertrend", "squeeze", "fear and greed", "fear & greed",
+    "fng", "f&g", "vwap", "fibonacci", "fib levels", "donchian",
+    "aroon", "cci", "williams", "mfi", "money flow", "obv",
+    "on-balance volume", "choppiness", "choppy", "atr", "volatility",
+    "keltner", "hdpr", "log return",
+}
+
+# Bot state keywords — for routing to btc_bot_state database
+BOT_STATE_KEYWORDS = {
+    "my bot", "bot status", "bot state", "open positions", "bot trades",
+    "trading bot", "active positions", "bot performance", "bot running",
+    "bollinger bot", "rsi strategy", "strategy status", "trade events",
+    "what is my bot doing", "bot entry", "bot exit", "stop loss",
+    "take profit", "filled price", "filled size",
+    "strategy", "bot history", "recent trades from bot",
 }

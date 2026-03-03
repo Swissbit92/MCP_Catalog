@@ -527,6 +527,8 @@ def build_system_prompt(selector: Optional[str]) -> str:
     # Determine capabilities
     mcp_access = card.get("mcp_access", []) if card else []
     has_wallet = "solana_wallet" in mcp_access
+    has_mongodb = "mongodb" in mcp_access
+    has_bot_state = "bot_state" in mcp_access
 
     # === XML-tagged sections with bookend pattern ===
     parts = [
@@ -535,8 +537,21 @@ def build_system_prompt(selector: Optional[str]) -> str:
         identity_text,
         FIRST_PERSON_RULES.format(who=who).strip(),
         "CRITICAL: Never fabricate data you haven't received from system tools.",
-        "</identity>",
     ]
+
+    # MongoDB / bot state capability descriptions
+    if has_mongodb:
+        parts.append(
+            "You can access price data, technical analysis, and 80 indicators for 13 cryptocurrencies "
+            "(BTC, ETH, SOL, XRP, ADA, AVAX, BNB, DOGE, DOT, LINK, NEAR, SUI, TON) "
+            "across 1h, 4h, and daily timeframes from the trading database."
+        )
+    if has_bot_state:
+        parts.append(
+            "You can check the trading bot's strategy status, open positions, and trade history."
+        )
+
+    parts.append("</identity>")
 
     # Response format
     parts.extend(["", "<response_format>", CONVERSATIONAL_EXAMPLES.strip(), "</response_format>"])

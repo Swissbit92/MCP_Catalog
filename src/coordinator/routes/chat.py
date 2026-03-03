@@ -237,8 +237,11 @@ def chat(body: ChatBody):
             )
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
-    # Tools needed - check if MongoDB tools are included
-    mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "").startswith("bitcoin_")]
+    # Tools needed - check if MongoDB/bot state tools are included
+    _MONGODB_TOOL_NAMES = {"crypto_current_price", "crypto_historical_prices",
+                           "crypto_trading_summary", "crypto_technical_analysis",
+                           "bot_status", "bot_positions", "bot_trade_history"}
+    mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "") in _MONGODB_TOOL_NAMES]
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
 
     # Create query handler service

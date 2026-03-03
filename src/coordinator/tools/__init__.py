@@ -28,10 +28,14 @@ from .intent_classifier import (
 from .tool_generators import (
     get_brave_search_tool,
     get_mongodb_tools,
-    get_bitcoin_current_price_tool,
-    get_bitcoin_historical_prices_tool,
-    get_bitcoin_trading_summary_tool,
-    get_bitcoin_technical_analysis_tool,
+    get_bot_state_tools,
+    get_crypto_current_price_tool,
+    get_crypto_historical_prices_tool,
+    get_crypto_trading_summary_tool,
+    get_crypto_technical_analysis_tool,
+    get_bot_status_tool,
+    get_bot_positions_tool,
+    get_bot_trade_history_tool,
     AVAILABLE_TOOLS,
 )
 
@@ -66,10 +70,14 @@ __all__ = [
     # Tool generators
     "get_brave_search_tool",
     "get_mongodb_tools",
-    "get_bitcoin_current_price_tool",
-    "get_bitcoin_historical_prices_tool",
-    "get_bitcoin_trading_summary_tool",
-    "get_bitcoin_technical_analysis_tool",
+    "get_bot_state_tools",
+    "get_crypto_current_price_tool",
+    "get_crypto_historical_prices_tool",
+    "get_crypto_trading_summary_tool",
+    "get_crypto_technical_analysis_tool",
+    "get_bot_status_tool",
+    "get_bot_positions_tool",
+    "get_bot_trade_history_tool",
     "AVAILABLE_TOOLS",
     # Synthesis prompts
     "build_tool_system_prompt",

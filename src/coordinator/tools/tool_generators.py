@@ -1,10 +1,16 @@
 # src/coordinator/tools/tool_generators.py
 # Tool definition generators for LLM function calling
-# Provides OpenAI-compatible function definitions for Brave Search and MongoDB tools
+# Provides OpenAI-compatible function definitions for Brave Search, MongoDB, and bot state tools
 
 from __future__ import annotations
 
 from typing import Dict, List, Any
+
+from .token_registry import get_supported_token_list
+
+
+# ── Token enum for tool definitions ──
+_TOKEN_ENUM = get_supported_token_list()
 
 
 def get_brave_search_tool() -> Dict[str, Any]:
@@ -49,43 +55,65 @@ def get_brave_search_tool() -> Dict[str, Any]:
 
 def get_mongodb_tools() -> List[Dict[str, Any]]:
     """
-    Returns all semantic MongoDB tool definitions for Bitcoin trading data.
+    Returns all semantic MongoDB tool definitions for crypto trading data.
 
     These are high-level tools that abstract MongoDB query complexity.
+    Supports 13 tokens across 3 timeframes.
     """
     return [
-        get_bitcoin_current_price_tool(),
-        get_bitcoin_historical_prices_tool(),
-        get_bitcoin_trading_summary_tool(),
-        get_bitcoin_technical_analysis_tool()
+        get_crypto_current_price_tool(),
+        get_crypto_historical_prices_tool(),
+        get_crypto_trading_summary_tool(),
+        get_crypto_technical_analysis_tool(),
     ]
 
 
-def get_bitcoin_current_price_tool() -> Dict[str, Any]:
-    """Get current Bitcoin price with key technical indicators."""
+def get_bot_state_tools() -> List[Dict[str, Any]]:
+    """Returns bot state tool definitions for trading bot monitoring."""
+    return [
+        get_bot_status_tool(),
+        get_bot_positions_tool(),
+        get_bot_trade_history_tool(),
+    ]
+
+
+def get_crypto_current_price_tool() -> Dict[str, Any]:
+    """Get current price with technical indicators for any supported cryptocurrency."""
     return {
         "type": "function",
         "function": {
-            "name": "bitcoin_current_price",
+            "name": "crypto_current_price",
             "description": (
-                "Get the CURRENT Bitcoin price with key technical indicators from our trading database. "
+                "Get the CURRENT price with key technical indicators for any supported cryptocurrency. "
+                "Supports 13 tokens: BTC, ETH, SOL, XRP, ADA, AVAX, BNB, DOGE, DOT, LINK, NEAR, SUI, TON. "
                 "Data updates hourly. "
                 "Use this when user asks about:\n"
-                "- Current/latest Bitcoin price\n"
+                "- Current/latest price of any crypto\n"
                 "- Current technical indicators (RSI, MACD, Bollinger Bands)\n"
                 "- Current market conditions\n\n"
-                "Returns: price, timestamp, RSI, MACD, Bollinger Bands, EMAs, volume"
+                "Returns: price, timestamp, RSI, MACD, Bollinger Bands, EMAs, volume, extended indicators"
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "token": {
+                        "type": "string",
+                        "enum": _TOKEN_ENUM,
+                        "description": "Token ticker symbol (lowercase)"
+                    },
+                    "timeframe": {
+                        "type": "string",
+                        "enum": ["1h", "4h", "daily"],
+                        "description": "Data timeframe. Default: 1h"
+                    },
                     "include_indicators": {
                         "type": "array",
                         "items": {"type": "string"},
                         "description": (
                             "Optional list of specific indicators to return. "
                             "Available: RSI, MACD_Line, MACD_Signal, BB_High, BB_Low, "
-                            "EMA_20, EMA_50, EMA_100, SMA_50, SMA_100, Stoch_RSI"
+                            "EMA_20, EMA_50, EMA_100, SMA_50, SMA_100, ADX_14, "
+                            "Supertrend_Direction, FnG_Value, VWAP, CCI_20, MFI_14"
                         )
                     },
                     "reason": {
@@ -93,21 +121,21 @@ def get_bitcoin_current_price_tool() -> Dict[str, Any]:
                         "description": "REQUIRED: Brief explanation of why you need this data (1 sentence)"
                     }
                 },
-                "required": ["reason"]
+                "required": ["token", "reason"]
             }
         }
     }
 
 
-def get_bitcoin_historical_prices_tool() -> Dict[str, Any]:
-    """Query historical Bitcoin price data with date range."""
+def get_crypto_historical_prices_tool() -> Dict[str, Any]:
+    """Query historical price data with date range for any supported token."""
     return {
         "type": "function",
         "function": {
-            "name": "bitcoin_historical_prices",
+            "name": "crypto_historical_prices",
             "description": (
-                "Query Bitcoin HISTORICAL price data with date range. "
-                "Available data: 2016-07-18 to present (9+ years). "
+                "Query HISTORICAL price data with date range for any supported cryptocurrency. "
+                "Supports 13 tokens across 1h, 4h, and daily timeframes. "
                 "Use this when user asks about:\n"
                 "- Historical prices (past data)\n"
                 "- Price trends over time\n"
@@ -118,49 +146,61 @@ def get_bitcoin_historical_prices_tool() -> Dict[str, Any]:
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "token": {
+                        "type": "string",
+                        "enum": _TOKEN_ENUM,
+                        "description": "Token ticker symbol (lowercase)"
+                    },
                     "start_date": {
                         "type": "string",
                         "description": "Start date in YYYY-MM-DD format (e.g., '2024-01-01')"
                     },
                     "end_date": {
                         "type": "string",
-                        "description": "End date in YYYY-MM-DD format (e.g., '2024-12-31'). Defaults to today."
+                        "description": "End date in YYYY-MM-DD format. Defaults to today."
                     },
                     "timeframe": {
                         "type": "string",
-                        "enum": ["hourly", "daily"],
-                        "description": "Data granularity: 'hourly' (last 6 months) or 'daily' (2016-present)"
+                        "enum": ["1h", "4h", "daily"],
+                        "description": "Data granularity: '1h' (recent), '4h' (mid-term), 'daily' (long-term)"
                     },
                     "reason": {
                         "type": "string",
                         "description": "REQUIRED: Why you need historical data (1 sentence)"
                     }
                 },
-                "required": ["start_date", "reason"]
+                "required": ["token", "start_date", "reason"]
             }
         }
     }
 
 
-def get_bitcoin_trading_summary_tool() -> Dict[str, Any]:
-    """Get DCA trading statistics."""
+def get_crypto_trading_summary_tool() -> Dict[str, Any]:
+    """Get DCA trading statistics (BTC only — other tokens return graceful message)."""
     return {
         "type": "function",
         "function": {
-            "name": "bitcoin_trading_summary",
+            "name": "crypto_trading_summary",
             "description": (
-                "Get summary statistics for Bitcoin DCA (Dollar Cost Averaging) purchases. "
+                "Get summary statistics for DCA (Dollar Cost Averaging) purchases. "
+                "NOTE: DCA data is currently only available for Bitcoin (BTC). "
+                "For other tokens, returns a message indicating no DCA data. "
                 "Use this when user asks about:\n"
-                "- How much Bitcoin was bought\n"
-                "- Total spending on Bitcoin\n"
+                "- How much crypto was bought\n"
+                "- Total spending\n"
                 "- Purchase history\n"
                 "- Average buy price\n"
                 "- Trading statistics\n\n"
-                "Returns: total BTC, total USDT spent, fees, average price, number of purchases"
+                "Returns: total purchased, total spent, fees, average price, number of purchases"
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "token": {
+                        "type": "string",
+                        "enum": _TOKEN_ENUM,
+                        "description": "Token ticker symbol (lowercase)"
+                    },
                     "start_date": {
                         "type": "string",
                         "description": "Optional start date to filter purchases (YYYY-MM-DD)"
@@ -174,38 +214,127 @@ def get_bitcoin_trading_summary_tool() -> Dict[str, Any]:
                         "description": "REQUIRED: Why you need trading stats (1 sentence)"
                     }
                 },
+                "required": ["token", "reason"]
+            }
+        }
+    }
+
+
+def get_crypto_technical_analysis_tool() -> Dict[str, Any]:
+    """Multi-timeframe technical analysis for any supported token."""
+    return {
+        "type": "function",
+        "function": {
+            "name": "crypto_technical_analysis",
+            "description": (
+                "Get comprehensive technical analysis with trend, momentum, volatility, and sentiment indicators. "
+                "Supports 13 tokens across 1h, 4h, and daily timeframes. "
+                "Includes 80 indicators: RSI, MACD, Bollinger Bands, ADX, Supertrend, Squeeze, "
+                "Fear & Greed, VWAP, Fibonacci, Ichimoku, and more. "
+                "Use this when user asks about:\n"
+                "- Technical analysis\n"
+                "- Market indicators\n"
+                "- Trading signals\n"
+                "- Trend analysis\n\n"
+                "Returns: detailed indicator analysis with interpretations"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "enum": _TOKEN_ENUM,
+                        "description": "Token ticker symbol (lowercase)"
+                    },
+                    "timeframe": {
+                        "type": "string",
+                        "enum": ["hourly", "4h", "daily"],
+                        "description": "Analysis timeframe: 'hourly' for short-term, '4h' for mid-term, 'daily' for long-term"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "REQUIRED: Why you need technical analysis (1 sentence)"
+                    }
+                },
+                "required": ["token", "reason"]
+            }
+        }
+    }
+
+
+def get_bot_status_tool() -> Dict[str, Any]:
+    """Get trading bot strategy states."""
+    return {
+        "type": "function",
+        "function": {
+            "name": "bot_status",
+            "description": (
+                "Get the current status of all trading bot strategies. "
+                "Shows which strategies are active, their last processed timestamp, "
+                "entry/exit signals, and waiting states. "
+                "Use when user asks about bot status, strategy state, or 'what is my bot doing'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "REQUIRED: Why you need bot status (1 sentence)"
+                    }
+                },
                 "required": ["reason"]
             }
         }
     }
 
 
-def get_bitcoin_technical_analysis_tool() -> Dict[str, Any]:
-    """Multi-timeframe technical analysis."""
+def get_bot_positions_tool() -> Dict[str, Any]:
+    """Get open bot positions."""
     return {
         "type": "function",
         "function": {
-            "name": "bitcoin_technical_analysis",
+            "name": "bot_positions",
             "description": (
-                "Get comprehensive technical analysis with trend, momentum, and volatility indicators. "
-                "Use this when user asks about:\n"
-                "- Technical analysis\n"
-                "- Market indicators (RSI, MACD, Bollinger Bands)\n"
-                "- Trading signals\n"
-                "- Trend analysis\n\n"
-                "Returns: detailed indicator analysis with interpretations (RSI, MACD, BB, EMAs, Ichimoku)"
+                "Get all currently open positions held by the trading bot. "
+                "Shows entry price, size, stop loss, and take profit levels. "
+                "Use when user asks about open positions or active trades."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "timeframe": {
+                    "reason": {
                         "type": "string",
-                        "enum": ["hourly", "daily"],
-                        "description": "Analysis timeframe: 'hourly' for short-term or 'daily' for long-term"
+                        "description": "REQUIRED: Why you need position data (1 sentence)"
+                    }
+                },
+                "required": ["reason"]
+            }
+        }
+    }
+
+
+def get_bot_trade_history_tool() -> Dict[str, Any]:
+    """Get recent bot trade events."""
+    return {
+        "type": "function",
+        "function": {
+            "name": "bot_trade_history",
+            "description": (
+                "Get recent trade events from the trading bot (entries and exits). "
+                "Shows strategy, symbol, event type, filled price, size, fees, "
+                "stop loss, and take profit for each trade. "
+                "Use when user asks about recent bot trades, trade history, or bot performance."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of trade events to return (default 20, max 50)"
                     },
                     "reason": {
                         "type": "string",
-                        "description": "REQUIRED: Why you need technical analysis (1 sentence)"
+                        "description": "REQUIRED: Why you need trade history (1 sentence)"
                     }
                 },
                 "required": ["reason"]
@@ -217,8 +346,11 @@ def get_bitcoin_technical_analysis_tool() -> Dict[str, Any]:
 # Tool registry
 AVAILABLE_TOOLS = {
     "brave_web_search": get_brave_search_tool(),
-    "bitcoin_current_price": get_bitcoin_current_price_tool(),
-    "bitcoin_historical_prices": get_bitcoin_historical_prices_tool(),
-    "bitcoin_trading_summary": get_bitcoin_trading_summary_tool(),
-    "bitcoin_technical_analysis": get_bitcoin_technical_analysis_tool()
+    "crypto_current_price": get_crypto_current_price_tool(),
+    "crypto_historical_prices": get_crypto_historical_prices_tool(),
+    "crypto_trading_summary": get_crypto_trading_summary_tool(),
+    "crypto_technical_analysis": get_crypto_technical_analysis_tool(),
+    "bot_status": get_bot_status_tool(),
+    "bot_positions": get_bot_positions_tool(),
+    "bot_trade_history": get_bot_trade_history_tool(),
 }

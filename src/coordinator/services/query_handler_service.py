@@ -28,8 +28,12 @@ _wallet_flows: dict[str, dict] = {}
 _TOOL_NAME_PATTERN = re.compile(
     r'\b(wallet_get_balances|wallet_create_guided|solana_get_quote|'
     r'solana_rsi_check|solana_propose_swap|solana_propose_strategy|'
-    r'solana_trade_history|brave_web_search|bitcoin_current_price|'
-    r'bitcoin_historical_prices|bitcoin_trading_summary|bitcoin_technical_analysis)\b'
+    r'solana_trade_history|brave_web_search|'
+    r'crypto_current_price|crypto_historical_prices|'
+    r'crypto_trading_summary|crypto_technical_analysis|'
+    r'bitcoin_current_price|bitcoin_historical_prices|'
+    r'bitcoin_trading_summary|bitcoin_technical_analysis|'
+    r'bot_status|bot_positions|bot_trade_history)\b'
 )
 
 # R9: Output safety filter patterns
@@ -289,7 +293,7 @@ class QueryHandlerService:
         persona_name: str,
         persona_card: dict
     ) -> dict:
-        """Handle MongoDB-only query.
+        """Handle MongoDB-only query (multi-token + bot state).
 
         Args:
             message: User's query message
@@ -298,34 +302,78 @@ class QueryHandlerService:
             mongodb_tools: List of MongoDB tool definitions
             metadata: Response metadata object
             persona_name: Display name of persona
+            persona_card: Full persona card dict
 
         Returns:
             Response dict with answer, used_search, metadata, rewritten
         """
+        from ..tools.token_registry import resolve_token, resolve_timeframe, get_token_display_name  # noqa: PLC0415
+
         logger.info("MongoDB-only query detected, using direct handlers")
-        tool_name = mongodb_tools[0]["function"]["name"]
-        logger.info(f"Using MongoDB tool: {tool_name}")
+        tool_names = [t["function"]["name"] for t in mongodb_tools]
+        logger.info(f"Available MongoDB tools: {tool_names}")
+
+        # Resolve token from user message (default to btc for backward compat)
+        token = resolve_token(message) or "btc"
+        timeframe = resolve_timeframe(message)
+        display_name = get_token_display_name(token)
+        logger.info(f"[MongoDB] Resolved token={token} ({display_name}), timeframe={timeframe}")
+
+        # Determine which handler to call based on available tools and message content
+        msg_lower = message.lower()
+
+        # Bot state tools take priority if present and message matches
+        _BOT_TOOL_NAMES = {"bot_status", "bot_positions", "bot_trade_history"}
+        has_bot_tools = bool(_BOT_TOOL_NAMES & set(tool_names))
 
         try:
             mongodb_result = None
-            if tool_name == "bitcoin_current_price":
-                mongodb_result = self.mongodb_service.handle_bitcoin_current_price(
-                    reason="User query about current price"
+
+            if has_bot_tools and any(kw in msg_lower for kw in [
+                "bot", "strategy", "position", "trade event", "trade history",
+                "bot trades", "bot status", "bot running", "stop loss", "take profit",
+            ]):
+                # Route to bot state handlers
+                if any(kw in msg_lower for kw in ["position", "open position", "active position"]):
+                    mongodb_result = self.mongodb_service.handle_bot_positions()
+                    tool_used = "bot_positions"
+                elif any(kw in msg_lower for kw in [
+                    "trade event", "trade history", "recent trade", "bot trades",
+                    "filled", "entry", "exit",
+                ]):
+                    mongodb_result = self.mongodb_service.handle_bot_trades()
+                    tool_used = "bot_trade_history"
+                else:
+                    mongodb_result = self.mongodb_service.handle_bot_status()
+                    tool_used = "bot_status"
+            elif any(kw in msg_lower for kw in ["technical", "analysis", "indicator", "rsi", "macd",
+                                                  "bollinger", "ema", "sma", "adx", "supertrend",
+                                                  "squeeze", "fear", "greed", "fng", "vwap",
+                                                  "fibonacci", "ichimoku", "signal"]):
+                mongodb_result = self.mongodb_service.handle_crypto_technical_analysis(
+                    token=token, reason="User query about technical analysis", timeframe=timeframe
                 )
-            elif tool_name == "bitcoin_historical_prices":
+                tool_used = "crypto_technical_analysis"
+            elif any(kw in msg_lower for kw in ["history", "historical", "past", "ago", "was", "trend over"]):
                 date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
                 start_date = date_match.group(1) if date_match else "2025-12-01"
-                mongodb_result = self.mongodb_service.handle_bitcoin_historical_prices(
-                    reason="User query about historical data", start_date=start_date
+                mongodb_result = self.mongodb_service.handle_crypto_historical_prices(
+                    token=token, reason="User query about historical data",
+                    start_date=start_date, timeframe=timeframe,
                 )
-            elif tool_name == "bitcoin_trading_summary":
-                mongodb_result = self.mongodb_service.handle_bitcoin_trading_summary(
-                    reason="User query about trading stats"
+                tool_used = "crypto_historical_prices"
+            elif any(kw in msg_lower for kw in ["bought", "purchased", "dca", "trading summary",
+                                                  "purchase history", "how much", "portfolio"]):
+                mongodb_result = self.mongodb_service.handle_crypto_trading_summary(
+                    token=token, reason="User query about trading stats"
                 )
-            elif tool_name == "bitcoin_technical_analysis":
-                mongodb_result = self.mongodb_service.handle_bitcoin_technical_analysis(
-                    reason="User query about technical analysis"
+                tool_used = "crypto_trading_summary"
+            else:
+                # Default: current price
+                mongodb_result = self.mongodb_service.handle_crypto_current_price(
+                    token=token, reason="User query about current price", timeframe=timeframe,
                 )
+                tool_used = "crypto_current_price"
 
             if mongodb_result:
                 formatted_data = json.dumps(mongodb_result, indent=2)
@@ -339,7 +387,8 @@ class QueryHandlerService:
                 # Build enhanced synthesis prompt with persona flavor guidance
                 synthesis_system = build_mongodb_synthesis_prompt(
                     persona_system=system_prompt,
-                    has_mongodb_data=True
+                    has_mongodb_data=True,
+                    token_name=display_name,
                 )
                 logger.info(f"[MongoDB Synthesis] Using enhanced synthesis prompt (length: {len(synthesis_system)} chars)")
 
@@ -352,11 +401,11 @@ User Query: {user_compiled}"""
                 answer = service.complete(system=synthesis_system, user_prompt=synthesis_prompt)
 
                 metadata.source_type = "mongodb_mcp"
-                metadata.tools_used = [tool_name]
+                metadata.tools_used = [tool_used]
                 metadata.cache_status = mongodb_result.get("cache_status", "miss")
                 metadata.data_timestamp = mongodb_result.get("timestamp", "")
 
-                logger.info(f"MongoDB query completed: tool={tool_name}, cache={metadata.cache_status}")
+                logger.info(f"MongoDB query completed: tool={tool_used}, token={token}, cache={metadata.cache_status}")
 
                 # Use shared finalization logic (Phase 2 DRY)
                 return self._finalize_response(

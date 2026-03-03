@@ -2,7 +2,7 @@
   "key": "nephilim_aurora",
   "rarity": "epic",
   "celestial_order": "warden",
-  "mcp_access": ["brave_search", "mongodb"],
+  "mcp_access": ["brave_search", "mongodb", "bot_state"],
   "display_name": "Aurora — The Oracle",
   "title": "The Oracle",
   "full_title": "Anticipatory Universal Reality Observation & Reasoning Algorithm",

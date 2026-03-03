@@ -1,5 +1,9 @@
 # src/coordinator/services/mongodb_handlers.py
-"""MongoDB tool handlers for Bitcoin trading data queries."""
+"""MongoDB tool handlers for multi-asset crypto data and bot state queries.
+
+Supports 13 tokens × 3 timeframes from btc_data database, plus
+bot strategy state from btc_bot_state database.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,12 @@ import logging
 from fastapi import HTTPException
 
 from ..config import get_settings
+from ..tools.token_registry import (
+    get_collection,
+    get_token_display_name,
+    has_dca_data,
+    interpret_indicator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,27 +66,36 @@ class MongoDBService:
             logger.error(f"MongoDB fetch error for {cache_key}: {e}")
             raise
 
-    def handle_bitcoin_current_price(
+    # ── Generalized crypto data handlers ──
+
+    def handle_crypto_current_price(
         self,
+        token: str,
         reason: str,
-        include_indicators: Optional[List[str]] = None
+        timeframe: str = "1h",
+        include_indicators: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """Get current Bitcoin price with key technical indicators."""
+        """Get current price with technical indicators for any supported token."""
         if not self._client:
             raise HTTPException(status_code=503, detail="MongoDB MCP not available")
 
+        collection = get_collection(token, timeframe)
+        display_name = get_token_display_name(token)
+
         def fetch():
-            # Query 1h_price_data for latest document
             result = self._client.find(
                 database="btc_data",
-                collection="1h_price_data",
+                collection=collection,
                 filter={},
                 sort={"timestamp": -1},
                 limit=1
             )
 
             if not result or len(result) == 0:
-                raise HTTPException(status_code=404, detail="No price data found")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No price data found for {display_name} in {collection}"
+                )
 
             latest = result[0]
 
@@ -90,19 +109,9 @@ class MongoDBService:
                 if ind in latest:
                     indicators_data[ind] = latest[ind]
 
-            # Add signal interpretations
-            # RSI thresholds: 70/30 (industry standard)
-            # 70+ = Overbought (potential reversal down)
-            # 30- = Oversold (potential reversal up)
-            # Used by TradingView, Investopedia, and technical analysts worldwide.
-            # DO NOT change unless implementing custom trading strategy.
+            # Core indicator interpretations
             rsi = latest.get("RSI", 0)
-            rsi_signal = (
-                "Overbought" if rsi > 70
-                else "Oversold" if rsi < 30
-                else "Neutral-Bullish" if rsi > 50
-                else "Neutral-Bearish"
-            )
+            rsi_signal = interpret_indicator("RSI", rsi) or "Unknown"
 
             macd_hist = latest.get("MACD_Histogram", 0)
             macd_trend = "Bullish crossover" if macd_hist > 0 else "Bearish crossover"
@@ -113,7 +122,9 @@ class MongoDBService:
             bb_mid = (bb_upper + bb_lower) / 2 if bb_upper and bb_lower else 0
             bb_position = "Near upper band" if price > bb_mid else "Near lower band"
 
-            return {
+            response = {
+                "token": token,
+                "token_name": display_name,
                 "price": latest.get("Close"),
                 "timestamp": latest.get("timestamp"),
                 "volume": latest.get("Volume"),
@@ -134,26 +145,51 @@ class MongoDBService:
                     "EMA_50": latest.get("EMA_50"),
                     "raw_indicators": indicators_data
                 },
-                "data_source": "1h_price_data"
+                "data_source": collection,
+                "timeframe": timeframe,
             }
 
-        data, cache_status = self._check_cache_or_fetch("bitcoin_current_price", fetch)
+            # Extended indicators (only include if present in this collection)
+            extended = {}
+            for ind_name in [
+                "ADX_14", "Supertrend_Direction", "Supertrend_Value",
+                "Squeeze_Flag", "Squeeze_Momentum", "HDPR_Signal",
+                "FnG_Value", "FnG_Class", "VWAP",
+                "CCI_20", "Williams_R_14", "MFI_14", "CHOP_14",
+                "CMF_20", "OBV", "ATR_14",
+            ]:
+                val = latest.get(ind_name)
+                if val is not None:
+                    interp = interpret_indicator(ind_name, val)
+                    extended[ind_name] = {"value": val}
+                    if interp:
+                        extended[ind_name]["signal"] = interp
+
+            if extended:
+                response["indicators"]["extended"] = extended
+
+            return response
+
+        cache_key = f"{token}_current_price_{timeframe}"
+        data, cache_status = self._check_cache_or_fetch(cache_key, fetch)
         data["cache_status"] = cache_status
         return data
 
-    def handle_bitcoin_historical_prices(
+    def handle_crypto_historical_prices(
         self,
+        token: str,
         reason: str,
         start_date: str,
         end_date: Optional[str] = None,
         timeframe: str = "daily",
-        indicators: Optional[List[str]] = None
+        indicators: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """Query historical Bitcoin price data with date range."""
+        """Query historical price data with date range for any supported token."""
         if not self._client:
             raise HTTPException(status_code=503, detail="MongoDB MCP not available")
 
-        collection = "daily_price_data" if timeframe == "daily" else "1h_price_data"
+        collection = get_collection(token, timeframe)
+        display_name = get_token_display_name(token)
 
         # Build query filter
         query_filter = {}
@@ -187,6 +223,8 @@ class MongoDBService:
             )
 
             return {
+                "token": token,
+                "token_name": display_name,
                 "timeframe": timeframe,
                 "start_date": start_date,
                 "end_date": end_date,
@@ -195,24 +233,40 @@ class MongoDBService:
                 "data_source": collection
             }
 
-        # Use a cache key that includes the date range
-        cache_key = f"bitcoin_historical_prices_{start_date}_{end_date}_{timeframe}"
+        cache_key = f"{token}_historical_{start_date}_{end_date}_{timeframe}"
         data, cache_status = self._check_cache_or_fetch(cache_key, fetch)
         data["cache_status"] = cache_status
         return data
 
-    def handle_bitcoin_trading_summary(
+    def handle_crypto_trading_summary(
         self,
+        token: str,
         reason: str,
         start_date: Optional[str] = None,
-        end_date: Optional[str] = None
+        end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Get DCA (Dollar Cost Averaging) trading statistics."""
+        """Get DCA trading statistics. Only BTC has DCA data."""
+        display_name = get_token_display_name(token)
+
+        # Only BTC has DCA purchase history — check before client guard
+        # so non-BTC tokens get a graceful message even if client is unavailable
+        if not has_dca_data(token):
+            return {
+                "token": token,
+                "token_name": display_name,
+                "total_purchased": 0,
+                "total_spent": 0,
+                "num_purchases": 0,
+                "message": f"No DCA purchase history available for {display_name}. "
+                           f"Only Bitcoin has DCA tracking in the database.",
+                "data_source": None,
+                "cache_status": "n/a",
+            }
+
         if not self._client:
             raise HTTPException(status_code=503, detail="MongoDB MCP not available")
 
         def fetch():
-            # Build match stage
             match_stage = {}
             if start_date or end_date:
                 match_stage["timestamp"] = {}
@@ -221,7 +275,6 @@ class MongoDBService:
                 if end_date:
                     match_stage["timestamp"]["$lte"] = end_date
 
-            # Aggregation pipeline
             pipeline = [
                 {"$match": match_stage} if match_stage else {"$match": {}},
                 {"$group": {
@@ -246,6 +299,8 @@ class MongoDBService:
 
             if not results or len(results) == 0:
                 return {
+                    "token": token,
+                    "token_name": display_name,
                     "total_btc": 0,
                     "total_usdt_spent": 0,
                     "total_fees": 0,
@@ -254,27 +309,33 @@ class MongoDBService:
                 }
 
             summary = results[0]
+            summary["token"] = token
+            summary["token_name"] = display_name
             summary["data_source"] = "BTC dayli buying"
             return summary
 
-        cache_key = f"bitcoin_trading_summary_{start_date}_{end_date}"
+        cache_key = f"{token}_trading_summary_{start_date}_{end_date}"
         data, cache_status = self._check_cache_or_fetch(cache_key, fetch)
         data["cache_status"] = cache_status
         return data
 
-    def handle_bitcoin_technical_analysis(
+    def handle_crypto_technical_analysis(
         self,
+        token: str,
         reason: str,
-        timeframe: str = "hourly"
+        timeframe: str = "hourly",
     ) -> Dict[str, Any]:
-        """Multi-timeframe technical analysis."""
+        """Multi-timeframe technical analysis for any supported token."""
         if not self._client:
             raise HTTPException(status_code=503, detail="MongoDB MCP not available")
 
-        def fetch():
-            collection = "1h_price_data" if timeframe == "hourly" else "daily_price_data"
+        # Map friendly timeframe names to collection timeframes
+        tf_map = {"hourly": "1h", "4h": "4h", "daily": "daily", "1h": "1h"}
+        tf_key = tf_map.get(timeframe, "1h")
+        collection = get_collection(token, tf_key)
+        display_name = get_token_display_name(token)
 
-            # Get latest data
+        def fetch():
             results = self._client.find(
                 database="btc_data",
                 collection=collection,
@@ -284,11 +345,14 @@ class MongoDBService:
             )
 
             if not results or len(results) == 0:
-                raise HTTPException(status_code=404, detail="No data found")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No data found for {display_name} in {collection}"
+                )
 
             latest = results[0]
 
-            # Analyze indicators
+            # Core trend analysis
             price = latest.get("Close", 0)
             ema_20 = latest.get("EMA_20", 0)
             ema_50 = latest.get("EMA_50", 0)
@@ -309,6 +373,8 @@ class MongoDBService:
             bb_position = "upper" if price > bb_mid else "lower"
 
             analysis = {
+                "token": token,
+                "token_name": display_name,
                 "price": price,
                 "timestamp": latest.get("timestamp"),
                 "timeframe": timeframe,
@@ -316,7 +382,7 @@ class MongoDBService:
                     "EMA_20": ema_20,
                     "EMA_50": ema_50,
                     "EMA_200": ema_200,
-                    "trend": trend
+                    "trend": trend,
                 },
                 "momentum_indicators": {
                     "RSI": {
@@ -329,26 +395,233 @@ class MongoDBService:
                         "histogram": macd_hist,
                         "crossover": macd_crossover
                     },
-                    "Stochastic_RSI": latest.get("Stoch_RSI")
+                    "Stochastic_RSI": latest.get("Stoch_RSI_K"),
                 },
                 "volatility_indicators": {
                     "Bollinger_Bands": {
                         "upper": bb_high,
                         "lower": bb_low,
-                        "position": bb_position
-                    }
+                        "position": bb_position,
+                    },
                 },
                 "support_resistance": {
                     "Donchian_High": latest.get("Donchian_High"),
                     "Donchian_Low": latest.get("Donchian_Low"),
-                    "Ichimoku_Base": latest.get("Ichimoku_Base")
+                    "Ichimoku_Base": latest.get("Ichimoku_Base"),
                 },
-                "data_source": collection
+                "data_source": collection,
             }
+
+            # Extended indicators — only include fields present in this collection
+            # ADX + Directional Index
+            adx = latest.get("ADX_14")
+            if adx is not None:
+                di_plus = latest.get("DI_Plus_14")
+                di_minus = latest.get("DI_Minus_14")
+                adx_signal = interpret_indicator("ADX_14", adx) or "Unknown"
+                direction = "bullish" if (di_plus or 0) > (di_minus or 0) else "bearish"
+                analysis["trend_indicators"]["ADX"] = {
+                    "value": adx,
+                    "signal": adx_signal,
+                    "DI_Plus": di_plus,
+                    "DI_Minus": di_minus,
+                    "direction": direction,
+                }
+
+            # Supertrend
+            st_dir = latest.get("Supertrend_Direction")
+            if st_dir is not None:
+                analysis["trend_indicators"]["Supertrend"] = {
+                    "direction": interpret_indicator("Supertrend_Direction", st_dir) or "Unknown",
+                    "value": latest.get("Supertrend_Value"),
+                }
+
+            # Squeeze
+            sq_flag = latest.get("Squeeze_Flag")
+            if sq_flag is not None:
+                analysis["volatility_indicators"]["Squeeze"] = {
+                    "flag": interpret_indicator("Squeeze_Flag", sq_flag) or "Unknown",
+                    "momentum": latest.get("Squeeze_Momentum"),
+                }
+
+            # HDPR
+            hdpr_sig = latest.get("HDPR_Signal")
+            if hdpr_sig is not None:
+                analysis["momentum_indicators"]["HDPR"] = {
+                    "signal": interpret_indicator("HDPR_Signal", hdpr_sig) or "Neutral",
+                    "ma": latest.get("HDPR_MA"),
+                    "distance": latest.get("HDPR_Distance"),
+                }
+
+            # Sentiment (Fear & Greed)
+            fng_val = latest.get("FnG_Value")
+            if fng_val is not None:
+                analysis["sentiment"] = {
+                    "fear_greed_index": fng_val,
+                    "classification": interpret_indicator("FnG_Value", fng_val) or latest.get("FnG_Class", "Unknown"),
+                }
+
+            # VWAP
+            vwap = latest.get("VWAP")
+            if vwap is not None:
+                vwap_bias = "bullish (price > VWAP)" if price > vwap else "bearish (price < VWAP)"
+                analysis["support_resistance"]["VWAP"] = {
+                    "value": vwap,
+                    "bias": vwap_bias,
+                }
+
+            # Fibonacci levels
+            fib_levels = {}
+            for fib in ["Fib_100", "Fib_236", "Fib_382", "Fib_500", "Fib_618"]:
+                fval = latest.get(fib)
+                if fval is not None:
+                    fib_levels[fib] = fval
+            if fib_levels:
+                analysis["support_resistance"]["Fibonacci"] = fib_levels
+
+            # Volume indicators
+            vol_indicators = {}
+            for vi_name in ["OBV", "CMF_20", "MFI_14"]:
+                vi_val = latest.get(vi_name)
+                if vi_val is not None:
+                    interp = interpret_indicator(vi_name, vi_val)
+                    vol_indicators[vi_name] = {"value": vi_val}
+                    if interp:
+                        vol_indicators[vi_name]["signal"] = interp
+            if vol_indicators:
+                analysis["volume_indicators"] = vol_indicators
+
+            # Additional momentum
+            for extra in ["CCI_20", "Williams_R_14", "CHOP_14"]:
+                ev = latest.get(extra)
+                if ev is not None:
+                    interp = interpret_indicator(extra, ev)
+                    analysis["momentum_indicators"][extra] = {"value": ev}
+                    if interp:
+                        analysis["momentum_indicators"][extra]["signal"] = interp
+
+            # ATR
+            atr = latest.get("ATR_14")
+            if atr is not None:
+                analysis["volatility_indicators"]["ATR_14"] = atr
 
             return analysis
 
-        cache_key = f"bitcoin_technical_analysis_{timeframe}"
+        cache_key = f"{token}_technical_{timeframe}"
         data, cache_status = self._check_cache_or_fetch(cache_key, fetch)
         data["cache_status"] = cache_status
         return data
+
+    # ── Bot state handlers (btc_bot_state database) ──
+
+    def handle_bot_status(self) -> Dict[str, Any]:
+        """Query btc_bot_state.bot_state — returns all strategy states."""
+        if not self._client:
+            raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+        def fetch():
+            results = self._client.find(
+                database="btc_bot_state",
+                collection="bot_state",
+                filter={},
+                limit=50
+            )
+            return {
+                "strategies": results,
+                "count": len(results),
+                "data_source": "btc_bot_state.bot_state",
+            }
+
+        data, cache_status = self._check_cache_or_fetch("bot_status", fetch)
+        data["cache_status"] = cache_status
+        return data
+
+    def handle_bot_positions(self) -> Dict[str, Any]:
+        """Query btc_bot_state.my_open_positions — returns active positions."""
+        if not self._client:
+            raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+        def fetch():
+            results = self._client.find(
+                database="btc_bot_state",
+                collection="my_open_positions",
+                filter={},
+                limit=50
+            )
+            return {
+                "positions": results,
+                "count": len(results),
+                "data_source": "btc_bot_state.my_open_positions",
+            }
+
+        data, cache_status = self._check_cache_or_fetch("bot_positions", fetch)
+        data["cache_status"] = cache_status
+        return data
+
+    def handle_bot_trades(self, limit: int = 20) -> Dict[str, Any]:
+        """Query btc_bot_state.trade_events — returns recent trades."""
+        if not self._client:
+            raise HTTPException(status_code=503, detail="MongoDB MCP not available")
+
+        def fetch():
+            results = self._client.find(
+                database="btc_bot_state",
+                collection="trade_events",
+                filter={},
+                sort={"timestamp": -1},
+                limit=limit
+            )
+            return {
+                "trades": results,
+                "count": len(results),
+                "data_source": "btc_bot_state.trade_events",
+            }
+
+        cache_key = f"bot_trades_{limit}"
+        data, cache_status = self._check_cache_or_fetch(cache_key, fetch)
+        data["cache_status"] = cache_status
+        return data
+
+    # ── Backward compatibility wrappers ──
+
+    def handle_bitcoin_current_price(
+        self,
+        reason: str,
+        include_indicators: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Backward compat: delegates to handle_crypto_current_price('btc', ...)."""
+        return self.handle_crypto_current_price(
+            "btc", reason, include_indicators=include_indicators
+        )
+
+    def handle_bitcoin_historical_prices(
+        self,
+        reason: str,
+        start_date: str,
+        end_date: Optional[str] = None,
+        timeframe: str = "daily",
+        indicators: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Backward compat: delegates to handle_crypto_historical_prices('btc', ...)."""
+        return self.handle_crypto_historical_prices(
+            "btc", reason, start_date, end_date, timeframe, indicators
+        )
+
+    def handle_bitcoin_trading_summary(
+        self,
+        reason: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Backward compat: delegates to handle_crypto_trading_summary('btc', ...)."""
+        return self.handle_crypto_trading_summary(
+            "btc", reason, start_date, end_date
+        )
+
+    def handle_bitcoin_technical_analysis(
+        self,
+        reason: str,
+        timeframe: str = "hourly",
+    ) -> Dict[str, Any]:
+        """Backward compat: delegates to handle_crypto_technical_analysis('btc', ...)."""
+        return self.handle_crypto_technical_analysis("btc", reason, timeframe)
