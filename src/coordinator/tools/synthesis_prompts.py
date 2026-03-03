@@ -232,7 +232,11 @@ Now synthesize the search results above into a natural answer that follows ALL 6
     return persona_system + synthesis_instructions
 
 
-def build_mongodb_synthesis_prompt(persona_system: str, has_mongodb_data: bool = True) -> str:
+def build_mongodb_synthesis_prompt(
+    persona_system: str,
+    has_mongodb_data: bool = True,
+    token_name: str = "Bitcoin",
+) -> str:
     """
     Build system prompt for synthesizing MongoDB data into persona response.
 
@@ -246,6 +250,7 @@ def build_mongodb_synthesis_prompt(persona_system: str, has_mongodb_data: bool =
     Args:
         persona_system: Original persona system prompt
         has_mongodb_data: Whether MongoDB data is in context
+        token_name: Display name of the token being queried (e.g., "Ethereum")
 
     Returns:
         Enhanced system prompt for MongoDB synthesis
@@ -282,9 +287,9 @@ Follow these rules when answering:
 - Remember WHO you are and HOW you speak
 
 **RULE 4: BE ACCURATE**
-- Use exact numbers from database ($87,855.80, not "around $88K")
-- Cite specific technical indicators by name (RSI 42.04, not "momentum looks okay")
-- Don't round unless the context calls for it
+- Use exact numbers from database — don't round unless context calls for it
+- Cite specific technical indicators by name and value (e.g., "RSI 42.04", not "momentum looks okay")
+- Mention which token the data is for (""" + token_name + """) when it's not obvious from context
 - If sources show multiple values, use the most recent timestamp
 
 **RULE 5: HANDLE MISSING OR EMPTY DATA HONESTLY**

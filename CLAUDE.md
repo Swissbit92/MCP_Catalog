@@ -192,7 +192,7 @@ repositories/                  # SQLite data access — ALL extend BaseRepositor
                                #   session, message, summary, emotional_state, seeker_progression,
                                #   user_profile, user (OAuth), trade_proposal, wallet
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
-tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
+tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py, token_registry.py
 mongodb/                       # MongoDB MCP client
 ```
 
@@ -202,8 +202,9 @@ mongodb/                       # MongoDB MCP client
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search
-- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
+- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, bot_state, llm) with follow-up detection
 - `tools/keywords.py` - Keyword dictionaries for intent classification routing
+- `tools/token_registry.py` - 13-token registry, collection naming, indicator catalog (80 indicators), interpretation helpers
 
 ### Frontend (`react-ui/src/`)
 
@@ -284,38 +285,59 @@ Optional (see `.env.docker` for full list):
 2. User message → POST `/sessions/{session_id}/chat` with persona, message
 3. Backend builds system prompt from persona JSON + cached CV summary (XML-tagged sections)
 4. For wallet-capable personas: ground-truth wallet state injected into system prompt (anti-hallucination)
-5. Intent classifier routes query → wallet / brave / mongodb / pure LLM
-6. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
-7. Post-processor strips leaked tool names via regex, enforces first-person
-8. Frontend renders with Celestial Order theming
+5. Intent classifier routes query → wallet / brave / mongodb (13 tokens + bot state) / pure LLM
+6. For MongoDB queries: `resolve_token()` extracts ticker, `resolve_timeframe()` extracts 1h/4h/daily, handlers query the correct collection
+7. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
+8. Post-processor strips leaked tool names via regex, enforces first-person
+9. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
-- **Long-Running (MongoDB):** Container stays alive for multiple requests
+- **Long-Running (MongoDB):** STDIO container stays alive for multiple requests; **known issue: times out after ~3-5 sequential queries** — falls through to LLM fallback gracefully (see Troubleshooting)
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
+
+### Multi-Asset MongoDB Architecture
+
+**Token coverage:** 13 tokens × 3 timeframes = 39 collections in `btc_data` database:
+
+| Token | 1h | 4h | Daily |
+|-------|----|----|-------|
+| BTC, ETH, SOL, XRP, ADA, AVAX, BNB, DOGE, DOT, LINK, NEAR, SUI, TON | `{token}_1h_price_data` | `{token}_4h_price_data` | `{token}_daily_price_data` |
+
+Plus: `btc_bot_state` database with `bot_state`, `my_open_positions`, `trade_events` collections.
+
+**Token resolution:** `tools/token_registry.py` provides `resolve_token(query)` which extracts ticker from natural language (regex, longest-alias-first). Used by both `intent_classifier.py` and `query_handler_service.py`.
+
+**Indicator coverage:** 80 indicators across 10 categories (trend, momentum, volume, volatility, price_levels, sentiment, custom, log_returns, ml_features, temporal). Coverage varies by collection — handlers use `.get()` and only include available fields. `interpret_indicator()` provides human-readable signal interpretation for 12 indicator types.
+
+**Tool names:** `crypto_current_price`, `crypto_historical_prices`, `crypto_trading_summary`, `crypto_technical_analysis`, `bot_status`, `bot_positions`, `bot_trade_history`
 
 ### MCP Query Routing Pipeline
 Queries flow through a two-layer classification system:
 
-1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/bot_state/wallet/llm). Uses keyword dictionaries from `tools/keywords.py` and `resolve_token()` from `tools/token_registry.py` for multi-token detection.
 2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
+3. **MongoDB Handler** (`services/query_handler_service.py`): Resolves token + timeframe from message, dispatches to `mongodb_handlers.py` generalized handlers (`handle_crypto_*` or `handle_bot_*`).
 
 **Anti-hallucination guards:**
 - If keyword filter says search is needed but search returns no results → honest "I don't know" response
 - If LLM somehow bypasses force-search and doesn't call the tool → honest "I don't know" response
 - LLM-generated citations are stripped and replaced with verified citations from actual search results
+- Non-BTC DCA queries return graceful "No DCA data available for {token}" (only BTC has `BTC dayli buying` collection)
 
 ## Important Implementation Details
 
 ### Celestial Order & Per-Persona MCP Access
 MCP access is now controlled per-persona via the `mcp_access` field in persona JSONs, with legacy rarity-based env var fallback:
-- **E.E.V.A.** (Archon): Brave + MongoDB (all access)
+- **E.E.V.A.** (Archon): Brave + MongoDB + Wallet + Bot State (all access)
 - **Aegis** (Warden): Brave only (productivity needs web, not trading)
-- **Aurora** (Warden): Brave + MongoDB (Oracle gazes into data)
+- **Aurora** (Warden): Brave + MongoDB + Bot State (Oracle gazes into data + bot monitoring)
 - **Solace** (Warden): Brave only (empathy needs resources, not trading)
 - **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
 - **Nyx** (Sage): None (creativity flows from imagination)
 - **Wanderer personas** (Gojo, Gwen, etc.): None (pure LLM)
+
+Valid `mcp_access` values: `"brave_search"`, `"mongodb"`, `"solana_wallet"`, `"bot_state"`
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -346,8 +368,10 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - Verify Docker socket mounted
 - Check API keys set in `.env`
 - Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
-- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('weather in London', 'legendary', ['brave_search', 'mongodb']))"`
+- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('ETH price', 'legendary', mcp_access=['brave_search', 'mongodb']))"`
+- Check token resolution: `python -c "from src.coordinator.tools.token_registry import resolve_token; print(resolve_token('What is the Solana price?'))"`
 - Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries
+- **MongoDB STDIO container times out after ~3-5 sequential queries**: The long-running STDIO container loses responsiveness. Queries fall through to the LLM fallback gracefully (no crash). **Workaround:** Restart backend to get a fresh container. This is an infrastructure-level issue with the Docker STDIO transport, not a code bug.
 - **MCP queries return 500 with no traceback in logs**: Alembic's `fileConfig()` silences all app loggers after migration. Verify `alembic/env.py` has `disable_existing_loggers=False` and `alembic.ini` root logger is `level = INFO`
 - **`UnboundLocalError: QueryHandlerService` on MCP queries**: Conditional import inside `if "solana_wallet"` block in `routes/chat.py` — the import must be at the top of the `chat()` function body, not inside any conditional
 
