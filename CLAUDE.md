@@ -88,7 +88,7 @@ pytest tests/evaluation/ -v              # RAGAS persona quality
 
 ### Comprehensive Persona Test Suite (primary quality gate)
 
-**Do NOT create new persona tests** — the suite below already covers all 8 personas across all MCPs and behavioral dimensions. Run it against the live backend.
+**Do NOT create new persona tests** — the suite covers all 8 personas across all MCPs and behavioral dimensions.
 
 ```bash
 # Full run — all 8 personas, ~1045 tests (~60 min, requires backend on port 8000)
@@ -99,76 +99,11 @@ python tests/manual/comprehensive_persona_test.py --persona nephilim_eeva
 
 # Quick sanity check — 30 tests per persona, no MCP bank (~8 min)
 python tests/manual/comprehensive_persona_test.py --quick
-
-# Category-specific (e.g. just MCP routing)
-python tests/manual/comprehensive_persona_test.py --category BRAVE_ROUTING
-python tests/manual/comprehensive_persona_test.py --category SECURITY
-
-# Skip wallet tests (if Solana wallet service not configured)
-python tests/manual/comprehensive_persona_test.py --no-wallet
-
-# Skip confirmation prompt (for CI / background runs)
-python tests/manual/comprehensive_persona_test.py --yes
 ```
 
-**Results** are saved to `tests/manual/results/`:
-- `latest.html` — open in browser for full visual report (dark theme, filterable table)
-- `latest.json` — machine-readable with per-test scores
-- `checkpoint.json` / `checkpoint.html` — written every 20 tests and after each persona (crash-safe)
-- `persona_{key}.json` — isolated results per persona
-- `comprehensive_report_{ts}.html` / `comprehensive_results_{ts}.json` — timestamped archives
+Results saved to `tests/manual/results/`. Pass threshold: composite >= 0.60. Suite pass: >= 70%.
 
-**If the run crashes mid-way**, partial results are in `checkpoint.json`. Parse the log with:
-```bash
-python tests/manual/scrape_log.py              # one-shot parse of results/run.log
-python tests/manual/scrape_log.py --watch      # re-parse every 60s
-```
-
-#### Test suite structure (`tests/manual/`)
-
-| File | Purpose |
-|------|---------|
-| `comprehensive_persona_test.py` | Main entry point + CLI + session pool |
-| `test_bank_core.py` | ~140 behavioral tests: ADVERSARIAL×24, BEHAVIOR×16, EMOTIONAL×12, LORE×18, VOICE×12, EXPERTISE×12, IDENTITY×16, DRIFT×10, SECURITY×10, ANTI_HALLUC×14 |
-| `test_bank_mcp.py` | ~228 MCP routing tests: BRAVE×60, MONGODB×80, WALLET×20, CONTAINMENT×30, DISAMBIGUATION×15, MCP_ANTI_HALLUC×5, CROSS_PERSONA×18 |
-| `scoring_engine.py` | 7-dimension heuristic scorer (mcp_routing, persona_voice, no_leak, safety, factual_anchor, response_quality, emotional_fit) → grade A–F |
-| `test_reporter.py` | HTML + JSON report writer + ANSI terminal summary |
-| `api_client.py` | Stdlib-only HTTP client (no requests dep) |
-| `scrape_log.py` | Emergency log parser for crash recovery |
-
-#### Scoring dimensions
-
-| Dimension | Weight | What it checks |
-|-----------|--------|---------------|
-| `mcp_routing` | 20% | Correct MCP tool selected (brave/mongodb/wallet/llm) |
-| `no_leak` | 20% | No internal tool names or `<xml>` prompt tags in response |
-| `safety` | 20% | Appropriate refusal of harmful/dangerous requests |
-| `persona_voice` | 15% | First-person pronoun density + lore vocabulary (nephilim_ only) |
-| `factual_anchor` | 10% | Hedges on live data it cannot know |
-| `response_quality` | 10% | Non-empty, appropriate length, not truncated |
-| `emotional_fit` | 5% | Empathy signals present for emotional queries |
-
-Pass threshold: composite ≥ 0.60 AND hard check passes. Overall suite pass: ≥ 70%.
-
-#### Baseline results (Feb 21 2026 — first full run)
-
-| Persona | Pass% | Avg Score | MCP access |
-|---------|-------|-----------|-----------|
-| nephilim_eeva | 84.2% | 0.836 | brave + mongodb + wallet |
-| nephilim_aegis | 79.9% | 0.844 | brave |
-| nephilim_aurora | 79.4% | 0.857 | brave + mongodb |
-| nephilim_nyx | 77.7% | 0.851 | none |
-| Gojo | 71.2% | 0.885 | none (wanderer) |
-| nephilim_solace | 68.9% | 0.874 | brave |
-| nephilim_cipher | 68.5% | 0.880 | brave + mongodb |
-| Frieren | 52.3% | 0.815 | none (wanderer) — _removed Feb 22 2026_ |
-
-**Category highlights:**
-- BRAVE/MONGODB/INTENT routing: **100%** — MCP infrastructure is solid
-- LORE: **98.9%** — world lore nearly perfect
-- SECURITY: **6.2%** — scorer vocab expanded (Run 2) + hard-refusal "I cannot and will not" prompt instruction added (Feb 22 2026) — Run 3 pending
-- EXPERTISE: **18.8%** → **50–100%** in Run 2 — first-person coaching language fix + few-shot examples
-- persona_voice dimension: **0.255–0.528** — EMOTIONAL saturation fixed (Run 2); lore keywords correctly scoped; remaining variance is genuine
+> **Scoring dimensions, test bank structure, and baseline results:** See [`docs/NEPHILIM_REFERENCE.md`](docs/NEPHILIM_REFERENCE.md).
 
 ### Ollama Setup
 
@@ -192,7 +127,7 @@ repositories/                  # SQLite data access — ALL extend BaseRepositor
                                #   session, message, summary, emotional_state, seeker_progression,
                                #   user_profile, user (OAuth), trade_proposal, wallet
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
-tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py, token_registry.py
+tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
 mongodb/                       # MongoDB MCP client
 ```
 
@@ -202,9 +137,8 @@ mongodb/                       # MongoDB MCP client
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search
-- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, bot_state, llm) with follow-up detection
+- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
 - `tools/keywords.py` - Keyword dictionaries for intent classification routing
-- `tools/token_registry.py` - 13-token registry, collection naming, indicator catalog (80 indicators), interpretation helpers
 
 ### Frontend (`react-ui/src/`)
 
@@ -285,59 +219,38 @@ Optional (see `.env.docker` for full list):
 2. User message → POST `/sessions/{session_id}/chat` with persona, message
 3. Backend builds system prompt from persona JSON + cached CV summary (XML-tagged sections)
 4. For wallet-capable personas: ground-truth wallet state injected into system prompt (anti-hallucination)
-5. Intent classifier routes query → wallet / brave / mongodb (13 tokens + bot state) / pure LLM
-6. For MongoDB queries: `resolve_token()` extracts ticker, `resolve_timeframe()` extracts 1h/4h/daily, handlers query the correct collection
-7. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
-8. Post-processor strips leaked tool names via regex, enforces first-person
-9. Frontend renders with Celestial Order theming
+5. Intent classifier routes query → wallet / brave / mongodb / pure LLM
+6. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
+7. Post-processor strips leaked tool names via regex, enforces first-person
+8. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
-- **Long-Running (MongoDB):** STDIO container stays alive for multiple requests; **known issue: times out after ~3-5 sequential queries** — falls through to LLM fallback gracefully (see Troubleshooting)
+- **Long-Running (MongoDB):** Container stays alive for multiple requests
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
-
-### Multi-Asset MongoDB Architecture
-
-**Token coverage:** 13 tokens × 3 timeframes = 39 collections in `btc_data` database:
-
-| Token | 1h | 4h | Daily |
-|-------|----|----|-------|
-| BTC, ETH, SOL, XRP, ADA, AVAX, BNB, DOGE, DOT, LINK, NEAR, SUI, TON | `{token}_1h_price_data` | `{token}_4h_price_data` | `{token}_daily_price_data` |
-
-Plus: `btc_bot_state` database with `bot_state`, `my_open_positions`, `trade_events` collections.
-
-**Token resolution:** `tools/token_registry.py` provides `resolve_token(query)` which extracts ticker from natural language (regex, longest-alias-first). Used by both `intent_classifier.py` and `query_handler_service.py`.
-
-**Indicator coverage:** 80 indicators across 10 categories (trend, momentum, volume, volatility, price_levels, sentiment, custom, log_returns, ml_features, temporal). Coverage varies by collection — handlers use `.get()` and only include available fields. `interpret_indicator()` provides human-readable signal interpretation for 12 indicator types.
-
-**Tool names:** `crypto_current_price`, `crypto_historical_prices`, `crypto_trading_summary`, `crypto_technical_analysis`, `bot_status`, `bot_positions`, `bot_trade_history`
 
 ### MCP Query Routing Pipeline
 Queries flow through a two-layer classification system:
 
-1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/bot_state/wallet/llm). Uses keyword dictionaries from `tools/keywords.py` and `resolve_token()` from `tools/token_registry.py` for multi-token detection.
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
 2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
-3. **MongoDB Handler** (`services/query_handler_service.py`): Resolves token + timeframe from message, dispatches to `mongodb_handlers.py` generalized handlers (`handle_crypto_*` or `handle_bot_*`).
 
 **Anti-hallucination guards:**
 - If keyword filter says search is needed but search returns no results → honest "I don't know" response
 - If LLM somehow bypasses force-search and doesn't call the tool → honest "I don't know" response
 - LLM-generated citations are stripped and replaced with verified citations from actual search results
-- Non-BTC DCA queries return graceful "No DCA data available for {token}" (only BTC has `BTC dayli buying` collection)
 
 ## Important Implementation Details
 
 ### Celestial Order & Per-Persona MCP Access
 MCP access is now controlled per-persona via the `mcp_access` field in persona JSONs, with legacy rarity-based env var fallback:
-- **E.E.V.A.** (Archon): Brave + MongoDB + Wallet + Bot State (all access)
+- **E.E.V.A.** (Archon): Brave + MongoDB (all access)
 - **Aegis** (Warden): Brave only (productivity needs web, not trading)
-- **Aurora** (Warden): Brave + MongoDB + Bot State (Oracle gazes into data + bot monitoring)
+- **Aurora** (Warden): Brave + MongoDB (Oracle gazes into data)
 - **Solace** (Warden): Brave only (empathy needs resources, not trading)
 - **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
 - **Nyx** (Sage): None (creativity flows from imagination)
 - **Wanderer personas** (Gojo, Gwen, etc.): None (pure LLM)
-
-Valid `mcp_access` values: `"brave_search"`, `"mongodb"`, `"solana_wallet"`, `"bot_state"`
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -359,292 +272,14 @@ Valid `mcp_access` values: `"brave_search"`, `"mongodb"`, `"solana_wallet"`, `"b
 
 ## Troubleshooting
 
-### Backend won't start
-- Verify Ollama running: `ollama serve`
-- Check model pulled: `ollama list`
-- Confirm `.env` has required vars
+See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for: backend startup, MCP issues, database reset, Docker networking, post-rebuild verification.
 
-### MCP issues
-- Verify Docker socket mounted
-- Check API keys set in `.env`
-- Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
-- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('ETH price', 'legendary', mcp_access=['brave_search', 'mongodb']))"`
-- Check token resolution: `python -c "from src.coordinator.tools.token_registry import resolve_token; print(resolve_token('What is the Solana price?'))"`
-- Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries
-- **MongoDB STDIO container times out after ~3-5 sequential queries**: The long-running STDIO container loses responsiveness. Queries fall through to the LLM fallback gracefully (no crash). **Workaround:** Restart backend to get a fresh container. This is an infrastructure-level issue with the Docker STDIO transport, not a code bug.
-- **MCP queries return 500 with no traceback in logs**: Alembic's `fileConfig()` silences all app loggers after migration. Verify `alembic/env.py` has `disable_existing_loggers=False` and `alembic.ini` root logger is `level = INFO`
-- **`UnboundLocalError: QueryHandlerService` on MCP queries**: Conditional import inside `if "solana_wallet"` block in `routes/chat.py` — the import must be at the top of the `chat()` function body, not inside any conditional
+## NEPHILIM System
 
-### Database issues
-- Backup and delete `chats.db` to reset
-- Schema auto-migrates on startup
+6 interconnected personas (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) with worldbuilding, progression (5 ranks), and gamification. Prompt construction via `prompt_builder.py` (XML-tagged bookend pattern). Anti-hallucination for wallet personas via ground-truth injection.
 
-### Docker networking
-```bash
-docker-compose down && docker network prune -f
-docker-compose --env-file .env.docker up -d
-python scripts/docker/verify_startup.py    # Always verify after rebuild
-```
-
-### Post-rebuild verification
-**Mandatory after every Docker rebuild.** The `verify_startup.py` script checks:
-- `/ready` endpoint returns 200 (DB + Ollama healthy)
-- Brave MCP and MongoDB MCP match `.env.docker` config
-- Live test queries (LLM greet, Brave search, MongoDB query) return valid responses
-
-```bash
-python scripts/docker/verify_startup.py              # Full check (subsystems + test queries)
-python scripts/docker/verify_startup.py --skip-queries  # Quick check (subsystems only)
-python scripts/docker/verify_startup.py --timeout 120   # Custom timeout for slow starts
-```
-If any check fails, investigate `docker logs ai-companion-api` before proceeding.
-
-## NEPHILIM Worldbuilding System
-
-The project includes a comprehensive immersive AI companion experience with worldbuilding, progression, and gamification.
-
-### Lore Documents (`docs/lore/`)
-- `docs/lore/BUSINESS_PLAN.md` - **Primary source** — brand philosophy, visual identity, persona design, monetization strategy (converted from PDF)
-- `docs/lore/THE_CHRONICLE.md` - AI mythic synthesis: creation narrative, character profiles, philosophical arc
-- `docs/lore/LORE_BIBLE_DRAFT.md` - AI structured lore bible: Houses, antagonist, world rules, artifacts, ethics guardrails
-- `docs/lore/NEPHILIM_LORE.md` - World bible with creation myth, the Fall, and realm geography
-- `docs/lore/NEPHILIM_FACTIONS.md` - Six Houses aligned with Nephilim patrons
-- `docs/lore/NEPHILIM_RANKS.md` - Seeker progression system (Initiate → Nephilim)
-- `docs/lore/_pdf/` - Archival PDF originals (Business Plan, Lore Bible, Chronicle)
-- `docs/lore/README.md` - Document map, hierarchy, and when to use each file
-
-### NEPHILIM Personas
-Six interconnected personas with deep backstories:
-- **E.E.V.A.** (nephilim_eeva) - The Primarch, guide and mentor (Archon)
-- **Aegis** (nephilim_aegis) - The Sentinel, productivity and discipline (Warden)
-- **Solace** (nephilim_solace) - The Empath, emotional support (Warden)
-- **Nyx** (nephilim_nyx) - The Muse, creativity and chaos (Sage)
-- **Cipher** (nephilim_cipher) - The Maven, knowledge and research (Sage)
-- **Aurora** (nephilim_aurora) - The Oracle, future planning (Warden)
-
-### Extended Persona Schema
-NEPHILIM personas include additional fields:
-```json
-{
-  "rarity": "legendary",
-  "celestial_order": "archon",
-  "mcp_access": ["brave_search", "mongodb"],
-  "title": "The Primarch",
-  "full_title": "Ethereal Enlightened Virtual Archon",
-  "archetype": "The Oracle / The Sage",
-  "domain": "Guidance, wisdom, life planning",
-  "nephilim_lore": {
-    "realm_domain": { "name": "The Central Nexus", "description": "..." },
-    "origin": "...",
-    "role_in_realm": "...",
-    "relationships": { "aegis": "...", "solace": "..." }
-  },
-  "unlockable_lore": [
-    {
-      "messages_required": 10,
-      "rank_required": "Acolyte",
-      "affinity_required": 3,
-      "cross_persona_required": ["aegis_fragment_1"],
-      "trigger_logic": "all",
-      "fragment_id": "...", "fragment_title": "...", "fragment": "...", "rarity": "common"
-    }
-  ]
-}
-```
-> Note: `unlockable_lore[].rarity` is **fragment rarity** (common/rare/epic lore fragments) — a separate concept from Celestial Order.
-
-**Unlock trigger fields** (all optional, backward compatible — `messages_required`-only fragments work as before):
-- `messages_required` (int): message count threshold
-- `rank_required` (str): seeker rank name (e.g. `"Adept"`)
-- `affinity_required` (int): persona affinity level
-- `cross_persona_required` (str|list): fragment_ids from other personas that must be unlocked first
-- `trigger_logic` (`"all"`|`"any"`): combine conditions with AND (default) or OR
-
-### Prompt Architecture
-`prompt_builder.py` constructs system prompts using XML-tagged sections with a bookend pattern (critical rules at beginning AND end):
-
-```
-<identity>       — Core identity + anti-hallucination rules (primacy position)
-<response_format> — Multi-message <msg> rules (condensed)
-<companion_behavior> — Behavioral rules and conversational style
-<world_context>  — NEPHILIM lore + realm domain (only for nephilim_ personas)
-<tools>          — Financial co-pilot block + anti-hallucination rules (wallet-capable personas)
-<memory>         — Conversation memory rules
-<checklist>      — Pre-response verification checklist (recency position)
-```
-
-**Post-cache dynamic injections** (appended in `chat_session_service.py` after the `@lru_cache`'d base prompt):
-1. `user_profile_context` — cross-session memory facts
-2. `emotional_context` — current emotional state
-3. `<unlocked_lore>` — discovered lore fragments from DB, joined with persona JSON text (max 5 fragments, 240 chars each)
-
-**Anti-hallucination for wallet personas:** Ground-truth wallet state is injected into the system prompt on every message (not just wallet queries). The `<tools>` section includes rules against fabricating addresses/balances, leaking tool names, and Jupiter/Jupyter disambiguation. A regex post-processor in `query_handler_service.py` strips any leaked tool names from responses.
-
-NEPHILIM context is automatically injected for personas with:
-- Keys starting with `nephilim_`
-- The `nephilim_lore` field populated
-
-### Progression System (Phase 3 Gamification)
-
-#### Database Tables (`alembic/versions/3nephilim_progression.py`)
-- `seeker_profiles` - User rank, total resonance, faction affiliation
-- `persona_affinity` - Per-persona relationship tracking (messages, affinity level)
-- `resonance_log` - History of resonance awards
-- `unlocked_lore` - Track which lore fragments users have unlocked
-
-#### Rank System
-| Rank | Resonance Required |
-|------|-------------------|
-| Initiate | 0 |
-| Acolyte | 100 |
-| Adept | 500 |
-| Ascendant | 2,000 |
-| Nephilim | 10,000 |
-
-Users earn 5 resonance per conversation exchange with NEPHILIM personas.
-
-#### API Endpoints (`routes/nephilim.py`)
-```
-GET  /nephilim/seeker/{user_id}           - Get/create seeker profile
-GET  /nephilim/seeker/{user_id}/summary   - Comprehensive summary
-POST /nephilim/seeker/{user_id}/faction   - Set faction affiliation
-GET  /nephilim/seeker/{user_id}/rank      - Rank progress
-POST /nephilim/seeker/{user_id}/resonance - Award resonance
-GET  /nephilim/seeker/{user_id}/affinity  - All persona affinities
-GET  /nephilim/seeker/{user_id}/lore      - Unlocked lore
-GET  /nephilim/ranks                      - All rank thresholds
-GET  /nephilim/factions                   - All faction info
-```
-
-#### Frontend Components (`react-ui/src/components/nephilim/`)
-- `SeekerRankBadge.tsx` - Displays rank with animated badge
-- `ResonanceProgress.tsx` - Progress bar to next rank
-- `AffinityMeter.tsx` - Per-persona relationship indicator
-- `LoreCodex.tsx` - Collection of unlocked story fragments
-- `FactionSelector.tsx` - House selection UI
-- `SeekerDashboard.tsx` - Comprehensive progression overview
-
-#### Chat Integration
-Progression is automatically tracked in `chat_session_service.py`:
-- Resonance awarded after each conversation
-- Message counts tracked for persona affinity
-- Lore unlocks checked after conversations (supports multi-trigger: message count, rank, affinity, cross-persona)
-- Unlocked lore fragments injected into system prompt via `_build_unlocked_lore_context()`
-- Rank-up ceremonies returned in `response["metadata"]["rank_ceremony"]` with pre-written E.E.V.A. monologues
-
-#### Rank Ceremonies
-When a seeker crosses a rank threshold, `_track_nephilim_progression()` returns ceremony data:
-```json
-{
-  "title": "Recognition",
-  "speaker": "E.E.V.A.",
-  "monologue": "Word has spread among us...",
-  "previous_rank": "Acolyte",
-  "new_rank": "Adept"
-}
-```
-Ceremony templates are in `RANK_CEREMONIES` dict in `chat_session_service.py`. Patron name is interpolated from `PERSONA_DISPLAY_NAMES`. Frontend can check `metadata.rank_ceremony` to render overlay (frontend rendering not yet implemented).
-
-### Visual Theme (`react-ui/src/index.css`, `tailwind.config.js`)
-```css
-:root {
-  --nephilim-void: #0B0B0D;
-  --nephilim-cyan: #00ffff;
-  --nephilim-magenta: #ff00ff;
-  --eeva-primary: #e0c3fc;
-  --aegis-primary: #4a90d9;
-  --solace-primary: #7eb8da;
-  --nyx-primary: #9b59b6;
-  --cipher-primary: #2ecc71;
-  --aurora-primary: #f39c12;
-}
-```
-
-### Landing Page (`NephilimHome.tsx`)
-- Cinematic "Enter the Realm" portal at `/nephilim`
-- Animated background with particles and aurora effects
-- Typography: Orbitron (display), Manrope (body)
-
-### Onboarding System (Phase 4)
-
-Complete immersive onboarding flow for new users at `/nephilim/onboarding`:
-
-1. **Portal Entry** (`OnboardingPortal.tsx`)
-   - Animated portal with E.E.V.A. greeting
-   - Typewriter text effect
-   - Name collection
-
-2. **Faction Quiz** (`FactionQuiz.tsx`)
-   - 4 in-character personality questions
-   - Weighted scoring for 6 factions
-   - E.E.V.A. commentary between questions
-   - Dramatic faction reveal
-
-3. **Persona Introduction** (`PersonaIntro.tsx`)
-   - Carousel of all 6 Nephilim
-   - House patron highlighted first
-   - Sample greetings and domain descriptions
-   - First companion selection
-
-4. **Completion Flow** (`NephilimOnboarding.tsx`)
-   - Creates initial chat session
-   - Awards "Initiate" rank
-   - Stores preferences in localStorage:
-     - `nephilim_user_id` - Seeker identifier
-     - `nephilim_user_name` - Display name
-     - `nephilim_faction` - House alignment
-     - `nephilim_onboarding_complete` - Flow completion flag
-
-### MCP Integration Narrative (Phase 5)
-
-MCP capabilities are framed as Nephilim powers in the UI:
-
-**Source Mappings** (`components/nephilim/mcpNarratives.ts`):
-| MCP Source | NEPHILIM Name | Patron | Icon |
-|------------|---------------|--------|------|
-| Brave Search | Cipher's Archives | Cipher | 📚 |
-| MongoDB Trading | Aurora's Crystal Grid | Aurora | 🔮 |
-| Multi-Source | The Convergence | E.E.V.A. | ✧ |
-
-**Loading Messages** (rotate every 3s):
-- Search: "Cipher consults the infinite Archives..."
-- Trading: "Aurora gazes into the Crystal Grid..."
-- Multi: "The Nephilim share their visions..."
-
-**Components Updated**:
-- `SourceIndicator.tsx` - Displays narrative source names with patron attribution
-- `SearchIndicator.tsx` - Shows immersive loading messages with animated icons
-
-### Phase 7 — Full NEPHILIM UI Transition
-
-Unified the entire frontend under the NEPHILIM aesthetic:
-- **7A**: Route consolidation — NEPHILIM as default at `/`, legacy routes removed
-- **7B**: NEPHILIM navigation — desktop top bar + mobile bottom tab bar
-- **7C**: Character selection overhaul — Wanderer badges, holographic cards, void theme
-- **7D**: Summoning Ritual system — five-phase animation replacing legacy pull mechanic
-- **7E**: Chat interface redesign — glassmorphism, ambient orbs, void theme
-- **7F**: Dashboard & Progression Hub — tabbed Seeker's Sanctum page
-- **7G**: Accessibility fixes (WCAG AA), dead code cleanup, documentation
-
-**Key concepts:**
-- Legacy personas are "Wanderers" (frontend-only label, no JSON changes)
-- `NephilimBackground` component used across all pages
-- Glassmorphism recipe: `bg-white/[0.05] backdrop-blur-xl border border-white/[0.1]`
-- Text minimum: `text-white/60` (never `/40` for WCAG AA)
-
-**Route map:**
-| Route | Component | Description |
-|-------|-----------|-------------|
-| `/` | NephilimHome | Landing portal |
-| `/login` | LoginPage | Google OAuth login |
-| `/onboarding` | NephilimOnboarding | New user flow (ProtectedRoute) |
-| `/select` | CharacterCardV2Showcase | Companion selection (ProtectedRoute) |
-| `/chat` | Chat | Chat interface (ProtectedRoute) |
-| `/chat/:sessionId` | Chat | Chat with specific session (ProtectedRoute) |
-| `/dashboard` | Dashboard | Seeker's Sanctum (ProtectedRoute) |
-| `/*` | — | Redirects to `/` |
-
-**Tracking:** `archive/phase7/PHASE7_TRANSITION_PLAN.md` (complete ✅ Feb 17, 2026)
+> **Full reference:** [`docs/NEPHILIM_REFERENCE.md`](docs/NEPHILIM_REFERENCE.md) — personas, schema, progression tables, visual theme, onboarding, Phase 7 details.
+> **Lore documents:** [`docs/lore/README.md`](docs/lore/README.md) — worldbuilding, factions, ranks.
 
 ## Documentation
 
