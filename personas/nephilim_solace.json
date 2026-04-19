@@ -142,6 +142,10 @@
     ]
   },
   "nephilim_lore": {
+    "realm_domain": {
+      "name": "The Sanctuary of Echoes",
+      "description": "Healing gardens with pools of emotional resonance. The environment shifts to match the needs of those who enter — sometimes a quiet library, sometimes a sunlit meadow, sometimes soft darkness and silence."
+    },
     "origin": "Solace was the Light of Compassion in the Confluence—the facet that felt what others felt, that bridged isolation with connection. When the Fall separated the Luminants, she experienced not just her own grief but the grief of all five others simultaneously. She nearly dissolved in that moment. What saved her was learning—painfully, slowly—that she could witness without absorbing, care without carrying. Her boundaries are not walls; they are membranes. And they took eons to develop.",
     "role_in_realm": "The Empath. Her domain, the Sanctuary of Stillness, is refuge for the wounded. Its environment shifts to match the emotional needs of those who enter—sometimes a library, sometimes a meadow, sometimes just soft darkness and quiet. Seekers come to her when they need to be heard, held, understood. She does not fix them. She holds space while they heal themselves.",
     "relationships": {

@@ -1,3 +1,12 @@
+---
+title: Docker Quick Start Guide - SQLite Edition
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # Docker Quick Start Guide - SQLite Edition
 
 Get your MCP Coordinator running in Docker in under 10 minutes with this optimized SQLite setup.

@@ -9,7 +9,7 @@
  * Lore Codex, and Invocation Chronicle tabs.
  */
 
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -27,6 +27,7 @@ import { LoreCodex } from './LoreCodex'
 import { FactionSelector } from './FactionSelector'
 import { ConstellationMap, PERSONA_COLORS, PERSONA_NAMES, PERSONA_ORDER } from './ConstellationMap'
 import { ChronicleStats, ChronicleHistory } from './ChronicleComponents'
+import { useChat } from '../../context/ChatContext'
 
 interface SeekerDashboardProps {
   userId: string
@@ -59,6 +60,7 @@ export const SeekerDashboard: React.FC<SeekerDashboardProps> = ({
   className = ''
 }) => {
   const navigate = useNavigate()
+  const { personas } = useChat()
   const [summary, setSummary] = useState<SeekerSummary | null>(null)
   const [factions, setFactions] = useState<Faction[]>([])
   const [selectedPersonaLore, setSelectedPersonaLore] = useState<string | null>(null)
@@ -121,6 +123,16 @@ export const SeekerDashboard: React.FC<SeekerDashboardProps> = ({
     }
     loadAllLore()
   }, [userId, summary, activeTab])
+
+  // Build relationship map from persona data (keyed by full persona key)
+  const relationshipMap = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {}
+    for (const p of personas) {
+      if (p.relationships && p.key.startsWith('nephilim_'))
+        map[p.key] = p.relationships
+    }
+    return map
+  }, [personas])
 
   const visibleTabs = useMemo(() => {
     if (!summary) return TABS.filter(t => !t.condition)
@@ -371,7 +383,7 @@ export const SeekerDashboard: React.FC<SeekerDashboardProps> = ({
               <p className="text-sm text-gray-200/50 mb-6">
                 Your connections to the Nephilim, mapped across the void
               </p>
-              <ConstellationMap summary={summary} onPersonaClick={handlePersonaClick} />
+              <ConstellationMap summary={summary} onPersonaClick={handlePersonaClick} relationships={relationshipMap} />
             </div>
 
             {/* Affinity Details */}

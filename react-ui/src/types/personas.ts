@@ -37,4 +37,8 @@ export interface Persona {
   voice?: {
     greeting: string
   }
+  /** Inter-Nephilim relationship descriptions (keyed by short name e.g. "aegis") */
+  relationships?: Record<string, string>
+  /** Realm domain for this Nephilim */
+  realm_domain?: { name: string; description: string }
 }

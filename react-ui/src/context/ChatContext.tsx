@@ -80,6 +80,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         coordinator_label: p.coordinator_label,
         mcp_access: p.mcp_access,
         voice: p.voice?.greeting ? { greeting: String(p.voice.greeting) } : undefined,
+        relationships: p.nephilim_lore?.relationships,
+        realm_domain: p.nephilim_lore?.realm_domain,
       }))
       setPersonas(processed)
     })

@@ -14,7 +14,9 @@ from .keywords import (
     MONGODB_HISTORICAL_KEYWORDS,
     MONGODB_TRADING_KEYWORDS,
     MONGODB_TECHNICAL_KEYWORDS,
+    BOT_STATE_KEYWORDS,
 )
+from .token_registry import resolve_token
 
 
 # Negation detection: action verbs prefixed with "not"/"don't" reverse intent.
@@ -154,6 +156,9 @@ def classify_query_intent(
         can_use_mongodb = persona_rarity.lower() in {"epic", "legendary"}
         can_use_brave = persona_rarity.lower() in {"rare", "epic", "legendary"}
 
+    # Check bot state intent early (before definition/data checks)
+    has_bot_state_intent = any(kw in query_lower for kw in BOT_STATE_KEYWORDS)
+
     # Check for definition/math keywords (NO MCP needed)
     # But allow queries that are asking for prices/values/opinions/web data despite having "what is/are"
     has_definition_intent = any(kw in query_lower for kw in NO_SEARCH_KEYWORDS)
@@ -173,6 +178,14 @@ def classify_query_intent(
     data_keywords = ["price", "value", "worth", "cost", "indicator", "analysis", "rsi", "macd"]
     has_data_intent = any(kw in query_lower for kw in data_keywords)
 
+    # MongoDB technical keywords also count as data intent (e.g., "fear and greed", "adx", "vwap")
+    if not has_data_intent and any(kw in query_lower for kw in MONGODB_TECHNICAL_KEYWORDS):
+        has_data_intent = True
+
+    # Bot state queries override definition intent (e.g., "what is my bot doing" has "what is" but is a data query)
+    if has_bot_state_intent:
+        has_data_intent = True
+
     if has_definition_intent and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
         # Pure educational/definition queries don't need MCPs
         return QueryIntent.NEEDS_NEITHER
@@ -181,10 +194,12 @@ def classify_query_intent(
         # Educational queries like "Why was Bitcoin created?" should not trigger MCPs
         return QueryIntent.NEEDS_NEITHER
 
-    # Check MongoDB triggers first (highest priority for Bitcoin queries)
+    # Check MongoDB triggers first (highest priority for crypto data queries)
     # Detect MongoDB intent BEFORE checking rarity permissions
+    # Multi-token: resolve_token() detects any of 13 supported tokens
     has_mongodb_intent = False
-    if "bitcoin" in query_lower or "btc" in query_lower:
+    resolved_token = resolve_token(query_lower)
+    if resolved_token is not None:
         # Check specific MongoDB keyword groups
         if any(kw in query_lower for kw in MONGODB_PRICE_KEYWORDS):
             has_mongodb_intent = True
@@ -194,9 +209,13 @@ def classify_query_intent(
             has_mongodb_intent = True
         elif any(kw in query_lower for kw in MONGODB_TECHNICAL_KEYWORDS):
             has_mongodb_intent = True
-        # Generic "price" with "bitcoin" also triggers MongoDB intent
+        # Generic "price" with any crypto token also triggers MongoDB intent
         elif "price" in query_lower:
             has_mongodb_intent = True
+
+    # Bot state queries also route through MongoDB (different database, same MCP)
+    if has_bot_state_intent:
+        has_mongodb_intent = True
 
     # Only grant MongoDB access if persona has permission
     needs_mongodb = has_mongodb_intent and can_use_mongodb
@@ -208,14 +227,14 @@ def classify_query_intent(
 
     # Allow web search if: no definition intent, OR has opinion intent, OR has web search keywords
     if can_use_brave and can_fallback_to_web and (not has_definition_intent or has_opinion_intent or has_web_search_intent):
-        # Bitcoin news/articles need web search, NOT MongoDB
-        if ("bitcoin" in query_lower or "btc" in query_lower) and any(word in query_lower for word in ["news", "article", "report", "announcement"]):
+        # Crypto news/articles need web search, NOT MongoDB
+        if resolved_token is not None and any(word in query_lower for word in ["news", "article", "report", "announcement"]):
             needs_web = True
             # If query also asks for price AND news, keep both
             if not ("price" in query_lower or "cost" in query_lower):
                 needs_mongodb = False  # News only = web only
 
-        # General web search keywords (but not if MongoDB already triggered for Bitcoin price)
+        # General web search keywords (but not if MongoDB already triggered for crypto price)
         elif not needs_mongodb:
             if any(kw in query_lower for kw in SEARCH_KEYWORDS):
                 needs_web = True
@@ -223,8 +242,8 @@ def classify_query_intent(
             elif has_opinion_intent:
                 needs_web = True
 
-        # "current" in Bitcoin context means MongoDB, not web search
-        if needs_mongodb and "current" in query_lower and "bitcoin" in query_lower:
+        # "current" in crypto context means MongoDB, not web search
+        if needs_mongodb and "current" in query_lower and resolved_token is not None:
             # Check if it's asking for current price data (MongoDB)
             # vs current news/events (web)
             if "news" not in query_lower and "article" not in query_lower:

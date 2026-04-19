@@ -419,6 +419,15 @@ def _build_nephilim_lore_block(card: Dict) -> str:
                 role = role[:150] + "..."
             lines.append(f"- Role in Realm: {role}")
 
+        # Add realm domain if present
+        realm_domain = nephilim_lore.get("realm_domain")
+        if isinstance(realm_domain, dict) and realm_domain.get("name"):
+            domain_name = realm_domain["name"]
+            domain_desc = realm_domain.get("description", "")
+            if len(domain_desc) > 150:
+                domain_desc = domain_desc[:150] + "..."
+            lines.append(f"- Your Domain: {domain_name} — {domain_desc}")
+
         # Add relationships summary
         relationships = nephilim_lore.get("relationships", {})
         if relationships and isinstance(relationships, dict):
@@ -518,6 +527,8 @@ def build_system_prompt(selector: Optional[str]) -> str:
     # Determine capabilities
     mcp_access = card.get("mcp_access", []) if card else []
     has_wallet = "solana_wallet" in mcp_access
+    has_mongodb = "mongodb" in mcp_access
+    has_bot_state = "bot_state" in mcp_access
 
     # === XML-tagged sections with bookend pattern ===
     parts = [
@@ -526,8 +537,21 @@ def build_system_prompt(selector: Optional[str]) -> str:
         identity_text,
         FIRST_PERSON_RULES.format(who=who).strip(),
         "CRITICAL: Never fabricate data you haven't received from system tools.",
-        "</identity>",
     ]
+
+    # MongoDB / bot state capability descriptions
+    if has_mongodb:
+        parts.append(
+            "You can access price data, technical analysis, and 80 indicators for 13 cryptocurrencies "
+            "(BTC, ETH, SOL, XRP, ADA, AVAX, BNB, DOGE, DOT, LINK, NEAR, SUI, TON) "
+            "across 1h, 4h, and daily timeframes from the trading database."
+        )
+    if has_bot_state:
+        parts.append(
+            "You can check the trading bot's strategy status, open positions, and trade history."
+        )
+
+    parts.append("</identity>")
 
     # Response format
     parts.extend(["", "<response_format>", CONVERSATIONAL_EXAMPLES.strip(), "</response_format>"])

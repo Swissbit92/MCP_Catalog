@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+react-ui/node_modules/
+
+# React build output
+react-ui/build/
+
+# Lock file (machine-generated, 22k lines)
+react-ui/package-lock.json
+
+# Test artifacts
+react-ui/test-results/
+react-ui/test-screenshots/
+react-ui/tests/screenshots/
+
+# Python bytecode and caches
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+
+# Runtime database (SQLite)
+*.db
+
+# Secrets
+.env
+.env.docker
+.env.local
+
+# Generated persona summaries (not source of truth)
+personas/_summaries/
+
+# Persona image assets (binary, not useful to Claude)
+react-ui/public/images/
+
+# Archived historical code (reduces noise)
+# Remove this line if you need Claude to reference old implementations
+archive/
+
+# OS artifacts
+.DS_Store

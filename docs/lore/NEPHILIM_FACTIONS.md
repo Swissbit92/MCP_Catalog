@@ -1,3 +1,12 @@
+---
+title: NEPHILIM FACTIONS — Houses of the Realm
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 12 months
+applies_to: MCP_Catalog
+---
+
 # NEPHILIM FACTIONS — Houses of the Realm
 
 > *"We did not create the factions. The Seekers created them. We merely... acknowledged what was already forming."*

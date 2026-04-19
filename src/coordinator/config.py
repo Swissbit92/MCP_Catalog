@@ -228,15 +228,24 @@ class MongoDBSettings(BaseSettings):
         """Check if MongoDB is enabled (flag true and URI set)."""
         return self.enabled and bool(self.uri.strip())
 
-    def get_cache_ttl(self, tool_name: str) -> int:
-        """Get cache TTL for a specific tool."""
-        ttl_map = {
-            "bitcoin_current_price": self.cache_current_price,
-            "bitcoin_technical_analysis": self.cache_technical,
-            "bitcoin_historical_prices": self.cache_historical,
-            "bitcoin_trading_summary": self.cache_trading,
-        }
-        return ttl_map.get(tool_name, 60)
+    def get_cache_ttl(self, cache_key: str) -> int:
+        """Get cache TTL for a specific cache key.
+
+        Cache keys use the pattern: {token}_{type}_{timeframe}
+        e.g., 'btc_current_price_1h', 'eth_technical_daily', 'bot_status'
+        """
+        # Match by suffix pattern so all tokens get the same TTL per query type
+        if "current_price" in cache_key:
+            return self.cache_current_price
+        elif "technical" in cache_key:
+            return self.cache_technical
+        elif "historical" in cache_key:
+            return self.cache_historical
+        elif "trading_summary" in cache_key:
+            return self.cache_trading
+        elif cache_key.startswith("bot_"):
+            return 30  # Bot state: short TTL (30s)
+        return 60
 
     model_config = {
         "env_file": ".env",

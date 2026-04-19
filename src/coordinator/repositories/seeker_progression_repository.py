@@ -356,25 +356,92 @@ class SeekerProgressionRepository(BaseRepository):
 
     def check_and_unlock_lore(
         self, user_id: str, persona_key: str,
-        persona_lore_fragments: List[Dict[str, Any]],
+        fragments: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Check message count and unlock any newly available lore."""
+        """Check triggers and unlock any newly available lore fragments.
+
+        Supports multiple trigger types per fragment:
+        - messages_required (int): message count threshold (original)
+        - rank_required (str): seeker must have reached this rank (e.g. "Adept")
+        - affinity_required (int): persona affinity level threshold
+        - cross_persona_required (str|list): fragment_ids from other personas that must be unlocked
+        - trigger_logic ("all"|"any"): how to combine conditions (default "all" = AND)
+
+        Backward compatible: fragments with only messages_required work as before.
+        """
         affinity = self.get_affinity(user_id, persona_key)
         if not affinity:
             return []
 
         messages_count = affinity['messages_count']
+        affinity_level = affinity.get('affinity_level', 0)
+
+        # Lazy-loaded state — only fetched when needed by specific trigger types
+        _seeker_profile = None
+        _all_unlocked_ids = None
+
         newly_unlocked = []
 
-        for fragment in persona_lore_fragments:
-            required = fragment.get('messages_required', 0)
+        for fragment in fragments:
             fragment_id = fragment.get('fragment_id', '')
             if not fragment_id:
                 continue
 
-            if messages_count >= required and not self.is_lore_unlocked(user_id, persona_key, fragment_id):
+            # Skip already-unlocked fragments
+            if self.is_lore_unlocked(user_id, persona_key, fragment_id):
+                continue
+
+            # Collect conditions based on which trigger fields are present
+            conditions = []
+            trigger_logic = fragment.get('trigger_logic', 'all')
+
+            # messages_required (original trigger)
+            msg_req = fragment.get('messages_required')
+            if msg_req is not None:
+                conditions.append(messages_count >= msg_req)
+
+            # rank_required — compare seeker rank against RANK_THRESHOLDS ordering
+            rank_req = fragment.get('rank_required')
+            if rank_req:
+                if _seeker_profile is None:
+                    _seeker_profile = self.get_seeker_profile(user_id) or {}
+                seeker_rank = _seeker_profile.get('rank_name', 'Initiate')
+                rank_order = list(RANK_THRESHOLDS.keys())
+                seeker_idx = rank_order.index(seeker_rank) if seeker_rank in rank_order else 0
+                req_idx = rank_order.index(rank_req) if rank_req in rank_order else len(rank_order)
+                conditions.append(seeker_idx >= req_idx)
+
+            # affinity_required — compare persona affinity level
+            aff_req = fragment.get('affinity_required')
+            if aff_req is not None:
+                conditions.append(affinity_level >= aff_req)
+
+            # cross_persona_required — check fragment_ids from other personas are unlocked
+            cross_req = fragment.get('cross_persona_required')
+            if cross_req:
+                if _all_unlocked_ids is None:
+                    all_unlocked = self.get_unlocked_lore(user_id)  # all personas
+                    _all_unlocked_ids = {row['fragment_id'] for row in all_unlocked}
+                if isinstance(cross_req, str):
+                    cross_req = [cross_req]
+                conditions.append(all(fid in _all_unlocked_ids for fid in cross_req))
+
+            # If no conditions were collected, skip (malformed fragment)
+            if not conditions:
+                continue
+
+            # Evaluate: AND (all) or OR (any)
+            if trigger_logic == 'any':
+                passes = any(conditions)
+            else:
+                passes = all(conditions)
+
+            if passes:
                 if self.unlock_lore(user_id, persona_key, fragment_id):
                     newly_unlocked.append(fragment)
+                    # Update cached set so later cross_persona checks see this unlock
+                    if _all_unlocked_ids is not None:
+                        _all_unlocked_ids.add(fragment_id)
                     self.award_resonance(
                         user_id, RESONANCE_REWARDS['lore_unlock'],
                         f'Unlocked lore: {fragment_id}', persona_key=persona_key,

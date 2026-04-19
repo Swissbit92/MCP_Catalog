@@ -1,3 +1,12 @@
+---
+title: UX Wave 1 Review — 2026-02-18
+status: completed
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 24 months
+applies_to: MCP_Catalog
+---
+
 # UX Wave 1 Review — 2026-02-18
 
 ## Status: PARTIAL PASS → FIXED
