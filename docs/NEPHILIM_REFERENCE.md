@@ -1,3 +1,12 @@
+---
+title: NEPHILIM System Reference
+status: active
+created: 2026-04-04
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # NEPHILIM System Reference
 
 > Extracted from CLAUDE.md for token optimization. This is the detailed reference for the NEPHILIM worldbuilding, progression, and UI systems. See CLAUDE.md for essential development context.

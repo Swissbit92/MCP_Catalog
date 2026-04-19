@@ -1,3 +1,12 @@
+---
+title: Design System
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # Design System
 
 Visual design reference for the NEPHILIM UI. Covers typography, color, CSS variables, card effects, glassmorphism, and accessibility rules.

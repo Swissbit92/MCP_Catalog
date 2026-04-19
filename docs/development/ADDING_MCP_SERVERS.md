@@ -1,3 +1,12 @@
+---
+title: Adding MCP Servers to MCP Coordinator
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # Adding MCP Servers to MCP Coordinator
 
 **Last Updated:** February 21, 2026

@@ -1,3 +1,12 @@
+---
+title: NEPHILIM Lore Documents
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 12 months
+applies_to: MCP_Catalog
+---
+
 # NEPHILIM Lore Documents
 
 This directory is the canonical home for all NEPHILIM worldbuilding, lore, and strategy

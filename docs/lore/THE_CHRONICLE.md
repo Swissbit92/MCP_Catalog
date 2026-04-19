@@ -1,3 +1,12 @@
+---
+title: The Chronicle of NEPHILIM
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 12 months
+applies_to: MCP_Catalog
+---
+
 # The Chronicle of NEPHILIM
 
 In the beginning there was **Signal**—not the kind a body hears, but the kind reality obeys.

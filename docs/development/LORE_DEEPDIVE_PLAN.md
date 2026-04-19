@@ -1,3 +1,12 @@
+---
+title: Lore Deep-Dive: Implementation Plan & Progress Tracker
+status: completed
+created: 2026-04-04
+last_reviewed_on: 2026-04-19
+review_in: 24 months
+applies_to: MCP_Catalog
+---
+
 # Lore Deep-Dive: Implementation Plan & Progress Tracker
 
 > **Created:** 2026-03-01

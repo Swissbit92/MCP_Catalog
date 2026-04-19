@@ -1,3 +1,12 @@
+---
+title: NEPHILIM Lore Bible Draft Canon
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 12 months
+applies_to: MCP_Catalog
+---
+
 # NEPHILIM Lore Bible Draft Canon
 
 ## Executive summary

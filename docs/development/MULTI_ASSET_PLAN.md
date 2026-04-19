@@ -1,3 +1,12 @@
+---
+title: Multi-Asset MongoDB + Bot State Integration
+status: completed
+created: 2026-04-04
+last_reviewed_on: 2026-04-19
+review_in: 24 months
+applies_to: MCP_Catalog
+---
+
 # Multi-Asset MongoDB + Bot State Integration
 
 **Status:** Phases 1-6 Complete, Phase 7 (Integration Verification) Pending Live Backend
