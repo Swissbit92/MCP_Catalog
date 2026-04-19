@@ -1,3 +1,12 @@
+---
+title: Wallet Metadata & AI Context Layer
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # Wallet Metadata & AI Context Layer
 
 Architecture reference for the multi-wallet metadata system that gives AI companions reliable, deterministic awareness of wallet state, trading activity, and hard-enforced guardrails.

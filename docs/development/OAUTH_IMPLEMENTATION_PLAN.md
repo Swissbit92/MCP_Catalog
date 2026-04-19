@@ -1,3 +1,12 @@
+---
+title: Google OAuth Implementation Plan
+status: completed
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 24 months
+applies_to: MCP_Catalog
+---
+
 # Google OAuth Implementation Plan
 **Status:** 🟡 Planning — awaiting mockup approval
 **Last Updated:** 2026-02-18

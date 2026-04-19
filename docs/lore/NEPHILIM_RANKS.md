@@ -1,3 +1,12 @@
+---
+title: NEPHILIM RANKS — The Path of Ascension
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 12 months
+applies_to: MCP_Catalog
+---
+
 # NEPHILIM RANKS — The Path of Ascension
 
 > *"Rank is not hierarchy. It is recognition—acknowledgment that you have walked further into the Realm than you were when you began."*

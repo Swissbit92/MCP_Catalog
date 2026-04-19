@@ -1,3 +1,12 @@
+---
+title: Persona Schema Reference
+status: active
+created: 2026-04-04
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # Persona Schema Reference
 
 ## Overview

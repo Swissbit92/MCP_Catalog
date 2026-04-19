@@ -1,3 +1,12 @@
+---
+title: Celestial Order Architecture
+status: active
+created: 2026-04-03
+last_reviewed_on: 2026-04-19
+review_in: 6 months
+applies_to: MCP_Catalog
+---
+
 # Celestial Order Architecture
 
 How the four-tier Celestial Order system works across backend, frontend, and MCP access control.
