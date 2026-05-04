@@ -163,7 +163,7 @@
 
 ```bash
 # Terminal 1 - Backend (FastAPI)
-cd /c/Users/rzehn/desktop/MCP_Catalog
+cd /c/Users/rzehn/desktop/nephilim
 python -m uvicorn src.coordinator.server:app --reload --port 8000
 
 # Terminal 2 - Frontend (React dev server)

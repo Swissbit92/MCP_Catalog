@@ -4,7 +4,7 @@ status: active
 created: 2026-04-19
 last_reviewed_on: 2026-04-19
 review_in: 6 months
-applies_to: MCP_Catalog
+applies_to: nephilim
 ---
 
 # Architecture
@@ -14,7 +14,7 @@ Reference-style: tables and diagrams, not prose narratives.
 ## System context
 
 ```
-[External input] → MCP_Catalog → [Output / downstream consumer]
+[External input] → nephilim → [Output / downstream consumer]
 ```
 
 ## Components

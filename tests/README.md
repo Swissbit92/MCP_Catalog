@@ -152,7 +152,7 @@ def test_end_to_end():
 
 ### Import Errors
 If you see `ModuleNotFoundError`, ensure:
-1. You're running from project root: `cd /path/to/MCP_Catalog`
+1. You're running from project root: `cd /path/to/nephilim`
 2. conftest.py is present in tests/
 3. src/ directory exists
 

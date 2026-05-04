@@ -4,7 +4,7 @@ status: active
 created: 2026-04-03
 last_reviewed_on: 2026-04-19
 review_in: 12 months
-applies_to: MCP_Catalog
+applies_to: nephilim
 ---
 
 # **NEPHILIM Platform Business Plan & Worldbuilding** **Strategy**

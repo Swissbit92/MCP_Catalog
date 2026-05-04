@@ -24,7 +24,7 @@ import path from 'path'
 const BASE_URL = 'http://localhost:3001'
 const BACKEND = 'http://localhost:8000'
 const SCREENSHOTS = path.join('C:/Users/rzehn/desktop/MCP_catalog/react-ui/tests/screenshots')
-const PROJECT_ROOT = 'C:/Users/rzehn/desktop/MCP_Catalog'
+const PROJECT_ROOT = 'C:/Users/rzehn/desktop/nephilim'
 
 // Separate user IDs per scenario group to avoid state bleed
 const USER_WITH_WALLET = 'edge_user_has_wallet'
