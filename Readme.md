@@ -201,8 +201,8 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Swissbit92/MCP_Catalog.git
-cd MCP_Catalog
+git clone https://github.com/Swissbit92/nephilim.git
+cd nephilim
 
 # 2. Run the setup script
 # Windows (PowerShell):
@@ -319,8 +319,8 @@ See [`.env.docker`](.env.docker) for the full list with documentation.
 ### Step 1: Install Dependencies
 
 ```bash
-git clone https://github.com/Swissbit92/MCP_Catalog.git
-cd MCP_Catalog
+git clone https://github.com/Swissbit92/nephilim.git
+cd nephilim
 
 # Python backend
 pip install -r requirements.txt
