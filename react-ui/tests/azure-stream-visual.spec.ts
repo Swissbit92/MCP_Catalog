@@ -13,10 +13,10 @@
 
 import { test, expect } from '@playwright/test'
 import fs from 'fs'
+import path from 'path'
 
 const BASE_URL = 'http://localhost:3001'
-const SCREENSHOTS_DIR =
-  'C:/Users/rzehn/desktop/MCP_catalog/react-ui/tests/screenshots/azure-stream'
+const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots', 'azure-stream')
 
 function ensureDir() {
   if (!fs.existsSync(SCREENSHOTS_DIR)) {
