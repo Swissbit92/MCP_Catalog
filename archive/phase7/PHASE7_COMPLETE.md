@@ -48,7 +48,7 @@ Phase 7 successfully transformed the MCP Coordinator from a dual-route architect
 
 ```bash
 # Terminal 1 - Backend
-cd /c/Users/rzehn/desktop/MCP_Catalog
+cd /c/Users/rzehn/desktop/nephilim
 python -m uvicorn src.coordinator.server:app --reload --port 8000
 
 # Terminal 2 - Frontend

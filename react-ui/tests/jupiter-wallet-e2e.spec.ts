@@ -20,10 +20,10 @@ import path from 'path'
 
 const BASE_URL = 'http://localhost:3001'
 const BACKEND = 'http://localhost:8000'
-const SCREENSHOTS = 'C:/Users/rzehn/desktop/MCP_catalog/react-ui/tests/screenshots'
+const SCREENSHOTS = path.join(__dirname, 'screenshots')
 const WALLET_NAME = 'E.E.V.A. Trading Wallet'
 const WALLET_PASSWORD = 'SecureWallet2026!'
-const PROJECT_ROOT = 'C:/Users/rzehn/desktop/MCP_Catalog'
+const PROJECT_ROOT = path.join(__dirname, '..', '..')
 
 // ─── REST seed helpers (replaces Python direct-DB writes) ────────────────────
 // Using the backend REST API ensures seed/clean share the same DB as the running server.

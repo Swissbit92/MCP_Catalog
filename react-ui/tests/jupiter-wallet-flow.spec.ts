@@ -15,10 +15,11 @@
 
 import { test, expect, Page } from '@playwright/test'
 import fs from 'fs'
+import path from 'path'
 
 const BASE_URL = 'http://localhost:3001'
 const BACKEND_URL = 'http://localhost:8000'
-const SCREENSHOTS_DIR = 'C:/Users/rzehn/desktop/MCP_catalog/react-ui/tests/screenshots'
+const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots')
 
 // ---------------------------------------------------------------------------
 // Helpers

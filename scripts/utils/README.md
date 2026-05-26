@@ -96,7 +96,7 @@ python cleanup_orphan_containers.py
 from cleanup_orphan_containers import clean_orphans, list_orphans
 
 # List orphaned containers
-orphans = list_orphans(project_prefix="mcp_catalog")
+orphans = list_orphans(project_prefix="nephilim")
 
 # Clean up
 removed = clean_orphans(dry_run=False)
