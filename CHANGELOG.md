@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Lore wiki** (`docs/lore/wiki/`) — typed-markdown knowledge graph for NEPHILIM worldbuilding. 30 entity files (6 personas, 6 houses, 5 ranks, 6 locations, antagonist Kenoma + Sybil Choir, resonance/ascension concepts, 7 draft expansion entities) with YAML frontmatter declaring `entity_type`, `entity_id`, `canon`, `aliases`, and typed `relationships`. Canonical source of truth for entity facts; conflicting house/antagonist names from prose docs preserved as `aliases`.
+- **Lore wiki engine** (`scripts/utils/lore_wiki.py`) — `check` (validates schema, relationship resolution, bidirectional inverses, alias collisions, persona-JSON consistency, prose name-drift; CI-gateable), `index` (regenerates `wiki/index.md`), `graph` (derives a networkx-style JSON graph on demand). No new dependencies (PyYAML + pydantic, already present).
+- **`tests/backend/lore/test_lore_wiki.py`** — 20 unit tests over synthetic fixtures (schema, dangling/duplicate/orphan/alias/inverse checks, persona consistency, index determinism).
+- **[ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md)** — records the typed-markdown-wiki decision and the rejection of a graph DB (Neo4j) at solo scale.
+
+### Changed
+
+- `docs/lore/README.md` — declares `wiki/` the canonical source of truth; fixed a duplicate `## Notes` heading.
+- `docs/lore/NEPHILIM_LORE.md` — added a canon-note banner pointing to the wiki.
+
+
 ### Celestial Order Remap (Feb 2026)
 - **Celestial Order System**: Replaced gacha rarity vocabulary with lore-aligned Celestial Order tiers:
   - Legendary → Archon (Gold) — E.E.V.A.
