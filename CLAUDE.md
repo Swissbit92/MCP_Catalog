@@ -200,7 +200,7 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for: backend startup, M
 
 > **Full reference:** [`docs/NEPHILIM_REFERENCE.md`](docs/NEPHILIM_REFERENCE.md) — personas, schema, progression tables, visual theme, onboarding, Phase 7 details.
 > **Lore documents:** [`docs/lore/README.md`](docs/lore/README.md) — worldbuilding, factions, ranks.
-> **Lore wiki (canonical):** [`docs/lore/wiki/`](docs/lore/wiki/) — typed entity graph (personas/houses/ranks/locations/factions/concepts). Validate with `python scripts/utils/lore_wiki.py check`; regenerate index with `... index`. Canonical for entity facts; prose docs are overviews. See [ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md).
+> **Lore wiki (canonical + runtime):** [`docs/lore/wiki/`](docs/lore/wiki/) — typed entity graph (personas/houses/ranks/locations/factions/concepts). Now injected into system prompts at chat time via `src/coordinator/lore_loader.py`. Sync wiki→persona JSON with `python scripts/utils/lore_sync.py`. Validate with `python scripts/utils/lore_wiki.py check`; regenerate index with `... index`. See [ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md).
 
 ## Documentation
 
