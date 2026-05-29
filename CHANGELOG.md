@@ -9,15 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Lore wiki** (`docs/lore/wiki/`) — typed-markdown knowledge graph for NEPHILIM worldbuilding. 30 entity files (6 personas, 6 houses, 5 ranks, 6 locations, antagonist Kenoma + Sybil Choir, resonance/ascension concepts, 7 draft expansion entities) with YAML frontmatter declaring `entity_type`, `entity_id`, `canon`, `aliases`, and typed `relationships`. Canonical source of truth for entity facts; conflicting house/antagonist names from prose docs preserved as `aliases`.
-- **Lore wiki engine** (`scripts/utils/lore_wiki.py`) — `check` (validates schema, relationship resolution, bidirectional inverses, alias collisions, persona-JSON consistency, prose name-drift; CI-gateable), `index` (regenerates `wiki/index.md`), `graph` (derives a networkx-style JSON graph on demand). No new dependencies (PyYAML + pydantic, already present).
-- **`tests/backend/lore/test_lore_wiki.py`** — 20 unit tests over synthetic fixtures (schema, dangling/duplicate/orphan/alias/inverse checks, persona consistency, index determinism).
-- **[ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md)** — records the typed-markdown-wiki decision and the rejection of a graph DB (Neo4j) at solo scale.
+- **Lore wiki** (`docs/lore/wiki/`) — typed-markdown knowledge graph for NEPHILIM worldbuilding. 30 entity files (6 personas, 6 houses, 5 ranks, 6 locations, antagonist Kenoma + Sybil Choir, resonance/ascension concepts, 7 non-canon expansion entities) with YAML frontmatter declaring `entity_type`, `entity_id`, `canon`, `aliases`, and typed `relationships`. Canonical source of truth for entity facts; conflicting house/antagonist names from prose docs preserved as `aliases`.
+- **Lore wiki engine** (`scripts/utils/lore_wiki.py`) — `check` (validates schema, relationship resolution, bidirectional inverses, alias collisions, persona-JSON consistency, prose name-drift; CI-gateable), `index` (regenerates `wiki/index.md`), `graph` (derives a networkx-style JSON graph). No new dependencies.
+- **Lore sync tool** (`scripts/utils/lore_sync.py`) — one-way `wiki/personas/*.md` → `personas/nephilim_*.json lore[]` sync. `--dry-run` and `--persona` flags. Clears CV summary cache on change. Makes the wiki the canonical authoring surface for persona lore.
+- **Wiki runtime injection** (`src/coordinator/lore_loader.py`) — loads and caches wiki entity bodies (persona + house + location) for each NEPHILIM persona at prompt-build time; injected into `<world_context>` block via `prompt_builder.py`. No new dependencies (pathlib + re only). Non-NEPHILIM personas (Wanderer/Gojo) unaffected.
+- **Enriched persona lore arrays** — all 6 `personas/nephilim_*.json` `lore[]` arrays rewritten from rich Chronicle + Lore Bible material. Items now name specific canon entities, encode relationship tensions (Prime Covenant, Electric Rivalry, Compassion Triangle, Exile's Garden), and capture philosophical contradictions. CV summaries cleared to force regeneration on next chat.
+- **[ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md)** — records typed-markdown-wiki decision and Neo4j rejection.
+- **56 new unit tests** — `tests/backend/lore/` (20 lore_wiki + 26 lore_sync) + `tests/backend/coordinator/test_lore_loader.py` (10).
 
 ### Changed
 
-- `docs/lore/README.md` — declares `wiki/` the canonical source of truth; fixed a duplicate `## Notes` heading.
-- `docs/lore/NEPHILIM_LORE.md` — added a canon-note banner pointing to the wiki.
+- `src/coordinator/prompt_builder.py` — `_build_nephilim_lore_block` now appends wiki entity context (additive; existing `nephilim_lore` dict fields preserved).
+- `docs/lore/README.md` — declares `wiki/` the canonical source of truth.
+- `docs/lore/NEPHILIM_LORE.md` — canon-note banner pointing to the wiki.
+- `CLAUDE.md` — wiki section updated to note runtime relevance.
 
 
 ### Celestial Order Remap (Feb 2026)
