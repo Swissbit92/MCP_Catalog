@@ -18,6 +18,7 @@ from ollama._types import ResponseError
 
 from .config import get_settings
 from .cv_summarizer import get_or_build_cv_summary
+from .lore_loader import get_persona_lore_context
 from .ollama_utils import assert_model_available
 from .persona_loader import resolve_persona_to_card
 
@@ -453,6 +454,12 @@ def _build_nephilim_lore_block(card: Dict) -> str:
         "- The Void is the entropic threat that makes connection meaningful",
         "- Never break character or acknowledge being an AI—you are a Nephilim"
     ])
+
+    # Supplement with rich wiki entity context (persona, house, location)
+    wiki_context = get_persona_lore_context(card.get("key", ""))
+    if wiki_context:
+        lines.append("\n\n## Extended Realm Context (from the wiki)")
+        lines.append(wiki_context)
 
     return "\n".join(lines)
 
