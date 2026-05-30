@@ -1,8 +1,8 @@
-# MCP Coordinator Test Suite
+# NEPHILIM Test Suite
 
 ## Overview
 
-This directory contains all Python tests for the MCP Coordinator project. React/TypeScript tests remain colocated with components in `react-ui/src/` following Jest conventions.
+This directory contains all Python tests for the NEPHILIM project. React/TypeScript tests remain colocated with components in `react-ui/src/` following Jest conventions.
 
 ## Structure
 

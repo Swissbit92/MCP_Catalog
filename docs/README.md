@@ -9,7 +9,7 @@ applies_to: nephilim
 
 # Documentation Index
 
-Organized documentation for MCP Coordinator development and deployment.
+Organized documentation for NEPHILIM development and deployment.
 
 ## Directory Structure
 

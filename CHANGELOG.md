@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the MCP Catalog project will be documented in this file.
+All notable changes to the NEPHILIM project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -88,7 +88,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ✅ **Documentation Organization**: Moved 4 documentation files into categorized subdirectories
     - `docs/setup/` - DOCKER_QUICKSTART.md (moved from root)
     - `docs/development/` - ADDING_MCP_SERVERS.md, TESTING_GUIDE.md
-    - `docs/testing/` - PYTEST_BASELINE_REPORT.md
   - ✅ **Navigation Indices**: Created 5 comprehensive README.md files for easy discovery
     - `scripts/README.md` - Master index with quick reference to all script categories
     - `scripts/docker/README.md` - Docker scripts guide with usage examples and troubleshooting
@@ -224,7 +223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TypeScript Optimization** - Resolved all compilation errors, added proper type annotations, and ensured type-safe implementation across all components
 - **Performance Optimization** - Optimized particle rendering, reduced memory usage, and implemented hardware acceleration for smooth 60fps animations
 - **Accessibility Enhancements** - Added reduced motion support, keyboard navigation, and screen reader friendly descriptions
-- Initial project structure with MCP Coordinator backend and React UI frontend
+- Initial project structure with NEPHILIM backend and React UI frontend
 - Persona-based chat interface with multiple character options
 - Gacha-style character selection with card reveal animations
 - Static character browsing with search functionality
@@ -288,7 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-01-XX
 
 ### Added
-- Basic MCP Coordinator architecture
+- Basic NEPHILIM coordinator architecture
 - React UI with routing (Home, Character Selection, Chat)
 - Character card components with rarity styling
 - API integration between frontend and backend

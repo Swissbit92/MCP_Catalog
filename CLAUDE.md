@@ -170,7 +170,7 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - **Solace** (Warden): Brave only (empathy needs resources, not trading)
 - **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
 - **Nyx** (Sage): None (creativity flows from imagination)
-- **Wanderer personas** (Gojo, Gwen, etc.): None (pure LLM)
+- **Wanderer personas** (Gojo, etc.): None (pure LLM)
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`

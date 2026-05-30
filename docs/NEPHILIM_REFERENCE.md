@@ -138,13 +138,13 @@ Progression is automatically tracked in `chat_session_service.py`:
 ```
 
 ### Landing Page (`NephilimHome.tsx`)
-- Cinematic "Enter the Realm" portal at `/nephilim`
+- Cinematic "Enter the Realm" portal at `/`
 - Animated background with particles and aurora effects
 - Typography: Orbitron (display), Manrope (body)
 
 ### Onboarding System (Phase 4)
 
-Complete immersive onboarding flow for new users at `/nephilim/onboarding`:
+Complete immersive onboarding flow for new users at `/onboarding`:
 
 1. **Portal Entry** (`OnboardingPortal.tsx`)
    - Animated portal with E.E.V.A. greeting
