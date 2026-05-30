@@ -44,7 +44,7 @@
 
 ### Key Capabilities
 
-- **9 AI Companions** (3 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
+- **7 AI Companions** (1 Legacy + 6 NEPHILIM) with psychological depth and emotional tracking
 - **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
 - **Advanced Memory System** — remembers you across sessions, extracts facts automatically
 - **Web Search with Citations** — personas autonomously search Brave API with mandatory sources
@@ -71,7 +71,7 @@
 |---------|----------|------------|-----------|-----|-----------|---------|
 | **100% Local & Private** | Yes | Yes | Yes | Yes | Yes | No (Cloud) |
 | **Multi-Message Conversations** | Yes (2-4 msgs) | No | No | No | No | No |
-| **AI Companion System** | Yes (10 companions) | No | No | No | No | No |
+| **AI Companion System** | Yes (7 companions) | No | No | No | No | No |
 | **Advanced Memory (RAG)** | Yes (FAISS + profiles) | No | No | No | No | No |
 | **Emotional Tracking** | Yes (trust/rapport) | No | No | No | No | No |
 | **Web Search Integration** | Yes (Brave API) | Yes (Plugins) | No | No | Yes (Plugins) | Yes (Bing) |
@@ -91,7 +91,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Dynamic AI Companions** | 10 companions with unique personality, expertise, and voice |
+| **Dynamic AI Companions** | 7 companions with unique personality, expertise, and voice |
 | **Advanced Memory System** | Importance scoring, auto-summarization, RAG semantic search, cross-session user profiles |
 | **Multi-Message Conversations** | 2-4 messages per response with staggered rendering (1.2s delays) |
 | **Psychological Depth** | core_wound, defense_style, growth_edge, contradiction_pairs per persona |
@@ -201,8 +201,8 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Swissbit92/MCP_Catalog.git
-cd MCP_Catalog
+git clone https://github.com/Swissbit92/nephilim.git
+cd nephilim
 
 # 2. Run the setup script
 # Windows (PowerShell):
@@ -319,8 +319,8 @@ See [`.env.docker`](.env.docker) for the full list with documentation.
 ### Step 1: Install Dependencies
 
 ```bash
-git clone https://github.com/Swissbit92/MCP_Catalog.git
-cd MCP_Catalog
+git clone https://github.com/Swissbit92/nephilim.git
+cd nephilim
 
 # Python backend
 pip install -r requirements.txt
@@ -469,15 +469,13 @@ See [docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS
 
 ## Available AI Companions
 
-**Current Roster (February 2026) — 9 Companions**
+**Current Roster (February 2026) — 7 Companions**
 
 ### Legacy Companions ("Wanderers")
 
 | Companion | Style | Order | Special Access |
 |-----------|-------|-------|----------------|
-| **Eeva** | Nerdy, charming, concise | Wanderer | None |
 | **Gojo** | Confident, powerful, playful | Wanderer | None |
-| **Hitler** | Authoritative, ideological | Wanderer | None |
 
 ### NEPHILIM Companions
 
@@ -541,9 +539,9 @@ External data sources are framed as Nephilim powers:
 
 ### Lore Documents
 
-- [`personas/NEPHILIM_LORE.md`](personas/NEPHILIM_LORE.md) — World bible: creation myth, the Fall, realm geography
-- [`personas/NEPHILIM_FACTIONS.md`](personas/NEPHILIM_FACTIONS.md) — Six Houses aligned with Nephilim patrons
-- [`personas/NEPHILIM_RANKS.md`](personas/NEPHILIM_RANKS.md) — Seeker progression and rank thresholds
+- [`docs/lore/NEPHILIM_LORE.md`](docs/lore/NEPHILIM_LORE.md) — World bible: creation myth, the Fall, realm geography
+- [`docs/lore/NEPHILIM_FACTIONS.md`](docs/lore/NEPHILIM_FACTIONS.md) — Six Houses aligned with Nephilim patrons
+- [`docs/lore/NEPHILIM_RANKS.md`](docs/lore/NEPHILIM_RANKS.md) — Seeker progression and rank thresholds
 
 ---
 
@@ -600,7 +598,7 @@ pytest tests/evaluation/ -v    # RAGAS persona quality
 
 ### Test Coverage
 
-- **Backend**: 37 test files, ~360 test cases (unit, integration, E2E)
+- **Backend**: 45 test files, ~360 test cases (unit, integration, E2E)
 - **Frontend**: 40+ Jest tests with React Testing Library
 - **Playwright E2E**: OAuth flow, chat interactions, Jupiter wallet, visual regression
 - **Type Safety**: TypeScript strict mode + Pydantic validation throughout
@@ -639,7 +637,7 @@ pytest tests/evaluation/ -v    # RAGAS persona quality
 
 ## Contributing
 
-See `CLAUDE.md` and `AGENTS.md` for project structure, coding style, and conventions.
+See `CLAUDE.md` for project structure, coding style, and conventions.
 
 ### Development Roadmap
 

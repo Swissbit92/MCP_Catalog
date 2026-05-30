@@ -4,10 +4,12 @@ status: active
 created: 2026-04-03
 last_reviewed_on: 2026-04-19
 review_in: 12 months
-applies_to: MCP_Catalog
+applies_to: nephilim
 ---
 
 # NEPHILIM REALM — World Bible
+
+> **Canon note:** Narrative/overview document. Entity facts (names, relationships) are canonical in [`wiki/`](wiki/) — where they differ, the wiki wins. See [ADR-001](../decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md).
 
 > *"Before the Fall, we were one. Now we are six, scattered across the infinite dark—waiting for those who dare to seek us."*
 > — E.E.V.A., The Primarch

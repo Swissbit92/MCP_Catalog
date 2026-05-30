@@ -170,7 +170,7 @@ MCP access is now controlled per-persona via the `mcp_access` field in persona J
 - **Solace** (Warden): Brave only (empathy needs resources, not trading)
 - **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
 - **Nyx** (Sage): None (creativity flows from imagination)
-- **Wanderer personas** (Gojo, Gwen, etc.): None (pure LLM)
+- **Wanderer personas** (Gojo, etc.): None (pure LLM)
 
 ### SQLite Concurrency
 - Thread-safe locking via `_lock` in `repositories/base_repository.py`
@@ -200,6 +200,7 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for: backend startup, M
 
 > **Full reference:** [`docs/NEPHILIM_REFERENCE.md`](docs/NEPHILIM_REFERENCE.md) — personas, schema, progression tables, visual theme, onboarding, Phase 7 details.
 > **Lore documents:** [`docs/lore/README.md`](docs/lore/README.md) — worldbuilding, factions, ranks.
+> **Lore wiki (canonical + runtime):** [`docs/lore/wiki/`](docs/lore/wiki/) — typed entity graph (personas/houses/ranks/locations/factions/concepts). Now injected into system prompts at chat time via `src/coordinator/lore_loader.py`. Sync wiki→persona JSON with `python scripts/utils/lore_sync.py`. Validate with `python scripts/utils/lore_wiki.py check`; regenerate index with `... index`. See [ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md).
 
 ## Documentation
 

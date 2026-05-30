@@ -4,7 +4,7 @@ status: active
 created: 2026-04-03
 last_reviewed_on: 2026-04-19
 review_in: 6 months
-applies_to: MCP_Catalog
+applies_to: nephilim
 ---
 
 # Docker Quick Start Guide - SQLite Edition
@@ -81,8 +81,8 @@ Expected output:
 ```
 NAME                IMAGE                       STATUS
 ai-companion-brain  ollama/ollama:latest       Up (healthy)
-ai-companion-api    mcp_catalog-backend        Up (healthy)
-ai-companion-web    mcp_catalog-frontend       Up (healthy)
+ai-companion-api    nephilim-backend        Up (healthy)
+ai-companion-web    nephilim-frontend       Up (healthy)
 ```
 
 **What's running:**
@@ -224,7 +224,7 @@ All data persists on your host machine - it's NOT lost when containers stop!
 **Your data is DELETED if:**
 - ❌ You run `docker-compose down -v` (removes volumes)
 - ❌ You manually delete `./data/` directory
-- ❌ You manually delete Ollama volume: `docker volume rm mcp_catalog_ollama_models`
+- ❌ You manually delete Ollama volume: `docker volume rm nephilim_ollama_models`
 
 ### Backup Your Data
 
@@ -539,10 +539,10 @@ docker-compose up -d frontend
 docker-compose down
 
 # Remove Docker images to free space
-docker rmi mcp_catalog-backend mcp_catalog-frontend
+docker rmi nephilim-backend nephilim-frontend
 
 # Remove Ollama models volume (WARNING: deletes all models)
-docker volume rm mcp_catalog_ollama_models
+docker volume rm nephilim_ollama_models
 ```
 
 ### Fresh Start

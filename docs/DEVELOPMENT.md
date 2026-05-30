@@ -1,10 +1,10 @@
 ---
-title: Development Commands (MCP_Catalog)
+title: Development Commands (nephilim)
 status: active
 created: 2026-04-19
 last_reviewed_on: 2026-04-19
 review_in: 6 months
-applies_to: MCP_Catalog
+applies_to: nephilim
 ---
 
 # Development Commands

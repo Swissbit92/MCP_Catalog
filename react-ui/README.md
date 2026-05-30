@@ -1,6 +1,6 @@
-# React UI - MCP Catalog
+# React UI - NEPHILIM
 
-This React application provides the frontend interface for the MCP Catalog project. Built with Create React App, TypeScript, and modern React patterns.
+This React application provides the frontend interface for the NEPHILIM project. Built with Create React App, TypeScript, and modern React patterns.
 
 ## Security Status
 

@@ -1,11 +1,29 @@
 # Changelog
 
-All notable changes to the MCP Catalog project will be documented in this file.
+All notable changes to the NEPHILIM project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- **Lore wiki** (`docs/lore/wiki/`) — typed-markdown knowledge graph for NEPHILIM worldbuilding. 30 entity files (6 personas, 6 houses, 5 ranks, 6 locations, antagonist Kenoma + Sybil Choir, resonance/ascension concepts, 7 non-canon expansion entities) with YAML frontmatter declaring `entity_type`, `entity_id`, `canon`, `aliases`, and typed `relationships`. Canonical source of truth for entity facts; conflicting house/antagonist names from prose docs preserved as `aliases`.
+- **Lore wiki engine** (`scripts/utils/lore_wiki.py`) — `check` (validates schema, relationship resolution, bidirectional inverses, alias collisions, persona-JSON consistency, prose name-drift; CI-gateable), `index` (regenerates `wiki/index.md`), `graph` (derives a networkx-style JSON graph). No new dependencies.
+- **Lore sync tool** (`scripts/utils/lore_sync.py`) — one-way `wiki/personas/*.md` → `personas/nephilim_*.json lore[]` sync. `--dry-run` and `--persona` flags. Clears CV summary cache on change. Makes the wiki the canonical authoring surface for persona lore.
+- **Wiki runtime injection** (`src/coordinator/lore_loader.py`) — loads and caches wiki entity bodies (persona + house + location) for each NEPHILIM persona at prompt-build time; injected into `<world_context>` block via `prompt_builder.py`. No new dependencies (pathlib + re only). Non-NEPHILIM personas (Wanderer/Gojo) unaffected.
+- **Enriched persona lore arrays** — all 6 `personas/nephilim_*.json` `lore[]` arrays rewritten from rich Chronicle + Lore Bible material. Items now name specific canon entities, encode relationship tensions (Prime Covenant, Electric Rivalry, Compassion Triangle, Exile's Garden), and capture philosophical contradictions. CV summaries cleared to force regeneration on next chat.
+- **[ADR-001](docs/decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md)** — records typed-markdown-wiki decision and Neo4j rejection.
+- **56 new unit tests** — `tests/backend/lore/` (20 lore_wiki + 26 lore_sync) + `tests/backend/coordinator/test_lore_loader.py` (10).
+
+### Changed
+
+- `src/coordinator/prompt_builder.py` — `_build_nephilim_lore_block` now appends wiki entity context (additive; existing `nephilim_lore` dict fields preserved).
+- `docs/lore/README.md` — declares `wiki/` the canonical source of truth.
+- `docs/lore/NEPHILIM_LORE.md` — canon-note banner pointing to the wiki.
+- `CLAUDE.md` — wiki section updated to note runtime relevance.
+
 
 ### Celestial Order Remap (Feb 2026)
 - **Celestial Order System**: Replaced gacha rarity vocabulary with lore-aligned Celestial Order tiers:
@@ -70,7 +88,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ✅ **Documentation Organization**: Moved 4 documentation files into categorized subdirectories
     - `docs/setup/` - DOCKER_QUICKSTART.md (moved from root)
     - `docs/development/` - ADDING_MCP_SERVERS.md, TESTING_GUIDE.md
-    - `docs/testing/` - PYTEST_BASELINE_REPORT.md
   - ✅ **Navigation Indices**: Created 5 comprehensive README.md files for easy discovery
     - `scripts/README.md` - Master index with quick reference to all script categories
     - `scripts/docker/README.md` - Docker scripts guide with usage examples and troubleshooting
@@ -206,7 +223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TypeScript Optimization** - Resolved all compilation errors, added proper type annotations, and ensured type-safe implementation across all components
 - **Performance Optimization** - Optimized particle rendering, reduced memory usage, and implemented hardware acceleration for smooth 60fps animations
 - **Accessibility Enhancements** - Added reduced motion support, keyboard navigation, and screen reader friendly descriptions
-- Initial project structure with MCP Coordinator backend and React UI frontend
+- Initial project structure with NEPHILIM backend and React UI frontend
 - Persona-based chat interface with multiple character options
 - Gacha-style character selection with card reveal animations
 - Static character browsing with search functionality
@@ -270,7 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-01-XX
 
 ### Added
-- Basic MCP Coordinator architecture
+- Basic NEPHILIM coordinator architecture
 - React UI with routing (Home, Character Selection, Chat)
 - Character card components with rarity styling
 - API integration between frontend and backend

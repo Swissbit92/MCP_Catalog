@@ -2,11 +2,8 @@ import { test, expect, Page } from '@playwright/test'
 import path from 'path'
 import fs from 'fs'
 
-// Absolute path to the mockup
-const MOCKUP_PATH =
-  'file:///C:/Users/rzehn/desktop/MCP_catalog/react-ui/celestial-order-mockup.html'
-const SCREENSHOTS_DIR =
-  'C:/Users/rzehn/desktop/MCP_catalog/react-ui/tests/screenshots'
+const MOCKUP_PATH = 'file://' + path.join(__dirname, '..', 'celestial-order-mockup.html')
+const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots')
 
 // Helper: ensure screenshots directory exists
 function ensureScreenshotsDir() {

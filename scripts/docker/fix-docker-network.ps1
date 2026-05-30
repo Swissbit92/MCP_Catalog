@@ -67,7 +67,7 @@ function Test-Environment {
     Write-Success "Docker is running"
 
     if (-not (Test-DockerComposeFile)) {
-        Write-Error "docker-compose.yml not found. Please run this script from the MCP_Catalog directory."
+        Write-Error "docker-compose.yml not found. Please run this script from the nephilim directory."
         exit 1
     }
     Write-Success "Found docker-compose.yml"
@@ -171,7 +171,7 @@ function Invoke-NuclearFix {
     Write-Success "Containers removed"
 
     Write-Info "Step 3/7: Removing MCP network..."
-    docker network rm mcp_catalog_mcp-network 2>$null
+    docker network rm nephilim_mcp-network 2>$null
     Write-Success "Network removed"
 
     Write-Info "Step 4/7: Pruning all orphaned networks..."

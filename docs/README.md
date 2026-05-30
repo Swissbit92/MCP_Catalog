@@ -4,12 +4,12 @@ status: active
 created: 2026-04-03
 last_reviewed_on: 2026-04-19
 review_in: 6 months
-applies_to: MCP_Catalog
+applies_to: nephilim
 ---
 
 # Documentation Index
 
-Organized documentation for MCP Coordinator development and deployment.
+Organized documentation for NEPHILIM development and deployment.
 
 ## Directory Structure
 

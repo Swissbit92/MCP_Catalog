@@ -2,7 +2,7 @@
 """Check which server.py file is being imported."""
 
 import sys
-sys.path.insert(0, "C:\\Users\\rzehn\\desktop\\MCP_Catalog")
+sys.path.insert(0, "C:\\Users\\rzehn\\desktop\\nephilim")
 
 from src.coordinator import server
 
