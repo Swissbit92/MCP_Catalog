@@ -7,7 +7,7 @@ Automated installation scripts for local development environment.
 Before running setup scripts, ensure you have:
 
 - **Python 3.8+**: `python --version`
-- **Node.js 16+**: `node --version`
+- **Node.js 20 LTS recommended** (react-scripts breaks on Node 17+ without the OpenSSL legacy flag, which is baked into react-ui/package.json): `node --version`
 - **pip**: `pip --version`
 - **npm**: `npm --version`
 
@@ -17,11 +17,6 @@ Before running setup scripts, ensure you have:
 ```bash
 chmod +x setup.sh
 ./setup.sh
-```
-
-**Windows:**
-```cmd
-setup.bat
 ```
 
 **What it installs:**
@@ -52,20 +47,9 @@ cd react-ui
 npm install
 ```
 
-## Backend Launcher (Windows Only)
+## Backend Launcher
 
-**start_backend.bat** - Windows-specific backend launcher
-
-```cmd
-start_backend.bat
-```
-
-**What it does:**
-- Starts FastAPI backend on port 8000
-- Enables auto-reload for development
-- Logs output to console
-
-**Note:** For unified startup (backend + frontend), use:
+For unified startup (backend + frontend), use:
 ```bash
 python ../utils/run_react.py
 ```
@@ -75,7 +59,7 @@ python ../utils/run_react.py
 **Python Packages Fail:**
 - Upgrade pip: `python -m pip install --upgrade pip`
 - Use virtual environment: `python -m venv venv && source venv/bin/activate`
-- Windows: `py -m venv venv && venv\Scripts\activate`
+- Windows: `py -m venv venv && venv\Scripts\activate` (Windows only)
 
 **npm Install Fails:**
 - Clear cache: `npm cache clean --force`
@@ -98,7 +82,7 @@ After setup completes:
 2. **Start Ollama:**
    ```bash
    ollama serve
-   ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+   ollama pull gemma2:9b-instruct-q5_K_M
    ```
 
 3. **Run Application:**

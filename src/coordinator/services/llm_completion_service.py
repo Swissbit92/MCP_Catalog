@@ -16,6 +16,7 @@ from langchain_ollama.llms import OllamaLLM
 from ollama._types import ResponseError
 
 from ..models.sampling_presets import SamplingConfig
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,15 @@ class LLMCompletionService:
             "base_url": base,
             "model": model,
             "temperature": temperature,
+            # num_ctx controls Ollama's runtime context window (KV-cache size).
+            # Without this, Ollama falls back to its own default (32K), ignoring
+            # MODEL_CONTEXT_WINDOW. See config.OllamaSettings.context_window.
+            "num_ctx": get_settings().ollama.context_window,
+            # keep_alive=-1 keeps the model loaded INDEFINITELY (always-warm) so a
+            # chat never pays a cold ~17GB reload (default is 5min idle). Chosen for
+            # the always-on desktop station: holds ~17GB RAM (fine on 48GB) and costs
+            # no heat/CPU — an idle resident model doesn't compute.
+            "keep_alive": -1,
         }
 
         # Apply sampling config if provided

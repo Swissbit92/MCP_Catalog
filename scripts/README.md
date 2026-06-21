@@ -14,15 +14,14 @@ scripts/
 ## Quick Reference
 
 ### Docker Scripts (`docker/`)
-- **Setup**: `setup-docker.sh`, `setup-docker.bat`, `setup-docker.ps1`
-- **Networking**: `fix-docker-network.ps1`, `fix-docker-network.bat`
+- **Setup**: `setup-docker.sh` (macOS/Linux), `setup-docker.ps1` (Windows)
+- **Networking**: `fix-docker-network.ps1`
 - **Validation**: `test_docker_setup.sh`, `test_docker_setup.ps1`
 
 See [docker/README.md](docker/README.md) for usage examples.
 
 ### Setup Scripts (`setup/`)
-- **Automated**: `setup.sh`, `setup.bat` - Install Python + React dependencies
-- **Backend**: `start_backend.bat` - Windows backend launcher
+- **Automated**: `setup.sh` (macOS/Linux) — Install Python + React dependencies
 
 See [setup/README.md](setup/README.md) for prerequisites.
 

@@ -11,9 +11,11 @@ import sys
 import io
 from pathlib import Path
 
-# Fix Windows console encoding for Unicode
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+# Fix Windows console encoding for Unicode (no-op on macOS/Linux; guarded so it
+# doesn't clobber pytest's stdout capture)
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent.parent.parent

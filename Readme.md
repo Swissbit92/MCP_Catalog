@@ -154,8 +154,9 @@
 - **APScheduler** for autonomous strategy execution
 
 ### AI/ML
-- **Ollama** local LLM server
-- **nchapman/gemma-2-9b-it-abliterated:9b** (9GB, validated Dec 2025)
+- **Ollama** local LLM server (native macOS — Metal GPU acceleration automatic via Apple Silicon)
+- **Magidonia-24B-v4.3 GGUF Q4_K_M** (daily-driver persona model — Mistral-Small-3.2-based uncensored roleplay finetune by TheDrummer, ~17 tok/s on Metal)
+- **gemma2:9b-instruct-q5_K_M** (lightweight fallback / smoke-test model; also the `config.py` default)
 - **nomic-embed-text:latest** for embeddings
 - **FAISS CPU** for vector search and semantic retrieval
 - **LangChain** for LLM orchestration
@@ -178,16 +179,16 @@
 | **Docker Desktop** | v24.0+ with Compose v2.0+ | [docker.com](https://docker.com) |
 | **Disk Space** | 15GB free | Images + models |
 | **RAM** | 8GB min, 16GB recommended | Ollama LLM inference |
-| **GPU** | NVIDIA RTX (optional) | CUDA acceleration |
+| **GPU** | Apple Silicon (Metal, built-in) | Metal GPU acceleration is automatic with native Ollama on macOS |
 
-### Local Development
+### Local Development (Mac Mini M4 Pro — primary deployment)
 
 | Component | Requirement | Notes |
 |-----------|-------------|-------|
-| **Python** | 3.11+ | [python.org](https://python.org) |
-| **Node.js** | v16+ with npm | [nodejs.org](https://nodejs.org) |
-| **Ollama** | Latest | [ollama.ai](https://ollama.ai) |
-| **GPU** | NVIDIA RTX 30/40 (optional) | 8GB+ VRAM recommended |
+| **Python** | 3.12+ | [python.org](https://python.org) |
+| **Node.js** | v18+ with npm (Node 25 needs `NODE_OPTIONS=--openssl-legacy-provider`, already baked into `package.json`) | [nodejs.org](https://nodejs.org) |
+| **Ollama** | Latest (native, not Docker) | [ollama.ai](https://ollama.ai) — Docker-on-Mac runs Ollama CPU-only |
+| **GPU** | Apple Silicon M4 Pro (Metal) | Metal GPU acceleration is automatic with native Ollama |
 
 ---
 
@@ -224,7 +225,7 @@ The script will start all containers, download the 9GB AI model, and open your b
 docker compose --env-file .env.docker up -d
 
 # 2. Pull LLM model (~9GB, takes 5-10 minutes)
-docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+docker exec -it ai-companion-brain ollama pull gemma2:9b-instruct-q5_K_M
 
 # 3. Pull embedding model (for memory features)
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
@@ -233,7 +234,6 @@ docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 python scripts/docker/verify_startup.py
 
 # 5. Open browser
-start http://localhost:3000    # Windows
 open http://localhost:3000     # Mac/Linux
 ```
 
@@ -332,9 +332,10 @@ cd react-ui && npm install && cd ..
 ### Step 2: Setup Ollama
 
 ```bash
-ollama serve                                               # Start service
-ollama pull nchapman/gemma-2-9b-it-abliterated:9b         # Main model (9GB)
-ollama pull nomic-embed-text:latest                        # Embeddings (RAG memory)
+ollama serve                                                                              # Start service (native macOS — Metal GPU automatic)
+ollama pull hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M                             # Daily-driver model (~17 tok/s on Metal)
+ollama pull gemma2:9b-instruct-q5_K_M                                                    # Fallback / smoke-test model
+ollama pull nomic-embed-text:latest                                                       # Embeddings (RAG memory)
 ```
 
 ### Step 3: Configure Environment
@@ -344,14 +345,15 @@ Create a `.env` file in the project root:
 ```bash
 # Required
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=gemma2:9b-instruct-q5_K_M
+PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M   # Daily driver; gemma2:9b-instruct-q5_K_M = fallback
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
+MODEL_CONTEXT_WINDOW=16384            # Wired to Ollama num_ctx; model max is 131K
 
 # Authentication
-AUTH_REQUIRED=true                    # Set false for no-login dev mode
-GOOGLE_CLIENT_ID=your-client-id      # From Google Cloud Console
+AUTH_REQUIRED=false                   # false = auto-login via /auth/refresh bypass (local single-user)
+GOOGLE_CLIENT_ID=your-client-id      # From Google Cloud Console (Phase 8 / future)
 
 # Optional: Brave Search
 BRAVE_API_KEY=
@@ -370,15 +372,44 @@ MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest
 
 ### Step 4: Run
 
+#### Active development (two terminals)
+
 ```bash
 # Terminal 1: Backend
-python -m uvicorn src.coordinator.server:app --reload --port 8000
+.venv/bin/python -m uvicorn src.coordinator.server:app --reload --port 8000
 
-# Terminal 2: Frontend
-cd react-ui && PORT=3001 npx react-scripts start
+# Terminal 2: Frontend dev server
+cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into script
 ```
 
 **Access at:** `http://localhost:3001`
+
+#### Always-on (launchd) — production path on Mac Mini
+
+Nephilim runs as two persistent launchd services:
+
+```bash
+# Rebuild frontend first
+cd react-ui && npm run build
+
+# Install / reinstall launchd plists
+bash scripts/launchd/install.sh
+```
+
+- `com.nephilim.backend` — uvicorn on `:8000` (RunAtLoad + KeepAlive)
+- `com.nephilim.frontend` — `scripts/serve_frontend.py` on `:3001` (serves the static build + reverse-proxies API paths to `:8000`)
+
+**Access:** Frontend `http://localhost:3001` · Backend `http://localhost:8000` · API docs `http://localhost:8000/docs`
+
+#### Remote access (SSH tunnel)
+
+Reachable from another machine without physical access:
+
+```bash
+ssh -L 3001:localhost:3001 -L 8000:localhost:8000 <user>@<mac-mini>
+# Then open http://localhost:3001 on the remote machine
+# Both ports are required (chat uses absolute :8000 URL; auth proxies via :3001)
+```
 
 ---
 
@@ -407,7 +438,9 @@ cd react-ui && PORT=3001 npx react-scripts start
                                     ▼
                     ┌─────────────────────────────────────────┐
                     │   Ollama LLM (Local Inference)           │
-                    │  • nchapman/gemma-2-9b (9B params)       │
+                    │  • Magidonia-24B-v4.3 GGUF Q4_K_M        │
+                    │    (daily driver, Metal GPU, ~17 tok/s)  │
+                    │  • gemma2:9b-instruct-q5_K_M (fallback)  │
                     │  • nomic-embed-text (embeddings)          │
                     └─────────────────────────────────────────┘
 ```
@@ -421,7 +454,7 @@ cd react-ui && PORT=3001 npx react-scripts start
 - **Jupiter MCP**: Solana DEX swaps via Docker container, autonomous strategies (DCA, RSI)
 - **SQLite**: Chat sessions, messages, summaries, user accounts, wallets, trade proposals
 - **FAISS**: Vector database for semantic memory search
-- **Ollama**: Local LLM server with GPU acceleration
+- **Ollama**: Local LLM server (native macOS = Metal GPU; Docker-on-Mac = CPU-only)
 
 ### Authentication Flow
 
@@ -689,7 +722,7 @@ See `CLAUDE.md` for project structure, coding style, and conventions.
 - **Resource Usage**: Ollama LLM requires ~4-8GB RAM; models are 4-10GB on disk
 - **Data Persistence**: All data in `./data/` (Docker) or `chats.db` (local)
 - **Backups**: Copy `data/chats.db` to back up all conversations and user data
-- **GPU Optional**: NVIDIA RTX recommended but CPU inference works (slower)
+- **GPU**: Metal acceleration is automatic via native Ollama on macOS Apple Silicon. Do NOT run Ollama inside Docker on Mac — Docker-on-Mac runs Ollama CPU-only.
 - **Auth Bypass**: Set `AUTH_REQUIRED=false` in `.env` for offline/dev use without Google
 
 ---

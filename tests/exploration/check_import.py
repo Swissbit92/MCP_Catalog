@@ -2,7 +2,8 @@
 """Check which server.py file is being imported."""
 
 import sys
-sys.path.insert(0, "C:\\Users\\rzehn\\desktop\\nephilim")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.coordinator import server
 

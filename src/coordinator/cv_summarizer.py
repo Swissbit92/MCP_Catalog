@@ -31,7 +31,7 @@ def _llm() -> OllamaLLM:
     """Create Ollama LLM client for CV summary generation."""
     cfg = get_settings().ollama
     assert_model_available(cfg.base, cfg.model)
-    return OllamaLLM(base_url=cfg.base, model=cfg.model, temperature=cfg.temperature)
+    return OllamaLLM(base_url=cfg.base, model=cfg.model, temperature=cfg.temperature, num_ctx=cfg.context_window, keep_alive=-1)
 
 
 # ---------------- Token counting and truncation ----------------

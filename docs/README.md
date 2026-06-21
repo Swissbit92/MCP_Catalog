@@ -37,11 +37,11 @@ docs/
 
 **Quick start:**
 ```bash
+# macOS/Linux
+./scripts/docker/setup-docker.sh
+
 # Windows PowerShell
 .\scripts\docker\setup-docker.ps1
-
-# Linux/Mac
-./scripts/docker/setup-docker.sh
 ```
 
 ## Development

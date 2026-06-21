@@ -17,22 +17,25 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 
 Full command reference: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — Docker, local dev, testing, persona test suite, Ollama setup.
 
-**Access:** Frontend `http://localhost:3000` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
+**Access (local dev, macOS):** Frontend `http://localhost:3001` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
 
 Quick hits:
 
 ```bash
-# Docker start (most common)
-docker-compose --env-file .env.docker up -d
+# Local dev — PRIMARY on macOS (native Ollama + Metal GPU). Backend, then frontend:
+.venv/bin/python -m uvicorn src.coordinator.server:app --port 8000
+cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into the script (Node 17+)
 
 # Full persona test suite (primary quality gate, ~60 min)
-python tests/manual/comprehensive_persona_test.py
+.venv/bin/python tests/manual/comprehensive_persona_test.py
 
-# Post-rebuild verification (MANDATORY)
-python scripts/docker/verify_startup.py
+# Docker (full stack + MCP containers; for Linux/NVIDIA GPU — runs Ollama CPU-only on Mac)
+docker-compose --env-file .env.docker up -d
 ```
 
-> **⚠️ Docker serves legacy UI unless rebuilt.** For Phase 7 NEPHILIM UI, use local dev per `docs/DEVELOPMENT.md`.
+> **⚠️ macOS:** run Ollama natively for Metal GPU acceleration — Docker-on-Mac runs Ollama CPU-only. Docker also serves the legacy UI unless rebuilt, so use local dev for the Phase 7 NEPHILIM UI (`docs/DEVELOPMENT.md`).
+
+**Always-on (launchd):** `com.nephilim.backend` (uvicorn :8000) + `com.nephilim.frontend` (static `scripts/serve_frontend.py` :3001) run under launchd with RunAtLoad+KeepAlive. Reinstall after changes: `scripts/launchd/install.sh` (rebuild frontend first: `cd react-ui && npm run build`). Migration cleanup punch list: `docs/MAC_MIGRATION_CLEANUP.md`.
 
 ## Project Structure
 
@@ -93,7 +96,7 @@ utils/                         # animations.ts, helpers, celestialOrder.ts
 Required in `.env`:
 ```bash
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=gemma2:9b-instruct-q5_K_M
+PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M   # daily driver; gemma2:9b-instruct-q5_K_M = fallback/smoke-test
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas

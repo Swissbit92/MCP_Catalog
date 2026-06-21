@@ -63,11 +63,17 @@ class SamplingConfig:
 # NAMED PRESETS
 # ============================================================================
 
+# Re-tuned 2026-06-21 for Magidonia-24B-v4.3 (Mistral-Small-3.2 base). vs the
+# original gemma2:9b values: base temperatures lowered (Mistral-Small degrades
+# above ~1.1 temp, unlike Gemma) and repeat_penalty softened to ~1.03-1.08
+# (Mistral is sensitive to >1.1 — causes odd word-avoidance). min_p centered on
+# ~0.05. NOTE: the nephilim personas override `temperature` per-JSON (0.6-0.95),
+# so for them the impactful change here is the inherited min_p / repeat_penalty.
 PRESETS: Dict[str, SamplingConfig] = {
     "creative": SamplingConfig(
-        temperature=1.2,
+        temperature=1.0,
         top_k=50,
-        top_p=0.92,
+        top_p=0.95,
         repeat_penalty=1.05,
         min_p=0.05,
         name="creative",
@@ -75,29 +81,29 @@ PRESETS: Dict[str, SamplingConfig] = {
     ),
 
     "balanced": SamplingConfig(
-        temperature=0.9,
+        temperature=0.8,
         top_k=40,
-        top_p=0.90,
-        repeat_penalty=1.08,
-        min_p=0.08,
+        top_p=0.95,
+        repeat_penalty=1.05,
+        min_p=0.05,
         name="balanced",
         description="Balanced creativity and coherence for general conversation"
     ),
 
     "precise": SamplingConfig(
-        temperature=0.5,
+        temperature=0.4,
         top_k=30,
-        top_p=0.85,
-        repeat_penalty=1.12,
-        min_p=0.12,
+        top_p=0.90,
+        repeat_penalty=1.05,
+        min_p=0.08,
         name="precise",
         description="High precision for factual answers, technical explanations"
     ),
 
     "chaotic": SamplingConfig(
-        temperature=1.5,
+        temperature=1.1,
         top_k=60,
-        top_p=0.95,
+        top_p=0.97,
         repeat_penalty=1.03,
         min_p=0.03,
         name="chaotic",
@@ -105,11 +111,11 @@ PRESETS: Dict[str, SamplingConfig] = {
     ),
 
     "deterministic": SamplingConfig(
-        temperature=0.1,
+        temperature=0.15,
         top_k=10,
-        top_p=0.5,
-        repeat_penalty=1.15,
-        min_p=0.15,
+        top_p=0.7,
+        repeat_penalty=1.08,
+        min_p=0.1,
         name="deterministic",
         description="Near-deterministic output for consistent, reproducible responses"
     ),

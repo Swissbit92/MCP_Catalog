@@ -31,7 +31,7 @@ class OllamaSettings(BaseSettings):
         alias="OLLAMA_BASE"
     )
     model: str = Field(
-        default="mistral:latest",
+        default="gemma2:9b-instruct-q5_K_M",
         description="Default model for persona responses (fallback if PERSONA_MODEL not set)",
         alias="PERSONA_MODEL"
     )

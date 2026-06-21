@@ -32,7 +32,7 @@ class EpisodicMemoryRAG:
     - Local-first (no external API calls)
     - Semantic similarity search
     - Per-session vector stores
-    - Automatic GPU detection (CPU fallback)
+    - CPU FAISS (faiss-cpu); the CUDA GPU branch is inert on Apple Silicon
     """
 
     def __init__(self, embedding_model: Optional[str] = None):
@@ -49,7 +49,10 @@ class EpisodicMemoryRAG:
             base_url=get_settings().ollama.base
         )
         self.vectorstores: Dict[str, FAISS] = {}  # session_id -> FAISS instance
-        self.use_gpu = faiss.get_num_gpus() > 0
+        # faiss.get_num_gpus() is CUDA-only — always 0 with faiss-cpu. On Apple Silicon
+        # GPU inference goes through native Ollama, not FAISS-on-Metal. The GPU transfer
+        # branch below is kept for Linux/NVIDIA deployments; inert on Mac.
+        self.use_gpu = getattr(faiss, "get_num_gpus", lambda: 0)() > 0
 
         if self.use_gpu:
             logger.info(f"🚀 FAISS GPU acceleration enabled: {faiss.get_num_gpus()} device(s)")
