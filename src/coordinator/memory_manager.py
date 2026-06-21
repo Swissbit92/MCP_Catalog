@@ -9,7 +9,7 @@ This module implements Phase 2 of the Persona Memory Enhancement project:
 
 from __future__ import annotations
 from typing import List, Dict, Optional, Any, TYPE_CHECKING
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 from .llm_client import estimate_tokens

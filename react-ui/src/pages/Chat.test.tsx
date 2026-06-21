@@ -154,7 +154,7 @@ describe('Chat', () => {
       image: 'eeva.png',
       rarity: 'legendary',
       celestial_order: 'archon',
-      mcp_access: ['brave_search', 'mongodb'],
+      mcp_access: ['brave_search'],
     },
   ];
 
@@ -621,7 +621,7 @@ describe('Chat', () => {
       bg: 'images/personas/eeva/bg.png',
       rarity: 'legendary',
       celestial_order: 'archon',
-      mcp_access: ['brave_search', 'mongodb'],
+      mcp_access: ['brave_search'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -650,7 +650,7 @@ describe('Chat', () => {
       ...mockPersonas[0],
       rarity: 'legendary',
       celestial_order: 'archon',
-      mcp_access: ['brave_search', 'mongodb'],
+      mcp_access: ['brave_search'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -681,7 +681,7 @@ describe('Chat', () => {
       bg: 'personas/eeva/bg.png',
       rarity: 'legendary',
       celestial_order: 'archon',
-      mcp_access: ['brave_search', 'mongodb'],
+      mcp_access: ['brave_search'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -714,7 +714,7 @@ describe('Chat', () => {
       ...mockPersonas[0],
       rarity: 'legendary',
       celestial_order: 'archon',
-      mcp_access: ['brave_search', 'mongodb'],
+      mcp_access: ['brave_search'],
     };
 
     mockUsePersona.mockReturnValue({
@@ -746,7 +746,7 @@ describe('Chat', () => {
       ...mockPersonas[0],
       rarity: 'legendary',
       celestial_order: 'archon',
-      mcp_access: ['brave_search', 'mongodb'],
+      mcp_access: ['brave_search'],
     };
 
     mockUsePersona.mockReturnValue({

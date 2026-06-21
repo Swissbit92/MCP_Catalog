@@ -6,7 +6,6 @@ Loads and validates golden question-answer pairs from JSON files.
 from __future__ import annotations
 
 import json
-import os
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path

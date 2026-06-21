@@ -111,11 +111,11 @@ class ImportChatBody(BaseModel):
 
 class ResponseMetadata(BaseModel):
     """Metadata about the response source."""
-    source_type: str = "llm"  # "llm", "brave_mcp", "mongodb_mcp", "multi_mcp"
+    source_type: str = "llm"  # "llm", "brave_mcp"
     tools_used: List[str] = []
     cache_status: Optional[str] = None  # "hit", "miss", None
     data_timestamp: Optional[str] = None
-    latency_breakdown: Optional[Dict[str, int]] = None  # {"llm": 3000, "mongodb": 500}
+    latency_breakdown: Optional[Dict[str, int]] = None  # {"llm": 3000, "brave": 500}
     # PHASE 2: Multi-message response fields
     is_multi_message: bool = False
     message_count: int = 1

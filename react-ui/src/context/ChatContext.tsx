@@ -40,7 +40,7 @@ export interface ChatContextType {
   importSessionData: (exportData: ExportData) => Promise<ChatSession>
   // Tool status
   isSearching: boolean
-  toolType: 'brave' | 'mongodb' | 'wallet' | 'none'
+  toolType: 'brave' | 'wallet' | 'none'
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -52,7 +52,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [isSearching, setIsSearching] = useState<boolean>(false)
-  const [toolType, setToolType] = useState<'brave' | 'mongodb' | 'wallet' | 'none'>('none')
+  const [toolType, setToolType] = useState<'brave' | 'wallet' | 'none'>('none')
 
   const loadSessions = useCallback(async () => {
     try {
@@ -193,9 +193,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setMessages(prev => [...prev, userMessage])
 
       // Use heuristic to decide which indicator to show
-      // Show ToolIndicator for brave/mongodb/wallet, TypingIndicator otherwise
-      if ((prediction.toolType === 'brave' || prediction.toolType === 'mongodb' || prediction.toolType === 'wallet') && prediction.confidence === 'high') {
-        const toolNames: Record<string, string> = { brave: 'Web Search', mongodb: 'MongoDB', wallet: 'Wallet' }
+      // Show ToolIndicator for brave/wallet, TypingIndicator otherwise
+      if ((prediction.toolType === 'brave' || prediction.toolType === 'wallet') && prediction.confidence === 'high') {
+        const toolNames: Record<string, string> = { brave: 'Web Search', wallet: 'Wallet' }
         const toolName = toolNames[prediction.toolType] || prediction.toolType
         console.log(`[ChatContext] Showing ToolIndicator (${toolName}, high confidence prediction)`)
         setIsSearching(true)

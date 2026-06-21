@@ -12,10 +12,8 @@ from typing import Dict, List, Optional, Any
 
 from .models.mcp_models import (
     SearchResult,
-    MCPError,
     MCPConnectionError,
     MCPTimeoutError,
-    MCPResponseError,
 )
 
 # Configure logging
@@ -311,7 +309,7 @@ class BraveMCPClientStdio:
                                             age=web_result.get("age")
                                         ))
 
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 logger.warning(f"Failed to parse line as JSON: {line[:100]}")
                 continue
 

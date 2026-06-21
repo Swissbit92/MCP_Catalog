@@ -4,7 +4,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import Any, List, Dict, Optional, Tuple
+from typing import Any, List, Dict, Optional
 import sqlite3
 from sqlalchemy import create_engine, pool
 

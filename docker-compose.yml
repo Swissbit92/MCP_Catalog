@@ -64,10 +64,6 @@ services:
       BRAVE_MAX_RESULTS: ${BRAVE_MAX_RESULTS:-5}
       BRAVE_MCP_URL: http://brave-mcp:8080  # HTTP transport to MCP service
 
-      # MongoDB MCP (optional - requires connection URI)
-      MONGODB_URI: ${MONGODB_URI:-}
-      MONGODB_ENABLED: ${MONGODB_ENABLED:-false}
-      MONGODB_MCP_URL: http://mongodb-mcp:3000  # HTTP transport to MCP service
 
       # Authentication (Google OAuth + JWT)
       AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
@@ -84,7 +80,6 @@ services:
       JUPITER_SLIPPAGE_BPS: ${JUPITER_SLIPPAGE_BPS:-50}
       JUPITER_TIMEOUT: ${JUPITER_TIMEOUT:-30}
       STRATEGIES_DIR: strategies
-      MONGODB_WRITE_URI: ${MONGODB_WRITE_URI:-}
 
       # Email Trade Notifications (optional)
       EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
@@ -127,7 +122,6 @@ services:
       #
       # Resource limits applied:
       # - Brave MCP (ephemeral): 256MB RAM, 0.5 CPU, 100 PIDs max
-      # - MongoDB MCP (long-running): 512MB RAM, 1.0 CPU, 100 PIDs max
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8000:8000"
@@ -169,24 +163,22 @@ services:
     restart: unless-stopped
 
   # =============================================================================
-  # MCP Services (Brave Search, MongoDB)
+  # MCP Services (Brave Search)
   # =============================================================================
   # No longer run as long-lived services in docker-compose.
   #
   # Using ephemeral container pattern: backend spawns `docker run -i --rm` on-demand
   # - Brave MCP: New container per search (2-3s lifecycle)
-  # - MongoDB MCP: Long-running container, auto-restarts if parent dies
   #
   # SECURITY (Jan 2026):
   # All MCP containers have resource limits to prevent DoS attacks:
-  # - Memory limits (256MB-512MB)
-  # - CPU limits (0.5-1.0 cores)
+  # - Memory limits (256MB)
+  # - CPU limits (0.5 cores)
   # - PID limits (100 max)
   # - Container labels for orphan detection
   #
   # See:
   # - src/coordinator/mcp_client_stdio.py (Brave MCP)
-  # - src/coordinator/mongodb/docker_client.py (MongoDB MCP)
   # - scripts/cleanup_orphan_containers.py (orphan cleanup)
 
 volumes:

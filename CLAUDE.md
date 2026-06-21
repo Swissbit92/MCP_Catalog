@@ -11,7 +11,7 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 - **Frontend**: React 19 + TypeScript with Framer Motion animations and Tailwind CSS
 - **Persistence**: SQLite database (`chats.db`) for sessions, messages, and collections
 - **Personas**: JSON-defined characters in `personas/` with lore, voice, behavior, and expertise
-- **MCP Integration**: Brave Search (web) and MongoDB (trading data) via Docker STDIO containers
+- **MCP Integration**: Brave Search (web) via ephemeral Docker STDIO containers; Solana/Jupiter wallet via long-running Docker container
 
 ## Development Commands
 
@@ -51,7 +51,6 @@ repositories/                  # SQLite data access — ALL extend BaseRepositor
                                #   user_profile, user (OAuth), trade_proposal, wallet
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
 tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
-mongodb/                       # MongoDB MCP client
 ```
 
 **Key files:**
@@ -60,7 +59,7 @@ mongodb/                       # MongoDB MCP client
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search
-- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
+- `tools/intent_classifier.py` - Query intent classification (wallet, brave, llm) with follow-up detection
 - `tools/keywords.py` - Keyword dictionaries for intent classification routing
 
 ### Frontend (`react-ui/src/`)
@@ -104,7 +103,6 @@ PERSONA_DIR=personas
 
 Optional (see `.env.docker` for full list):
 - `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access` in persona JSON)
-- `MONGODB_URI` - Trading data (access controlled per-persona via `mcp_access` in persona JSON)
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings
 
 ## Code Style
@@ -142,20 +140,20 @@ Optional (see `.env.docker` for full list):
 2. User message → POST `/sessions/{session_id}/chat` with persona, message
 3. Backend builds system prompt from persona JSON + cached CV summary (XML-tagged sections)
 4. For wallet-capable personas: ground-truth wallet state injected into system prompt (anti-hallucination)
-5. Intent classifier routes query → wallet / brave / mongodb / pure LLM
+5. Intent classifier routes query → wallet / brave / pure LLM
 6. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
 7. Post-processor strips leaked tool names via regex, enforces first-person
 8. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
-- **Long-Running (MongoDB):** Container stays alive for multiple requests
+- **Long-Running (Jupiter/Solana):** Container stays alive for wallet operations
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
 
 ### MCP Query Routing Pipeline
 Queries flow through a two-layer classification system:
 
-1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which tool to use (web/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
 2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
 
 **Anti-hallucination guards:**
@@ -166,12 +164,12 @@ Queries flow through a two-layer classification system:
 ## Important Implementation Details
 
 ### Celestial Order & Per-Persona MCP Access
-MCP access is now controlled per-persona via the `mcp_access` field in persona JSONs, with legacy rarity-based env var fallback:
-- **E.E.V.A.** (Archon): Brave + MongoDB (all access)
-- **Aegis** (Warden): Brave only (productivity needs web, not trading)
-- **Aurora** (Warden): Brave + MongoDB (Oracle gazes into data)
-- **Solace** (Warden): Brave only (empathy needs resources, not trading)
-- **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
+MCP access is controlled per-persona via the `mcp_access` field in persona JSONs:
+- **E.E.V.A.** (Archon): Brave + Solana wallet
+- **Aegis** (Warden): Brave only (productivity needs web)
+- **Aurora** (Warden): Brave only (Oracle insight via web)
+- **Solace** (Warden): Brave only (empathy needs resources)
+- **Cipher** (Sage): Brave only (Maven's research is web-based)
 - **Nyx** (Sage): None (creativity flows from imagination)
 - **Wanderer personas** (Gojo, etc.): None (pure LLM)
 

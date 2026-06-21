@@ -58,7 +58,7 @@ export interface RankCeremony {
 
 // Response metadata for MCP data sources
 export interface ResponseMetadata {
-  source_type: 'llm' | 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp' | 'wallet_mcp' | 'wallet_proposal' | 'wallet_flow';
+  source_type: 'llm' | 'brave_mcp' | 'wallet_mcp' | 'wallet_proposal' | 'wallet_flow';
   tools_used: string[];
   cache_status?: 'hit' | 'miss' | null;
   data_timestamp?: string | null;

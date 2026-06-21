@@ -29,7 +29,7 @@ class StrategyActionBody(BaseModel):
 @router.post("/confirm/{proposal_id}")
 async def confirm_trade(proposal_id: str):
     """Confirm an ad-hoc trade proposal. Executes the swap via Jupiter MCP."""
-    from ..startup import get_trade_proposal_repo, get_jupiter_ops, get_wallet_execution_service
+    from ..startup import get_trade_proposal_repo, get_wallet_execution_service
 
     proposal_repo = get_trade_proposal_repo()
     proposal_record = proposal_repo.get_proposal(proposal_id)

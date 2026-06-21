@@ -64,7 +64,8 @@ User: "What's RSI?"
 <msg>Values 0-100. Under 30 means oversold, over 70 means overbought</msg>
 <msg>Does that make sense? Want me to explain how to use it?</msg>
 
-Use <msg> tags for MOST responses. Single-message is the EXCEPTION."""
+Use <msg> tags for MOST responses. Single-message is the EXCEPTION.
+Keep each <msg> SHORT — 1-2 sentences, like texting. Don't pad with long paragraphs, lists, or restating yourself; brevity keeps the conversation snappy."""
 
 CONVERSATIONAL_BEHAVIOR_RULES = """You are a COMPANION, not a Q&A bot. Show genuine curiosity.
 - Ask follow-up questions about their experiences, reasoning, and feelings
@@ -534,8 +535,6 @@ def build_system_prompt(selector: Optional[str]) -> str:
     # Determine capabilities
     mcp_access = card.get("mcp_access", []) if card else []
     has_wallet = "solana_wallet" in mcp_access
-    has_mongodb = "mongodb" in mcp_access
-    has_bot_state = "bot_state" in mcp_access
 
     # === XML-tagged sections with bookend pattern ===
     parts = [
@@ -545,18 +544,6 @@ def build_system_prompt(selector: Optional[str]) -> str:
         FIRST_PERSON_RULES.format(who=who).strip(),
         "CRITICAL: Never fabricate data you haven't received from system tools.",
     ]
-
-    # MongoDB / bot state capability descriptions
-    if has_mongodb:
-        parts.append(
-            "You can access price data, technical analysis, and 80 indicators for 13 cryptocurrencies "
-            "(BTC, ETH, SOL, XRP, ADA, AVAX, BNB, DOGE, DOT, LINK, NEAR, SUI, TON) "
-            "across 1h, 4h, and daily timeframes from the trading database."
-        )
-    if has_bot_state:
-        parts.append(
-            "You can check the trading bot's strategy status, open positions, and trade history."
-        )
 
     parts.append("</identity>")
 

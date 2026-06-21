@@ -11,11 +11,7 @@ from dataclasses import dataclass
 
 from .keywords import NO_SEARCH_KEYWORDS, SEARCH_KEYWORDS
 from .intent_classifier import QueryIntent, classify_query_intent
-from .tool_generators import (
-    get_brave_search_tool,
-    get_mongodb_tools,
-    get_bot_state_tools,
-)
+from .tool_generators import get_brave_search_tool
 
 
 @dataclass
@@ -160,22 +156,13 @@ def get_tools_for_persona(
         # Per-persona MCP access (from persona JSON mcp_access field)
         if "brave_search" in mcp_access:
             tools.append(get_brave_search_tool())
-        if "mongodb" in mcp_access:
-            tools.extend(get_mongodb_tools())
-        if "bot_state" in mcp_access:
-            tools.extend(get_bot_state_tools())
         if "solana_wallet" in mcp_access:
             from .wallet_tool_generators import get_wallet_tools
             tools.extend(get_wallet_tools())
     else:
         # Fallback: rarity-based access for personas that have no mcp_access field.
-        # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026)
-        # because they were never read — all current personas define mcp_access explicitly.
-        # These hardcoded sets are intentional safety nets for edge-cases.
         if persona_rarity.lower() in {"rare", "epic", "legendary"}:
             tools.append(get_brave_search_tool())
-        if persona_rarity.lower() in {"epic", "legendary"}:
-            tools.extend(get_mongodb_tools())
 
     return tools
 
@@ -207,18 +194,6 @@ def get_tools_for_query(
 
     if intent == QueryIntent.NEEDS_WEB_SEARCH:
         tools.append(get_brave_search_tool())
-
-    elif intent == QueryIntent.NEEDS_MONGODB:
-        tools.extend(get_mongodb_tools())
-        # Include bot state tools if persona has access and query matches bot keywords
-        if mcp_access and "bot_state" in mcp_access:
-            from .keywords import BOT_STATE_KEYWORDS
-            if any(kw in query.lower() for kw in BOT_STATE_KEYWORDS):
-                tools.extend(get_bot_state_tools())
-
-    elif intent == QueryIntent.NEEDS_BOTH:
-        tools.append(get_brave_search_tool())
-        tools.extend(get_mongodb_tools())
 
     elif intent == QueryIntent.NEEDS_WALLET:
         from .wallet_tool_generators import get_wallet_tools

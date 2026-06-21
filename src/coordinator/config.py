@@ -11,10 +11,8 @@ Phase 1.2 of Persona Quality Enhancement Roadmap.
 
 from __future__ import annotations
 
-import os
 import logging
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -56,6 +54,18 @@ class OllamaSettings(BaseSettings):
         le=131072,
         description="Model context window size in tokens",
         alias="MODEL_CONTEXT_WINDOW"
+    )
+    max_output_tokens: int = Field(
+        default=400,
+        ge=64,
+        le=4096,
+        description=(
+            "Hard cap on generated tokens per turn (Ollama num_predict). Turn latency "
+            "is ~linear in output tokens (~16 tok/s on the 24B), so an unbounded reply "
+            "can run 30s+. Generous backstop — normal texting-style replies sit well "
+            "under it; persona response-format guidance drives typical brevity."
+        ),
+        alias="MODEL_MAX_OUTPUT_TOKENS"
     )
 
     # Operation-specific temperature overrides
@@ -110,10 +120,14 @@ class BraveSettings(BaseSettings):
         alias="BRAVE_SAFESEARCH"
     )
     timeout: int = Field(
-        default=10,
+        default=20,
         ge=1,
         le=60,
-        description="Search timeout in seconds",
+        description=(
+            "Search timeout in seconds. Covers the ephemeral `docker run` container "
+            "cold-start + Brave API call. 10s was too tight on a cold image pull "
+            "(silently returned no results); 20s gives margin once the image is cached."
+        ),
         alias="BRAVE_SEARCH_TIMEOUT"
     )
 
@@ -171,90 +185,6 @@ class MemorySettings(BaseSettings):
     }
 
 
-class MongoDBSettings(BaseSettings):
-    """MongoDB MCP configuration."""
-
-    enabled: bool = Field(
-        default=False,
-        description="Enable MongoDB MCP integration",
-        alias="MONGODB_ENABLED"
-    )
-    uri: str = Field(
-        default="",
-        description="MongoDB connection URI",
-        alias="MONGODB_URI"
-    )
-    timeout: int = Field(
-        default=30,
-        ge=1,
-        le=300,
-        description="Operation timeout in seconds",
-        alias="MONGODB_TIMEOUT"
-    )
-    max_response_bytes: int = Field(
-        default=100000,
-        ge=1000,
-        le=10000000,
-        description="Maximum response size in bytes",
-        alias="MONGODB_MAX_RESPONSE_BYTES"
-    )
-    cache_current_price: int = Field(
-        default=60,
-        ge=0,
-        description="Cache TTL for current price queries",
-        alias="MONGODB_CACHE_CURRENT_PRICE"
-    )
-    cache_technical: int = Field(
-        default=60,
-        ge=0,
-        description="Cache TTL for technical analysis queries",
-        alias="MONGODB_CACHE_TECHNICAL"
-    )
-    cache_historical: int = Field(
-        default=3600,
-        ge=0,
-        description="Cache TTL for historical price queries",
-        alias="MONGODB_CACHE_HISTORICAL"
-    )
-    cache_trading: int = Field(
-        default=300,
-        ge=0,
-        description="Cache TTL for trading summary queries",
-        alias="MONGODB_CACHE_TRADING"
-    )
-
-    @property
-    def is_enabled(self) -> bool:
-        """Check if MongoDB is enabled (flag true and URI set)."""
-        return self.enabled and bool(self.uri.strip())
-
-    def get_cache_ttl(self, cache_key: str) -> int:
-        """Get cache TTL for a specific cache key.
-
-        Cache keys use the pattern: {token}_{type}_{timeframe}
-        e.g., 'btc_current_price_1h', 'eth_technical_daily', 'bot_status'
-        """
-        # Match by suffix pattern so all tokens get the same TTL per query type
-        if "current_price" in cache_key:
-            return self.cache_current_price
-        elif "technical" in cache_key:
-            return self.cache_technical
-        elif "historical" in cache_key:
-            return self.cache_historical
-        elif "trading_summary" in cache_key:
-            return self.cache_trading
-        elif cache_key.startswith("bot_"):
-            return 30  # Bot state: short TTL (30s)
-        return 60
-
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",
-        "populate_by_name": True,
-    }
-
-
 class JupiterSettings(BaseSettings):
     """Jupiter DEX + Solana wallet configuration."""
 
@@ -291,11 +221,6 @@ class JupiterSettings(BaseSettings):
         default="strategies",
         description="Directory containing strategy JSON files",
         alias="STRATEGIES_DIR"
-    )
-    mongodb_write_uri: str = Field(
-        default="",
-        description="MongoDB URI for writing trade history",
-        alias="MONGODB_WRITE_URI"
     )
 
     model_config = {
@@ -455,7 +380,6 @@ class CoordinatorSettings(BaseSettings):
     # Subsystem settings (nested)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     brave: BraveSettings = Field(default_factory=BraveSettings)
-    mongodb: MongoDBSettings = Field(default_factory=MongoDBSettings)
     memory: MemorySettings = Field(default_factory=MemorySettings)
     jupiter: JupiterSettings = Field(default_factory=JupiterSettings)
     email: EmailSettings = Field(default_factory=EmailSettings)

@@ -11,7 +11,7 @@ interface SearchIndicatorProps {
   personaName?: string;
   personaKey?: string;
   celestial_order?: string;
-  searchType?: 'brave_mcp' | 'mongodb_mcp' | 'multi_mcp' | 'llm';
+  searchType?: 'brave_mcp' | 'llm';
   className?: string;
 }
 

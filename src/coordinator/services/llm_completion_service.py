@@ -71,6 +71,11 @@ class LLMCompletionService:
             # the always-on desktop station: holds ~17GB RAM (fine on 48GB) and costs
             # no heat/CPU — an idle resident model doesn't compute.
             "keep_alive": -1,
+            # num_predict caps generated tokens per turn. Turn latency is ~linear in
+            # output tokens at ~16 tok/s, so an unbounded reply can run 30s+. This is a
+            # generous backstop against runaway verbosity; typical brevity is driven by
+            # the persona response-format guidance, not this cap.
+            "num_predict": get_settings().ollama.max_output_tokens,
         }
 
         # Apply sampling config if provided

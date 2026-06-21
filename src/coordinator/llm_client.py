@@ -19,7 +19,6 @@ import warnings
 from typing import List, Dict, Any, Optional, Tuple
 
 # Utility imports (still needed)
-from langchain_core.prompts import ChatPromptTemplate
 
 # Import the new services
 from .services import (

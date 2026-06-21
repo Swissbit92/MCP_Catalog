@@ -95,7 +95,7 @@ describe('MessageBubble', () => {
       ...mockMessage,
       role: 'assistant' as const,
       metadata: {
-        source_type: 'mongodb_mcp' as const,
+        source_type: 'brave_mcp' as const,
         tools_used: ['bitcoin_current_price'],
         cache_status: 'hit' as const,
         data_timestamp: '2025-12-11 20:00:00',

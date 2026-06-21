@@ -29,7 +29,7 @@ class MessageRepository(BaseRepository):
             content: Message content
             latency_ms: Optional latency in milliseconds
             timestamp: Optional timestamp (defaults to current time if not provided)
-            source_type: Source type (llm, brave_mcp, mongodb_mcp, multi_mcp)
+            source_type: Source type (llm, brave_mcp)
             multi_message_id: Optional ID linking related multi-messages together
             multi_message_index: Optional index for multi-message ordering (0-based)
 

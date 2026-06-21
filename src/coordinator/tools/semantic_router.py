@@ -10,13 +10,12 @@ canonical example phrases. Uses the already-deployed nomic-embed-text Ollama mod
 
 Only activated when:
   1. Keyword classifier returns NEEDS_NEITHER
-  2. Persona has at least one MCP capability (brave_search or mongodb)
+  2. Persona has at least one MCP capability (brave_search or solana_wallet)
   3. The embedding model is available (degrades gracefully if not)
 
 Example queries caught by semantic routing but not keywords:
   - "thinking of moving some funds around" → NEEDS_WALLET
   - "what's the vibe in the market today" → NEEDS_WEB_SEARCH
-  - "how's the data looking on bitcoin lately" → NEEDS_MONGODB
 """
 
 from __future__ import annotations
@@ -56,18 +55,6 @@ _INTENT_EXAMPLES: Dict[str, List[str]] = {
         "what did the fed say",
         "any updates on the regulation front",
         "what's everyone talking about in crypto",
-    ],
-    "mongodb": [
-        "how's the data looking on bitcoin",
-        "bitcoin technical indicators",
-        "what's the rsi showing",
-        "macd reading for bitcoin",
-        "historical bitcoin price trend",
-        "bitcoin momentum analysis",
-        "trading stats for btc",
-        "how's the price performing",
-        "chart looks like for bitcoin",
-        "bullish or bearish signal",
     ],
     "llm_only": [
         "what is blockchain technology",
@@ -162,19 +149,19 @@ def _ensure_centroids(emb_model) -> Optional[Dict[str, List[float]]]:
 def route_by_embedding(
     query: str,
     can_use_brave: bool,
-    can_use_mongodb: bool,
-    can_use_wallet: bool,
+    can_use_mongodb: bool = False,
+    can_use_wallet: bool = False,
 ) -> Optional[str]:
     """Attempt to classify query intent via embedding similarity.
 
     Args:
         query: User query string
         can_use_brave: Whether Brave search is available for this persona
-        can_use_mongodb: Whether MongoDB is available for this persona
+        can_use_mongodb: Unused (MongoDB MCP removed). Kept for call-site compat.
         can_use_wallet: Whether wallet access is available for this persona
 
     Returns:
-        Intent label ("wallet", "web_search", "mongodb", "llm_only") or None if
+        Intent label ("wallet", "web_search", "llm_only") or None if
         confidence is below threshold or embeddings are unavailable.
     """
     emb_model = _get_embeddings_model()
@@ -197,8 +184,6 @@ def route_by_embedding(
         available["wallet"] = centroids["wallet"]
     if can_use_brave and "web_search" in centroids:
         available["web_search"] = centroids["web_search"]
-    if can_use_mongodb and "mongodb" in centroids:
-        available["mongodb"] = centroids["mongodb"]
     # Always include llm_only as a fallback option
     if "llm_only" in centroids:
         available["llm_only"] = centroids["llm_only"]

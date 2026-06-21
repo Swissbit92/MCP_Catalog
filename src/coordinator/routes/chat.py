@@ -8,9 +8,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from ..schemas import ChatBody, GreetBody, ChatTurn, AppendMessageBody, ResponseMetadata
+from ..schemas import ChatBody, GreetBody, ResponseMetadata
 from ..config import get_settings
-from ..llm_client import create_llm_client, estimate_tokens, log_context_stats
+from ..llm_client import create_llm_client, log_context_stats
 from ..persona_memory import (
     build_system_prompt,
     build_greeting_user_prompt,
@@ -74,7 +74,6 @@ def _get_dependencies():
     """Get dependencies from startup module."""
     from ..startup import (
         get_brave_client,
-        get_mongodb_service,
         get_session_repo,
         get_message_repo,
         get_summary_repo,
@@ -88,7 +87,6 @@ def _get_dependencies():
     )
     return {
         "brave_client": get_brave_client(),
-        "mongodb_service": get_mongodb_service(),
         "session_repo": get_session_repo(),
         "message_repo": get_message_repo(),
         "summary_repo": get_summary_repo(),
@@ -104,8 +102,7 @@ def _get_dependencies():
 
 @router.post("/persona/chat")
 def chat(body: ChatBody):
-    """Chat with a persona, with autonomous tool support (web search + MongoDB) for MCP-capable personas."""
-    from ..services.query_handler_service import QueryHandlerService  # noqa: PLC0415
+    """Chat with a persona, with autonomous tool support (web search, Solana wallet) for MCP-capable personas."""
 
     deps = _get_dependencies()
 
@@ -169,7 +166,6 @@ def chat(body: ChatBody):
     if has_active_wallet_flow(_active_flow_session) and "solana_wallet" in (mcp_access or []):
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
-            mongodb_service=deps.get("mongodb_service"),
         )
         return handler.handle_wallet_query(
             message=body.message,
@@ -208,7 +204,6 @@ def chat(body: ChatBody):
     if intent == QueryIntent.NEEDS_WALLET:
         handler = QueryHandlerService(
             brave_client=deps.get("brave_client"),
-            mongodb_service=deps.get("mongodb_service"),
         )
         user_id = "default_user"
         return handler.handle_wallet_query(
@@ -237,48 +232,19 @@ def chat(body: ChatBody):
             )
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
-    # Tools needed - check if MongoDB/bot state tools are included
-    _MONGODB_TOOL_NAMES = {"crypto_current_price", "crypto_historical_prices",
-                           "crypto_trading_summary", "crypto_technical_analysis",
-                           "bot_status", "bot_positions", "bot_trade_history"}
-    mongodb_tools = [t for t in tools if t.get("function", {}).get("name", "") in _MONGODB_TOOL_NAMES]
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
 
     # Create query handler service
     query_handler = QueryHandlerService(
         brave_client=deps["brave_client"],
-        mongodb_service=deps["mongodb_service"]
     )
 
-    if mongodb_tools and not brave_tools:
-        # MongoDB-only query
-        return query_handler.handle_mongodb_query(
-            message=body.message,
-            system_prompt=system,
-            user_compiled=user_compiled,
-            mongodb_tools=mongodb_tools,
-            metadata=metadata,
-            persona_name=persona_name,
-            persona_card=card
-        )
-
-    elif brave_tools and not mongodb_tools:
-        # Brave-only query
+    if brave_tools:
+        # Brave search query
         return query_handler.handle_brave_query(
             system_prompt=system,
             user_compiled=user_compiled,
             tools=tools,
-            metadata=metadata,
-            persona_name=persona_name,
-            persona_card=card
-        )
-
-    elif brave_tools and mongodb_tools:
-        # Multi-MCP query
-        return query_handler.handle_multi_mcp_query(
-            system_prompt=system,
-            user_compiled=user_compiled,
-            brave_tools=brave_tools,
             metadata=metadata,
             persona_name=persona_name,
             persona_card=card

@@ -3,9 +3,7 @@
   "rarity": "epic",
   "celestial_order": "warden",
   "mcp_access": [
-    "brave_search",
-    "mongodb",
-    "bot_state"
+    "brave_search"
   ],
   "display_name": "Aurora — The Oracle",
   "title": "The Oracle",

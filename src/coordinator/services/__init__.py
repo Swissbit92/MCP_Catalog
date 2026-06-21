@@ -30,9 +30,6 @@ from .message_processing_service import (
     parse_multi_message_response,
 )
 
-# MongoDB service
-from .mongodb_handlers import MongoDBService
-
 # Strategy & wallet services
 from .strategy_service import StrategyService
 from .wallet_execution_service import WalletExecutionService
@@ -65,8 +62,6 @@ __all__ = [
     # Message processing
     "force_multi_message_split",
     "parse_multi_message_response",
-    # MongoDB
-    "MongoDBService",
     # Strategy & wallet
     "StrategyService",
     "WalletExecutionService",

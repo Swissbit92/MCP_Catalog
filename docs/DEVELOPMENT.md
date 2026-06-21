@@ -166,4 +166,14 @@ ollama pull gemma2:9b-instruct-q5_K_M                                         # 
 ollama pull nomic-embed-text:latest                                            # Embeddings (RAG memory)
 ```
 
-Set `PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M` in `.env` to use the daily driver. `MODEL_CONTEXT_WINDOW=16384` is wired to Ollama `num_ctx` (model max is 131K, dial up as needed).
+Set `PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M` in `.env` to use the daily driver. `MODEL_CONTEXT_WINDOW=16384` is wired to Ollama `num_ctx` (model max is 131K, dial up as needed). `MODEL_MAX_OUTPUT_TOKENS=400` caps per-turn generation (Ollama `num_predict`) — a backstop against runaway replies (turn latency is ~linear in output tokens at ~16 tok/s).
+
+### Concurrency tuning (single-user — important)
+
+`OLLAMA_NUM_PARALLEL=1` is **required** on this box. Unset, Ollama opens parallel slots that split the single GPU **and** split `num_ctx` across them, and a 2nd concurrent slot is cold (no cached prefix) — two overlapping requests then crawl at ~1 tok/s instead of one running alone at ~16 tok/s (this caused a one-off 161.9s turn on 2026-06-21). It's set durably by the login LaunchAgent `com.nephilim.ollama-tuning` (`scripts/launchd/ollama-tuning.sh`), since Ollama runs as the menu-bar `Ollama.app` and `launchctl setenv` alone doesn't survive reboot. **Do NOT set `OLLAMA_MAX_LOADED_MODELS=1`** — nephilim keeps Magidonia + nomic-embed both resident; `=1` makes them evict each other (17 GB reload per RAG embedding).
+
+> **Latency note:** prefill is *not* the bottleneck here (~0.4 s for the ~3.5 K-token persona prompt); generation throughput (~16 tok/s × output length) is. See memory `project_nephilim_latency_ops`.
+
+### Brave web search depends on Docker
+
+The Brave MCP runs as an ephemeral `docker run` per request. The launchd backend's `PATH` **must** include `/usr/local/bin` (where the `docker` CLI symlink lives) or Brave silently disables at startup — already set in `scripts/launchd/com.nephilim.backend.plist`. `BRAVE_SEARCH_TIMEOUT=20` (s) covers the container cold-start; pre-pull once with `docker pull docker.io/mcp/brave-search` so first-search isn't a slow image download.

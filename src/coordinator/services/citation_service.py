@@ -79,7 +79,7 @@ class CitationService:
             if marker in response:
                 # Remove everything from the marker onwards
                 response = response.split(marker)[0].strip()
-                logger.warning(f"[Anti-Hallucination] Stripped hallucinated citations from response")
+                logger.warning("[Anti-Hallucination] Stripped hallucinated citations from response")
                 break
 
         return response
@@ -141,7 +141,7 @@ def validate_citations(answer: str, used_search: bool, search_results_count: int
         # Search was NOT used
         if has_citations:
             # Strip hallucinated citations
-            logger.warning(f"[Citation Validation] Removing hallucinated citations (no search)")
+            logger.warning("[Citation Validation] Removing hallucinated citations (no search)")
             answer = CitationService.strip_hallucinated_citations(answer)
             return answer, False, {
                 "has_citations": False,

@@ -21,6 +21,21 @@ NO_SEARCH_KEYWORDS = {
     "capital of", "president of", "history of"
 }
 
+# Explicit search commands — the user is directly instructing a web search
+# ("search the web to confirm", "google it", "look it up").
+# Single source of truth: also consumed by ForceSearchService.FORCE_PATTERNS so an
+# explicit command both (a) routes intent → NEEDS_WEB_SEARCH (the Brave tool is
+# offered) and (b) bypasses the unreliable LLM tool-calling loop (forced direct
+# execution). High-precision MULTIWORD phrases only — never bare "search" (it
+# substring-matches "research"/"researcher" and would over-trigger).
+EXPLICIT_SEARCH_COMMANDS = (
+    "search the web", "search online", "search the internet", "search for",
+    "web search", "look it up", "look this up", "look that up",
+    "look online", "look up online", "google it", "google this", "google that",
+    "find online", "find out online", "check online", "check the web",
+    "confirm online", "verify online", "browse the web",
+)
+
 # Keywords that indicate web search IS needed
 SEARCH_KEYWORDS = {
     # Current/recent information
@@ -57,64 +72,6 @@ SEARCH_KEYWORDS = {
     "market watch", "crypto watch"
 }
 
-# MongoDB-specific keywords for Bitcoin/crypto data
-MONGODB_PRICE_KEYWORDS = {
-    "bitcoin price", "btc price", "price of bitcoin", "current price",
-    "bitcoin cost", "btc cost", "how much is bitcoin", "bitcoin value",
+# Fold explicit search commands into the web-search trigger set (single source of truth).
+SEARCH_KEYWORDS.update(EXPLICIT_SEARCH_COMMANDS)
 
-    # Value/worth
-    "value", "valued", "valued at", "worth", "worth now",
-    "what's it worth", "how much is",
-
-    # Trading phrases
-    "trading at", "trading for", "trades at", "going for",
-    "selling for", "cost", "costs",
-
-    # Current state
-    "current value", "right now", "at the moment", "as of", "currently"
-}
-
-MONGODB_HISTORICAL_KEYWORDS = {
-    "price history", "historical price", "past price", "was the price",
-    "price on", "price in", "price over time", "price trend",
-
-    # Historical data
-    "historical", "history", "past", "ago", "was", "were", "been"
-}
-
-MONGODB_TRADING_KEYWORDS = {
-    "bought", "purchased", "dca", "dollar cost averaging", "trading stats",
-    "trading summary", "summary",
-    "my portfolio", "my bitcoin", "total btc", "how much btc",
-    "purchase history", "buy history",
-
-    # Personal queries
-    "my", "mine", "portfolio", "holdings"
-}
-
-MONGODB_TECHNICAL_KEYWORDS = {
-    "rsi", "macd", "bollinger", "bollinger bands", "technical indicator",
-    "ema", "sma", "moving average", "stochastic", "ichimoku",
-    "technical analysis", "chart analysis", "indicators",
-
-    # Analysis/outlook
-    "analysis", "trend analysis", "outlook", "technical outlook",
-    "market analysis", "signals",
-
-    # Extended indicators (Phase: Multi-Asset)
-    "adx", "supertrend", "squeeze", "fear and greed", "fear & greed",
-    "fng", "f&g", "vwap", "fibonacci", "fib levels", "donchian",
-    "aroon", "cci", "williams", "mfi", "money flow", "obv",
-    "on-balance volume", "choppiness", "choppy", "atr", "volatility",
-    "keltner", "hdpr", "log return",
-}
-
-# Bot state keywords — for routing to btc_bot_state database
-BOT_STATE_KEYWORDS = {
-    "my bot", "bot status", "bot state", "open positions", "bot trades",
-    "trading bot", "active positions", "bot performance", "bot running",
-    "bollinger bot", "rsi strategy", "strategy status", "trade events",
-    "what is my bot doing", "bot entry", "bot exit", "stop loss",
-    "take profit", "filled price", "filled size",
-    "strategy", "bot history", "recent trades from bot",
-}

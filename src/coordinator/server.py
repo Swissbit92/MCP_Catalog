@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
-from .startup import initialize_all, get_session_repo, get_brave_client, get_mongodb_service
+from .startup import initialize_all, get_session_repo, get_brave_client
 from .routes.chat import router as chat_router
 from .routes.sessions import router as sessions_router
 from .routes.personas import router as personas_router
@@ -111,7 +111,6 @@ def ready():
 
     # MCP subsystems: report enabled/disabled
     checks["brave_mcp"] = "enabled" if get_brave_client() is not None else "disabled"
-    checks["mongodb_mcp"] = "enabled" if get_mongodb_service() is not None else "disabled"
 
     # Critical path: DB + Ollama must be ok
     critical_ok = checks["database"] == "ok" and checks["ollama"] == "ok"

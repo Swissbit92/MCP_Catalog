@@ -25,7 +25,6 @@ from ..schemas import ChatBody, ChatTurn, AppendMessageBody
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
-from .llm_completion_service import LLMCompletionService
 from ..persona_memory import build_system_prompt, get_persona_card
 
 logger = logging.getLogger(__name__)
@@ -650,6 +649,7 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
 
             # Set LLM client if not already set
             if not conversation_summarizer.llm_client:
+                from ..llm_client import create_llm_client  # noqa: PLC0415
                 conversation_summarizer.set_llm_client(
                     create_llm_client({}, temperature=cfg.ollama.temp_summarization)
                 )

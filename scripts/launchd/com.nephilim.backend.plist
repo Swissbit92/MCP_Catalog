@@ -19,8 +19,11 @@
     <string>/Users/swissbit./nephilim/nephilim</string>
     <key>EnvironmentVariables</key>
     <dict>
+        <!-- /usr/local/bin holds the `docker` CLI symlink (Docker Desktop). Without
+             it on PATH the launchd backend can't reach Docker, so Brave-search MCP
+             (and Jupiter MCP) silently disable at startup. -->
         <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>

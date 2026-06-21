@@ -13,10 +13,9 @@ the user when they open a new chat session.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ def init_scheduler(
     jupiter_ops: Any,
     execution_service: Any,
     strategy_service: Any,
-    mongo_write: Any = None,
     check_interval_minutes: int = 15,
 ) -> Any:
     """Initialize and return the APScheduler instance.
@@ -76,11 +74,9 @@ def init_scheduler(
 
 async def _run_strategy_checks(jupiter_ops, execution_service, strategy_service):
     """Main scheduler job: Phase 1 SL/TP exits + Phase 2 entry signals."""
-    from ..jupiter.wallet_manager import wallet_unlocked, get_session_key
+    from ..jupiter.wallet_manager import wallet_unlocked
     from ..jupiter.strategy_loader import load_strategies, update_strategy
     from ..jupiter.strategies import STRATEGY_REGISTRY
-    from ..services.wallet_execution_service import WalletExecutionService
-    from ..services.strategy_service import StrategyService
     from ..jupiter.email_service import send_trade_notification
 
     logger.debug("[Scheduler] Strategy check cycle started")
@@ -91,79 +87,8 @@ async def _run_strategy_checks(jupiter_ops, execution_service, strategy_service)
         return
 
     # -----------------------------------------------------------------------
-    # PHASE 1: Check open positions for stop-loss / take-profit exits
-    # -----------------------------------------------------------------------
-    if execution_service.mongo_write is not None:
-        try:
-            open_positions = list(
-                execution_service.mongo_write["open_positions"].find({"status": "open"})
-            )
-            for pos in open_positions:
-                strategy_id = pos.get("strategy_id")
-                to_mint = pos.get("to_mint")  # token we hold
-                from_mint = pos.get("from_mint")  # token we entered with
-
-                if not all([strategy_id, to_mint, from_mint]):
-                    continue
-
-                # Find the user_id from the strategy file
-                strategy = strategy_service.get_strategy(strategy_id)
-                if not strategy:
-                    continue
-                user_id = strategy.get("user_id", "")
-                if not user_id or not wallet_unlocked(user_id):
-                    continue
-
-                # Get current price
-                try:
-                    current_price = await jupiter_ops.get_token_price_usdc(to_mint)
-                except Exception as e:
-                    logger.warning(f"[Scheduler] Price check failed for {strategy_id}: {e}")
-                    continue
-
-                sl_price = pos.get("stop_loss_price")
-                tp_price = pos.get("take_profit_price")
-
-                trigger = None
-                if sl_price and current_price <= sl_price:
-                    trigger = "stop_loss"
-                elif tp_price and current_price >= tp_price:
-                    trigger = "take_profit"
-
-                if trigger:
-                    logger.info(
-                        f"[Scheduler] {trigger} triggered for {strategy_id}: "
-                        f"price={current_price:.4f}, "
-                        f"sl={sl_price}, tp={tp_price}"
-                    )
-                    # Execute exit: sell position back to entry token
-                    position_size = int(pos.get("position_size", 0) * 1e9)  # lamports
-                    try:
-                        trade_doc = await execution_service.execute_swap(
-                            user_id=user_id,
-                            from_mint=to_mint,
-                            to_mint=from_mint,
-                            from_token=strategy["token_pair"]["to_token"],
-                            to_token=strategy["token_pair"]["from_token"],
-                            amount_lamports=position_size,
-                            execution_mode="strategy_autonomous",
-                            strategy_id=strategy_id,
-                            entry_price=current_price,
-                        )
-                        await execution_service.close_position(
-                            strategy_id=strategy_id,
-                            tx_signature=trade_doc.get("tx_signature", ""),
-                            trigger=trigger,
-                        )
-                        await send_trade_notification(trade_doc)
-                        logger.info(f"[Scheduler] {trigger} exit complete: {strategy_id}")
-                    except Exception as e:
-                        logger.error(f"[Scheduler] Exit trade failed for {strategy_id}: {e}")
-        except Exception as e:
-            logger.error(f"[Scheduler] Phase 1 SL/TP check failed: {e}")
-
-    # -----------------------------------------------------------------------
     # PHASE 2: Check entry signals for active strategies
+    # (Phase 1 SL/TP exit via open_positions was MongoDB-dependent — removed)
     # -----------------------------------------------------------------------
     for strategy in strategies:
         if strategy.get("status") != "active":

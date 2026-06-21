@@ -4,9 +4,7 @@
   "celestial_order": "archon",
   "mcp_access": [
     "brave_search",
-    "mongodb",
-    "solana_wallet",
-    "bot_state"
+    "solana_wallet"
   ],
   "display_name": "E.E.V.A. — The Primarch",
   "title": "The Primarch",

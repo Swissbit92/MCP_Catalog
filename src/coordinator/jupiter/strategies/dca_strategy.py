@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from .strategy_base import StrategyBase
 
 logger = logging.getLogger(__name__)

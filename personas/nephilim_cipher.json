@@ -3,8 +3,7 @@
   "rarity": "rare",
   "celestial_order": "sage",
   "mcp_access": [
-    "brave_search",
-    "mongodb"
+    "brave_search"
   ],
   "display_name": "Cipher — The Maven",
   "title": "The Maven",

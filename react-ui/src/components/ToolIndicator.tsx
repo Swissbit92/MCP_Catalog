@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Database, Brain, Wallet } from 'lucide-react';
+import { Search, Brain, Wallet } from 'lucide-react';
 import { isNephilimPersona, NEPHILIM_LOADING_MESSAGES } from './nephilim/mcpNarratives';
 
-export type ToolType = 'brave' | 'mongodb' | 'wallet' | 'generic';
+export type ToolType = 'brave' | 'wallet' | 'generic';
 
 interface ToolIndicatorProps {
   toolType: ToolType;
@@ -15,7 +15,6 @@ interface ToolIndicatorProps {
 // Tool-type color map — matches mcpNarratives.ts hex values exactly
 const TOOL_COLORS: Record<ToolType, string> = {
   brave: '#2ecc71',    // Cipher's Archives green
-  mongodb: '#f39c12',  // Aurora's Crystal Grid amber
   wallet: '#FFD700',   // E.E.V.A.'s Solana Nexus gold
   generic: '#b07cc6',  // Inner Wisdom purple
 };
@@ -25,8 +24,6 @@ const getToolConfig = (toolType: ToolType) => {
   switch (toolType) {
     case 'brave':
       return { icon: Search, text: 'searching the web' };
-    case 'mongodb':
-      return { icon: Database, text: 'analyzing Bitcoin data' };
     case 'wallet':
       return { icon: Wallet, text: 'consulting the Solana Nexus' };
     case 'generic':
@@ -40,10 +37,7 @@ const getNephilimMessages = (toolType: ToolType): string[] => {
   switch (toolType) {
     case 'brave':
       return NEPHILIM_LOADING_MESSAGES.search;
-    case 'mongodb':
-      return NEPHILIM_LOADING_MESSAGES.trading;
     case 'wallet':
-      // Wallet uses trading messages as closest match
       return [
         'E.E.V.A. channels the Solana streams...',
         'The Nexus pulses with on-chain data...',

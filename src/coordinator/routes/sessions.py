@@ -15,7 +15,6 @@ from ..schemas import (
     AppendMessageBody,
     ImportBody,
     GreetBody,
-    ChatBody,
 )
 from ..persona_memory import get_persona_card
 

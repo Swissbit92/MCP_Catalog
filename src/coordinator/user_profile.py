@@ -7,7 +7,7 @@ creating continuity and deeper relationships over time.
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from datetime import datetime
 import logging
 

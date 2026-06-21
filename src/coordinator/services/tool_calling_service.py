@@ -146,7 +146,7 @@ class ToolCallingService:
 
                     # Log violation for monitoring
                     if had_citations:
-                        logger.warning(f"[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
+                        logger.warning("[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
 
                     # Auto-generate accurate citations from search results
                     accurate_citations = self.citation_service.auto_generate_citations(search_results)
@@ -243,7 +243,7 @@ class ToolCallingService:
 
                 # CRITICAL: If search was expected but LLM didn't search, admit ignorance
                 if search_expected:
-                    logger.warning(f"[Anti-Hallucination] Search expected but LLM didn't call tool - returning honest 'don't know' response")
+                    logger.warning("[Anti-Hallucination] Search expected but LLM didn't call tool - returning honest 'don't know' response")
                     honest_response = "I don't have access to current information on this topic. A web search was attempted but didn't execute successfully. I'd rather admit I don't know than provide potentially outdated or incorrect information."
                     return (honest_response, None, None)
 
@@ -299,7 +299,7 @@ class ToolCallingService:
 
                 # Log violation for monitoring
                 if had_citations:
-                    logger.warning(f"[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
+                    logger.warning("[Anti-Hallucination] LLM ignored citation instruction - stripped and replaced with verified citations")
 
                 # Auto-generate accurate citations from search results
                 accurate_citations = self.citation_service.auto_generate_citations(search_results)

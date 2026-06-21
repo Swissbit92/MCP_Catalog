@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,8 @@ class StrategyService:
     def __init__(
         self,
         strategies_dir: str = "strategies",
-        mongo_write: Any = None,
     ):
         self.strategies_dir = strategies_dir
-        self.mongo_write = mongo_write
 
     def list_strategies(self, user_id: Optional[str] = None) -> list[dict]:
         """Load all strategies, optionally filtered by user_id."""
@@ -139,35 +137,12 @@ class StrategyService:
         return True, "passed"
 
     def has_open_position(self, strategy_id: str) -> bool:
-        """Check if strategy has an open position in MongoDB.
+        """Check if strategy has an open position.
 
-        Fails CLOSED on any error — if we cannot verify, we assume a position exists
-        to prevent double-entry. The scheduler will skip this cycle and retry next tick.
-
-        Returns:
-            True if an open position exists OR if the check cannot be completed.
-            False only when MongoDB confirms no open position.
-
-        Raises:
-            Nothing — returns True on any database error (conservative/safe default).
+        MongoDB write path removed — always returns False (allow entry).
+        If position tracking is needed in future, wire to SQLite trade_history.
         """
-        if self.mongo_write is None:
-            logger.warning(
-                f"[StrategyService] MongoDB write client unavailable — "
-                f"assuming open position for {strategy_id} (fail-closed)"
-            )
-            return True  # Fail closed — cannot verify, block entry
-        try:
-            doc = self.mongo_write["open_positions"].find_one(
-                {"strategy_id": strategy_id, "status": "open"}
-            )
-            return doc is not None
-        except Exception as e:
-            logger.warning(
-                f"[StrategyService] Failed to check open position for {strategy_id}: {e} "
-                f"— assuming open position (fail-closed)"
-            )
-            return True  # Fail closed — cannot verify, block entry
+        return False
 
     def _log_approval_decision(
         self,
@@ -176,18 +151,7 @@ class StrategyService:
         user_id: str,
         extra: Optional[dict] = None,
     ) -> None:
-        """Log a HITL decision to MongoDB approval_decisions collection."""
-        if self.mongo_write is None:
-            return
-        try:
-            self.mongo_write["approval_decisions"].insert_one(
-                {
-                    "decision_type": decision_type,
-                    "strategy_id": strategy_id,
-                    "user_id": user_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    **(extra or {}),
-                }
-            )
-        except Exception as e:
-            logger.warning(f"Failed to log decision: {e}")
+        """Log a HITL decision (no-op: MongoDB write path removed)."""
+        logger.info(
+            f"[StrategyService] Approval decision: {decision_type} for {strategy_id} by {user_id}"
+        )

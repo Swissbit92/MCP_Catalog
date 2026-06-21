@@ -6,9 +6,7 @@ to help configure optimal memory window settings.
 """
 
 import subprocess
-import json
 import sys
-import os
 from pathlib import Path
 
 # Add src to path for imports
@@ -189,14 +187,14 @@ def main():
     print(f"Reserved (system+gen): {settings['reserved_tokens']:,} tokens")
     print(f"Available for history: {settings['available_for_history']:,} tokens ({settings['utilization_percent']}%)")
     print()
-    print(f"[>] Message Capacity Estimates:")
+    print("[>] Message Capacity Estimates:")
     print(f"  - Theoretical max:   {settings['max_messages_theoretical']} messages")
     print(f"  - Phase 1 target:    {settings['phase1_target']} messages (conservative)")
     print(f"  - Phase 2 target:    {settings['phase2_target']} messages (optimized)")
     print()
-    print(f"[!] Configuration Recommendations:")
+    print("[!] Configuration Recommendations:")
     print(f"  1. Update chat_with_session() to load last {settings['phase1_target']} messages")
-    print(f"  2. Monitor token usage with log_context_stats()")
+    print("  2. Monitor token usage with log_context_stats()")
     print(f"  3. Set model_context_window={settings['context_window']} in config")
     print(f"  4. Phase 2: Implement smart windowing to reach {settings['phase2_target']} messages")
 

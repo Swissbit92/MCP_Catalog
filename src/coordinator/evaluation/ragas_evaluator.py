@@ -23,7 +23,7 @@ except ImportError as e:
         "RAGAS not installed. Run: pip install ragas==0.2.3"
     ) from e
 
-from .golden_examples import GoldenExamplesManager, GoldenExamplesDataset
+from .golden_examples import GoldenExamplesManager
 from .metrics import calculate_f1_score
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,6 @@ class PersonaRagasEvaluator:
         if golden_qa_path:
             # Custom path: load directly
             import json
-            from pathlib import Path
             with open(golden_qa_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             from .golden_examples import GoldenQuestion, GoldenExamplesDataset

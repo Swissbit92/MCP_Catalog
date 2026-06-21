@@ -50,10 +50,10 @@ def force_multi_message_split(response: str, query: str) -> str:
             if split_point > 0:
                 first_part = main_content[:split_point + 1].strip()
                 second_part = main_content[split_point + 1:].strip()
-                logger.info(f"[Phase2-ForceSplit] Split long response with question: 3 messages")
+                logger.info("[Phase2-ForceSplit] Split long response with question: 3 messages")
                 return f'<msg>{first_part}</msg>\n<msg>{second_part}</msg>\n<msg>{question}</msg>'
 
-        logger.info(f"[Phase2-ForceSplit] Split long response with question: 2 messages")
+        logger.info("[Phase2-ForceSplit] Split long response with question: 2 messages")
         return f'<msg>{main_content.strip()}</msg>\n<msg>{question}</msg>'
 
     # Strategy 2: Split long single paragraph by sentences
@@ -115,10 +115,10 @@ def force_multi_message_split(response: str, query: str) -> str:
             if split_point > 0:
                 first_part = main_content[:split_point + 1].strip()
                 second_part = main_content[split_point + 1:].strip()
-                logger.info(f"[Phase2-ForceSplit] Split with question: 3 messages")
+                logger.info("[Phase2-ForceSplit] Split with question: 3 messages")
                 return f'<msg>{first_part}</msg>\n<msg>{second_part}</msg>\n<msg>{question}</msg>'
 
-        logger.info(f"[Phase2-ForceSplit] Split with question: 2 messages")
+        logger.info("[Phase2-ForceSplit] Split with question: 2 messages")
         return f'<msg>{main_content.strip()}</msg>\n<msg>{question}</msg>'
 
     # Strategy 4: For responses 150-300 chars, split at midpoint
@@ -137,7 +137,7 @@ def force_multi_message_split(response: str, query: str) -> str:
             first = response_clean[:split_point + 1].strip()
             second = response_clean[split_point + 1:].strip()
             if first and second and len(second) > 20:
-                logger.info(f"[Phase2-ForceSplit] Split at midpoint: 2 messages")
+                logger.info("[Phase2-ForceSplit] Split at midpoint: 2 messages")
                 return f'<msg>{first}</msg>\n<msg>{second}</msg>'
 
     # No good split found - return as single message

@@ -301,7 +301,7 @@ class PersonaCard(BaseModel):
     mcp_access: Optional[List[str]] = Field(
         default=None,
         description="Explicit list of MCP services this persona can use "
-                    "(e.g. ['brave_search', 'mongodb']). "
+                    "(e.g. ['brave_search', 'solana_wallet']). "
                     "When set, overrides rarity-based MCP gating entirely."
     )
     display_name: str = Field(

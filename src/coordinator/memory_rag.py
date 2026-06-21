@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple, Dict, Any
 import logging
-from datetime import datetime
 
 try:
     from langchain_community.embeddings import OllamaEmbeddings

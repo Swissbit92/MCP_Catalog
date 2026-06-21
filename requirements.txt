@@ -37,7 +37,6 @@ mnemonic>=0.21              # BIP39 mnemonic phrase generation for wallet recove
 aiosmtplib==3.0.0           # Async SMTP for trade email notifications
 apscheduler==3.10.4         # Background scheduler for autonomous strategy execution
 cryptography>=42.0.0        # AES-GCM encryption for private key storage
-pymongo>=4.6.0              # MongoDB direct write client for trade history
 
 # Google OAuth + JWT Authentication
 google-auth>=2.40.0
