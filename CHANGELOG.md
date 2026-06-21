@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (2026-06-22)
+
+- **MongoDB MCP integration fully removed** (~96 files): deleted `mongodb_mcp_client.py`, `mongodb/` package, `cache.py`, `mongodb_handlers.py`, `token_registry.py`, all MongoDB intent keywords and routing, `MongoDBSettings`, the dormant `MONGODB_WRITE_URI` pymongo write-path, `pymongo` dependency. Rewrote `tests/manual/test_bank_mcp.py` as Brave + Wallet-only (138 tests). `QueryIntent` is now `NEEDS_WEB_SEARCH | NEEDS_NEITHER | NEEDS_WALLET`. Bitcoin-price queries now route to Brave (web) instead of the previous ~39 s MongoDB dead-end.
+- **Cipher and Aurora**: `mongodb` + `bot_state` removed from `mcp_access`; Cipher is now Brave-only.
+- **Frontend MongoDB types**: removed `mongodb_mcp`, `multi_mcp` from `source_type` union; removed MongoDB tool indicator, source badge, and narrative entries.
+
+### Added (2026-06-22)
+
+- **Explicit search routing**: `EXPLICIT_SEARCH_COMMANDS` in `tools/keywords.py` (single source of truth) + `FORCE_PATTERNS` ensures "search the web / google it / look it up" always routes to Brave and bypasses the LLM tool-calling loop.
+- **Ollama concurrency tuning**: `OLLAMA_NUM_PARALLEL=1` set durably via login LaunchAgent `com.nephilim.ollama-tuning` (`scripts/launchd/ollama-tuning.sh`). Prevents GPU slot-splitting that caused the 2026-06-21 161.9 s turn.
+- **`MODEL_MAX_OUTPUT_TOKENS`** (`OllamaSettings`, wired to Ollama `num_predict`, default 400): backstop against runaway replies.
+- **Brave MCP PATH + timeout fix**: `scripts/launchd/com.nephilim.backend.plist` PATH now includes `/usr/local/bin` (Docker CLI symlink); `BRAVE_SEARCH_TIMEOUT` default raised to 20 s for cold-container coverage.
+
 ### Added
 
 - **Lore wiki** (`docs/lore/wiki/`) — typed-markdown knowledge graph for NEPHILIM worldbuilding. 30 entity files (6 personas, 6 houses, 5 ranks, 6 locations, antagonist Kenoma + Sybil Choir, resonance/ascension concepts, 7 non-canon expansion entities) with YAML frontmatter declaring `entity_type`, `entity_id`, `canon`, `aliases`, and typed `relationships`. Canonical source of truth for entity facts; conflicting house/antagonist names from prose docs preserved as `aliases`.

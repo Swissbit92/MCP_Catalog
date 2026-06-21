@@ -35,9 +35,9 @@ Reference-style: tables and diagrams, not prose narratives.
 
 ## Cross-repo contracts
 
-See ecosystem-level contracts:
-- `@../../docs/shared/mongodb_contract.md`
-- `@../../docs/shared/indicator_api.md`
+See ecosystem-level contracts (nephilim is read-only; these apply to CRA / btc_price_tracker):
+- [../../docs/shared/indicator_api.md](../../docs/shared/indicator_api.md)
+- [../../docs/shared/launchd_schedule.md](../../docs/shared/launchd_schedule.md)
 
 ## Decisions
 

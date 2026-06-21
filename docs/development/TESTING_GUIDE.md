@@ -66,9 +66,9 @@ tests/
 │   └── coordinator/
 │       ├── test_server.py
 │       ├── test_mcp_client.py
-│       ├── test_mongodb_integration.py
 │       ├── test_tool_calling.py
 │       ├── test_citation_service.py
+│       ├── test_force_search_service.py  # 55 tests — explicit search routing
 │       └── ...
 ├── integration/             # Integration tests (~13 files)
 │   ├── test_brave_mcp_connectivity.py
@@ -533,10 +533,10 @@ To verify intent classification is working correctly:
 from src.coordinator.tools.intent_classifier import classify_query_intent
 
 # These should return the expected intents:
-assert classify_query_intent("What is the weather in London?", "legendary", ["brave_search", "mongodb"]).value == "web"
-assert classify_query_intent("What is Bitcoin's price?", "legendary", ["brave_search", "mongodb"]).value == "mongodb"
-assert classify_query_intent("What is the capital of France?", "legendary", ["brave_search", "mongodb"]).value == "llm"
-assert classify_query_intent("Create a wallet", "legendary", ["brave_search", "mongodb", "solana_wallet"]).value == "wallet"
+assert classify_query_intent("What is the weather in London?", "legendary", ["brave_search"]).value == "web"
+assert classify_query_intent("What is Bitcoin's price?", "legendary", ["brave_search"]).value == "web"  # routes to Brave (MongoDB removed)
+assert classify_query_intent("What is the capital of France?", "legendary", ["brave_search"]).value == "llm"
+assert classify_query_intent("Create a wallet", "legendary", ["brave_search", "solana_wallet"]).value == "wallet"
 assert classify_query_intent("Weather in London?", "common", None).value == "llm"  # Wanderer: no MCP access
 print("All intent classification checks passed!")
 ```
@@ -550,7 +550,7 @@ print("All intent classification checks passed!")
 | Brave MCP never executing | LLM (Gemma 9B) unreliable at generating JSON tool calls | Force-execute Brave search when keyword filter detects search intent (`tool_calling_service.py`) |
 | "US elections" routed to wallet | Generic `"what happened"` in wallet keywords matched non-wallet queries | Changed to wallet-context-specific phrases: `"happened to my wallet"` |
 | Bitcoin technical analysis routed to LLM | `"what does"` triggered educational filter; `"analysis"` not in data_keywords | Added `and not has_data_intent` to educational filter; added `"analysis"`, `"rsi"`, `"macd"` to data_keywords |
-| "Trading summary" routed to LLM | `"trading summary"` not in MongoDB keywords | Added `"trading summary"`, `"summary"` to `MONGODB_TRADING_KEYWORDS` |
+| "Trading summary" routed to LLM | `"trading summary"` not in search keywords | Added `"trading summary"`, `"summary"` to `SEARCH_KEYWORDS` |
 | "Tomorrow" queries not searching | `"tomorrow"` missing from search keywords | Added `"tomorrow"`, `"2026"` to `SEARCH_KEYWORDS` |
 | Analyst opinion queries not searching | No web search fallback for opinion-intent queries | Added opinion intent fallback in web search block; added `"analysts think"`, `"analysts"` to `SEARCH_KEYWORDS` |
 
@@ -559,7 +559,7 @@ print("All intent classification checks passed!")
 | Issue | Root Cause | Fix |
 |-------|-----------|-----|
 | All MCP queries return HTTP 500, no error traceback visible | `alembic/env.py` calls `fileConfig()` with `disable_existing_loggers=True` (default), disabling all `src.coordinator.*` loggers after migrations run — errors invisible | Added `disable_existing_loggers=False` to `fileConfig()` call in `alembic/env.py` |
-| Startup INFO messages (Brave/MongoDB init) not appearing | `alembic.ini` sets `[logger_root] level = WARN`, silencing all INFO log messages globally after migration | Changed root logger level to `INFO` in `alembic.ini` |
+| Startup INFO messages (Brave init) not appearing | `alembic.ini` sets `[logger_root] level = WARN`, silencing all INFO log messages globally after migration | Changed root logger level to `INFO` in `alembic.ini` |
 | `UnboundLocalError` on all Brave/MongoDB queries | `QueryHandlerService` imported inside `if "solana_wallet"` block in `chat.py` — Python treats it as local throughout the function; crashes when condition is False | Moved import to top of `chat()` function (always executes) |
 
 #### Correctness Fixes (Feb 22 2026)

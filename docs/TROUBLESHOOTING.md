@@ -17,11 +17,12 @@ applies_to: nephilim
 - Confirm `.env` has required vars
 
 ## MCP issues
-- Verify Docker socket mounted
-- Check API keys set in `.env`
-- Test container spawn: `docker run -i --rm docker.io/mcp/brave-search`
-- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('weather in London', 'legendary', ['brave_search', 'mongodb']))"`
-- Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries
+- Verify Docker socket mounted (backend needs `/var/run/docker.sock`)
+- Check API keys set in `.env` (`BRAVE_API_KEY`)
+- Test Brave container spawn: `docker run -i --rm -e BRAVE_API_KEY=$BRAVE_API_KEY docker.io/mcp/brave-search`
+- Brave MCP runs as ephemeral `docker run -i --rm` per request — requires `/usr/local/bin` on the backend process PATH (the `docker` CLI symlink lives there); already set in `scripts/launchd/com.nephilim.backend.plist`
+- Check intent classification: `python -c "from src.coordinator.tools.intent_classifier import classify_query_intent; print(classify_query_intent('weather in London', 'legendary', ['brave_search']))"`
+- Brave MCP uses keyword force-search (bypasses LLM tool calling) — if queries aren't routed correctly, check `tools/keywords.py` keyword dictionaries and `tools/keywords.EXPLICIT_SEARCH_COMMANDS`
 - **MCP queries return 500 with no traceback in logs**: Alembic's `fileConfig()` silences all app loggers after migration. Verify `alembic/env.py` has `disable_existing_loggers=False` and `alembic.ini` root logger is `level = INFO`
 - **`UnboundLocalError: QueryHandlerService` on MCP queries**: Conditional import inside `if "solana_wallet"` block in `routes/chat.py` — the import must be at the top of the `chat()` function body, not inside any conditional
 
@@ -39,8 +40,9 @@ python scripts/docker/verify_startup.py    # Always verify after rebuild
 ## Post-rebuild verification
 **Mandatory after every Docker rebuild.** The `verify_startup.py` script checks:
 - `/ready` endpoint returns 200 (DB + Ollama healthy)
-- Brave MCP and MongoDB MCP match `.env.docker` config
-- Live test queries (LLM greet, Brave search, MongoDB query) return valid responses
+- Brave MCP status matches `.env.docker` config (`BRAVE_API_KEY` set → must be `enabled`)
+- Persona list loads successfully
+- Live test queries (LLM greet, Brave search) return valid responses
 
 ```bash
 python scripts/docker/verify_startup.py              # Full check (subsystems + test queries)

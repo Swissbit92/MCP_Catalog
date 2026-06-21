@@ -50,7 +50,7 @@ Generate an opening greeting from a persona. Does not require or create a sessio
 
 ### `POST /persona/chat`
 
-Chat with a persona using an inline conversation history. Does not persist messages to the database. Automatically routes through web search (Brave) or trading data (MongoDB) tools based on the persona's `mcp_access` configuration and query intent.
+Chat with a persona using an inline conversation history. Does not persist messages to the database. Automatically routes through web search (Brave) or wallet (Jupiter/Solana) tools based on the persona's `mcp_access` configuration and query intent.
 
 **Request body:**
 
@@ -75,11 +75,11 @@ Chat with a persona using an inline conversation history. Does not persist messa
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `source_type` | string | `"llm"`, `"brave_mcp"`, `"mongodb_mcp"`, or `"multi_mcp"` |
+| `source_type` | string | `"llm"`, `"brave_mcp"`, or `"wallet_mcp"` |
 | `tools_used` | array | List of tool names that were called |
 | `cache_status` | string or null | `"hit"`, `"miss"`, or `null` |
 | `data_timestamp` | string or null | ISO timestamp of external data, if applicable |
-| `latency_breakdown` | object or null | Per-service latency in ms, e.g. `{ "llm": 3000, "mongodb": 500 }` |
+| `latency_breakdown` | object or null | Per-service latency in ms, e.g. `{ "llm": 3000, "brave": 800 }` |
 | `is_multi_message` | boolean | Whether the response was split into multiple messages |
 | `message_count` | integer | Number of messages in the response |
 
@@ -162,7 +162,7 @@ Each message object:
 | `content` | string | Message text |
 | `timestamp` | string | ISO timestamp |
 | `latency_ms` | integer or null | Response time in ms (assistant messages only) |
-| `source_type` | string | `"llm"`, `"brave_mcp"`, `"mongodb_mcp"`, or `"multi_mcp"` |
+| `source_type` | string | `"llm"`, `"brave_mcp"`, or `"wallet_mcp"` |
 
 **Errors:**
 - `404` — Session not found

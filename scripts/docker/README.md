@@ -47,11 +47,9 @@ python scripts/docker/verify_startup.py --timeout 120
 **What it checks:**
 1. `/ready` endpoint returns 200 (database + Ollama healthy)
 2. Brave MCP status matches `.env.docker` config (`BRAVE_API_KEY` set → must be `enabled`)
-3. MongoDB MCP status matches config (`MONGODB_ENABLED=true` → must be `enabled`)
-4. Persona list loads successfully
-5. LLM greet returns a valid response
-6. Brave search query returns a valid response (if enabled)
-7. MongoDB query returns a valid response (if enabled)
+3. Persona list loads successfully
+4. LLM greet returns a valid response
+5. Brave search query returns a valid response (if enabled)
 
 **Exit codes:** `0` = all checks passed, `1` = one or more checks failed.
 

@@ -60,7 +60,6 @@ nano .env.docker
 - `BRAVE_API_KEY` - Add API key to enable web search (get free key at https://brave.com/search/api/)
 - `PERSONA_MODEL` - Change LLM model (default: `gemma2:9b-instruct-q5_K_M`)
 - `PERSONA_TEMPERATURE` - Adjust creativity (default: `0.9`)
-- `MONGODB_URI` - Add MongoDB connection for trading data features
 
 ---
 

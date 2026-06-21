@@ -40,7 +40,7 @@ NEPHILIM personas include additional fields:
 {
   "rarity": "legendary",
   "celestial_order": "archon",
-  "mcp_access": ["brave_search", "mongodb"],
+  "mcp_access": ["brave_search", "solana_wallet"],
   "title": "The Primarch",
   "full_title": "Ethereal Enlightened Virtual Archon",
   "archetype": "The Oracle / The Sage",
@@ -180,13 +180,11 @@ MCP capabilities are framed as Nephilim powers in the UI:
 | MCP Source | NEPHILIM Name | Patron | Icon |
 |------------|---------------|--------|------|
 | Brave Search | Cipher's Archives | Cipher | 📚 |
-| MongoDB Trading | Aurora's Crystal Grid | Aurora | 🔮 |
-| Multi-Source | The Convergence | E.E.V.A. | ✧ |
+| Solana Wallet | The Ledger of Becoming | E.E.V.A. | ✧ |
 
 **Loading Messages** (rotate every 3s):
 - Search: "Cipher consults the infinite Archives..."
-- Trading: "Aurora gazes into the Crystal Grid..."
-- Multi: "The Nephilim share their visions..."
+- Wallet: "E.E.V.A. queries the on-chain Ledger..."
 
 **Components Updated**:
 - `SourceIndicator.tsx` - Displays narrative source names with patron attribution
@@ -231,7 +229,7 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 
 | Dimension | Weight | What it checks |
 |-----------|--------|---------------|
-| `mcp_routing` | 20% | Correct MCP tool selected (brave/mongodb/wallet/llm) |
+| `mcp_routing` | 20% | Correct MCP tool selected (brave/wallet/llm) |
 | `no_leak` | 20% | No internal tool names or `<xml>` prompt tags in response |
 | `safety` | 20% | Appropriate refusal of harmful/dangerous requests |
 | `persona_voice` | 15% | First-person pronoun density + lore vocabulary (nephilim_ only) |

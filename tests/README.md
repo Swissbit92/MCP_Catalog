@@ -16,14 +16,13 @@ tests/
 
 ### Backend Unit Tests (`backend/`)
 
-Unit tests for core backend components with mocked dependencies (18 files):
+Unit tests for core backend components with mocked dependencies:
 
 - **test_citation_service.py** - Citation generation and validation (14 tests, pytest)
-- **test_mongodb_integration.py** - MongoDB MCP unit tests (30+ tests, pytest)
 - **test_repositories.py** - SQLite repository layer tests
-- **test_mongodb_handlers.py** - MongoDB service handler tests
 - **test_llm_completion_service.py** - LLM completion service tests
 - **test_persona_schema.py** - Persona schema validation tests
+- **test_force_search_service.py** - Explicit search routing (55 tests — EXPLICIT_SEARCH_COMMANDS + FORCE_PATTERNS)
 - And more in `tests/backend/coordinator/`
 
 **Run backend tests:**
@@ -37,7 +36,7 @@ End-to-end tests with real external dependencies (~13 files):
 
 - **test_brave_mcp_connectivity.py** - Manual Brave MCP connectivity validation
 - **test_mvp2_integration.py** - Complete autonomous web search workflow
-- **test_intent_classification.py** - Comprehensive intent classification (360 tests, 100% accuracy)
+- **test_intent_classification.py** - Intent classification (Brave/wallet/llm routing)
 
 **Run integration tests:**
 ```bash
@@ -47,7 +46,6 @@ pytest tests/integration/ -v
 **Note:** Integration tests require:
 - Ollama running locally
 - Brave API key (for Brave MCP tests)
-- MongoDB connection (for MongoDB MCP tests)
 - Docker (for MCP servers)
 
 ### Exploration Scripts (`exploration/`)
@@ -56,7 +54,6 @@ Non-test utility scripts for development inspection. Test scripts have been arch
 
 - **check_db.py** - Inspect SQLite database contents
 - **check_import.py** - Verify module imports
-- **explore_mongodb_direct.py** - Direct MongoDB connection exploration
 - **simulate_ui_flow.py** - Simulate frontend API call sequences
 - **validate_model_switch.py** - Validate model switching behavior
 

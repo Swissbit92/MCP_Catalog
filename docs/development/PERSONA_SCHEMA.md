@@ -75,7 +75,7 @@ Determines the UI visual tier and thematic framing of the persona card. See the 
 Array of MCP capability identifiers this persona is allowed to use. Controls tool availability per-persona, overriding the legacy rarity-based `.env` fallback. An empty array means pure LLM only.
 
 ```json
-"mcp_access": ["brave_search", "mongodb"]
+"mcp_access": ["brave_search", "solana_wallet"]
 ```
 
 ### `lore`
@@ -331,7 +331,7 @@ Per-persona LLM sampling overrides. When set, these values override the global `
 | `style` | string | Yes | — | Comma-separated tone descriptors |
 | `rarity` | string | No | `"common"` | Legacy field; use `mcp_access` for capability gating |
 | `celestial_order` | string | No | `"wanderer"` | `wanderer`, `sage`, `warden`, `archon` |
-| `mcp_access` | string[] | No | `[]` | `"brave_search"`, `"mongodb"` |
+| `mcp_access` | string[] | No | `[]` | Valid values: `"brave_search"`, `"solana_wallet"` |
 | `coordinator_label` | string | No | — | Backend dropdown label; format `"Name (Tagline)"` |
 | `image` | string | No | — | Path to card image relative to `public/` |
 | `avatar` | string | No | — | Path to avatar image; can be emoji string |
