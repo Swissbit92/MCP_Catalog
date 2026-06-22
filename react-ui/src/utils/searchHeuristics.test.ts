@@ -49,12 +49,14 @@ describe('predictWebSearch', () => {
     });
   });
 
-  describe('MongoDB keyword detection', () => {
-    it('predicts no search for Bitcoin price queries (epic persona)', () => {
+  describe('Crypto price queries (post-MongoDB-removal)', () => {
+    it('predicts web search for Bitcoin price queries (epic persona)', () => {
+      // MongoDB MCP removed 2026-06-22 — crypto price is no longer special-cased;
+      // it matches the 'price' search keyword and routes to web search.
       const result = predictWebSearch('What is the Bitcoin price?', 'epic');
-      expect(result.willSearch).toBe(false);
+      expect(result.willSearch).toBe(true);
       expect(result.confidence).toBe('high');
-      expect(result.reason).toContain('MongoDB');
+      expect(result.keywords_matched).toContain('price');
     });
   });
 

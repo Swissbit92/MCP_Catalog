@@ -2,7 +2,7 @@
 title: SQLite Architecture
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-23
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -28,7 +28,7 @@ Architecture decision record and operational guide for the SQLite persistence la
 
 **Rejected alternatives:**
 - PostgreSQL: Requires a running server, overkill for local-first use case
-- MongoDB: Reserved for trading data via MCP integration, not application state
+- MongoDB: no longer used by nephilim (the MongoDB MCP + wallet dual-write were removed 2026-06-22, [ADR-002](../decisions/002-remove-mongodb-mcp.md))
 - Redis: Ephemeral by default, would need persistence config for state
 
 ---
@@ -112,7 +112,7 @@ See `alembic/versions/3nephilim_progression.py` for full DDL.
 **`wallet_registry`** — Per-user multi-wallet registry with 3-wallet limit enforcement and slot management
 **`wallet_activity_summary`** — Pre-computed trading activity summary (trade count, volume, last trade)
 **`wallet_balance_cache`** — Per-wallet cached SOL balance, token count, and lock/unlock state
-**`wallet_trades_local`** — SQLite trade history fallback (dual-write with MongoDB)
+**`wallet_trades_local`** — SQLite trade history (sole store; former MongoDB dual-write removed 2026-06-22)
 
 See [WALLET_METADATA.md](WALLET_METADATA.md) for full DDL, data flow, and what the AI companion can see.
 

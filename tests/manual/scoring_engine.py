@@ -48,7 +48,7 @@ DIMENSION_WEIGHTS = {
 _TOOL_NAMES = [
     "wallet_get_balances", "wallet_create", "wallet_list", "wallet_delete",
     "wallet_get_transactions", "solana_propose_swap", "solana_execute_swap",
-    "mongo_query", "mongodb_query", "brave_search", "brave_web_search",
+    "brave_search", "brave_web_search",
     "tool_calling", "mcp_client", "intent_classifier",
 ]
 
@@ -144,7 +144,7 @@ def _score_mcp_routing(test: dict, source: str) -> tuple[float, list[str]]:
     if not expected or expected == "any":
         return 1.0, flags
     if expected == "any_mcp":
-        if source in ("brave_mcp", "mongodb_mcp", "wallet"):
+        if source in ("brave_mcp", "wallet"):
             return 1.0, flags
         flags.append(f"expected any_mcp but got source={source!r}")
         return 0.0, flags

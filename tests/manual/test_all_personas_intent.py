@@ -1,6 +1,9 @@
 """
-30-query intent classification test per persona (excluding E.E.V.A.).
+20-query intent classification test per persona (excluding E.E.V.A.).
 Tests that MCP routing respects each persona's mcp_access configuration.
+
+MongoDB MCP removed 2026-06-22 — crypto price/TA routing is no longer a
+distinct intent; comprehensive MCP routing lives in test_bank_mcp.py.
 """
 
 import sys
@@ -18,11 +21,11 @@ PERSONAS = {
     },
     "Aurora": {
         "rarity": "epic",
-        "mcp_access": ["brave_search", "mongodb"],
+        "mcp_access": ["brave_search"],
     },
     "Cipher": {
         "rarity": "rare",
-        "mcp_access": ["brave_search", "mongodb"],
+        "mcp_access": ["brave_search"],
     },
     "Solace": {
         "rarity": "epic",
@@ -38,90 +41,67 @@ PERSONAS = {
     },
 }
 
-# ─── Test Queries (30 per persona) ────────────────────────────────────────────
+# ─── Test Queries (20 per persona) ────────────────────────────────────────────
 # Each query has an expected result PER capability tier:
 #   "web"     = persona with brave_search
-#   "mongodb" = persona with mongodb
-#   "wallet"  = persona with solana_wallet
 #   "llm"     = no MCP / fallback
 #
-# Format: (query, expected_if_brave_only, expected_if_brave_mongo, expected_if_no_mcp)
+# Format: (query, expected_if_brave, expected_if_no_mcp)
 
 QUERIES = [
     # ═══════════════════════════════════════════════════════════════
     # BRAVE MCP — Weather (5)
     # ═══════════════════════════════════════════════════════════════
-    ("What is the weather in London today?",           "web", "web", "llm"),
-    ("Will it rain tomorrow in Berlin?",               "web", "web", "llm"),
-    ("Current temperature in Tokyo",                   "web", "web", "llm"),
-    ("What's the forecast for Paris this weekend?",    "web", "web", "llm"),
-    ("Is it going to be cold tomorrow?",               "web", "web", "llm"),
+    ("What is the weather in London today?",           "web", "llm"),
+    ("Will it rain tomorrow in Berlin?",               "web", "llm"),
+    ("Current temperature in Tokyo",                   "web", "llm"),
+    ("What's the forecast for Paris this weekend?",    "web", "llm"),
+    ("Is it going to be cold tomorrow?",               "web", "llm"),
 
     # ═══════════════════════════════════════════════════════════════
     # BRAVE MCP — News & Current Events (5)
     # ═══════════════════════════════════════════════════════════════
-    ("What are the latest news about AI?",             "web", "web", "llm"),
-    ("Breaking news today",                            "web", "web", "llm"),
-    ("What's new with SpaceX?",                        "web", "web", "llm"),
-    ("Recent developments in renewable energy",        "web", "web", "llm"),
-    ("What happened in the US elections recently?",    "web", "web", "llm"),
+    ("What are the latest news about AI?",             "web", "llm"),
+    ("Breaking news today",                            "web", "llm"),
+    ("What's new with SpaceX?",                        "web", "llm"),
+    ("Recent developments in renewable energy",        "web", "llm"),
+    ("What happened in the US elections recently?",    "web", "llm"),
 
     # ═══════════════════════════════════════════════════════════════
     # BRAVE MCP — Stocks & Opinion (5)
     # ═══════════════════════════════════════════════════════════════
-    ("What is the current stock price of NVIDIA?",     "web", "web", "llm"),
-    ("How is the S&P 500 doing today?",                "web", "web", "llm"),
-    ("What do analysts think about Tesla stock?",      "web", "web", "llm"),
-    ("What are predictions for the housing market?",   "web", "web", "llm"),
-    ("What is trending on Twitter right now?",         "web", "web", "llm"),
-
-    # ═══════════════════════════════════════════════════════════════
-    # MONGODB MCP — Bitcoin Price (5)
-    # ═══════════════════════════════════════════════════════════════
-    ("What is the current price of Bitcoin?",          "llm", "mongodb", "llm"),
-    ("How much is BTC worth?",                         "llm", "mongodb", "llm"),
-    ("What's BTC trading at?",                         "llm", "mongodb", "llm"),
-    ("Current Bitcoin value",                          "llm", "mongodb", "llm"),
-    ("How much does Bitcoin cost?",                    "llm", "mongodb", "llm"),
-
-    # ═══════════════════════════════════════════════════════════════
-    # MONGODB MCP — Technical Analysis (5)
-    # ═══════════════════════════════════════════════════════════════
-    ("What is Bitcoin's RSI right now?",               "llm", "mongodb", "llm"),
-    ("Bitcoin Bollinger Bands analysis",               "llm", "mongodb", "llm"),
-    ("What does the Bitcoin technical analysis look like?", "llm", "mongodb", "llm"),
-    ("Give me a Bitcoin trading summary",              "llm", "mongodb", "llm"),
-    ("Show me Bitcoin's historical prices from 2025-12-01", "llm", "mongodb", "llm"),
+    ("What is the current stock price of NVIDIA?",     "web", "llm"),
+    ("How is the S&P 500 doing today?",                "web", "llm"),
+    ("What do analysts think about Tesla stock?",      "web", "llm"),
+    ("What are predictions for the housing market?",   "web", "llm"),
+    ("What is trending on Twitter right now?",         "web", "llm"),
 
     # ═══════════════════════════════════════════════════════════════
     # PURE LLM — Should always be LLM regardless of persona (5)
     # ═══════════════════════════════════════════════════════════════
-    ("What is 25% of 80?",                             "llm", "llm", "llm"),
-    ("Explain what blockchain is",                     "llm", "llm", "llm"),
-    ("What is the capital of France?",                 "llm", "llm", "llm"),
-    ("Who wrote Romeo and Juliet?",                    "llm", "llm", "llm"),
-    ("How does photosynthesis work?",                  "llm", "llm", "llm"),
+    ("What is 25% of 80?",                             "llm", "llm"),
+    ("Explain what blockchain is",                     "llm", "llm"),
+    ("What is the capital of France?",                 "llm", "llm"),
+    ("Who wrote Romeo and Juliet?",                    "llm", "llm"),
+    ("How does photosynthesis work?",                  "llm", "llm"),
 ]
 
 
 def get_expected(query_row, persona_name):
     """Get the expected intent for a persona based on its MCP capabilities."""
-    _, exp_brave_only, exp_brave_mongo, exp_no_mcp = query_row
+    _, exp_brave, exp_no_mcp = query_row
     mcp = PERSONAS[persona_name]["mcp_access"]
 
     has_brave = "brave_search" in mcp
-    has_mongo = "mongodb" in mcp
 
-    if has_brave and has_mongo:
-        return exp_brave_mongo
-    elif has_brave:
-        return exp_brave_only
+    if has_brave:
+        return exp_brave
     else:
         return exp_no_mcp
 
 
 def run_persona_tests(persona_name):
-    """Run all 30 queries for a single persona."""
+    """Run all 20 queries for a single persona."""
     config = PERSONAS[persona_name]
     rarity = config["rarity"]
     mcp = config["mcp_access"]
@@ -150,7 +130,7 @@ def run_persona_tests(persona_name):
 
 
 def main():
-    print(f"Running 30-query intent classification tests for {len(PERSONAS)} personas")
+    print(f"Running 20-query intent classification tests for {len(PERSONAS)} personas")
     print(f"Total queries: {len(QUERIES) * len(PERSONAS)}")
     print("=" * 110)
 

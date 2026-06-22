@@ -2,7 +2,7 @@
 title: Celestial Order Architecture
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -17,7 +17,7 @@ How the four-tier Celestial Order system works across backend, frontend, and MCP
 
 The **Celestial Order** is the progression/tier system for personas. Each persona belongs to exactly one tier, which affects:
 
-1. **MCP tool access** — which external services (Brave Search, MongoDB) the persona can use
+1. **MCP tool access** — which external services (Brave Search, Solana wallet) the persona can use
 2. **Frontend visual theming** — card effects, color schemes, badge styling
 3. **Lore significance** — narrative weight in the NEPHILIM worldbuilding
 
@@ -38,9 +38,9 @@ The **Celestial Order** is the progression/tier system for personas. Each person
 |---------|------|-----------|
 | E.E.V.A. | `archon` | The Primarch — guides all Seekers, needs full context |
 | Aegis | `warden` | Sentinel/productivity — needs web resources, not trading |
-| Aurora | `warden` | Oracle — gazes into data trends, needs both |
+| Aurora | `warden` | Oracle — gazes into data trends, needs web search |
 | Solace | `warden` | Empath — emotional support needs web resources |
-| Cipher | `sage` | Maven — identity is data research, needs both |
+| Cipher | `sage` | Maven — identity is data research, needs web search |
 | Nyx | `sage` | Muse — creativity flows from imagination, no tools |
 | Legacy personas | `wanderer` | Pure LLM, no MCP tools |
 
@@ -56,14 +56,16 @@ Each persona JSON specifies `mcp_access` as a list of allowed tool types:
 {
   "key": "nephilim_eeva",
   "celestial_order": "archon",
-  "mcp_access": ["brave_search", "mongodb"]
+  "mcp_access": ["brave_search", "solana_wallet"]
 }
 ```
 
 **Valid `mcp_access` values:**
 - `"brave_search"` — enables Brave web search
-- `"mongodb"` — enables MongoDB trading data queries
+- `"solana_wallet"` — enables Solana/Jupiter wallet operations (E.E.V.A. only)
 - `[]` — no MCP access (even if env vars would grant it)
+
+> MongoDB MCP (`"mongodb"`) was removed 2026-06-22 — see [ADR-002](../decisions/002-remove-mongodb-mcp.md).
 
 The `mcp_access` field takes absolute priority over rarity-based env var fallback.
 
@@ -73,7 +75,6 @@ When a persona JSON has no `mcp_access` field (legacy personas), the system fall
 hardcoded rarity-based gating in `intent_classifier.py` and `tool_utils.py`:
 
 - Brave Search: `rare`, `epic`, `legendary`
-- MongoDB: `epic`, `legendary`
 
 `BRAVE_ENABLED_RARITIES` / `MONGODB_ENABLED_RARITIES` env vars were removed in Feb 2026 — they
 were parsed into config fields that nothing ever read. All current personas define `mcp_access`
@@ -85,7 +86,7 @@ explicitly, so the rarity fallback is a safety net only. New personas should alw
 When a chat request comes in, `src/coordinator/tools/intent_classifier.py` determines tool routing:
 
 1. Loads the persona's `mcp_access` list (or falls back to rarity check)
-2. Classifies the user query into `NEEDS_WEB_SEARCH`, `NEEDS_MONGODB`, `NEEDS_BOTH`, or `NEEDS_NEITHER`
+2. Classifies the user query into `NEEDS_WEB_SEARCH`, `NEEDS_WALLET`, or `NEEDS_NEITHER`
 3. Cross-references with what the persona is permitted to access
 4. Returns the appropriate tool set to inject into the LLM system prompt
 

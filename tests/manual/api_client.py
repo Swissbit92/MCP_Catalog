@@ -50,7 +50,7 @@ def chat(
     """POST /sessions/{id}/chat — returns (answer, elapsed_s, source_type, tools_used).
 
     answer is always a flat string (joined if backend returns list).
-    source_type: "llm" | "brave_mcp" | "mongodb_mcp" | "wallet" | "?"
+    source_type: "llm" | "brave_mcp" | "wallet" | "?"
     """
     payload = json.dumps({"persona": persona_key, "message": message}).encode()
     req = urllib.request.Request(

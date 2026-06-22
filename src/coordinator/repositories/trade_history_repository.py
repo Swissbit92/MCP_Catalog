@@ -1,5 +1,5 @@
 # src/coordinator/repositories/trade_history_repository.py
-"""Local SQLite trade history — MongoDB fallback so trade records are never lost."""
+"""Local SQLite trade history — the sole trade-record store."""
 from __future__ import annotations
 
 import logging
@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class TradeHistoryRepository(BaseRepository):
-    """Persists trade records to SQLite as a fallback when MongoDB is unavailable.
+    """Persists trade records to SQLite — the single source of truth for trade history.
 
-    Dual-write pattern: WalletExecutionService writes to both MongoDB (if configured)
-    and this table. On read, MongoDB is preferred; this table is the safety net.
+    WalletExecutionService writes every executed trade here, and all reads come from
+    this table. (The former MongoDB dual-write path was removed 2026-06-22, ADR-002.)
     """
 
     def __init__(self, db_path: Optional[str] = None):

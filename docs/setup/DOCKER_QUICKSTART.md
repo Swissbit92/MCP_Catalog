@@ -2,7 +2,7 @@
 title: Docker Quick Start Guide - SQLite Edition
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -197,7 +197,7 @@ docker-compose build frontend
 docker-compose up -d frontend
 ```
 
-> **Important:** Always run `verify_startup.py` after rebuilding the backend. This checks that the database, Ollama, Brave MCP, and MongoDB MCP all initialized correctly. Without this step, broken MCP subsystems can silently return 500 errors.
+> **Important:** Always run `verify_startup.py` after rebuilding the backend. This checks that the database, Ollama, and Brave MCP all initialized correctly. Without this step, broken MCP subsystems can silently return 500 errors.
 
 ---
 

@@ -438,7 +438,7 @@ def main() -> int:
 
         acc = PERSONA_MCP_ACCESS.get(persona, {})
         mcp_label = ", ".join(
-            k for k, v in [("brave", acc.get("brave")), ("mongodb", acc.get("mongodb")), ("wallet", acc.get("wallet"))]
+            k for k, v in [("brave", acc.get("brave")), ("wallet", acc.get("wallet"))]
             if v
         ) or "none"
 

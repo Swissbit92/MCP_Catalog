@@ -2,7 +2,7 @@
 title: Adding MCP Servers to MCP Coordinator
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---

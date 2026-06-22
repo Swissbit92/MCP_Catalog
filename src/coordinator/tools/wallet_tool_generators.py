@@ -280,7 +280,7 @@ def get_solana_trade_history_tool() -> Dict[str, Any]:
             "name": "solana_trade_history",
             "description": (
                 "Get the user's recent trade history and active strategies. "
-                "Reads from MongoDB wallet_trades and strategies/ folder. "
+                "Reads from the local trade history store and strategies/ folder. "
                 "Use when user asks: 'how did my strategy perform', 'show me recent trades', "
                 "'what strategies are running', 'what\\'s my P&L'."
             ),

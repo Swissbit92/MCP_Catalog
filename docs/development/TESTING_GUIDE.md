@@ -2,7 +2,7 @@
 title: Testing Guide
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -81,8 +81,8 @@ tests/
 ├── manual/                 # Manual quality tests (require running backend)
 │   ├── eeva_chat_test.py           # 50-question E.E.V.A. quality suite
 │   ├── eeva_test_results.json      # Latest test results
-│   ├── test_all_personas_intent.py # 30-query offline intent test, all 7 personas
-│   └── test_live_all_personas.py   # 30-query live API test, all 7 personas
+│   ├── test_all_personas_intent.py # 20-query offline intent test, 6 personas
+│   └── test_live_all_personas.py   # 20-query live API test, 6 personas
 └── exploration/             # Utility scripts (archived; skipped in CI)
     └── check_db.py
 ```
@@ -470,11 +470,9 @@ python scripts/docker/verify_startup.py --timeout 120
 |-------|-------|---------|
 | 1 | `/ready` endpoint | Polls until 200 or timeout (DB + Ollama must be healthy) |
 | 2 | Brave MCP status | If `BRAVE_API_KEY` set in `.env.docker`, asserts `enabled` |
-| 2 | MongoDB MCP status | If `MONGODB_ENABLED=true`, asserts `enabled` |
 | 3 | Persona load | `GET /personas` returns non-empty list |
 | 3 | LLM greet | `POST /persona/greet` returns valid response |
 | 3 | Brave query | Chat query routed through web search returns reply |
-| 3 | MongoDB query | Chat query routed through trading data returns reply |
 
 **Exit codes:** `0` = all checks passed, `1` = one or more failed.
 
@@ -540,8 +538,8 @@ The suite produces:
 
 The MCP query routing pipeline (`tools/intent_classifier.py` + `tools/keywords.py`) determines which MCP service handles each user query. Access is controlled **per-persona** via the `mcp_access` field in persona JSONs — not by rarity. After fixing Brave MCP force-search, intent classification bugs, and backend initialization bugs (Feb 2026), the system was validated with:
 
-- **Offline intent test** (`test_all_personas_intent.py`): Tests `classify_query_intent()` directly, 30 queries × 6 personas (Aegis, Aurora, Cipher, Solace, Nyx, Gojo). **Result: 180/180 PASS.**
-- **Live API test** (`test_live_all_personas.py`): End-to-end HTTP tests against running backend, same 30 queries × 6 personas. **Result: 180/180 PASS, avg 5.0s/query.**
+- **Offline intent test** (`test_all_personas_intent.py`): Tests `classify_query_intent()` directly, 20 queries × 6 personas (Aegis, Aurora, Cipher, Solace, Nyx, Gojo). **Result: 120/120 PASS.** (MongoDB MCP removed 2026-06-22 — the 10 crypto price/TA queries were dropped; comprehensive MCP routing lives in `test_bank_mcp.py`.)
+- **Live API test** (`test_live_all_personas.py`): End-to-end HTTP tests against running backend, same 20 queries × 6 personas.
 
 ### Quick Intent Classification Test
 

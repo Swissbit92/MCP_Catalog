@@ -2,7 +2,7 @@
 title: API Reference
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -355,7 +355,7 @@ List all available personas with their metadata. Response is cached for 30 secon
 | `style` | string | Short style/tone description |
 | `rarity` | string | Rarity tier (`common`, `rare`, `epic`, `legendary`) |
 | `celestial_order` | string | Celestial order tier (`wanderer`, `sage`, `warden`, `archon`) |
-| `mcp_access` | array | List of enabled MCP tools (e.g. `["brave_search", "mongodb"]`) |
+| `mcp_access` | array | List of enabled MCP tools (e.g. `["brave_search", "solana_wallet"]`) |
 | `coordinator_label` | string or null | Optional display label override |
 | `image` | string or null | Path to card image |
 | `avatar` | string or null | Path to avatar image |
@@ -711,6 +711,6 @@ Validation errors (`422`) return a structured body:
 
 - **Interactive docs:** `http://localhost:8000/docs` (Swagger UI) and `http://localhost:8000/redoc` (ReDoc) provide live, explorable documentation generated from the OpenAPI schema.
 - **Multi-message responses:** Some replies are split into multiple sequential messages (simulating a more natural conversation rhythm). When `message_flow` is `"multi"`, the `answer` field is an array of strings rather than a single string.
-- **MCP tool routing:** `POST /persona/chat` and `POST /sessions/{session_id}/chat` automatically decide whether to invoke Brave Search, MongoDB, both, or neither based on the persona's `mcp_access` field and the classified intent of the user's message.
+- **MCP tool routing:** `POST /persona/chat` and `POST /sessions/{session_id}/chat` automatically decide whether to invoke Brave Search, the Solana/Jupiter wallet, or neither based on the persona's `mcp_access` field and the classified intent of the user's message.
 - **Persona discovery:** Personas are loaded from JSON files in the `personas/` directory. Changes to those files are picked up on the next request without requiring a server restart (30-second cache).
 - **Resonance automation:** The session chat endpoint awards 5 resonance points automatically after each exchange with a NEPHILIM persona. The `POST /nephilim/seeker/{user_id}/resonance` endpoint is available for manual awards or corrections.
