@@ -490,7 +490,7 @@ def initialize_all():
     except Exception as e:
         logger.warning(f"Summary check failed: {e}")
 
-    # R4: Pre-warm semantic router centroids in background (reuses nomic-embed-text already pulled)
+    # R4: Pre-warm semantic router centroids in background (reuses the RAG embedding model already pulled)
     try:
         import threading as _threading
         def _prewarm_semantic():

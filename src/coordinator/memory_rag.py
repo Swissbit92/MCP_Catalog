@@ -9,13 +9,24 @@ from __future__ import annotations
 from typing import List, Optional, Tuple, Dict, Any
 import logging
 
+from .memory_text_utils import prepare_for_embedding, truncate_for_embedding
+
 try:
-    from langchain_community.embeddings import OllamaEmbeddings
+    # Prefer langchain-ollama (modern): it calls Ollama's /api/embed endpoint
+    # and forwards num_ctx, so we can actually use bge-m3's 8192-token window.
+    # The legacy langchain-community class uses /api/embeddings, which ignores
+    # num_ctx and returns HTTP 500 on inputs over the default 2048 context.
+    try:
+        from langchain_ollama import OllamaEmbeddings
+        _USING_MODERN_OLLAMA = True
+    except ImportError:
+        from langchain_community.embeddings import OllamaEmbeddings  # type: ignore[assignment]
+        _USING_MODERN_OLLAMA = False
     from langchain_community.vectorstores import FAISS
     import faiss
 except ImportError as e:
     raise ImportError(
-        "Required packages not installed. Run: pip install faiss-cpu langchain-community"
+        "Required packages not installed. Run: pip install faiss-cpu langchain-community langchain-ollama"
     ) from e
 
 logger = logging.getLogger(__name__)
@@ -41,12 +52,21 @@ class EpisodicMemoryRAG:
             embedding_model: Ollama model for embeddings (default: from config)
         """
         from .config import get_settings
+        settings = get_settings()
         if embedding_model is None:
-            embedding_model = get_settings().memory.embedding_model
-        self.embeddings = OllamaEmbeddings(
-            model=embedding_model,
-            base_url=get_settings().ollama.base
-        )
+            embedding_model = settings.memory.embedding_model
+        # Input window of the embedding model. Text is chunked/truncated below a
+        # safety margin of this before embedding so we never trip Ollama's
+        # HTTP 500 overflow (which silently broke semantic memory every chat).
+        self._embed_max_tokens = settings.memory.embedding_max_tokens
+        self._embed_overlap = settings.memory.embedding_chunk_overlap_tokens
+        # num_ctx tells Ollama to allocate the model's full window (bge-m3=8192)
+        # instead of its 2048 default — only the modern langchain-ollama client
+        # forwards it to /api/embed.
+        embed_kwargs = {"model": embedding_model, "base_url": settings.ollama.base}
+        if _USING_MODERN_OLLAMA:
+            embed_kwargs["num_ctx"] = self._embed_max_tokens
+        self.embeddings = OllamaEmbeddings(**embed_kwargs)
         self.vectorstores: Dict[str, FAISS] = {}  # session_id -> FAISS instance
         # faiss.get_num_gpus() is CUDA-only — always 0 with faiss-cpu. On Apple Silicon
         # GPU inference goes through native Ollama, not FAISS-on-Metal. The GPU transfer
@@ -73,9 +93,7 @@ class EpisodicMemoryRAG:
             return
 
         # Format messages for indexing
-        texts = []
-        metadatas = []
-
+        pairs = []
         for i, msg in enumerate(messages):
             # Format: "user: message content" or "assistant: response content"
             text = f"{msg['role']}: {msg['content']}"
@@ -86,8 +104,16 @@ class EpisodicMemoryRAG:
                 "timestamp": msg.get("timestamp"),
                 "index": i
             }
-            texts.append(text)
-            metadatas.append(metadata)
+            pairs.append((text, metadata))
+
+        # Guard: normalize, drop empties, and chunk oversized messages so no
+        # input exceeds the embedder's window (else Ollama returns HTTP 500).
+        texts, metadatas = prepare_for_embedding(
+            pairs, self._embed_max_tokens, self._embed_overlap
+        )
+        if not texts:
+            logger.warning(f"[RAG] No embeddable text for session {session_id} after prep")
+            return
 
         # Create FAISS vector store
         try:
@@ -122,7 +148,7 @@ class EpisodicMemoryRAG:
         session_id: str,
         query: str,
         k: int = 15,  # Optimized via hyperparameter tuning (Jan 2026): k=15 for best recall
-        min_relevance: float = 0.7  # Optimized via hyperparameter tuning: 0.7 for best precision
+        min_relevance: float = 0.5  # Cosine true-negative floor (bge-m3, Jun 2026): recall-leaning
     ) -> List[Tuple[Dict[str, Any], float]]:
         """Search conversation memory semantically.
 
@@ -133,12 +159,13 @@ class EpisodicMemoryRAG:
             session_id: Chat session ID
             query: Search query (typically the user's current message)
             k: Number of results to return (default: 15)
-               - Optimized via grid search over 100 configurations
-               - Provides best balance: 77% recall, 80% precision, F1=0.7684
-            min_relevance: Minimum relevance score (0-1, default: 0.7)
-               - Optimized threshold for high-quality results
-               - Filters noise while maintaining strong recall
-               - See tests/evaluation/memory_tuning_results.json
+               - Corpus-driven, not embedder-driven; k=15 is a robust default
+            min_relevance: Minimum cosine similarity (default: 0.5)
+               - bge-m3 emits normalized embeddings → score IS cosine in [-1, 1]
+               - 0.5 is a true-negative FLOOR (recall-leaning chat memory):
+                 surface memories unless even the top hit is clearly unrelated;
+                 the LLM discards marginal hits. Missing a real memory is worse
+                 than over-retrieving. Formal re-tune is a follow-up (eval harness).
 
         Returns:
             List of (message_dict, relevance_score) tuples, sorted by relevance
@@ -149,6 +176,12 @@ class EpisodicMemoryRAG:
 
         vectorstore = self.vectorstores[session_id]
 
+        # Guard: cap the query to one embeddable chunk (a query must map to a
+        # single vector). Pathologically long queries would otherwise 500.
+        query = truncate_for_embedding(query, self._embed_max_tokens)
+        if not query:
+            return []
+
         try:
             # Perform similarity search
             results = vectorstore.similarity_search_with_score(
@@ -156,13 +189,15 @@ class EpisodicMemoryRAG:
                 k=k
             )
 
-            # Filter by minimum relevance (FAISS returns distance, lower = more similar)
-            # Convert distance to similarity score (invert and normalize)
+            # FAISS IndexFlatL2 returns SQUARED L2 distance D. bge-m3 emits
+            # unit-normalized vectors, for which cosine similarity is exact:
+            # D = 2 - 2·cos  =>  cos = 1 - D/2  (verified against dot-product).
+            # (langchain's COSINE distance_strategy is unreliable across
+            # versions, so we apply the identity directly.) Clamp to [-1, 1] to
+            # stay robust if a future embedder is not perfectly normalized.
             filtered_results = []
             for doc, distance in results:
-                # Convert distance to similarity (assuming L2 distance)
-                # Note: exact conversion depends on embedding space
-                similarity = 1.0 / (1.0 + distance)
+                similarity = max(-1.0, min(1.0, 1.0 - float(distance) / 2.0))
 
                 if similarity >= min_relevance:
                     message_data = {
@@ -263,9 +298,7 @@ class EpisodicMemoryRAG:
         existing_message_count = len(full_history) - len(new_messages)
 
         # Format new messages for indexing
-        texts = []
-        metadatas = []
-
+        pairs = []
         for i, msg in enumerate(new_messages):
             # Format: "user: message content" or "assistant: response content"
             text = f"{msg['role']}: {msg['content']}"
@@ -276,8 +309,15 @@ class EpisodicMemoryRAG:
                 "timestamp": msg.get("timestamp"),
                 "index": existing_message_count + i  # Sequential index
             }
-            texts.append(text)
-            metadatas.append(metadata)
+            pairs.append((text, metadata))
+
+        # Guard: same chunk/normalize pass as index_session (avoids HTTP 500).
+        texts, metadatas = prepare_for_embedding(
+            pairs, self._embed_max_tokens, self._embed_overlap
+        )
+        if not texts:
+            logger.debug(f"[RAG] No embeddable new text for session {session_id} after prep")
+            return
 
         try:
             # Incremental add (fast O(k) operation)

@@ -5,7 +5,7 @@ R4: Hybrid routing — keyword fast path → embedding similarity fallback → L
 
 When keyword matching in intent_classifier.py produces no signal but the persona has
 MCP access, this module embeds the user query against intent centroids computed from
-canonical example phrases. Uses the already-deployed nomic-embed-text Ollama model
+canonical example phrases. Uses the configured RAG embedding model (bge-m3)
 (same infrastructure as memory_rag.py — zero additional setup required).
 
 Only activated when:
@@ -106,12 +106,16 @@ def _get_embeddings_model():
         cfg = get_settings()
         model = cfg.memory.embedding_model
         base_url = cfg.ollama.base
-        # Prefer langchain-ollama (newer); fall back to langchain-community
+        # Prefer langchain-ollama (newer, uses /api/embed + forwards num_ctx so
+        # bge-m3 gets its full 8192 window); fall back to langchain-community.
         try:
             from langchain_ollama import OllamaEmbeddings
+            _embeddings_model = OllamaEmbeddings(
+                model=model, base_url=base_url, num_ctx=cfg.memory.embedding_max_tokens
+            )
         except ImportError:
             from langchain_community.embeddings import OllamaEmbeddings  # type: ignore[assignment]
-        _embeddings_model = OllamaEmbeddings(model=model, base_url=base_url)
+            _embeddings_model = OllamaEmbeddings(model=model, base_url=base_url)
         logger.info(f"[SemanticRouter] Embedding model initialized: {model}")
         return _embeddings_model
     except Exception as e:
@@ -173,7 +177,13 @@ def route_by_embedding(
         return None
 
     try:
-        query_vec = emb_model.embed_query(query)
+        # Guard against embedder input overflow (Ollama HTTP 500) for very long
+        # first messages. Centroid phrases are short by construction; only the
+        # user query needs capping.
+        from ..config import get_settings
+        from ..memory_text_utils import truncate_for_embedding
+        safe_query = truncate_for_embedding(query, get_settings().memory.embedding_max_tokens)
+        query_vec = emb_model.embed_query(safe_query)
     except Exception as e:
         logger.debug(f"[SemanticRouter] Query embedding failed: {e}")
         return None

@@ -65,7 +65,8 @@ tools/                         # intent_classifier.py, synthesis_prompts.py, key
 - `prompt_builder.py` - System prompt construction from persona JSON (XML-tagged sections with bookend pattern)
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
-- `memory_manager.py`, `memory_rag.py` - RAG semantic search
+- `memory_manager.py`, `memory_rag.py` - RAG semantic search (bge-m3 embeddings via modern `langchain_ollama` + `num_ctx`; cosine `1 − D/2` scoring, `min_relevance=0.5` recall floor)
+- `memory_text_utils.py` - embedding-input guard (normalize, drop-empty, chunk oversized / truncate query before embedding — prevents Ollama HTTP 500 overflow)
 - `tools/intent_classifier.py` - Query intent classification (wallet, brave, llm) with follow-up detection
 - `tools/keywords.py` - Keyword dictionaries for intent classification routing
 
@@ -110,7 +111,7 @@ PERSONA_DIR=personas
 
 Optional (see `.env.docker` for full list):
 - `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access` in persona JSON)
-- `MEMORY_EMBEDDING_MODEL` - RAG embeddings
+- `MEMORY_EMBEDDING_MODEL` - RAG embeddings (default `bge-m3:latest`, 8192-token ctx; `ollama pull bge-m3`). `MEMORY_EMBEDDING_MAX_TOKENS` (8192) caps input before chunking
 
 ## Code Style
 

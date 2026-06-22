@@ -158,9 +158,28 @@ class MemorySettings(BaseSettings):
     """Memory and RAG configuration (Phase 3)."""
 
     embedding_model: str = Field(
-        default="nomic-embed-text:latest",
-        description="Ollama embedding model for RAG semantic search",
+        default="bge-m3:latest",
+        description="Ollama embedding model for RAG semantic search "
+                    "(bge-m3: 8192-token native context, dense+sparse)",
         alias="MEMORY_EMBEDDING_MODEL"
+    )
+    embedding_max_tokens: int = Field(
+        default=8192,
+        ge=256,
+        le=40960,
+        description="Native input window of the embedding model. Text is "
+                    "chunked/truncated below a safety margin of this before "
+                    "embedding to avoid Ollama HTTP 500 overflow errors. "
+                    "(bge-m3=8192, nomic-embed-text=2048, qwen3-embedding=32768)",
+        alias="MEMORY_EMBEDDING_MAX_TOKENS"
+    )
+    embedding_chunk_overlap_tokens: int = Field(
+        default=128,
+        ge=0,
+        le=1024,
+        description="Token overlap between chunks when an oversized message is "
+                    "split before embedding (preserves cross-chunk context)",
+        alias="MEMORY_EMBEDDING_CHUNK_OVERLAP_TOKENS"
     )
     summarization_interval: int = Field(
         default=30,

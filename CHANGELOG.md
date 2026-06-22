@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-06-23) — RAG embedding overflow
+
+- **Semantic memory no longer silently broken.** `memory_rag`/Phase-3 RAG threw `HTTP 500: the input length exceeds the context length` on every chat that fed the embedder more than ~2048 tokens, so semantic recall was skipped entirely. Root cause was two-fold: the legacy `langchain_community.OllamaEmbeddings` calls Ollama's `/api/embeddings` endpoint (ignores `num_ctx`, 500s past the 2048 default) **and** `nomic-embed-text`'s small window.
+- **Switched embedder `nomic-embed-text` → `bge-m3`** (8192-token native context, 1024-dim, L2-normalized, dense+sparse) — `MEMORY_EMBEDDING_MODEL` in `.env`/`.env.docker` + `MemorySettings` default. Near-zero migration: FAISS indexes are in-memory and rebuilt per session; semantic-router centroids re-warm at startup.
+- **Switched to the modern `langchain_ollama` client with `num_ctx`** (uses `/api/embed`, forwards the context window) in `memory_rag.py` and `semantic_router.py`, so bge-m3 actually gets its 8192 window (also clears the LangChain deprecation warning).
+- **New `src/coordinator/memory_text_utils.py`** — dependency-light embedding-input guard: normalizes whitespace, drops empty strings, and chunks oversized messages (token budget at a 0.6 safety margin of the window) / truncates queries before embedding. Applied at every index + query site. Oversized messages now fan out into multiple vectors with `chunk`/`n_chunks` metadata instead of 500ing.
+- **Corrected relevance scoring for the new embedder.** The old `1/(1+L2)` conversion + nomic-tuned `min_relevance=0.7` gate filtered out *every* correct hit under bge-m3 (returned empty memory). Replaced with the exact cosine identity `cos = 1 − D/2` (FAISS returns squared L2; bge-m3 is unit-normalized) and a recall-leaning `0.5` true-negative floor (`k=15` unchanged). New `MEMORY_EMBEDDING_MAX_TOKENS` (default 8192) + `MEMORY_EMBEDDING_CHUNK_OVERLAP_TOKENS` settings.
+- **Tests:** 19 new (`test_memory_text_utils.py` + `test_memory_rag_overflow.py`, headless via a recording fake-embedder); live `test_faiss_incremental_update.py` re-verified against bge-m3. Suite 1422 → 1441 collected, 0 regressions.
+- **Follow-ups (non-blocking):** formal threshold re-tune on a labeled eval set after real usage; optional `bge-reranker-v2-m3` cross-encoder rerank (~50–80ms on M4 Pro GPU).
+
 ### Added (2026-06-22) — Test suite
 
 - **Backend test coverage raised to 63%** (from a 41% baseline; the `--cov-fail-under=60` gate in `pytest.ini` now passes headless). Added ~1,060 deterministic unit tests (suite 321 → ~1,420 collected; 1386 pass / 38 skip / 0 fail headless) across repositories (temp-SQLite), pure-logic modules, jupiter strategies, and FastAPI routes (TestClient). See [docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md).
