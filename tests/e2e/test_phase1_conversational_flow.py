@@ -8,6 +8,23 @@ import time
 from src.coordinator.routes.chat import chat
 from src.coordinator.schemas import ChatBody, ChatTurn
 
+pytestmark = pytest.mark.requires_ollama
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _init_repos():
+    """Initialize repositories so chat() can run without a full server startup."""
+    from src.coordinator.startup import init_repositories
+    init_repositories()
+
+
+def _get_answer(response: dict) -> str:
+    """Extract answer text from chat response, joining multi-message lists."""
+    answer = response.get("answer", "")
+    if isinstance(answer, list):
+        answer = " ".join(str(m) for m in answer)
+    return answer
+
 
 class TestE2EConversationalFlow:
     """End-to-end tests of conversational engagement."""
@@ -28,7 +45,7 @@ class TestE2EConversationalFlow:
         )
 
         response1 = chat(turn1_body)
-        answer1 = response1["answer"]
+        answer1 = _get_answer(response1)
 
         # Assertions turn 1
         assert "?" in answer1, "Should ask a question when user introduces themselves"
@@ -49,7 +66,7 @@ class TestE2EConversationalFlow:
         )
 
         response2 = chat(turn2_body)
-        answer2 = response2["answer"]
+        answer2 = _get_answer(response2)
 
         # Assertions turn 2
         assert "wallet" in answer2.lower() or "seed" in answer2.lower(), \
@@ -86,7 +103,7 @@ class TestE2EConversationalFlow:
         )
 
         response = chat(body)
-        answer = response["answer"]
+        answer = _get_answer(response)
 
         # Should answer the question
         assert "6.25" in answer or "3.125" in answer, "Should mention block reward"
@@ -116,7 +133,7 @@ class TestE2EConversationalFlow:
         )
 
         response1 = chat(turn1_body)
-        answer1 = response1["answer"]
+        answer1 = _get_answer(response1)
 
         history.append(ChatTurn(role="user", content=turn1_body.message))
         history.append(ChatTurn(role="assistant", content=answer1))
@@ -129,7 +146,7 @@ class TestE2EConversationalFlow:
         )
 
         response2 = chat(turn2_body)
-        answer2 = response2["answer"]
+        answer2 = _get_answer(response2)
 
         # Should ideally use the name (though memory rules cover this)
         # At minimum, should respond contextually
@@ -162,7 +179,7 @@ class TestMultiMessageParsing:
         )
 
         response = chat(body)
-        answer = response["answer"]
+        answer = _get_answer(response)
 
         if "<msg>" in answer:
             # LLM used multi-message format
@@ -206,7 +223,7 @@ class TestPhase1KPIs:
         for user_msg in test_cases:
             body = ChatBody(persona=persona, history=[], message=user_msg)
             response = chat(body)
-            answer = response["answer"]
+            answer = _get_answer(response)
 
             if "?" in answer:
                 responses_with_questions += 1

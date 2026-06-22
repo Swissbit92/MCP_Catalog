@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-06-22) — Test suite
+
+- **Backend test coverage raised to 63%** (from a 41% baseline; the `--cov-fail-under=60` gate in `pytest.ini` now passes headless). Added ~1,060 deterministic unit tests (suite 321 → ~1,420 collected; 1386 pass / 38 skip / 0 fail headless) across repositories (temp-SQLite), pure-logic modules, jupiter strategies, and FastAPI routes (TestClient). See [docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md).
+- **Resource-gated auto-skip**: `tests/conftest.py` now skips `requires_ollama` / `requires_api_key` / `requires_docker` tests when the resource is unreachable (TCP probe to `OLLAMA_BASE`, `BRAVE_API_KEY` env, `docker info`) — the suite is green and fast headless instead of crawling on live ~16 tok/s LLM calls.
+- **Optional RAGAS/nltk degradation**: the `evaluation` package imports cleanly without RAGAS installed (`RAGAS_AVAILABLE` guard); eval tests skip via a module-level guard.
+
+### Fixed (2026-06-22)
+
+- **`seeker_progression_repository.get_resonance_history`**: same-second events now return newest-first (`ORDER BY timestamp DESC, id DESC`).
+- **`wallet_registry_repository.soft_delete_wallet` / `soft_delete_by_address`**: a second (no-op) delete now correctly returns `False` (uses `cursor.rowcount` instead of a post-update SELECT).
+- **`message_processing_service` multi-message split**: the 3-message branch for very long (>800 char) replies with a trailing question now works (regex group(1) made greedy; was dead code).
+- **`datetime.utcnow()` deprecation swept** (Python 3.12) across 7 modules → `datetime.now(timezone.utc).replace(tzinfo=None)` (behavior-preserving naive-UTC; ~960 fewer deprecation warnings).
+- **Mac-migration test debt**: stale `get_ollama_base`/`get_persona_model` imports → `get_settings()`; `parse_multi_message_response` import path; removed `QueryIntent.NEEDS_BOTH` test reference; tokenizer-agnostic `_count_tokens`/truncation tests; Windows-only stdout clobber guarded; `.ps1` scripts demoted to reference-only in docs.
+
 ### Removed (2026-06-22)
 
 - **MongoDB MCP integration fully removed** (~96 files): deleted `mongodb_mcp_client.py`, `mongodb/` package, `cache.py`, `mongodb_handlers.py`, `token_registry.py`, all MongoDB intent keywords and routing, `MongoDBSettings`, the dormant `MONGODB_WRITE_URI` pymongo write-path, `pymongo` dependency. Rewrote `tests/manual/test_bank_mcp.py` as Brave + Wallet-only (138 tests). `QueryIntent` is now `NEEDS_WEB_SEARCH | NEEDS_NEITHER | NEEDS_WALLET`. Bitcoin-price queries now route to Brave (web) instead of the previous ~39 s MongoDB dead-end.

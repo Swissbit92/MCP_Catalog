@@ -35,8 +35,13 @@ def force_multi_message_split(response: str, query: str) -> str:
     # Only split VERY long responses (800+ chars) with clear conversational structure
     response_clean = response.strip()
 
-    # Strategy 1: Only split if response is VERY long (800+ chars) AND has question at end
-    question_match = re.search(r'(.*?)([.!]\s+)(.+\?)\s*$', response_clean, re.DOTALL)
+    # Strategy 1: Only split if response is VERY long (800+ chars) AND has question at end.
+    # group(1) is GREEDY so it captures all body text up to the LAST sentence break
+    # before the trailing question (main_content), leaving group(3) as just the final
+    # question. A non-greedy (.*?) here minimised group(1) to the first sentence, which
+    # both lumped the rest into the "question" message and made the 3-message split
+    # (which needs main_content > 400 chars containing a '. ') unreachable.
+    question_match = re.search(r'(.*)([.!]\s+)(.+\?)\s*$', response_clean, re.DOTALL)
     if question_match and len(response_clean) > 800:
         main_content = question_match.group(1) + question_match.group(2)
         question = question_match.group(3)

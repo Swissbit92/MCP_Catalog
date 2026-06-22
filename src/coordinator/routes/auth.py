@@ -10,7 +10,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import jwt
@@ -76,8 +76,8 @@ def _create_access_token(sub: str, email: str, name: str, avatar: str) -> str:
         "email": email,
         "name": name,
         "avatar": avatar,
-        "exp": datetime.utcnow() + timedelta(hours=settings.auth.jwt_expire_hours),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=settings.auth.jwt_expire_hours),
+        "iat": datetime.now(timezone.utc).replace(tzinfo=None),
         "type": "access",
     }
     return jwt.encode(payload, settings.auth.jwt_secret_key, algorithm=settings.auth.jwt_algorithm)
@@ -87,8 +87,8 @@ def _create_refresh_token(sub: str) -> str:
     settings = get_settings()
     payload = {
         "sub": sub,
-        "exp": datetime.utcnow() + timedelta(days=settings.auth.refresh_expire_days),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=settings.auth.refresh_expire_days),
+        "iat": datetime.now(timezone.utc).replace(tzinfo=None),
         "type": "refresh",
     }
     return jwt.encode(payload, settings.auth.jwt_secret_key, algorithm=settings.auth.jwt_algorithm)

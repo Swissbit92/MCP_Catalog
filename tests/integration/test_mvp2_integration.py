@@ -8,18 +8,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+import pytest
+
 from coordinator.llm_client import LC_OllamaClient
 from coordinator.mcp_client_stdio import BraveMCPClientStdio as BraveMCPClient
 from coordinator.tool_definitions import get_brave_search_tool, get_tools_for_persona
-from coordinator.config import (
-    get_ollama_base,
-    get_persona_model,
-    get_persona_temperature,
-    get_brave_api_key,
-    get_brave_max_results,
-    get_brave_safesearch,
-    get_brave_search_timeout
-)
+from coordinator.config import get_settings
+
+# Live end-to-end test: needs a running Ollama and a Brave API key.
+pytestmark = [pytest.mark.requires_ollama, pytest.mark.requires_api_key]
+
+# Config moved from standalone get_*() getters to a typed get_settings() object.
+# Thin shims preserve the original call sites below.
+_settings = get_settings()
+def get_ollama_base() -> str: return _settings.ollama.base
+def get_persona_model() -> str: return _settings.ollama.model
+def get_persona_temperature() -> float: return _settings.ollama.temperature
+def get_brave_api_key() -> str: return _settings.brave.api_key
+def get_brave_max_results() -> int: return _settings.brave.max_results
+def get_brave_safesearch() -> str: return _settings.brave.safesearch
+def get_brave_search_timeout() -> int: return _settings.brave.timeout
 
 try:
     from dotenv import load_dotenv

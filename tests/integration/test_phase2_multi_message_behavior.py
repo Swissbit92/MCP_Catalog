@@ -6,16 +6,23 @@ Tests actual LLM responses with multi-message prompting
 import pytest
 from src.coordinator.llm_client import LC_OllamaClient
 from src.coordinator.prompt_builder import build_system_prompt
-from src.coordinator.config import get_ollama_base, get_persona_model
-from src.coordinator.routes.chat import _parse_multi_message_response
+from src.coordinator.config import get_settings
+from src.coordinator.services.message_processing_service import (
+    parse_multi_message_response as _parse_multi_message_response,
+)
+
+# Every class here makes live LLM calls. Module-level mark so ALL classes
+# (not just the first) auto-skip headless via the conftest reachability check.
+pytestmark = pytest.mark.requires_ollama
 
 
 @pytest.fixture
 def llm_client():
     """Create LLM client for testing."""
+    settings = get_settings()
     return LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
+        base=settings.ollama.base,
+        model=settings.ollama.model,
         temperature=0.7
     )
 

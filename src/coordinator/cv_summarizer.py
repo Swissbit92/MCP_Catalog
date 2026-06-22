@@ -56,6 +56,21 @@ def _count_tokens(text: str) -> int:
         return max(1, len(text) // 4)
 
 
+def _truncate_word_to_tokens(word: str, max_tokens: int) -> str:
+    """Truncate a single (space-less) word to fit within max_tokens.
+
+    Starts from a char-based estimate (~4 chars/token) then trims one char at a
+    time until the actual token count fits. The estimate alone can overshoot —
+    BPE tokenizers (tiktoken) split unusual words into more tokens than the
+    heuristic predicts — so this verifies against _count_tokens to honor the
+    max_tokens contract regardless of which tokenizer backs it.
+    """
+    candidate = word[:max(1, max_tokens * 4)]
+    while _count_tokens(candidate) > max_tokens and len(candidate) > 1:
+        candidate = candidate[:-1]
+    return candidate
+
+
 def _truncate_to_tokens(text: str, max_tokens: int) -> str:
     """Truncate text to fit within max_tokens, preserving word boundaries."""
     if _count_tokens(text) <= max_tokens:
@@ -66,11 +81,7 @@ def _truncate_to_tokens(text: str, max_tokens: int) -> str:
 
     # Edge case: single word that's too long
     if len(text_words) == 1:
-        # Truncate the word itself by characters
-        word = text_words[0]
-        # Approximate chars needed: max_tokens * 4
-        max_chars = max_tokens * 4
-        return word[:max(1, max_chars)]
+        return _truncate_word_to_tokens(text_words[0], max_tokens)
 
     low, high = 0, len(text_words)
 
@@ -84,11 +95,9 @@ def _truncate_to_tokens(text: str, max_tokens: int) -> str:
 
     result = ' '.join(text_words[:low])
 
-    # Edge case: if no words fit, truncate first word by characters
+    # Edge case: if no words fit, truncate first word to honor the token limit
     if not result and text_words:
-        word = text_words[0]
-        max_chars = max_tokens * 4
-        result = word[:max(1, max_chars)]
+        result = _truncate_word_to_tokens(text_words[0], max_tokens)
 
     # Ensure we don't exceed the limit
     while _count_tokens(result) > max_tokens and len(result.split()) > 1:
@@ -192,7 +201,7 @@ def _save_summary(key: str, hash_: str, summary: str) -> Dict:
     payload = {
         "key": key,
         "hash": hash_,
-        "updated": datetime.datetime.utcnow().isoformat() + "Z",
+        "updated": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
         "summary": summary.strip()
     }
     fp = _summary_file_for_key(key)

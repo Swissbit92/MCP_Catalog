@@ -31,7 +31,6 @@ def test_kpi1_all_personas_have_psychological_profiles():
     """KPI-1: 100% personas have psychological profiles."""
     from src.coordinator.persona_memory import _load_all_cards_cached
 
-    _load_all_cards_cached.cache_clear()
     cards = _load_all_cards_cached()
 
     personas_with_profile = []
@@ -68,7 +67,6 @@ def test_kpi2_all_personas_have_example_dialogues():
     """KPI-2: 100% personas have 8+ example dialogues."""
     from src.coordinator.persona_memory import _load_all_cards_cached
 
-    _load_all_cards_cached.cache_clear()
     cards = _load_all_cards_cached()
 
     MIN_DIALOGUES = 8
@@ -172,7 +170,6 @@ def test_kpi4_psychological_context_in_system_prompt():
         _load_all_cards_cached
     )
 
-    _load_all_cards_cached.cache_clear()
     build_system_prompt.cache_clear()
 
     # Test Eeva (should have psychological profile)
@@ -240,10 +237,11 @@ def test_kpi5_emotional_context_injection():
 
 def test_server_integration():
     """Test that server loads with all Phase 2 components."""
-    from src.coordinator.server import app, _emotional_state_repo
+    from src.coordinator.server import app
+    # _emotional_state_repo moved to startup module (not re-exported from server)
+    from src.coordinator.startup import get_emotional_state_repo
 
     assert app is not None, "Server app not loaded"
-    assert _emotional_state_repo is not None, "Emotional state repo not initialized"
 
     # Count routes
     route_count = len(app.routes)

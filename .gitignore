@@ -82,3 +82,9 @@ personas/_summaries/Gwen_alt.json
 # generated artifacts / caches
 /personas/_summaries/
 /tests/manual/results/
+
+# coverage / pytest artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/

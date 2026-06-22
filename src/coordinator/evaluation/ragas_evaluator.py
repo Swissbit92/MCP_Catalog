@@ -11,17 +11,24 @@ from __future__ import annotations
 
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
+# RAGAS (with its nltk/datasets deps) is an optional, evaluation-only dependency
+# that is heavy and not installed in the default macOS runtime. Import it lazily so
+# this module — and the wider `evaluation` package — imports cleanly without it.
+# Only instantiating PersonaRagasEvaluator requires RAGAS. Tests gate on it via
+# `pytest.importorskip("ragas")`.
 try:
     from ragas import evaluate
     from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision
     from datasets import Dataset
-except ImportError as e:
-    raise ImportError(
-        "RAGAS not installed. Run: pip install ragas==0.2.3"
-    ) from e
+    RAGAS_AVAILABLE = True
+except ImportError:
+    evaluate = None
+    faithfulness = answer_relevancy = context_recall = context_precision = None
+    Dataset = None
+    RAGAS_AVAILABLE = False
 
 from .golden_examples import GoldenExamplesManager
 from .metrics import calculate_f1_score
@@ -101,6 +108,10 @@ class PersonaRagasEvaluator:
             model_name: LLM model to use for generating answers
             temperature: LLM temperature (0.0 for deterministic evaluation)
         """
+        if not RAGAS_AVAILABLE:
+            raise ImportError(
+                "RAGAS not installed. Run: pip install ragas==0.2.3 (evaluation-only dependency)"
+            )
         self.persona_key = persona_key
         self.model_name = model_name
         self.temperature = temperature
@@ -217,7 +228,7 @@ class PersonaRagasEvaluator:
             context_recall=metrics["context_recall"],
             f1_score=f1,
             questions_evaluated=len(questions),
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
             model_name=self.model_name,
             temperature=self.temperature,
         )

@@ -106,10 +106,14 @@ Tests are automatically categorized based on their location:
 | `@pytest.mark.requires_docker` | Manual | Needs Docker running |
 | `@pytest.mark.requires_ollama` | Manual | Needs Ollama running locally (`ollama serve`) |
 
-**Skip live LLM tests in CI:**
+**Auto-skip when a resource is unavailable (since 2026-06-22):** `tests/conftest.py` `pytest_collection_modifyitems` skips `requires_ollama` / `requires_api_key` / `requires_docker` tests automatically when the resource isn't reachable (TCP probe to `OLLAMA_BASE`, `BRAVE_API_KEY` env var, `docker info`). So a plain `pytest tests/` is green both with Ollama up (live tests run) and headless (they skip). To force the headless path locally:
+
 ```bash
-pytest tests/ -m "not requires_ollama"
+OLLAMA_BASE=http://127.0.0.1:1 pytest tests/      # live tests skip → fast, deterministic
+pytest tests/ -m "not requires_ollama"            # or deselect explicitly
 ```
+
+**Mark anything that makes a live call.** A test that hits Ollama/Brave/Docker without the marker will run slow with Ollama up and *fail* headless. Use a module-level `pytestmark = pytest.mark.requires_ollama` when every test in the file is live.
 
 ### Using Markers
 
@@ -147,6 +151,17 @@ def test_with_mocks(mock_mcp_client, mock_ollama_response):
     result = mock_mcp_client.search_web("test query")
     assert result == []
 ```
+
+### Established patterns (use these)
+
+These patterns came out of the 2026-06-22 coverage push (41%→63%) and avoid the traps that cost real debugging time:
+
+- **Repositories — temp-SQLite, no manual schema.** Repos self-initialize their tables in `__init__` via `_ensure_tables()`, so a test just does `repo = SomeRepository(str(tmp_path / "test.db"))` and the schema exists. (Exception: `UserProfileRepository` relies on Alembic, so its test provisions tables explicitly.)
+- **Routes — TestClient WITHOUT the context manager.** `client = TestClient(app)` (not `with TestClient(app) as client:`) skips the heavy `lifespan` startup (DB init, Ollama model checks), so route tests need no live services. Mock the service/repo symbols the route imports; override auth via `app.dependency_overrides[get_current_user]` and clear it in teardown.
+- **Mock locally-imported symbols at their source.** A function imported *inside* a route/function body (e.g. `has_active_wallet_flow` imported within `chat()`) must be patched at its source module (`services.query_handler_service.has_active_wallet_flow`), not on the importing module.
+- **Async helper — use `asyncio.run(coro)`.** Never `asyncio.get_event_loop().run_until_complete()`: on Python 3.12 it raises `RuntimeError: no current event loop` once an earlier test closes the thread's loop — the test passes alone but fails in the full suite.
+- **No `__init__.py` in the test tree.** `tests/backend/` and `tests/backend/coordinator/` have none; adding one breaks `sys.path`-style imports in older test files and causes collection errors.
+- **Verify new async-using files twice:** alone, and *after* another async test (e.g. run them together with `-p no:randomly`) to catch event-loop/isolation leakage.
 
 ### Test Structure (Arrange-Act-Assert)
 
@@ -214,12 +229,16 @@ exclude_lines =
 
 ### Coverage Goals
 
+Current measured headless (2026-06-22, `requires_ollama`/`requires_api_key`/`requires_docker` auto-skipped):
+
 | Component | Target | Current |
 |-----------|--------|---------|
-| Core (server, routes) | 80%+ | TBD |
-| Services | 70%+ | TBD |
-| Repositories | 75%+ | TBD |
-| Overall | 60%+ | TBD |
+| Routes | 80%+ | ~90% (personas/nephilim/wallet 100%, chat 98%, auth 92%, sessions 88%) |
+| Services | 70%+ | mixed — small/pure services 90–100%; large orchestration (`query_handler_service`, `chat_session_service`, `tool_calling_service`) still low (live-LLM heavy) |
+| Repositories | 75%+ | ~95%+ (most 100%; `user_profile` needs Alembic-provisioned schema) |
+| Overall | 60%+ | **63%** (gate `--cov-fail-under=60` passes headless) |
+
+> The remaining dark area is the live-LLM orchestration services. Those paths are exercised by the `requires_ollama` integration/e2e suite (run with Ollama up), not the headless gate. Pushing overall coverage higher means either mocking those orchestration services or counting the live suite.
 
 ---
 

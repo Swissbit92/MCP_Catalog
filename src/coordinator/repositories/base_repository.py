@@ -6,13 +6,15 @@ from typing import Optional, List, Dict, Any
 import sqlite3
 import threading
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from .db_adapter import DatabaseAdapter, SQLiteAdapter
 
 
 def utc_now_iso() -> str:
     """Return current UTC time as ``YYYY-MM-DDTHH:MM:SSZ`` string."""
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    # naive UTC (drop-in for the deprecated datetime.utcnow()) — keeps the exact
+    # same string format as before.
+    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
 
 
 class BaseRepository:

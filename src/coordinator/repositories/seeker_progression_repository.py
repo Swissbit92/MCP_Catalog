@@ -480,7 +480,10 @@ class SeekerProgressionRepository(BaseRepository):
 
     def get_resonance_history(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent resonance events for a user."""
+        # Tie-break by id DESC: timestamp has 1-second resolution, so events logged
+        # in the same second would otherwise come back in insertion order (ROWID asc),
+        # not newest-first. id is the AUTOINCREMENT PK, so id DESC == insertion-desc.
         return self._fetchall_list(
-            "SELECT * FROM resonance_log WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?",
+            "SELECT * FROM resonance_log WHERE user_id = ? ORDER BY timestamp DESC, id DESC LIMIT ?",
             (user_id, limit),
         )

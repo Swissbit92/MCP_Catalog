@@ -135,15 +135,13 @@ class WalletRegistryRepository(BaseRepository):
         Returns True if a row was updated, False if wallet_id not found.
         """
         now = self._now()
-        self._execute(
+        # Use the UPDATE's rowcount: a post-update SELECT for a 'deleted' row also
+        # matches an ALREADY-deleted wallet, so a double-delete wrongly returned True.
+        cur = self._execute(
             "UPDATE wallet_registry SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE wallet_id = ? AND status = 'active'",
             (now, now, wallet_id),
         )
-        row = self._fetchone_dict(
-            "SELECT * FROM wallet_registry WHERE wallet_id = ? AND status = 'deleted'",
-            (wallet_id,),
-        )
-        if row:
+        if cur.rowcount > 0:
             logger.info(f"[WalletRegistry] Wallet {wallet_id} soft-deleted")
             return True
         return False
@@ -151,16 +149,14 @@ class WalletRegistryRepository(BaseRepository):
     def soft_delete_by_address(self, user_id: str, public_address: str) -> bool:
         """Soft-delete by public address (used by chat deletion flow)."""
         now = self._now()
-        self._execute(
+        # rowcount (not a post-update SELECT): the SELECT would also match a wallet
+        # that was already deleted, making a double-delete wrongly return True.
+        cur = self._execute(
             "UPDATE wallet_registry SET status = 'deleted', deleted_at = ?, updated_at = ? "
             "WHERE user_id = ? AND public_address = ? AND status = 'active'",
             (now, now, user_id, public_address),
         )
-        row = self._fetchone_dict(
-            "SELECT * FROM wallet_registry WHERE user_id = ? AND public_address = ? AND status = 'deleted'",
-            (user_id, public_address),
-        )
-        return row is not None
+        return cur.rowcount > 0
 
     def get_active_count(self, user_id: str) -> int:
         """Return the number of active wallets for a user."""

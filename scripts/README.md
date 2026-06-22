@@ -14,9 +14,9 @@ scripts/
 ## Quick Reference
 
 ### Docker Scripts (`docker/`)
-- **Setup**: `setup-docker.sh` (macOS/Linux), `setup-docker.ps1` (Windows)
-- **Networking**: `fix-docker-network.ps1`
-- **Validation**: `test_docker_setup.sh`, `test_docker_setup.ps1`
+- **Setup**: `setup-docker.sh` (macOS/Linux, primary) — `setup-docker.ps1` / `.bat` (Windows reference)
+- **Networking**: `fix-docker-network.ps1` (Windows-only reference; macOS/Linux use the manual `docker-compose` steps in [docker/README.md](docker/README.md))
+- **Validation**: `test_docker_setup.sh` (macOS/Linux, primary) — `test_docker_setup.ps1` (Windows reference)
 
 See [docker/README.md](docker/README.md) for usage examples.
 

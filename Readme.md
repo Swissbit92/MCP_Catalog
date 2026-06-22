@@ -202,12 +202,12 @@ git clone https://github.com/Swissbit92/nephilim.git
 cd nephilim
 
 # 2. Run the setup script
-# Windows (PowerShell):
-.\scripts\docker\setup-docker.ps1
-
-# Linux/Mac:
+# macOS/Linux (primary):
 chmod +x scripts/docker/setup-docker.sh
 ./scripts/docker/setup-docker.sh
+
+# Windows (PowerShell, reference):
+.\scripts\docker\setup-docker.ps1
 ```
 
 The script will start all containers, download the 9GB AI model, and open your browser.
@@ -603,24 +603,29 @@ Key endpoint groups:
 ### Automated Testing
 
 ```bash
+# Python backend — full suite (live Ollama tests auto-skip if Ollama is down)
+pytest tests/
+
+# Fast deterministic gate (no live services; matches headless CI). Tests that need
+# Ollama/Brave/Docker auto-skip when the resource is unreachable.
+OLLAMA_BASE=http://127.0.0.1:1 pytest tests/      # forces the live tests to skip
+
 # React unit tests
 cd react-ui && npm test
 
 # Playwright E2E tests
 cd react-ui && npx playwright test
 cd react-ui && npx playwright test --headed    # With browser visible
-
-# Python backend tests
-pytest tests/backend/
-pytest tests/integration/
-pytest tests/evaluation/ -v    # RAGAS persona quality
 ```
+
+> Conventions for writing backend tests (resource markers, the temp-SQLite repository pattern, TestClient-without-lifespan, the `asyncio.run` rule) live in [docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md).
 
 ### Test Coverage
 
-- **Backend**: 45 test files, ~360 test cases (unit, integration, E2E)
+- **Backend**: ~1,400 tests; **63%** line coverage, enforced by `--cov-fail-under=60` in `pytest.ini` (headless, live tests excluded).
 - **Frontend**: 40+ Jest tests with React Testing Library
 - **Playwright E2E**: OAuth flow, chat interactions, Jupiter wallet, visual regression
+- **Live-LLM tests** (`requires_ollama`): run only when Ollama is reachable; the comprehensive persona suite (`tests/manual/`) remains the primary quality gate.
 - **Type Safety**: TypeScript strict mode + Pydantic validation throughout
 
 ### Code Quality

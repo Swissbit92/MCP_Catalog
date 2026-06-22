@@ -1,3 +1,7 @@
+# [REFERENCE ONLY — Windows] Dev helper from the original Windows environment.
+# Superseded on the macOS deployment by launchd (com.nephilim.backend / com.nephilim.frontend)
+# and the npm scripts in package.json. Kept for Windows reference; not used on macOS.
+
 $ports = @(8000, 3001, 3000, 11434)
 $connections = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue
 foreach ($port in $ports) {

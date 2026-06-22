@@ -26,12 +26,19 @@ Quick hits:
 .venv/bin/python -m uvicorn src.coordinator.server:app --port 8000
 cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into the script (Node 17+)
 
+# Backend tests (~1,400; 63% coverage, gate --cov-fail-under=60). Live tests
+# auto-skip when Ollama/Brave/Docker are unreachable (tests/conftest.py).
+pytest tests/
+OLLAMA_BASE=http://127.0.0.1:1 pytest tests/   # force headless: live tests skip
+
 # Full persona test suite (primary quality gate, ~60 min)
 .venv/bin/python tests/manual/comprehensive_persona_test.py
 
 # Docker (full stack + MCP containers; for Linux/NVIDIA GPU — runs Ollama CPU-only on Mac)
 docker-compose --env-file .env.docker up -d
 ```
+
+> **Writing backend tests:** mark anything that hits Ollama/Brave/Docker with `@pytest.mark.requires_ollama`/`requires_api_key`/`requires_docker` (else it fails headless). Use `asyncio.run()` not `get_event_loop()`, `TestClient(app)` without the `with` (skips lifespan), and don't add `__init__.py` to the test tree. Full conventions: [`docs/development/TESTING_GUIDE.md`](docs/development/TESTING_GUIDE.md).
 
 > **⚠️ macOS:** run Ollama natively for Metal GPU acceleration — Docker-on-Mac runs Ollama CPU-only. Docker also serves the legacy UI unless rebuilt, so use local dev for the Phase 7 NEPHILIM UI (`docs/DEVELOPMENT.md`).
 

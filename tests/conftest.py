@@ -170,8 +170,62 @@ def pytest_configure(config):
 # Test Collection
 # ============================================================================
 
+def _ollama_reachable() -> bool:
+    """Quick TCP check for a running Ollama (default 127.0.0.1:11434).
+
+    Live LLM calls run at ~16 tok/s, so tests marked ``requires_ollama`` are
+    skipped — not silently run for minutes — when Ollama is not up (e.g. headless
+    CI). Honors OLLAMA_BASE for host/port.
+    """
+    import socket
+    from urllib.parse import urlparse
+
+    base = os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434")
+    parsed = urlparse(base)
+    host, port = parsed.hostname or "127.0.0.1", parsed.port or 11434
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def _docker_available() -> bool:
+    """True if the docker CLI is on PATH and the daemon answers."""
+    import shutil
+    import subprocess
+
+    if shutil.which("docker") is None:
+        return False
+    try:
+        return subprocess.run(
+            ["docker", "info"], capture_output=True, timeout=5
+        ).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def pytest_collection_modifyitems(config, items):
-    """Modify test collection to add markers based on test location."""
+    """Modify test collection to add markers based on test location.
+
+    Also auto-skips resource-gated tests when their resource is unavailable so
+    the suite is green and fast on a headless macOS box (no live Ollama, no Brave
+    key, no Docker) instead of hanging on live calls.
+    """
+    # Compute resource availability once per session.
+    skip_ollama = (
+        None if _ollama_reachable()
+        else pytest.mark.skip(reason="Ollama not reachable (set OLLAMA_BASE / start `ollama serve`)")
+    )
+    skip_api_key = (
+        None if os.getenv("BRAVE_API_KEY", "").strip()
+        else pytest.mark.skip(reason="BRAVE_API_KEY not set")
+    )
+    skip_docker = (
+        None if _docker_available()
+        else pytest.mark.skip(reason="Docker not available")
+    )
+
     for item in items:
         # Add markers based on test file location
         if "integration" in str(item.fspath):
@@ -184,3 +238,11 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.skip(reason="Exploration test - not for CI"))
         else:
             item.add_marker(pytest.mark.unit)
+
+        # Auto-skip tests whose required external resource is unavailable.
+        if skip_ollama is not None and "requires_ollama" in item.keywords:
+            item.add_marker(skip_ollama)
+        if skip_api_key is not None and "requires_api_key" in item.keywords:
+            item.add_marker(skip_api_key)
+        if skip_docker is not None and "requires_docker" in item.keywords:
+            item.add_marker(skip_docker)

@@ -83,7 +83,8 @@ class TestExplicitCommandsRouteToWebIntent:
     @pytest.mark.parametrize("command", EXPLICIT_SEARCH_COMMANDS)
     def test_each_command_routes_to_web(self, command):
         intent = classify_query_intent(f"can you {command}", "legendary", mcp_access=BRAVE_ACCESS)
-        assert intent in (QueryIntent.NEEDS_WEB_SEARCH, QueryIntent.NEEDS_BOTH)
+        # NEEDS_BOTH was removed when QueryIntent was simplified (MongoDB MCP removal, ADR-002).
+        assert intent == QueryIntent.NEEDS_WEB_SEARCH
 
     def test_no_brave_access_does_not_route_web(self):
         # A persona without brave_search must not be routed to web search.

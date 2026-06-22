@@ -1,6 +1,16 @@
 """Tests for RAGAS evaluator."""
 
 import pytest
+
+# RAGAS is an optional, evaluation-only dependency (heavy; not installed in the
+# default macOS runtime). Its package init can raise ImportError from transitive
+# deps (e.g. nltk), so guard with an explicit module-level skip rather than
+# importorskip (which doesn't reliably catch deep init failures).
+try:
+    import ragas  # noqa: F401
+except ImportError:
+    pytest.skip("ragas/nltk not installed (evaluation-only dependency)", allow_module_level=True)
+
 from datetime import datetime
 from src.coordinator.evaluation.ragas_evaluator import (
     PersonaRagasEvaluator,
