@@ -421,3 +421,21 @@ class TestGetToolsForQuery:
         with patch("src.coordinator.tools.tool_utils.classify_query_intent", return_value=QueryIntent.NEEDS_WEB_SEARCH) as mock_classify:
             get_tools_for_query("query", "p", "rare", mcp_access=access)
         mock_classify.assert_called_once_with("query", "rare", mcp_access=access)
+
+    def test_precomputed_intent_skips_classify(self):
+        """When precomputed_intent is supplied, the redundant classify call is skipped."""
+        with patch("src.coordinator.tools.tool_utils.classify_query_intent") as mock_classify:
+            tools = get_tools_for_query(
+                "latest bitcoin news", "Eeva", "legendary",
+                mcp_access=["brave_search"], precomputed_intent=QueryIntent.NEEDS_WEB_SEARCH,
+            )
+        mock_classify.assert_not_called()
+        assert len(tools) == 1
+        assert tools[0]["function"]["name"] == BRAVE_TOOL_NAME
+
+    def test_none_precomputed_intent_classifies_internally(self):
+        """Backward compat: no precomputed_intent → classify is called as before."""
+        with patch("src.coordinator.tools.tool_utils.classify_query_intent", return_value=QueryIntent.NEEDS_NEITHER) as mock_classify:
+            tools = get_tools_for_query("hello", "Gojo", "common", mcp_access=None)
+        mock_classify.assert_called_once()
+        assert tools == []

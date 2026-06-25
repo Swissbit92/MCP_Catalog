@@ -195,8 +195,9 @@ def chat(body: ChatBody):
     )
     logger.info(f"[Intent] Classification result: {intent.value}")
 
-    # Get tools based on intent
-    tools = get_tools_for_query(body.message, persona_key, persona_rarity, mcp_access=mcp_access)
+    # Get tools based on intent (reuse the intent already classified above —
+    # avoids a redundant second embedding round-trip under semantic routing).
+    tools = get_tools_for_query(body.message, persona_key, persona_rarity, mcp_access=mcp_access, precomputed_intent=intent)
     tool_names = [t["function"]["name"] for t in tools] if tools else []
     logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
 

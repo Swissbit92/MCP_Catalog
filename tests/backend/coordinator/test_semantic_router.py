@@ -536,3 +536,86 @@ class TestModuleConstants:
                 assert isinstance(phrase, str) and phrase.strip(), (
                     f"Empty or non-string example in intent '{intent}'"
                 )
+
+
+# ---------------------------------------------------------------------------
+# Tests: semantic-PRIMARY params (threshold / margin / drop_llm_only_centroid)
+# ---------------------------------------------------------------------------
+class TestRouteByEmbeddingPrimaryParams:
+    """New params must default to legacy behaviour and gate correctly when set."""
+
+    def _patch(self, monkeypatch, query_vec):
+        _reset_globals(monkeypatch)
+        monkeypatch.setattr(sr, "_example_vecs_primary", None)
+        model = _make_mock_model(query_vec)
+        monkeypatch.setattr(sr, "_get_embeddings_model", lambda: model)
+        return model
+
+    def test_threshold_param_rejects_below(self, monkeypatch):
+        self._patch(monkeypatch, VEC_WALLET)
+        monkeypatch.setattr(sr, "_cosine_similarity", lambda a, b: 0.58)
+        # wallet-only availability → single intent, unambiguous
+        result = sr.route_by_embedding(
+            "x", can_use_brave=False, can_use_wallet=True,
+            threshold=0.61, drop_llm_only_centroid=True,
+        )
+        assert result is None  # 0.58 < 0.61
+
+    def test_threshold_param_accepts_above(self, monkeypatch):
+        self._patch(monkeypatch, VEC_WALLET)
+        monkeypatch.setattr(sr, "_cosine_similarity", lambda a, b: 0.85)
+        result = sr.route_by_embedding(
+            "x", can_use_brave=False, can_use_wallet=True,
+            threshold=0.61, drop_llm_only_centroid=True,
+        )
+        assert result == "wallet"
+
+    def test_margin_gate_rejects_ambiguous(self, monkeypatch):
+        self._patch(monkeypatch, VEC_WALLET)
+        # Primary mode scores max-over-examples, so sim is called per example vector;
+        # key the score off the example vector identity. wallet=0.82, web=0.80 → gap 0.02.
+        monkeypatch.setattr(sr, "_cosine_similarity", lambda a, b: 0.82 if b == VEC_WALLET else 0.80)
+        result = sr.route_by_embedding(
+            "x", can_use_brave=True, can_use_wallet=True,
+            threshold=0.61, margin=0.06, drop_llm_only_centroid=True,
+        )
+        assert result is None
+
+    def test_margin_gate_passes_clear_winner(self, monkeypatch):
+        self._patch(monkeypatch, VEC_WALLET)
+        monkeypatch.setattr(sr, "_cosine_similarity", lambda a, b: 0.88 if b == VEC_WALLET else 0.70)
+        result = sr.route_by_embedding(
+            "x", can_use_brave=True, can_use_wallet=True,
+            threshold=0.61, margin=0.06, drop_llm_only_centroid=True,
+        )
+        assert result == "wallet"
+
+    def test_drop_llm_only_builds_primary_example_vecs(self, monkeypatch):
+        self._patch(monkeypatch, VEC_WALLET)
+        sr.route_by_embedding(
+            "x", can_use_brave=False, can_use_wallet=True,
+            threshold=0.61, drop_llm_only_centroid=True,
+        )
+        assert sr._example_vecs_primary is not None
+        assert sr._centroids is None  # legacy centroids NOT built in primary mode
+
+    def test_legacy_defaults_unchanged(self, monkeypatch):
+        """Zero new-arg call: legacy 0.75 threshold + legacy centroids (incl llm_only)."""
+        self._patch(monkeypatch, VEC_WALLET)
+        result = sr.route_by_embedding("x", can_use_brave=True, can_use_wallet=True)
+        assert result == "wallet"               # VEC_WALLET vs wallet centroid ≈ 1.0
+        assert sr._centroids is not None         # legacy centroids built
+        assert "llm_only" in sr._centroids       # legacy set includes llm_only
+        assert sr._example_vecs_primary is None  # primary set untouched
+
+
+class TestModuleConstantsPrimary:
+    def test_primary_examples_keys(self):
+        assert set(sr._INTENT_EXAMPLES_PRIMARY.keys()) == {"wallet", "web_search"}
+
+    def test_primary_examples_no_llm_only(self):
+        assert "llm_only" not in sr._INTENT_EXAMPLES_PRIMARY
+
+    def test_primary_examples_count(self):
+        for intent, phrases in sr._INTENT_EXAMPLES_PRIMARY.items():
+            assert len(phrases) >= 15, f"primary intent '{intent}' needs >=15 examples"

@@ -172,6 +172,7 @@ def get_tools_for_query(
     persona_key: str,
     persona_rarity: str,
     mcp_access: Optional[List[str]] = None,
+    precomputed_intent: Optional[QueryIntent] = None,
 ) -> List[Dict[str, Any]]:
     """
     Layer 2: Dynamic tool injection based on query intent.
@@ -184,11 +185,21 @@ def get_tools_for_query(
         persona_rarity: Persona rarity level
         mcp_access: Optional explicit list of allowed MCP services from the persona
                     JSON ``mcp_access`` field.  When provided, overrides rarity gating.
+        precomputed_intent: If the caller already classified intent (e.g. chat.py,
+                    which classifies before calling this), pass it here to skip a
+                    redundant ``classify_query_intent`` call — which, under semantic
+                    routing, would be a second Ollama embedding round-trip. None =
+                    classify internally (backward compatible). Passing it also fixes
+                    a latent bug: this internal call omitted ``last_assistant_message``,
+                    so a short wallet follow-up ("yes") built an empty tool list here.
 
     Returns:
         List of tool definitions relevant to this specific query
     """
-    intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
+    if precomputed_intent is not None:
+        intent = precomputed_intent
+    else:
+        intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
 
     tools = []
 

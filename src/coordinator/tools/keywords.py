@@ -36,6 +36,28 @@ EXPLICIT_SEARCH_COMMANDS = (
     "confirm online", "verify online", "browse the web",
 )
 
+# High-precision wallet keywords for the semantic-PRIMARY fast path
+# (intent_classifier, when routing.semantic_primary=True). These are direct-action
+# or unambiguous ownership phrases that may safely bypass the embedding round-trip.
+# Deliberately EXCLUDES advisory/fuzzy entries ("should i buy", "good time to buy",
+# "dca into", bare "jupiter") — those route through the semantic router instead.
+WALLET_FASTPATH = (
+    # Direct swap/trade commands
+    "swap usdc", "swap sol", "buy sol", "sell sol", "buy usdc",
+    "exchange usdc", "exchange sol",
+    # Direct wallet ownership queries
+    "my wallet", "wallet balance", "my balance", "my portfolio",
+    "my holdings", "my sol", "my usdc", "my tokens", "my address",
+    # Wallet management
+    "create wallet", "create a wallet", "new wallet", "solana wallet",
+    "wallet address",
+    # Quote/execution
+    "jupiter quote", "swap quote", "solana quote", "get a quote",
+    # Internal tool names (no false-positive risk)
+    "wallet_get_balances", "solana_propose_swap", "solana_get_quote",
+    "solana_rsi_check", "wallet_create_guided", "solana_trade_history",
+)
+
 # Keywords that indicate web search IS needed
 SEARCH_KEYWORDS = {
     # Current/recent information

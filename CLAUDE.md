@@ -161,7 +161,8 @@ Optional (see `.env.docker` for full list):
 ### MCP Query Routing Pipeline
 Queries flow through a two-layer classification system:
 
-1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which tool to use (web/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which tool to use (web/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`. A bge-m3 embedding **semantic router** (`tools/semantic_router.py`) runs as a fallback for queries that miss all keywords.
+   - **Optional semantic-PRIMARY mode** (HERMES-Agents Phase 0, flag-gated): set `ROUTING_SEMANTIC_PRIMARY=true` to promote the semantic router ahead of the fuzzy keyword lists — order becomes follow-up → high-precision keyword fast-path (`WALLET_FASTPATH`/`EXPLICIT_SEARCH_COMMANDS`) → semantic router → NEEDS_NEITHER. Default **off** (legacy keyword-first order is byte-identical). The primary path uses **max-over-examples** (nearest-example) scoring, not mean centroids (centroids smear and over-route chitchat). Threshold/margin tuned via `tests/evaluation/tune_routing_threshold.py` on a held-out set (`ROUTING_SEMANTIC_THRESHOLD=0.66`, wallet precision 1.0 / recall 0.96 / acc 0.91). `ROUTING_*` settings live in `config.RoutingSettings`.
 2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
 
 **Anti-hallucination guards:**

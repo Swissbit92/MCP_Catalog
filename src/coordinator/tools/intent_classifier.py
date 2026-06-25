@@ -8,8 +8,10 @@ from enum import Enum
 from typing import List, Optional
 
 from .keywords import (
+    EXPLICIT_SEARCH_COMMANDS,
     NO_SEARCH_KEYWORDS,
     SEARCH_KEYWORDS,
+    WALLET_FASTPATH,
 )
 
 
@@ -29,6 +31,61 @@ class QueryIntent(Enum):
     NEEDS_WEB_SEARCH = "web"      # Brave MCP
     NEEDS_NEITHER = "llm"          # Pure LLM
     NEEDS_WALLET = "wallet"        # Jupiter wallet / Solana trading
+
+
+def _brave_accessible(mcp_access: Optional[List[str]], persona_rarity: str) -> bool:
+    """Whether Brave web search is available — per-persona mcp_access takes priority,
+    else rarity-based fallback. Mirrors the legacy inline logic."""
+    if mcp_access is not None:
+        return "brave_search" in mcp_access
+    return persona_rarity.lower() in {"rare", "epic", "legendary"}
+
+
+def _classify_semantic_primary(
+    query: str,
+    query_lower: str,
+    can_use_brave: bool,
+    can_use_wallet: bool,
+    routing,
+) -> QueryIntent:
+    """Semantic-PRIMARY intent classification (flag-ON path).
+
+    Order: high-precision keyword fast-path → bge-m3 semantic router → NEEDS_NEITHER.
+    Follow-up detection is handled by the caller before this runs. Deliberately does
+    NOT fall back to the fuzzy SEARCH_KEYWORDS/WALLET_KEYWORDS lists — the whole point
+    is to route ambiguous queries by intent similarity, not keyword presence. A miss
+    falls through to NEEDS_NEITHER (pure LLM), the safe default for a companion.
+    """
+    # 1. Keyword fast-path — high-precision, zero-latency, no embed round-trip.
+    if can_use_wallet and any(kw in query_lower for kw in WALLET_FASTPATH):
+        if not _NEGATED_ACTION.search(query_lower):
+            return QueryIntent.NEEDS_WALLET
+    if can_use_brave and any(kw in query_lower for kw in EXPLICIT_SEARCH_COMMANDS):
+        return QueryIntent.NEEDS_WEB_SEARCH
+
+    # 2. Semantic router — the primary decision.
+    try:
+        from .semantic_router import route_by_embedding
+        semantic_intent = route_by_embedding(
+            query=query,
+            can_use_brave=can_use_brave,
+            can_use_mongodb=False,
+            can_use_wallet=can_use_wallet,
+            threshold=routing.semantic_threshold,
+            margin=routing.semantic_margin,
+            drop_llm_only_centroid=True,
+        )
+        if semantic_intent == "wallet":
+            # Negation guard applies to semantic wallet results too.
+            if not _NEGATED_ACTION.search(query_lower):
+                return QueryIntent.NEEDS_WALLET
+        elif semantic_intent == "web_search":
+            return QueryIntent.NEEDS_WEB_SEARCH
+    except Exception:
+        pass  # Semantic router failure is non-fatal — fall through.
+
+    # 3. No confident route → pure LLM.
+    return QueryIntent.NEEDS_NEITHER
 
 
 def classify_query_intent(
@@ -76,6 +133,24 @@ def classify_query_intent(
         last_was_wallet = any(kw in last_lower for kw in _WALLET_CONTEXT_KEYWORDS)
         if is_short_affirmative and last_was_wallet:
             return QueryIntent.NEEDS_WALLET
+
+    # ------------------------------------------------------------------
+    # SEMANTIC-PRIMARY branch (flag-ON only). Follow-up detection above is
+    # shared. When the flag is OFF the legacy keyword-first body below runs
+    # unchanged (byte-identical).
+    # ------------------------------------------------------------------
+    try:
+        from ..config import get_settings
+        _routing = get_settings().routing
+    except Exception:
+        _routing = None
+    if _routing is not None and _routing.semantic_primary:
+        _can_use_brave = _brave_accessible(mcp_access, persona_rarity)
+        if can_use_wallet or _can_use_brave:
+            return _classify_semantic_primary(
+                query, query_lower, _can_use_brave, can_use_wallet, _routing
+            )
+        # No MCP capability → legacy body returns NEEDS_NEITHER anyway.
 
     # Wallet intent keywords (check before Brave)
     WALLET_KEYWORDS = [

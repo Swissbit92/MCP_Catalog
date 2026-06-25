@@ -496,8 +496,13 @@ def initialize_all():
         def _prewarm_semantic():
             try:
                 from .tools.semantic_router import warm_centroids
-                ok = warm_centroids()
-                logger.info(f"[SemanticRouter] Centroid pre-warm {'succeeded' if ok else 'skipped (no embedding model)'}")
+                from .config import get_settings
+                primary = get_settings().routing.semantic_primary
+                ok = warm_centroids(include_primary=primary)
+                logger.info(
+                    f"[SemanticRouter] Centroid pre-warm {'succeeded' if ok else 'skipped (no embedding model)'}"
+                    f"{' (incl. primary set)' if primary else ''}"
+                )
             except Exception as exc:
                 logger.debug(f"[SemanticRouter] Centroid pre-warm failed (non-fatal): {exc}")
         _threading.Thread(target=_prewarm_semantic, daemon=True, name="prewarm-semantic").start()

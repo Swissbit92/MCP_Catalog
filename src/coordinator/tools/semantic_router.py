@@ -70,11 +70,84 @@ _INTENT_EXAMPLES: Dict[str, List[str]] = {
     ],
 }
 
-# Confidence threshold: below this, fall back to NEEDS_NEITHER rather than guess
+# Confidence threshold: below this, fall back to NEEDS_NEITHER rather than guess.
+# NOTE: 0.75 was tuned for the legacy nomic embedder. bge-m3's cosine range is
+# compressed to ~[0.6, 1.0], so the semantic-PRIMARY path (flag-gated) uses a
+# higher, separately-tuned threshold from RoutingSettings — see route_by_embedding.
 _CONFIDENCE_THRESHOLD = 0.75
 
-# Module-level centroid cache (computed once per process)
-_centroids: Optional[Dict[str, List[float]]] = None
+# ---------------------------------------------------------------------------
+# Primary-mode intent examples (used only by the semantic-PRIMARY path, when
+# route_by_embedding is called with drop_llm_only_centroid=True). Expanded to
+# 15-20 diverse utterances per intent across four surface forms
+# (command / question / noun-phrase / implied) for robust centroids, and
+# deliberately EXCLUDES an "llm_only" centroid — a catch-all centroid smears
+# toward the embedding-space center and overlaps the real intents, so llm_only
+# is handled as pure fall-through (below threshold/margin → None).
+#
+# Kept SEPARATE from _INTENT_EXAMPLES so the legacy (flag-off) path is unchanged.
+# ---------------------------------------------------------------------------
+_INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
+    "wallet": [
+        # Commands
+        "swap my sol to usdc",
+        "sell half my sol",
+        "buy more solana",
+        "execute the trade",
+        "set up a dca strategy",
+        "pause my strategy",
+        "create a new wallet",
+        # Questions
+        "what's in my wallet",
+        "how much sol do I have",
+        "should I rebalance my holdings",
+        "what's my balance looking like",
+        "how are my trades doing",
+        "what's my portfolio worth",
+        # Noun-phrase
+        "my portfolio status",
+        "wallet balance",
+        "my current holdings",
+        "my trade history",
+        # Implied
+        "thinking of moving some funds around",
+        "I might buy some more",
+        "maybe it's time to take some profits",
+    ],
+    "web_search": [
+        # Commands
+        "search the web for the bitcoin price",
+        "look up the latest ethereum news",
+        "find recent crypto regulation news",
+        # Questions
+        "what's the latest crypto news",
+        "what's happening in the market today",
+        "what did the fed say about rates",
+        "what are analysts predicting for bitcoin",
+        "how's the market doing today",
+        "what's trending in crypto right now",
+        "what's the current price of bitcoin",
+        # Noun-phrase
+        "latest bitcoin news",
+        "recent market developments",
+        "current crypto sentiment",
+        "breaking news on solana",
+        # Implied
+        "what's the vibe in the market today",
+        "what's everyone saying about eth lately",
+        "did anything big happen today",
+        "how are people feeling about the market",
+    ],
+}
+
+# Module-level caches (computed once per process)
+_centroids: Optional[Dict[str, List[float]]] = None  # legacy: {intent: mean-centroid}
+# Primary path stores ALL example vectors per intent and scores by MAX similarity
+# (nearest-example / kNN), NOT a mean centroid. Averaging diverse phrases smears the
+# centroid toward the embedding-space center, so short/benign chitchat ("good morning")
+# lands as close to it as a real intent. Max-over-examples keeps a clean separation
+# (real intents 0.84-1.0 vs chitchat 0.45-0.65) and restores a ~0.78 threshold.
+_example_vecs_primary: Optional[Dict[str, List[List[float]]]] = None
 _embeddings_model: Optional[object] = None
 
 
@@ -123,10 +196,10 @@ def _get_embeddings_model():
         return None
 
 
-def _build_centroids(emb_model) -> Dict[str, List[float]]:
-    """Build intent centroids by embedding example phrases and averaging."""
+def _build_centroids_from(emb_model, examples: Dict[str, List[str]]) -> Dict[str, List[float]]:
+    """Build intent centroids from an explicit examples dict by embedding + averaging."""
     centroids: Dict[str, List[float]] = {}
-    for intent, phrases in _INTENT_EXAMPLES.items():
+    for intent, phrases in examples.items():
         try:
             vectors = emb_model.embed_documents(phrases)
             centroids[intent] = _mean_vector(vectors)
@@ -137,8 +210,13 @@ def _build_centroids(emb_model) -> Dict[str, List[float]]:
     return centroids
 
 
+def _build_centroids(emb_model) -> Dict[str, List[float]]:
+    """Build legacy intent centroids (incl. llm_only) from _INTENT_EXAMPLES."""
+    return _build_centroids_from(emb_model, _INTENT_EXAMPLES)
+
+
 def _ensure_centroids(emb_model) -> Optional[Dict[str, List[float]]]:
-    """Return cached centroids, building them on first call."""
+    """Return cached legacy centroids, building them on first call."""
     global _centroids
     if _centroids is not None:
         return _centroids
@@ -150,11 +228,32 @@ def _ensure_centroids(emb_model) -> Optional[Dict[str, List[float]]]:
         return None
 
 
+def _ensure_example_vecs_primary(emb_model) -> Optional[Dict[str, List[List[float]]]]:
+    """Return cached per-example vectors for the primary intents (wallet/web_search),
+    building them on first call. Used for max-over-examples (nearest-example) scoring."""
+    global _example_vecs_primary
+    if _example_vecs_primary is not None:
+        return _example_vecs_primary
+    try:
+        vecs: Dict[str, List[List[float]]] = {}
+        for intent, phrases in _INTENT_EXAMPLES_PRIMARY.items():
+            vecs[intent] = emb_model.embed_documents(phrases)
+        _example_vecs_primary = vecs
+        logger.info(f"[SemanticRouter] Primary example vectors built for: {list(vecs.keys())}")
+        return _example_vecs_primary
+    except Exception as e:
+        logger.warning(f"[SemanticRouter] Primary example-vector build failed: {e}")
+        return None
+
+
 def route_by_embedding(
     query: str,
     can_use_brave: bool,
     can_use_mongodb: bool = False,
     can_use_wallet: bool = False,
+    threshold: float = _CONFIDENCE_THRESHOLD,
+    margin: float = 0.0,
+    drop_llm_only_centroid: bool = False,
 ) -> Optional[str]:
     """Attempt to classify query intent via embedding similarity.
 
@@ -163,17 +262,35 @@ def route_by_embedding(
         can_use_brave: Whether Brave search is available for this persona
         can_use_mongodb: Unused (MongoDB MCP removed). Kept for call-site compat.
         can_use_wallet: Whether wallet access is available for this persona
+        threshold: Cosine confidence floor. Defaults to the legacy
+            ``_CONFIDENCE_THRESHOLD`` (0.75) so the existing fallback path is
+            unchanged; the semantic-PRIMARY path passes the tuned RoutingSettings
+            value.
+        margin: Minimum gap between the top and 2nd-best centroid score required
+            to accept a route. ``0.0`` (legacy default) disables the gate
+            entirely — zero behaviour change for existing callers.
+        drop_llm_only_centroid: When True, use the PRIMARY scoring mode —
+            max-over-examples (nearest-example) against the wallet/web_search example
+            sets, with llm_only as pure fall-through. Defaults to False → legacy mean
+            centroids (incl. llm_only). The name is kept for call-site compatibility.
 
     Returns:
         Intent label ("wallet", "web_search", "llm_only") or None if
-        confidence is below threshold or embeddings are unavailable.
+        confidence is below threshold/margin or embeddings are unavailable.
     """
     emb_model = _get_embeddings_model()
     if emb_model is None:
         return None
 
-    centroids = _ensure_centroids(emb_model)
-    if not centroids:
+    # Scoring source depends on mode:
+    #   primary (drop_llm_only_centroid): {intent: [example_vec, ...]} → max similarity
+    #   legacy:                            {intent: centroid_vec}       → cosine to centroid
+    source = (
+        _ensure_example_vecs_primary(emb_model)
+        if drop_llm_only_centroid
+        else _ensure_centroids(emb_model)
+    )
+    if not source:
         return None
 
     try:
@@ -189,22 +306,25 @@ def route_by_embedding(
         return None
 
     # Filter to only intents this persona can actually use
-    available: Dict[str, List[float]] = {}
-    if can_use_wallet and "wallet" in centroids:
-        available["wallet"] = centroids["wallet"]
-    if can_use_brave and "web_search" in centroids:
-        available["web_search"] = centroids["web_search"]
-    # Always include llm_only as a fallback option
-    if "llm_only" in centroids:
-        available["llm_only"] = centroids["llm_only"]
+    usable: List[str] = []
+    if can_use_wallet and "wallet" in source:
+        usable.append("wallet")
+    if can_use_brave and "web_search" in source:
+        usable.append("web_search")
+    if "llm_only" in source:  # only present in legacy centroids
+        usable.append("llm_only")
 
-    if not available:
+    if not usable:
         return None
 
-    # Rank by cosine similarity
+    # Rank by similarity. Primary mode: max cosine over the intent's example
+    # vectors (nearest-example). Legacy mode: cosine to the intent's centroid.
     scores: List[Tuple[float, str]] = []
-    for intent, centroid in available.items():
-        sim = _cosine_similarity(query_vec, centroid)
+    for intent in usable:
+        if drop_llm_only_centroid:
+            sim = max(_cosine_similarity(query_vec, e) for e in source[intent])
+        else:
+            sim = _cosine_similarity(query_vec, source[intent])
         scores.append((sim, intent))
     scores.sort(reverse=True)
 
@@ -213,11 +333,22 @@ def route_by_embedding(
         f"[SemanticRouter] Top matches: {[(f'{s:.3f}', i) for s, i in scores[:3]]}"
     )
 
-    if best_score < _CONFIDENCE_THRESHOLD:
+    if best_score < threshold:
         logger.debug(
-            f"[SemanticRouter] Below confidence threshold ({best_score:.3f} < {_CONFIDENCE_THRESHOLD}) — falling back to llm"
+            f"[SemanticRouter] Below confidence threshold ({best_score:.3f} < {threshold}) — falling back to llm"
         )
         return None
+
+    # Margin gate: when two intents score close together the top pick is noise.
+    # Disabled when margin == 0.0 (legacy default) — zero behaviour change.
+    if margin > 0.0 and len(scores) >= 2:
+        gap = scores[0][0] - scores[1][0]
+        if gap < margin:
+            logger.debug(
+                f"[SemanticRouter] Margin gate rejected: gap={gap:.3f} < {margin} "
+                f"(top={best_intent}@{scores[0][0]:.3f}, 2nd={scores[1][1]}@{scores[1][0]:.3f})"
+            )
+            return None
 
     if best_intent == "llm_only":
         return None  # Treat as NEEDS_NEITHER — no MCP needed
@@ -228,14 +359,21 @@ def route_by_embedding(
     return best_intent
 
 
-def warm_centroids() -> bool:
+def warm_centroids(include_primary: bool = False) -> bool:
     """Pre-compute and cache intent centroids at startup.
 
+    Args:
+        include_primary: Also warm the primary-mode centroid set (no llm_only).
+            Pass True when routing.semantic_primary=True so the first real request
+            does not pay the centroid-build cost inline.
+
     Returns:
-        True if centroids were successfully built, False otherwise.
+        True if the legacy centroids were successfully built, False otherwise.
     """
     emb_model = _get_embeddings_model()
     if emb_model is None:
         return False
     centroids = _ensure_centroids(emb_model)
+    if include_primary:
+        _ensure_example_vecs_primary(emb_model)
     return bool(centroids)
