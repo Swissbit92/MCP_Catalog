@@ -56,6 +56,13 @@ export interface RankCeremony {
   new_rank: string
 }
 
+// NEPHILIM Phase-2: a newly-awakened internal capability (diegetic unlock beat)
+export interface CapabilityUnlock {
+  id: string
+  display_name: string
+  persona_voice_line: string
+}
+
 // Response metadata for MCP data sources
 export interface ResponseMetadata {
   source_type: 'llm' | 'brave_mcp' | 'wallet_mcp' | 'wallet_proposal' | 'wallet_flow';
@@ -71,6 +78,8 @@ export interface ResponseMetadata {
   proposal?: Record<string, unknown>;
   // NEPHILIM: Rank ceremony overlay trigger
   rank_ceremony?: RankCeremony;
+  // NEPHILIM Phase-2: internal capabilities newly awakened this turn (diegetic toast)
+  capability_unlocks?: CapabilityUnlock[];
 }
 
 // Phase 2.2: Emotional state tracking

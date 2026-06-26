@@ -40,6 +40,11 @@ RESONANCE_REWARDS = {
     'new_persona': 10,              # Engaging with a new Nephilim
 }
 
+# Affinity milestone thresholds (affinity_level -> label). Affinity only begins to
+# deepen after the drive-by threshold so brief sessions don't unlock gated lore.
+AFFINITY_MILESTONES = {1: 'emerging', 5: 'established', 10: 'deep', 25: 'bonded'}
+AFFINITY_START_MESSAGES = 5
+
 
 class SeekerProgressionRepository(BaseRepository):
     """Database repository for NEPHILIM Seeker progression.
@@ -308,6 +313,40 @@ class SeekerProgressionRepository(BaseRepository):
         affinity['last_conversation'] = now
         affinity['is_first_conversation'] = is_first
         return affinity
+
+    def increment_affinity(self, user_id: str, persona_key: str, amount: int = 1) -> Dict[str, Any]:
+        """Deepen persona affinity (Phase-2 fix: affinity_level was never incremented).
+
+        Gated on ``messages_count >= AFFINITY_START_MESSAGES`` so drive-by sessions
+        don't deepen affinity (and thus don't unlock affinity-gated lore). Awards
+        ``affinity_milestone`` resonance exactly once when a milestone threshold is
+        first crossed.
+
+        Returns: {affinity_level: int, milestone_reached: Optional[str]}.
+        """
+        affinity = self.get_or_create_affinity(user_id, persona_key)
+        if affinity['messages_count'] < AFFINITY_START_MESSAGES:
+            return {'affinity_level': affinity['affinity_level'], 'milestone_reached': None}
+
+        old = affinity['affinity_level']
+        new = old + amount
+        now = self._now()
+        self._execute(
+            "UPDATE persona_affinity SET affinity_level = ?, updated_at = ? WHERE user_id = ? AND persona_key = ?",
+            (new, now, user_id, persona_key),
+        )
+
+        milestone_reached: Optional[str] = None
+        for threshold in sorted(AFFINITY_MILESTONES):
+            if old < threshold <= new:  # crossed from below — award once
+                milestone_reached = AFFINITY_MILESTONES[threshold]
+                self.award_resonance(
+                    user_id, RESONANCE_REWARDS['affinity_milestone'],
+                    f'Affinity milestone ({milestone_reached}) with {persona_key}',
+                    persona_key=persona_key,
+                )
+                break
+        return {'affinity_level': new, 'milestone_reached': milestone_reached}
 
     def get_all_affinities(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all persona affinities for a user."""

@@ -802,3 +802,42 @@ class TestIntegrationFlow:
         assert beta["rank_name"] == "Initiate"
         assert alpha["total_resonance"] == 500
         assert beta["total_resonance"] == 50
+
+
+# ─────────────────────────────────────────────────────────────
+# increment_affinity (Phase-2 fix: affinity_level was never incremented)
+# ─────────────────────────────────────────────────────────────
+
+class TestIncrementAffinity:
+    def test_gated_below_start_messages(self, repo):
+        # messages_count starts at 0 (< AFFINITY_START_MESSAGES) → no deepening
+        r = repo.increment_affinity("aff_u1", "eeva", 1)
+        assert r["affinity_level"] == 0
+        assert r["milestone_reached"] is None
+
+    def test_increments_after_threshold_with_emerging_milestone(self, repo):
+        repo.increment_messages("aff_u2", "eeva", count=5)  # reach the gate
+        r = repo.increment_affinity("aff_u2", "eeva", 1)
+        assert r["affinity_level"] == 1
+        assert r["milestone_reached"] == "emerging"
+
+    def test_milestones_awarded_once_in_order(self, repo):
+        repo.increment_messages("aff_u3", "eeva", count=5)
+        milestones = []
+        for _ in range(6):  # climb affinity 1..6
+            r = repo.increment_affinity("aff_u3", "eeva", 1)
+            if r["milestone_reached"]:
+                milestones.append(r["milestone_reached"])
+        assert milestones == ["emerging", "established"]  # at 1 and 5, each once
+        assert repo.get_or_create_affinity("aff_u3", "eeva")["affinity_level"] == 6
+
+    def test_affinity_required_lore_fires_after_fix(self, repo):
+        repo.increment_messages("aff_u4", "eeva", count=5)
+        frags = [{"fragment_id": "deep1", "affinity_required": 5}]
+        for _ in range(4):  # affinity_level → 4, below requirement
+            repo.increment_affinity("aff_u4", "eeva", 1)
+        repo.check_and_unlock_lore("aff_u4", "eeva", frags)
+        assert all(u["fragment_id"] != "deep1" for u in repo.get_unlocked_lore("aff_u4", "eeva"))
+        repo.increment_affinity("aff_u4", "eeva", 1)  # cross to 5
+        repo.check_and_unlock_lore("aff_u4", "eeva", frags)
+        assert any(u["fragment_id"] == "deep1" for u in repo.get_unlocked_lore("aff_u4", "eeva"))

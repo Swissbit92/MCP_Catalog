@@ -68,6 +68,9 @@ class EpisodicMemoryRAG:
             embed_kwargs["num_ctx"] = self._embed_max_tokens
         self.embeddings = OllamaEmbeddings(**embed_kwargs)
         self.vectorstores: Dict[str, FAISS] = {}  # session_id -> FAISS instance
+        # Phase-2: global (non-session) lore corpus index for on-demand retrieval.
+        # Built once at startup from the lore wiki; reuses self.embeddings (no new embedder).
+        self.lore_store: Optional[FAISS] = None
         # faiss.get_num_gpus() is CUDA-only — always 0 with faiss-cpu. On Apple Silicon
         # GPU inference goes through native Ollama, not FAISS-on-Metal. The GPU transfer
         # branch below is kept for Linux/NVIDIA deployments; inert on Mac.
@@ -219,6 +222,106 @@ class EpisodicMemoryRAG:
         except Exception as e:
             logger.error(f"[RAG] Search failed for session {session_id}: {e}")
             return []
+
+    # ------------------------------------------------------------------
+    # Phase-2: global lore corpus (on-demand lore retrieval)
+    # ------------------------------------------------------------------
+    def index_lore_corpus(self, entity_ids: Optional[List[str]] = None) -> None:
+        """Build the global lore FAISS store from the wiki, reusing self.embeddings.
+
+        Indexes one vector per entity body, with frontmatter metadata attached.
+        Idempotent-ish: rebuilds self.lore_store each call. Safe no-op if empty.
+
+        Args:
+            entity_ids: Optional explicit list; defaults to all wiki entity_ids.
+        """
+        from . import lore_loader
+
+        if entity_ids is None:
+            entity_ids = lore_loader.get_all_entity_ids()
+
+        pairs: List[Tuple[str, Dict[str, Any]]] = []
+        for eid in entity_ids:
+            meta = lore_loader.load_entity_with_metadata(eid)
+            if not meta or not meta.get("body"):
+                continue
+            pairs.append((
+                meta["body"],
+                {
+                    "entity_id": meta["entity_id"],
+                    "entity_type": meta["entity_type"],
+                    "canon": meta["canon"],
+                },
+            ))
+
+        texts, metadatas = prepare_for_embedding(
+            pairs, self._embed_max_tokens, self._embed_overlap
+        )
+        if not texts:
+            logger.warning("[RAG] Lore corpus empty after prep — lore_store not built")
+            return
+        try:
+            self.lore_store = FAISS.from_texts(
+                texts=texts, embedding=self.embeddings, metadatas=metadatas
+            )
+            logger.info(f"[RAG] Lore corpus indexed: {len(texts)} chunks "
+                        f"from {len(entity_ids)} entities")
+        except Exception as e:
+            logger.error(f"[RAG] Lore corpus indexing failed: {e}")
+            self.lore_store = None
+
+    def search_lore(
+        self,
+        query: str,
+        k: int = 5,
+        min_relevance: float = 0.5,
+        entity_type_filter: Optional[str] = None,
+        canon_only: bool = False,
+    ) -> List[Tuple[Dict[str, Any], float]]:
+        """Semantic search over the global lore corpus.
+
+        Returns ``[(metadata_with_body, cosine_score)]`` sorted by relevance.
+        Returns ``[]`` if the lore store is not built. Uses the same exact-cosine
+        identity (cos = 1 - D/2) as conversation search.
+
+        Args:
+            query: Search query (typically the user's current message).
+            k: Max entries to return.
+            min_relevance: Cosine floor (bge-m3 normalized → score is cosine).
+            entity_type_filter: If set, keep only this entity_type.
+            canon_only: If True, drop non-canon entities (avoid surfacing drafts).
+        """
+        if self.lore_store is None:
+            return []
+        query = truncate_for_embedding(query, self._embed_max_tokens)
+        if not query:
+            return []
+        try:
+            results = self.lore_store.similarity_search_with_score(query=query, k=k)
+        except Exception as e:
+            logger.error(f"[RAG] Lore search failed: {e}")
+            return []
+
+        out: List[Tuple[Dict[str, Any], float]] = []
+        for doc, distance in results:
+            similarity = max(-1.0, min(1.0, 1.0 - float(distance) / 2.0))
+            if similarity < min_relevance:
+                continue
+            md = doc.metadata
+            if entity_type_filter and md.get("entity_type") != entity_type_filter:
+                continue
+            if canon_only and not md.get("canon", True):
+                continue
+            out.append((
+                {
+                    "entity_id": md.get("entity_id"),
+                    "entity_type": md.get("entity_type", ""),
+                    "canon": md.get("canon", True),
+                    "body": doc.page_content,
+                },
+                similarity,
+            ))
+        return out
 
     def get_relevant_context(
         self,

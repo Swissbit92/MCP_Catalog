@@ -285,6 +285,24 @@ def init_phase3_memory():
         _episodic_memory_rag = EpisodicMemoryRAG()
         logger.info("Episodic Memory RAG initialized (Phase 3)")
 
+        # Phase-2 (HERMES): pre-warm the global lore corpus in a background thread
+        # when on-demand lore retrieval is enabled. Reuses the RAG embedder; daemon
+        # so it never blocks startup. No-op (store stays None) when the flag is off.
+        try:
+            from .config import get_settings
+            if get_settings().lore.ondemand_enabled:
+                import threading as _threading
+
+                def _prewarm_lore():
+                    try:
+                        _episodic_memory_rag.index_lore_corpus()
+                        logger.info("[LoreRAG] Lore corpus pre-warm complete")
+                    except Exception as exc:
+                        logger.debug(f"[LoreRAG] Lore corpus pre-warm failed (non-fatal): {exc}")
+                _threading.Thread(target=_prewarm_lore, daemon=True, name="prewarm-lore").start()
+        except Exception as e:
+            logger.debug(f"[LoreRAG] Lore pre-warm thread start failed (non-fatal): {e}")
+
         # Initialize fact extractor
         # Note: Will need LLM client, initialized later in chat flow
         # For now, mark as ready for lazy init

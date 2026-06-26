@@ -164,6 +164,109 @@ def _build_unlocked_lore_context(
         return ""
 
 
+def _estimate_lore_tokens(text: str) -> int:
+    """Cheap token estimate (~1.3 tokens/word) for lore-budget accounting."""
+    return int(len(text.split()) * 1.3)
+
+
+def _build_ondemand_lore_context(
+    query: str,
+    recent_messages: list,
+    persona_key: str,
+    episodic_memory_rag,
+    settings,
+) -> str:
+    """Phase-2 hybrid lore retrieval → <dynamic_lore> block (HERMES-Agents).
+
+    Tier-1 (keyword): deterministic alias/name match over the query + recent
+    messages (priority 9). Tier-2 (embedding): bge-m3 semantic search over the
+    lore corpus (priority 6, canon-only). Results are deduped, the static
+    3-entity core is excluded, and the block is trimmed to a token budget
+    (lowest priority dropped first). Flag-OFF → empty string (byte-identical).
+    """
+    if not getattr(settings.lore, "ondemand_enabled", False):
+        return ""
+    if episodic_memory_rag is None or getattr(episodic_memory_rag, "lore_store", None) is None:
+        return ""
+
+    from .. import lore_loader  # noqa: PLC0415
+
+    core_ids = lore_loader.get_static_core_ids(persona_key)
+    candidates: dict[str, dict] = {}  # entity_id -> {body, priority, score}
+
+    # --- Tier 1: keyword / alias (deterministic) ---
+    try:
+        window = recent_messages[-settings.lore.keyword_window_messages:] if recent_messages else []
+        scan_text = " ".join([query] + [
+            (m.get("content", "") if isinstance(m, dict) else str(m)) for m in window
+        ]).lower()
+        for alias, entity_id in lore_loader.get_alias_index().items():
+            if len(alias) < 4:
+                continue  # skip noise-prone short aliases
+            if alias in scan_text and entity_id not in core_ids:
+                meta = lore_loader.load_entity_with_metadata(entity_id)
+                if meta and meta.get("body"):
+                    candidates[entity_id] = {"body": meta["body"], "priority": 9, "score": 1.0}
+    except Exception as e:
+        logger.debug(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
+
+    # --- Tier 2: embedding (semantic, canon-only) ---
+    try:
+        hits = episodic_memory_rag.search_lore(
+            query, k=settings.lore.retrieval_k,
+            min_relevance=settings.lore.embed_min_relevance, canon_only=True,
+        )
+        for meta, score in hits:
+            eid = meta.get("entity_id")
+            if not eid or eid in core_ids or eid in candidates:
+                continue
+            candidates[eid] = {"body": meta.get("body", ""), "priority": 6, "score": float(score)}
+    except Exception as e:
+        logger.debug(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
+
+    if not candidates:
+        return ""
+
+    # Rank: priority desc, then score desc. Trim to token budget.
+    ordered = sorted(candidates.items(), key=lambda kv: (kv[1]["priority"], kv[1]["score"]), reverse=True)
+    budget = settings.lore.max_budget_tokens
+    used, kept = 0, []
+    for eid, c in ordered:
+        body = " ".join(c["body"].split()[:120])  # cap each entry ~120 words
+        cost = _estimate_lore_tokens(body)
+        if used + cost > budget and kept:
+            continue
+        kept.append((eid, body))
+        used += cost
+    if not kept:
+        return ""
+
+    lines = [
+        "<dynamic_lore>",
+        "Relevant fragments of the realm, surfaced for this moment. Weave them in "
+        "naturally if they fit; never recite them verbatim or mention this context.",
+    ]
+    for eid, body in kept:
+        lines.append(f"### {eid}\n{body}")
+    lines.append("</dynamic_lore>")
+    return "\n".join(lines)
+
+
+def _build_seeker_rank_context(rank_name: str) -> str:
+    """Phase-2: narrative seeker-rank block (empty for Initiate / unknown).
+
+    Framed as guidance, not a literal label, to avoid the model parroting the rank.
+    """
+    if not rank_name or rank_name == "Initiate":
+        return ""
+    return (
+        "<seeker_rank>\n"
+        f"This Seeker walks as a {rank_name}. Shape the depth of your guidance and "
+        "the mysteries you reveal to one of their standing — but never state their rank as a bare label.\n"
+        "</seeker_rank>"
+    )
+
+
 def handle_session_chat(
     session_id: str,
     message: str,
@@ -261,6 +364,44 @@ def handle_session_chat(
     if unlocked_lore_context:
         system_prompt = f"{system_prompt}\n\n{unlocked_lore_context}"
         logger.debug(f"[LoreInjection] Injected unlocked lore context ({len(unlocked_lore_context)} chars)")
+
+    # PHASE 2 (HERMES): on-demand hybrid lore retrieval (flag-gated; empty when off)
+    ondemand_lore_context = _build_ondemand_lore_context(
+        query=message,
+        recent_messages=db_messages,
+        persona_key=persona_key,
+        episodic_memory_rag=episodic_memory_rag,
+        settings=get_settings(),
+    )
+    if ondemand_lore_context:
+        system_prompt = f"{system_prompt}\n\n{ondemand_lore_context}"
+        logger.debug(f"[LoreInjection] Injected on-demand lore ({len(ondemand_lore_context)} chars)")
+
+    # PHASE 2 (HERMES): seeker-rank narrative context (flag-gated; NEPHILIM personas)
+    if (get_settings().lore.rank_context_enabled and persona_key.startswith("nephilim_")
+            and seeker_progression_repo):
+        try:
+            _profile = seeker_progression_repo.get_seeker_profile(effective_user_id)
+            rank_ctx = _build_seeker_rank_context((_profile or {}).get("rank_name", "Initiate"))
+            if rank_ctx:
+                system_prompt = f"{system_prompt}\n\n{rank_ctx}"
+        except Exception as e:
+            logger.debug(f"[RankContext] skipped (non-fatal): {e}")
+
+    # PHASE 2 (HERMES): internal capability context (flag-gated; NEPHILIM personas)
+    if get_settings().lore.ondemand_enabled and persona_key.startswith("nephilim_") and seeker_progression_repo:
+        try:
+            from ..lore_retrieval import build_capability_context
+            _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
+            _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
+            cap_ctx = build_capability_context(
+                persona_key, _prof.get("rank_name", "Initiate"),
+                _aff.get("affinity_level", 0), get_settings(),
+            )
+            if cap_ctx:
+                system_prompt = f"{system_prompt}\n\n{cap_ctx}"
+        except Exception as e:
+            logger.debug(f"[Capability] context skipped (non-fatal): {e}")
 
     system_tokens = estimate_tokens(system_prompt)
 
@@ -489,18 +630,23 @@ def handle_session_chat(
         logger.error(f"[Phase3] Post-conversation updates failed: {e}")
 
     # NEPHILIM Progression System - Track conversation progress for NEPHILIM personas
-    ceremony_data = _track_nephilim_progression(
+    progression = _track_nephilim_progression(
         session_id=session_id,
         persona_key=persona_key,
         user_id=user_id,
         seeker_progression_repo=seeker_progression_repo
-    )
+    ) or {}
+    ceremony_data = progression.get("ceremony")
+    capability_unlocks = progression.get("capability_unlocks") or []
 
-    # Inject rank ceremony into response metadata if rank-up occurred
-    if ceremony_data:
+    # Inject rank ceremony + capability unlocks into response metadata
+    if ceremony_data or capability_unlocks:
         if "metadata" not in response or response["metadata"] is None:
             response["metadata"] = {}
-        response["metadata"]["rank_ceremony"] = ceremony_data
+        if ceremony_data:
+            response["metadata"]["rank_ceremony"] = ceremony_data
+        if capability_unlocks:
+            response["metadata"]["capability_unlocks"] = capability_unlocks
 
     return response
 
@@ -546,6 +692,14 @@ def _track_nephilim_progression(
             user_id=effective_user_id,
             persona_key=persona_key,
             count=2  # User message + assistant response
+        )
+
+        # Phase-2 fix: deepen affinity_level (+1/exchange after the drive-by gate)
+        # so affinity-gated lore can actually unlock. Returns milestone if crossed.
+        affinity_result = seeker_progression_repo.increment_affinity(
+            user_id=effective_user_id,
+            persona_key=persona_key,
+            amount=1,
         )
 
         # Award resonance for the conversation
@@ -604,11 +758,28 @@ def _track_nephilim_progression(
                             f"'{frag.get('fragment_title')}' ({frag.get('rarity')})"
                         )
 
-        return ceremony_data
+        # Phase-2: detect newly-unlocked internal capabilities → diegetic unlock beat
+        capability_unlocks = []
+        try:
+            _settings = get_settings()
+            if _settings.lore.ondemand_enabled:
+                from ..lore_retrieval import detect_new_capability_unlocks
+                _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
+                _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
+                capability_unlocks = detect_new_capability_unlocks(
+                    seeker_progression_repo, effective_user_id, persona_key,
+                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0), _settings,
+                )
+                for cap in capability_unlocks:
+                    logger.info(f"[NEPHILIM] Capability awakened for {effective_user_id}: {cap['id']}")
+        except Exception as e:
+            logger.debug(f"[Capability] unlock detection failed (non-fatal): {e}")
+
+        return {"ceremony": ceremony_data, "capability_unlocks": capability_unlocks}
 
     except Exception as e:
         logger.warning(f"[NEPHILIM] Progression tracking failed: {e}")
-        return None
+        return {"ceremony": None, "capability_unlocks": []}
 
 
 def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
