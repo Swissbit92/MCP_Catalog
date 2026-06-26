@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-06-26) — Persona-eval Phase A: trustworthy voice/distinctiveness measurement
+
+- **The ruler before re-cutting** ([ADR-005](docs/decisions/005-persona-architecture-simplification-eval-first.md) Phase A). New `tests/evaluation/persona_eval/`: a probe set (`probes.json` — distinctiveness / voice / grounding / adversarial / drift) and metrics (`persona_metrics.py`) that replace the gameable keyword `persona_voice` scorer. **Headline metric:** leave-one-out nearest-centroid *attribution accuracy* over bge-m3 embeddings — "can we tell which persona said this?" (random chance = 1/num_personas; can't be gamed by sprinkling lore vocabulary). Plus `mean_separation` and a flatness/assistant-mode detector.
+- **Blind A/B harness** (`ab_harness.py`) — sides randomised + arm hidden, exact two-sided sign test, `verdict()` mapped to the ADR-005 acceptance gate. **Baseline runner** (`run_eval.py`) — drives the backend over every persona × probe, computes the report, freezes a timestamped per-persona baseline (the "freeze legacy baseline first" gate step).
+- Logic is pure and **unit-tested headless** (no Ollama): 27 new tests (`test_persona_metrics.py`, `test_persona_ab_harness.py`). Live collection is a thin shell. No persona/runtime code touched. Suite 1590 → 1617 collected; backend+eval 1558 pass / 0 fail.
+
 ### Fixed (2026-06-26) — long sessions (>100 messages) 500 on every turn
 
 - **`ChatBody.history` count guard no longer fights token-budget selection.** `handle_session_chat` assembles history from `memory_manager.select_messages` (bounded by the model's TOKEN budget) + RAG memories + a summary turn; on a large context window that could exceed the `ChatBody.history` `max_length=100` count guard, so every turn in a session past ~100 messages 500'd at internal `ChatBody` construction. Introduced a shared `MAX_HISTORY_TURNS` constant (`schemas.py`) and a `_assemble_capped_history()` helper (`chat_session_service.py`) that keeps the summary (primacy) + the most-recent raw turns, guaranteeing `len <= MAX_HISTORY_TURNS`. Older raw turns remain represented by the summary + RAG-injected memories; the external-request guard is unchanged. 6 new tests (`test_history_cap.py`); backend suite 0 regressions.

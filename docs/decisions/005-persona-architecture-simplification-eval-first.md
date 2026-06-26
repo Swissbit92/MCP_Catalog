@@ -17,6 +17,13 @@ triggered by the HERMES-Agents Phase 3 persona-voice-fix failure ([ADR-004](004-
 Eval-first, staged, reversible; each phase is flag-gated and A/B-measured before
 any default flip.
 
+**Phase A tooling BUILT 2026-06-26** (no persona/runtime changes yet):
+`tests/evaluation/persona_eval/` — probe set, attribution-based distinctiveness
+metric (replaces the gameable keyword scorer), flatness detector, blind A/B
+harness with a gate-mapped verdict, and a baseline-freeze runner. Logic
+unit-tested headless (27 tests). Next operational step: run `run_eval.py --label
+legacy` to freeze the per-persona baseline before any Phase-B change.
+
 ## Context
 
 The Phase 3 voice fix failed (agentic persona_voice ~0.44–0.52), and the
