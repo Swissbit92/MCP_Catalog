@@ -241,7 +241,25 @@ def chat(body: ChatBody):
     )
 
     if brave_tools:
-        # Brave search query
+        # HERMES-Agents Phase 3: when AGENTIC_ENABLED, run the web-search action
+        # through the persona-safe two-stage pipeline (deterministic execute ->
+        # in-voice render). Falls back to the legacy brave handler if the agentic
+        # path declines (returns None). Flag default OFF = byte-identical.
+        if get_settings().agent.enabled:
+            agentic_response = query_handler.handle_agentic_query(
+                message=body.message,
+                system_prompt=system,
+                user_compiled=user_compiled,
+                tools=tools,
+                metadata=metadata,
+                persona_name=persona_name,
+                persona_card=card,
+                conversation_history=[{"role": t.role, "content": t.content} for t in history],
+            )
+            if agentic_response is not None:
+                return agentic_response
+
+        # Brave search query (legacy path)
         return query_handler.handle_brave_query(
             system_prompt=system,
             user_compiled=user_compiled,

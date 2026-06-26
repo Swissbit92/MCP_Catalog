@@ -5,7 +5,109 @@
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
+
+# HERMES-Agents Phase 3 — ecosystem-default diegetic (in-world) action names.
+# Maps a real tool name to the in-world phrase the persona uses to refer to it,
+# so tool-use reasoning stays inside the fiction (per "Talk Less, Call Right":
+# in-world action names reduce the assistant-mode "Sure, I'll help!" revert).
+# Personas may override any of these via the `agentic_action_aliases` field.
+DEFAULT_ACTION_ALIASES: Dict[str, str] = {
+    "brave_web_search": "consult the Lattice",
+    "wallet_get_balances": "examine the Sigil Ledger",
+    "solana_get_quote": "weigh the Exchange Currents",
+    "solana_rsi_check": "cast the Oracle's Eye",
+    "solana_propose_swap": "inscribe a Rite of Exchange",
+    "wallet_create_guided": "forge a new Sigil",
+}
+
+
+def _diegetic_name(tool_name: str, aliases: Optional[Dict[str, str]]) -> str:
+    """Resolve the in-world phrase for a tool, persona override > default > name."""
+    if aliases and tool_name in aliases:
+        return aliases[tool_name]
+    return DEFAULT_ACTION_ALIASES.get(tool_name, tool_name)
+
+
+def build_scene_contract(
+    persona_system: str,
+    tools: List[Dict[str, Any]],
+    persona_card: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Build the Phase-3 agentic system prompt: Voice + Action contract.
+
+    Unlike ``build_tool_system_prompt`` this NEVER embeds raw function-call JSON
+    grammar. The system already selects tools deterministically (bge-m3 router)
+    and fills arguments via grammar-constrained extraction, so the model is not
+    asked to emit a ``function_call`` object here. The contract instead:
+
+    1. **Voice section** — anchors the persona; governs HOW the character acts,
+       never WHO it is. Contains no tool grammar.
+    2. **Action section** — lists the available actions by their in-world
+       (diegetic) names, with action-first sequencing rules. Only present when
+       ``tools`` is non-empty (the result-rendering stage passes ``tools=[]`` so
+       it gets a pure Voice contract).
+
+    Args:
+        persona_system: The persona's base system prompt.
+        tools: OpenAI-format tool specs available this turn (may be empty).
+        persona_card: Optional persona dict; read for ``agentic_action_aliases``.
+
+    Returns:
+        The composed scene-contract system prompt.
+    """
+    aliases = None
+    if persona_card:
+        aliases = persona_card.get("agentic_action_aliases")
+
+    voice_contract = """
+
+---
+
+<voice_contract>
+The rules below govern HOW you may act this turn — never WHO you are. Stay fully
+in character: your voice, register, and worldview do not change when you act.
+Never describe yourself as an AI, an assistant, or a tool-user; never expose
+function names, JSON, or system mechanics. You are the character, acting within
+the world.
+</voice_contract>"""
+
+    if not tools:
+        # Result-rendering stage: pure Voice contract, no action vocabulary.
+        return persona_system + voice_contract
+
+    action_lines = []
+    for tool in tools:
+        # OpenAI tool spec: {"type": "function", "function": {"name": ..., "description": ...}}
+        fn = tool.get("function", tool) if isinstance(tool, dict) else {}
+        name = fn.get("name", "")
+        if not name:
+            continue
+        desc = fn.get("description", "").strip()
+        diegetic = _diegetic_name(name, aliases)
+        line = f'- "{diegetic}"' + (f" — {desc}" if desc else "")
+        action_lines.append(line)
+
+    actions_block = "\n".join(action_lines)
+
+    action_contract = f"""
+
+<action_contract>
+Within the world you may take an action this turn:
+
+{actions_block}
+
+ACTION RULES:
+- You may take AT MOST ONE action per turn.
+- Decide WHETHER to act FIRST, before writing any prose. YOU HAVE ONLY ONE
+  CHANCE TO ACT — there is no second attempt this turn.
+- When an action returns, weave its result into your reply in your own voice.
+  Never expose the mechanism, never name the underlying tool, never show JSON.
+- If no action is needed, simply respond in character.
+</action_contract>"""
+
+    return persona_system + voice_contract + action_contract
 
 
 def build_tool_system_prompt(persona_system: str, tools: List[Dict[str, Any]]) -> str:

@@ -346,6 +346,94 @@ class QueryHandlerService:
 
         return response
 
+    def handle_agentic_query(
+        self,
+        message: str,
+        system_prompt: str,
+        user_compiled: str,
+        tools: list,
+        metadata: ResponseMetadata,
+        persona_name: str,
+        persona_card: dict,
+        conversation_history: Optional[list] = None,
+    ) -> Optional[dict]:
+        """Phase-3 agentic path for the web-search action (AGENTIC_ENABLED).
+
+        Runs the two-stage AgenticPipeline (deterministic execute -> in-voice
+        render) and adapts the result through the shared ``_finalize_response``
+        so the agentic path inherits the same output safety (tool-name strip,
+        private-key redaction, first-person enforcement) as every other path.
+
+        Returns a response dict, or ``None`` to signal the caller to fall back to
+        the legacy path (e.g. an unexpected HITL hand-off). Wallet actions are NOT
+        handled here — they stay on the existing propose->confirm->execute flow.
+        """
+        from .agentic_pipeline import AgenticPipeline
+        from .tool_interceptor import ToolCallInterceptor
+        from .injection_guard import InjectionGuard
+        from .argument_extractor import ArgumentExtractor
+        from .search_execution_service import SearchExecutionService
+        from ..tools.tool_utils import ToolCall, format_search_results_for_llm
+        from ..llm_client import create_llm_client  # noqa: PLC0415
+
+        search_exec = SearchExecutionService(mcp_client=self.brave_client)
+
+        def brave_executor(args: dict):
+            return search_exec.execute_search(
+                ToolCall(name="brave_web_search", arguments=args)
+            )
+
+        def complete_fn(system: str, user: str) -> str:
+            return create_llm_client(persona_card).complete(system=system, user_prompt=user)
+
+        pipeline = AgenticPipeline(
+            interceptor=ToolCallInterceptor(),
+            injection_guard=InjectionGuard(),
+            extractor=ArgumentExtractor(),
+            tool_executors={"brave_web_search": brave_executor},
+            llm_complete_fn=complete_fn,
+            result_formatters={"brave_web_search": format_search_results_for_llm},
+        )
+
+        result = pipeline.execute(
+            intent_tool="brave_web_search",
+            user_message=message,
+            persona_system=system_prompt,
+            persona_card=persona_card,
+            conversation_context=user_compiled,
+            # The route-level tool trigger comes purely from the user message; no
+            # RAG/lore content feeds the tool decision at this layer, so the
+            # injection-source check operates on the (empty) retrieved context.
+            rag_context="",
+            lore_context="",
+            conversation_history=conversation_history,
+        )
+
+        if result.hitl_required:
+            # Search never requires HITL; defensively fall back to legacy routing.
+            return None
+
+        metadata.source_type = "agentic_blocked" if result.was_blocked else "agentic"
+        metadata.tools_used = [result.tool_called] if (result.tool_called and not result.was_blocked) else []
+
+        used_search = bool(result.tool_called) and not result.was_blocked
+        search_count = None
+        if isinstance(result.tool_result_raw, list):
+            search_count = len(result.tool_result_raw)
+
+        logger.info(
+            f"[Agentic] completed: tool={result.tool_called}, blocked={result.was_blocked}, "
+            f"structured_args={result.used_structured_output}, results={search_count}"
+        )
+
+        return self._finalize_response(
+            answer=result.rendered_response,
+            persona_name=persona_name,
+            metadata=metadata,
+            used_search=used_search,
+            search_results_count=search_count,
+        )
+
     def handle_wallet_query(
         self,
         message: str,

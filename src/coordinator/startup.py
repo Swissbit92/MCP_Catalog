@@ -161,6 +161,19 @@ def get_fact_extractor() -> Optional[FactExtractor]:
     return _fact_extractor
 
 
+# HERMES-Agents Phase 3: deterministic tool-call interceptor (stateless singleton)
+_tool_interceptor = None
+
+
+def get_tool_interceptor():
+    """Get the shared ToolCallInterceptor (lazy; stateless, safe to share)."""
+    global _tool_interceptor
+    if _tool_interceptor is None:
+        from .services.tool_interceptor import ToolCallInterceptor
+        _tool_interceptor = ToolCallInterceptor()
+    return _tool_interceptor
+
+
 # Jupiter MCP getters
 
 def get_jupiter_client():

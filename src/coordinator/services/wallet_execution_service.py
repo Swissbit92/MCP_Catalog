@@ -69,6 +69,18 @@ class WalletExecutionService:
         Returns:
             Trade document with tx_signature and status
         """
+        # Phase 3 defence-in-depth: the on-chain spend chokepoint accepts only the
+        # two legitimate, confirmed execution modes. An agentic/chat path can never
+        # reach here with an unrecognised mode — this is the last guard before a
+        # real Solana transaction, independent of the tool-call interceptor.
+        _ALLOWED_EXECUTION_MODES = {"adhoc_confirmed", "strategy_autonomous"}
+        if execution_mode not in _ALLOWED_EXECUTION_MODES:
+            raise ValueError(
+                f"[WalletExecution] refusing swap: execution_mode "
+                f"'{execution_mode}' is not a confirmed mode "
+                f"{sorted(_ALLOWED_EXECUTION_MODES)}"
+            )
+
         idempotency_key = str(uuid.uuid4())
 
         logger.info(

@@ -569,10 +569,17 @@ def handle_session_chat(
         # Update RAG index with new messages
         if episodic_memory_rag:
             all_messages_updated = message_repo.get_messages_by_session(session_id)
+            # Phase 3 trust-hierarchy: sanitize the user message before it enters
+            # long-term memory so a stored tool-call payload cannot fire on a
+            # later turn (gated by AGENTIC_INJECTION_GUARD, default ON).
+            indexed_user_content = message
+            if get_settings().agent.injection_guard:
+                from .injection_guard import get_injection_guard
+                indexed_user_content = get_injection_guard().sanitize_memory_write(message)
             episodic_memory_rag.update_session(
                 session_id=session_id,
                 new_messages=[
-                    {"role": "user", "content": message},
+                    {"role": "user", "content": indexed_user_content},
                     {"role": "assistant", "content": response["answer"]}
                 ],
                 full_history=all_messages_updated
