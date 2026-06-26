@@ -166,7 +166,8 @@ def load_probes(path: Path | str | None = None) -> dict:
 def default_embed_fn() -> EmbedFn:  # pragma: no cover - live wiring
     """bge-m3 embedder via Ollama, mirroring memory_rag's config. Live use only."""
     import sys
-    src = Path(__file__).parent.parent.parent / "src"
+    # persona_eval → evaluation → tests → repo-root, then /src
+    src = Path(__file__).resolve().parents[3] / "src"
     if str(src) not in sys.path:
         sys.path.insert(0, str(src))
     from coordinator.config import get_settings  # type: ignore
