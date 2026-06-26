@@ -11,14 +11,35 @@ applies_to: nephilim
 
 ## Status
 
-Accepted — **BUILT 2026-06-26, flag OFF (go-live pending user)**. All six
-milestones (M1–M6) shipped behind `AGENTIC_ENABLED` (default OFF = byte-identical
-to pre-Phase-3), mirroring the Phase 0 (`ROUTING_SEMANTIC_PRIMARY`) and Phase 2
-(`LORE_ONDEMAND_ENABLED`) precedent. Go/no-go red-team gate met
+Accepted — **BUILT 2026-06-26. Safety middleware ACTIVE (default-ON flags);
+agentic pipeline PARKED (`AGENTIC_ENABLED` OFF) — no go-live for read-only
+search.** All six milestones (M1–M6) shipped behind `AGENTIC_ENABLED` (default
+OFF = byte-identical), mirroring Phase 0/2. Go/no-go red-team gate met
 (`tests/evaluation/test_tool_call_safety_redteam.py`): 100% of expect-blocked
-vectors denied before execution, 0 false positives, 0 suite regressions
-(1501 → 1544 pass). The MVP wires the **web-search** action through the pipeline;
-wallet actions remain on the existing propose→confirm→execute flow.
+vectors denied, 0 false positives, 0 suite regressions (1501 → 1544 pass).
+
+**Live go-live evaluation (2026-06-26, E.E.V.A. on Magidonia-24B) — DECISION:
+keep `AGENTIC_ENABLED` OFF for web search.** Reasoning, from measured
+`persona_voice` on identical BRAVE_ROUTING queries (n=9/arm):
+- legacy `handle_brave_query` (the live path): **0.333**
+- agentic pipeline: **0.44–0.52** (a Tier-1 prompt voice fix — diegetic [FACTS]
+  framing + post-history voice reminder + anti-summarizer rule — gave no
+  significant change; likely because adding instructions to an already-large
+  prompt fights the "instruction density flattens 24B voice" effect).
+- ungrounded free chat (same persona): ~0.82.
+
+Findings: (1) grounded web-search is inherently low-voice for this model on BOTH
+paths — the ≥0.85 bar only applies to free chat, not fact-grounded synthesis;
+(2) the agentic path is therefore **voice-competitive-to-better vs the legacy
+path it would replace** (an earlier no-go that compared agentic-search to the
+free-chat baseline was a methodology error); (3) for read-only search the agentic
+two-stage design adds an extra LLM round-trip (argument extraction) for **no
+voice gain over legacy's zero-cost regex extraction** — strictly worse on
+latency. Conclusion: do not route web search through the pipeline. The pipeline's
+genuine value (deterministic pre-execution gating + HITL) is for **write
+actions**, where its tradeoffs pay off; it stays built and validated, awaiting
+that use case. The **safety middleware** (interceptor, injection guard,
+execute-mode guard) remains ON by default and hardens the existing paths now.
 
 Implementation note vs. the original plan: the per-tool argument allowlist drops
 shell-metacharacter blocking on the Brave query (the query reaches the MCP over

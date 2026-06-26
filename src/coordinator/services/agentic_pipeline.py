@@ -163,12 +163,17 @@ class AgenticPipeline:
             )
 
         # --- Stage 2: rendering (LLM, in-voice, no tool grammar) ----------
+        # Persona-voice preservation (research: RLHF "assistant attractor" — heavy
+        # grounding instructions flatten the character). Three zero-latency levers:
+        # (1) diegetic [FACTS] framing — the result is MATERIAL to weave, not a mode
+        # to adopt; (2) a post-history voice reminder (SillyTavern PHI) re-asserting
+        # the persona AFTER the facts, at the recency position; (3) an explicit
+        # anti-neutral-summarizer rule. Sampling is left to the persona defaults —
+        # the plain-LLM path scores well with the same sampling, so the prompt
+        # structure (not temperature) is the lever.
         formatted = self._format_result(intent_tool, raw_result)
         voice_prompt = build_scene_contract(persona_system, tools=[], persona_card=persona_card)
-        render_input = (
-            f"{user_message}\n\n[The result of your action, to weave into your "
-            f"reply in your own voice — do not mention tools or mechanisms]:\n{formatted}"
-        )
+        render_input = self._build_render_input(user_message, formatted, persona_card)
         try:
             rendered = self.llm_complete_fn(voice_prompt, render_input)
         except Exception as e:
@@ -185,6 +190,39 @@ class AgenticPipeline:
         )
 
     # --------------------------------------------------------------------- #
+
+    @staticmethod
+    def _voice_reminder(persona_card: Dict[str, Any]) -> str:
+        """A short post-history voice reminder (PHI) re-asserting the persona.
+
+        Placed AFTER the facts (recency position) to counter the assistant
+        attractor that grounding instructions activate on a 24B.
+        """
+        name = persona_card.get("display_name") or persona_card.get("key") or "the character"
+        # display_name is often "Name - Tagline"; take the name part for brevity.
+        name = name.split(" - ")[0].strip()
+        style = (persona_card.get("style") or "").strip()
+        tail = f" — {style}" if style else ""
+        return (
+            f"Now answer entirely as {name}{tail}. Speak in your full voice and "
+            f"manner; never lapse into a neutral, summarizing tone. Do not mention "
+            f"tools, searches, or how you came to know this."
+        )
+
+    def _build_render_input(
+        self, user_message: str, formatted: str, persona_card: Dict[str, Any]
+    ) -> str:
+        """Compose the Stage-2 render input: question -> diegetic facts -> PHI.
+
+        The [FACTS] label frames the result as material to process (not a register
+        to mirror), and the trailing voice reminder occupies the recency slot.
+        """
+        return (
+            f"{user_message}\n\n"
+            f"[FACTS — gathered for you; weave these into your reply, do not list "
+            f"or quote them verbatim, do not invent beyond them]\n{formatted}\n\n"
+            f"[VOICE] {self._voice_reminder(persona_card)}"
+        )
 
     def _injection_guard_on(self) -> bool:
         try:

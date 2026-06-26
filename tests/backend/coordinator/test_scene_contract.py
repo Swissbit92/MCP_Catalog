@@ -72,17 +72,23 @@ def test_unknown_tool_falls_back_to_name():
 # --- AgentSettings flag tests ---
 
 def test_agent_settings_defaults():
-    """AGENTIC_ENABLED off; the two safety flags default ON."""
-    s = AgentSettings()
-    assert s.enabled is False
-    assert s.argument_allowlist is True
-    assert s.injection_guard is True
-    assert 0.5 <= s.trigger_similarity_threshold <= 1.0
-    assert s.extraction_max_retries >= 1
+    """Declared field DEFAULTS: AGENTIC_ENABLED off; safety flags on.
+
+    Asserts the code-level defaults via model_fields so the test is independent
+    of the ambient .env (a deployment may flip AGENTIC_ENABLED=true).
+    """
+    f = AgentSettings.model_fields
+    assert f["enabled"].default is False
+    assert f["argument_allowlist"].default is True
+    assert f["injection_guard"].default is True
+    assert 0.5 <= f["trigger_similarity_threshold"].default <= 1.0
+    assert f["extraction_max_retries"].default >= 1
 
 
 def test_agent_settings_nested_in_coordinator():
-    """The agent subsystem is reachable from the singleton settings object."""
+    """The agent subsystem is wired into CoordinatorSettings (structure, not env value)."""
+    from coordinator.config import CoordinatorSettings
+    assert "agent" in CoordinatorSettings.model_fields
     settings = get_settings()
     assert hasattr(settings, "agent")
-    assert settings.agent.enabled is False
+    assert isinstance(settings.agent, AgentSettings)

@@ -37,6 +37,9 @@ def _make_settings():
     s.ollama.context_window = 4096
     s.ollama.model = "test-model"
     s.db_path = "/tmp/test.db"
+    # Phase-3 agentic flag: pin OFF so legacy-routing tests are deterministic
+    # regardless of the ambient .env (a deployment flip must not break the suite).
+    s.agent.enabled = False
     return s
 
 
@@ -291,6 +294,9 @@ class TestChat:
                 patch("src.coordinator.services.query_handler_service.has_active_wallet_flow", return_value=False),
                 patch("src.coordinator.routes.chat.QueryHandlerService", return_value=handler),
                 patch("src.coordinator.config.get_settings", return_value=_make_settings()),
+                # chat.py binds get_settings at import; patch it there too so the
+                # Phase-3 agentic branch is OFF for this legacy-routing assertion.
+                patch("src.coordinator.routes.chat.get_settings", return_value=_make_settings()),
                 *_startup_patches(),
             ])
             resp = client.post("/persona/chat", json={"persona": "cipher", "message": "latest news"})

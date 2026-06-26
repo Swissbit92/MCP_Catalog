@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Evaluated (2026-06-26) — Phase 3 go-live decision: agentic web-search stays OFF
+
+- **Live persona-voice evaluation on Magidonia-24B (E.E.V.A.) → keep `AGENTIC_ENABLED` OFF for web search.** Measured `persona_voice` on identical BRAVE_ROUTING queries (n=9/arm): legacy `handle_brave_query` **0.333**, agentic pipeline **0.44–0.52**, ungrounded free chat ~0.82. Grounded web-search is inherently low-voice for this model on *both* paths; the ≥0.85 bar only applies to free chat. The agentic path is voice-competitive-to-better than legacy, but for read-only search it adds an extra LLM round-trip (argument extraction) for no voice gain — strictly worse on latency. The pipeline's real value (deterministic pre-execution gating + HITL) is for **write actions**; it stays built/validated and parked for that use case. The **safety middleware** (interceptor, injection guard, execute-mode guard) remains ON by default and hardens existing paths now.
+- **Voice fix (unproven, kept):** Stage-2 rendering gained diegetic `[FACTS]` framing + a post-history voice reminder (PHI) + an anti-summarizer rule (`agentic_pipeline._build_render_input`/`_voice_reminder`, `synthesis_prompts` voice contract). No significant metric change — likely instruction-density saturation on the 24B. Kept as defensible structure for the future write-action path; not claimed as an improvement.
+- **Test robustness:** the Phase-3 flag-default tests and the brave-routing route test are now independent of the ambient `.env` (assert declared `model_fields` defaults; pin the agentic flag off in the routing test) so the suite is green regardless of deployment flag state. Backend suite 1489 pass / 0 fail with the flag either ON or OFF.
+- **Pre-existing bug surfaced (not Phase 3):** `ChatBody.history` has `max_length=100`; any session exceeding ~100 messages 500s at `chat_session_service.py` request construction. Worth its own fix.
+
 ### Added (2026-06-26) — HERMES-Agents Phase 3: persona-safe agentic behaviour (flag OFF)
 
 - **Single-action, in-character tool use with deterministic safety middleware**, behind `AGENTIC_ENABLED` (default **OFF** = byte-identical to pre-Phase-3). Built, flag off, go-live pending — mirrors the Phase 0 / Phase 2 precedent. [ADR-004](docs/decisions/004-persona-safe-agentic-tool-calls.md).

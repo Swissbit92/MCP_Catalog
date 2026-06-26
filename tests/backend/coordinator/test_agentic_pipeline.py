@@ -193,6 +193,21 @@ def test_missing_executor_graceful():
     assert res.rendered_response == llm.reply
 
 
+def test_render_input_has_facts_and_voice_phi():
+    """Render input must frame facts as [FACTS] and end with a [VOICE] PHI reminder."""
+    p = _pipeline(_FakeExtractor({"query": "x"}),
+                  {"brave_web_search": lambda a: "RESULTDATA"}, _RecorderLLM(),
+                  formatters={"brave_web_search": lambda r: "RESULTDATA"})
+    ri = p._build_render_input("what's up?", "RESULTDATA",
+                               {"display_name": "E.E.V.A. - The Archon", "style": "sardonic, precise"})
+    assert "[FACTS" in ri and "RESULTDATA" in ri
+    # PHI reminder is last (recency) and names the persona + anti-summarizer rule.
+    assert ri.rstrip().endswith("how you came to know this.")
+    assert "E.E.V.A." in ri and "sardonic, precise" in ri
+    assert "neutral, summarizing tone" in ri
+    assert ri.index("RESULTDATA") < ri.index("[VOICE]")  # facts before voice reminder
+
+
 def test_used_structured_output_propagates():
     p = _pipeline(_FakeExtractor({"query": "x"}, structured=False),
                   {"brave_web_search": lambda a: []}, _RecorderLLM())
