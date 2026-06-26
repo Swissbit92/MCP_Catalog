@@ -15,10 +15,18 @@ class ChatTurn(BaseModel):
     content: str
 
 
+# Upper bound on conversation turns carried in a single chat request. Single
+# source of truth: the ChatBody schema guard AND the server-side history assembly
+# (chat_session_service.handle_session_chat) both use this, so token-budget message
+# selection can never produce a history that the schema then rejects. (Before this
+# was shared, long sessions >100 messages 500'd at internal ChatBody construction.)
+MAX_HISTORY_TURNS = 100
+
+
 class ChatBody(BaseModel):
     """Request body for chat endpoint."""
     persona: Optional[str] = None
-    history: List[ChatTurn] = Field(default=[], max_length=100)
+    history: List[ChatTurn] = Field(default=[], max_length=MAX_HISTORY_TURNS)
     message: str = Field(..., max_length=10_000)
     session_id: Optional[str] = None  # Set by handle_session_chat for wallet flow continuity
 

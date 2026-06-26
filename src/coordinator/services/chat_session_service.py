@@ -21,13 +21,40 @@ from fastapi import HTTPException
 
 from ..repositories.base_repository import utc_now_iso
 
-from ..schemas import ChatBody, ChatTurn, AppendMessageBody
+from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
 from ..persona_memory import build_system_prompt, get_persona_card
 
 logger = logging.getLogger(__name__)
+
+
+def _assemble_capped_history(
+    raw_turns: list[ChatTurn],
+    summary_turn: ChatTurn | None = None,
+) -> list[ChatTurn]:
+    """Assemble chat history bounded to MAX_HISTORY_TURNS.
+
+    Token-budget message selection can exceed the ChatBody count guard on a large
+    context window; this keeps the summary (if any) at the front plus the most
+    recent raw turns so the result never violates the schema. Older raw turns are
+    already represented by the summary + RAG-injected memories.
+
+    Guarantees ``len(result) <= MAX_HISTORY_TURNS``.
+    """
+    reserve = 1 if summary_turn is not None else 0
+    max_raw = MAX_HISTORY_TURNS - reserve
+    capped = raw_turns[-max_raw:] if len(raw_turns) > max_raw else list(raw_turns)
+    if len(raw_turns) > max_raw:
+        logger.info(
+            f"[Memory] Capping history {len(raw_turns)} -> {max_raw} raw turns "
+            f"(token budget exceeded the {MAX_HISTORY_TURNS}-turn ChatBody guard; "
+            f"older turns covered by summary/RAG)"
+        )
+    if summary_turn is not None:
+        return [summary_turn] + capped
+    return capped
 
 
 # ─────────────────────────────────────────────────────────────
@@ -472,17 +499,22 @@ def handle_session_chat(
         all_context_messages.sort(key=lambda x: x.get("index", 0))
 
     # Convert to ChatTurn format
-    history_turns = [
+    raw_turns = [
         ChatTurn(role=msg["role"], content=msg["content"])
         for msg in all_context_messages
     ]
 
-    # Prepend summary context
+    # Assemble the final history, capping to MAX_HISTORY_TURNS (summary + most-recent
+    # raw turns). select_messages bounds by TOKEN budget, which on a large context
+    # window can exceed the ChatBody count guard — without this cap, long sessions
+    # 500 at the ChatBody construction below.
+    summary_turn = None
     if summary_context:
-        history_turns.insert(0, ChatTurn(
+        summary_turn = ChatTurn(
             role="assistant",
             content=f"[Context from earlier in our conversation]\n\n{summary_context}"
-        ))
+        )
+    history_turns = _assemble_capped_history(raw_turns, summary_turn)
 
     logger.info(
         f"[Memory] Selected {len(history_turns)}/{len(db_messages)} messages "
