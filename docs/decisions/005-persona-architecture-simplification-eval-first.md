@@ -21,8 +21,20 @@ any default flip.
 `tests/evaluation/persona_eval/` — probe set, attribution-based distinctiveness
 metric (replaces the gameable keyword scorer), flatness detector, blind A/B
 harness with a gate-mapped verdict, and a baseline-freeze runner. Logic
-unit-tested headless (27 tests). Next operational step: run `run_eval.py --label
-legacy` to freeze the per-persona baseline before any Phase-B change.
+unit-tested headless (27 tests).
+
+**LEGACY BASELINE FROZEN 2026-06-27** (`baselines/baseline_legacy_20260627_024004.json`,
+git-ignored run-local data; 168 responses, ~33 min). The immutable per-persona
+comparison point for the acceptance gate:
+- **Distinctiveness attribution = 0.393** vs **0.143 random floor** (~2.75×
+  chance — voices are distinguishable but not strongly; mean_separation 0.115).
+- Per-persona: aurora 0.62, gojo 0.62 (most distinct), nyx 0.38, cipher 0.38,
+  **eeva / aegis / solace 0.25 each** — the advisory/Warden personas blur into
+  one another. **This is the concrete differentiation problem Phase B targets**
+  (better per-persona example dialogues), and the cluster Phase B must lift
+  without regressing aurora/gojo.
+- Flatness already low: 1.8% overall, 4.8% grounding — Phase B should not chase
+  flatness; the deterministic guards handle it.
 
 ## Context
 

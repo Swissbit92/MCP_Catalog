@@ -53,3 +53,17 @@ python tests/evaluation/persona_eval/run_eval.py --label lean-candidate
 Both runs are slow (live 24B at ~16 tok/s over 7 personas × ~18 probes). Run them
 in the background. The blind A/B (`ab_harness.run_cli`) is the human-in-the-loop
 judge; the attribution/flatness metrics are the automated spine.
+
+> **Ops notes:** Python buffers stdout to a redirected file — the log looks empty
+> mid-run; use the chat-session count in `data/chats.db` as the real progress
+> proxy (or run with `python -u`). The run opens a fresh session per single-turn
+> probe (≈19 sessions/persona).
+
+## Current baseline (frozen 2026-06-27)
+
+`baseline_legacy_20260627_024004.json` (168 responses): distinctiveness
+attribution **0.393** vs **0.143** random floor. Per-persona — aurora 0.62,
+gojo 0.62, nyx 0.38, cipher 0.38, **eeva / aegis / solace 0.25** (the advisory
+personas blur; the Phase-B differentiation target). Flatness low: 1.8% overall,
+4.8% grounding. Any Phase-B candidate must match-or-beat each persona here, or
+that persona stays on the legacy prompt.
