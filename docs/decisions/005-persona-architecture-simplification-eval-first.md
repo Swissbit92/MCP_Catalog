@@ -58,6 +58,17 @@ baseline:
   drift the legacy `<identity>`; `LORE_ONDEMAND` is appended downstream of the
   builder, so the lean prompt only drops the *static* wiki dup. Phase C not needed.
 
+**Blind A/B confirmation 2026-06-27 (second, independent instrument).** Beyond the
+attribution metric, a per-persona blind pairwise A/B (`blind_judge.py` over the two
+frozen baselines; 7 fresh judges, one per persona, arm-blinded with sides
+randomised; 84 pairs across the distinctiveness+voice categories). **Overall the
+lean candidate won 67/84 decided pairs (79.8%, sign-test p≈0); no persona
+regressed.** Per persona: CANDIDATE BETTER (p<0.05) for gojo (12–0), eeva (11–1),
+nyx (10–2); PARITY (candidate-leaning, n=12 underpowered) for aegis/cipher/solace
+(9–3) and aurora (7–5). Two qualitatively-different instruments agree → go-live
+validated. Judge ratings stored run-local (`baselines/ab_picks_*.json`,
+git-ignored); reproduce with `blind_judge.py --score`.
+
 ## Context
 
 The Phase 3 voice fix failed (agentic persona_voice ~0.44–0.52), and the

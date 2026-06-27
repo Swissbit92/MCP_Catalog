@@ -83,3 +83,25 @@ PERSONA_LEAN_PROMPT=true COORDINATOR_DB_PATH=data/chats_lean_eval.db \
   .venv/bin/python -m uvicorn src.coordinator.server:app --port 8001 &
 python tests/evaluation/persona_eval/run_eval.py --label lean-candidate --base-url http://127.0.0.1:8001
 ```
+
+## Blind A/B confirmation (`blind_judge.py`)
+
+A second, independent instrument: per-persona blind pairwise A/B over the two
+frozen baselines (legacy = arm A, candidate = arm B). Sides are randomised + arm
+labels hidden (seeded); scoring reuses `ab_harness` (tally + exact sign test +
+gate verdict). The judge step is the human-in-the-loop:
+
+```bash
+# emit anonymised pairs for an external blind judge (LLM agent or human)
+python tests/evaluation/persona_eval/blind_judge.py --emit pairs.json
+# score a picks file {persona: {probe_id: left|right|tie}}
+python tests/evaluation/persona_eval/blind_judge.py --score picks.json
+# or rate one persona yourself, interactively
+python tests/evaluation/persona_eval/blind_judge.py --human nephilim_eeva
+```
+
+**Result 2026-06-27** (7 fresh arm-blinded judges, 84 pairs): lean candidate
+**67/84 (79.8%, p≈0)**, no persona regressed — CANDIDATE BETTER for gojo (12–0),
+eeva (11–1), nyx (10–2); PARITY (candidate-leaning) for aegis/cipher/solace (9–3)
+and aurora (7–5). Agrees with the attribution metric (0.393→0.732). Ratings stored
+run-local (`baselines/ab_picks_*.json`, git-ignored).

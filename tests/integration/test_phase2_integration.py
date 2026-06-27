@@ -164,13 +164,17 @@ def test_kpi3_emotional_state_tracking():
 def test_kpi4_psychological_context_in_system_prompt():
     """KPI-4: System prompt includes psychological context."""
     from src.coordinator.persona_memory import (
-        build_system_prompt,
         _build_psychological_block,
         resolve_persona_to_card,
         _load_all_cards_cached
     )
+    # Pinned to the LEGACY builder: this asserts the legacy "Psychological Depth"
+    # block text. The lean prompt (ADR-005 Phase B, now the live default) carries
+    # psych context in compressed form and is covered in test_lean_prompt.py.
+    # Flag-independent regardless of the ambient PERSONA_LEAN_PROMPT.
+    from src.coordinator.prompt_builder import _build_system_prompt_legacy
 
-    build_system_prompt.cache_clear()
+    _build_system_prompt_legacy.cache_clear()
 
     # Test Eeva (should have psychological profile)
     card = resolve_persona_to_card("Eeva")
@@ -182,7 +186,7 @@ def test_kpi4_psychological_context_in_system_prompt():
     print(f"  [OK] Eeva has psychological block ({len(psych_block)} chars)")
 
     # Test that system prompt includes psychological block
-    system_prompt = build_system_prompt("Eeva")
+    system_prompt = _build_system_prompt_legacy("Eeva")
     assert "Psychological Depth" in system_prompt, "System prompt missing psychological context"
     print(f"  [OK] System prompt includes psychological context")
 

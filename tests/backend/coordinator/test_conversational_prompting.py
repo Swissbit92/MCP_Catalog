@@ -6,6 +6,7 @@ Tests prompt construction, curiosity blocks, and message parsing
 import pytest
 from src.coordinator.prompt_builder import (
     build_system_prompt,
+    _build_system_prompt_legacy,
     _build_curiosity_block,
     CONVERSATIONAL_BEHAVIOR_RULES,
     CONVERSATIONAL_EXAMPLES
@@ -22,8 +23,12 @@ class TestConversationalPromptConstruction:
         The prompt was migrated to XML-tagged sections, so the old uppercase
         headers ("CONVERSATIONAL ENGAGEMENT", etc.) no longer exist — assert the
         current section tag plus the actual rule/format text that is injected.
+
+        Pinned to the LEGACY builder: it asserts legacy-specific section text. The
+        lean prompt (ADR-005 Phase B, now the live default) is covered separately
+        in test_lean_prompt.py. Independent of the ambient PERSONA_LEAN_PROMPT flag.
         """
-        prompt = build_system_prompt("Eeva")
+        prompt = _build_system_prompt_legacy("Eeva")
 
         assert "<companion_behavior>" in prompt
         assert "COMPANION, not a Q&A bot" in prompt
@@ -37,8 +42,11 @@ class TestConversationalPromptConstruction:
 
         Examples now live inside the <response_format> block (no "EXAMPLE
         CONVERSATIONS" header after the XML migration).
+
+        Pinned to the LEGACY builder (legacy-specific few-shot text); the lean
+        prompt is covered in test_lean_prompt.py. Flag-independent.
         """
-        prompt = build_system_prompt("Eeva")
+        prompt = _build_system_prompt_legacy("Eeva")
 
         assert "<response_format>" in prompt
         assert "Example 1" in prompt
