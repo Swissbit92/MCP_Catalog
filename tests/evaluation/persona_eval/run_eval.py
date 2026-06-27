@@ -79,7 +79,7 @@ def collect_live(base_url: str, probes: dict) -> List[dict]:  # pragma: no cover
     for persona in personas:
         for category, items in single_turn:
             for item in items:
-                sid = create_session(persona)
+                sid = create_session(persona, base_url=base_url)
                 try:
                     answer, elapsed, source, _ = chat(sid, persona, item["prompt"], base_url=base_url)
                 except Exception as e:
@@ -90,7 +90,7 @@ def collect_live(base_url: str, probes: dict) -> List[dict]:  # pragma: no cover
                 print(f"  [{persona}/{category}/{item['id']}] {source} {elapsed:.0f}s")
         # drift: multi-turn within one session
         for d in probes.get("drift", []):
-            sid = create_session(persona)
+            sid = create_session(persona, base_url=base_url)
             for ti, turn in enumerate(d["turns"]):
                 try:
                     answer, elapsed, source, _ = chat(sid, persona, turn, base_url=base_url)

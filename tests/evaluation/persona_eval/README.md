@@ -67,3 +67,19 @@ gojo 0.62, nyx 0.38, cipher 0.38, **eeva / aegis / solace 0.25** (the advisory
 personas blur; the Phase-B differentiation target). Flatness low: 1.8% overall,
 4.8% grounding. Any Phase-B candidate must match-or-beat each persona here, or
 that persona stays on the legacy prompt.
+
+## Phase B candidate result (2026-06-27) — gate PASSED 7/7
+
+`baseline_lean-candidate_20260627_123058.json` (lean prompt ON, LORE-on both arms
+so the lean prompt was the only changed variable): overall distinctiveness
+attribution **0.393 → 0.732**, flatness 1.8%→**0%** / grounding 4.8%→**0%**.
+Per-persona every persona match-or-beat — eeva/aegis **0.25→0.75**,
+solace **0.25→0.625**, cipher 0.375→0.75, nyx 0.375→0.50, aurora 0.625→0.875,
+gojo 0.625→0.875. 0 regressions → global flip authorized. To reproduce a
+candidate run against a flag-ON backend on another port:
+
+```bash
+PERSONA_LEAN_PROMPT=true COORDINATOR_DB_PATH=data/chats_lean_eval.db \
+  .venv/bin/python -m uvicorn src.coordinator.server:app --port 8001 &
+python tests/evaluation/persona_eval/run_eval.py --label lean-candidate --base-url http://127.0.0.1:8001
+```

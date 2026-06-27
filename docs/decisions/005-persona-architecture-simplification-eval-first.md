@@ -1,8 +1,8 @@
 ---
 title: Persona architecture simplification (eval-first)
-status: Proposed
+status: Accepted
 created: 2026-06-26
-last_reviewed_on: 2026-06-26
+last_reviewed_on: 2026-06-27
 review_in: 12 months
 applies_to: nephilim
 ---
@@ -35,6 +35,28 @@ comparison point for the acceptance gate:
   without regressing aurora/gojo.
 - Flatness already low: 1.8% overall, 4.8% grounding — Phase B should not chase
   flatness; the deterministic guards handle it.
+
+**Phase B SHIPPED 2026-06-27 — acceptance gate PASSED 7/7.** The lean
+exemplar-first / voice-last builder (`PERSONA_LEAN_PROMPT`, default OFF +
+per-persona `PERSONA_LEAN_PROMPT_PERSONAS` allowlist) plus a per-persona
+`voice_signature` (diction / cadence / pattern / anchor / exemplars) for all
+seven personas. Prompts shrank **65–69%** (eeva 2935→1040, aegis 2501→827,
+solace 2432→840 est. tokens; all in the ~900–1,200 target). The candidate eval
+(`baselines/baseline_lean-candidate_20260627_123058.json`, run-local; LORE-on
+both arms so the lean prompt was the only changed variable) vs the frozen legacy
+baseline:
+- **Overall distinctiveness attribution 0.393 → 0.732** (random 0.143);
+  mean flatness 1.8% → **0%**, grounding flatness 4.8% → **0%**.
+- Per-persona, every persona match-or-beat (Δ): **eeva 0.25→0.75**,
+  **aegis 0.25→0.75**, **solace 0.25→0.625** (the blur cluster — the Phase-B
+  target), cipher 0.375→0.75, nyx 0.375→0.50, aurora 0.625→0.875,
+  gojo 0.625→0.875. **0 regressions → global flip authorized** by the gate below.
+- The headline metric is the non-gameable leave-one-out attribution (lore-vocab
+  sprinkling can't move it); gains track exactly where the anchors were authored.
+- Implementation notes: legacy builder untouched (frozen baseline stays valid);
+  `voice_signature` excluded from the CV-summary fingerprint so adding it does not
+  drift the legacy `<identity>`; `LORE_ONDEMAND` is appended downstream of the
+  builder, so the lean prompt only drops the *static* wiki dup. Phase C not needed.
 
 ## Context
 

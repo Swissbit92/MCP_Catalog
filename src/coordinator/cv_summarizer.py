@@ -149,8 +149,13 @@ def _summary_dir() -> Path:
 
 
 def _normalize_for_fingerprint(card: Dict) -> Dict:
-    """Normalize card for fingerprinting (exclude ephemeral fields)."""
-    exclude = {"emoji"}  # add more if needed
+    """Normalize card for fingerprinting (exclude fields that don't affect the summary).
+
+    ``voice_signature`` (ADR-005 Phase B) is lean-prompt-only and never feeds the
+    CV identity summary — excluding it keeps cached summaries valid so adding it
+    does NOT drift the legacy <identity> text (preserves the frozen eval baseline).
+    """
+    exclude = {"emoji", "voice_signature"}
     return {k: v for k, v in card.items() if k not in exclude}
 
 

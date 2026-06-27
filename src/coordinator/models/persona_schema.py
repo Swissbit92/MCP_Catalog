@@ -205,6 +205,42 @@ class ExampleDialogue(BaseModel):
     )
 
 
+class VoiceSignature(BaseModel):
+    """Per-persona distinctiveness anchors for the lean prompt (ADR-005 Phase B).
+
+    The load-bearing differentiation lever: instead of prose trait descriptions
+    (which the advisory personas share near-verbatim and which a 24B blurs), each
+    persona gets a small set of hard signals that survive compression and force a
+    recognizable surface form — distinct diction, a sentence cadence, one
+    affirmatively-framed syntactic move, a recurring in-world touchstone, and a
+    few topic-diverse voice exemplars rendered LAST in the prompt (recency).
+
+    Consumed only by ``_build_system_prompt_lean``; ignored by the legacy
+    builder, so adding it never changes the frozen legacy persona-eval baseline.
+    """
+    lexicon: List[str] = Field(
+        default_factory=list,
+        description="Diction tokens characteristic of THIS persona and rarely the others'",
+    )
+    cadence: str = Field(
+        default="",
+        description="Sentence rhythm/length signature (e.g. 'clipped declaratives, never trails off')",
+    )
+    pattern: str = Field(
+        default="",
+        description="One affirmatively-framed syntactic move (e.g. 'always names the next single action')",
+    )
+    anchor: str = Field(
+        default="",
+        description="Recurring in-world touchstone/prop (e.g. Solace's Ember Chalice)",
+    )
+    exemplars: List[ExampleDialogue] = Field(
+        default_factory=list,
+        max_length=8,
+        description="Topic-diverse voice exemplars; first 3 are injected voice-last",
+    )
+
+
 class UnlockableLoreFragment(BaseModel):
     """Lore fragment that unlocks at specific conversation milestones.
 
@@ -431,6 +467,13 @@ class PersonaCard(BaseModel):
         default=None,
         description="Per-persona in-world names for tool actions "
                     "(real tool name -> diegetic phrase). Optional; defaults apply."
+    )
+
+    # ADR-005 Phase B: per-persona distinctiveness anchors for the lean prompt.
+    voice_signature: Optional[VoiceSignature] = Field(
+        default=None,
+        description="Distinctiveness anchors (diction/cadence/pattern/anchor/exemplars) "
+                    "consumed only by the lean prompt builder."
     )
 
     class Config:
