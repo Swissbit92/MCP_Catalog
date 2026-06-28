@@ -29,6 +29,11 @@ class ChatBody(BaseModel):
     history: List[ChatTurn] = Field(default=[], max_length=MAX_HISTORY_TURNS)
     message: str = Field(..., max_length=10_000)
     session_id: Optional[str] = None  # Set by handle_session_chat for wallet flow continuity
+    # ADR-006 M0: internal only — set by handle_session_chat to carry the assembled
+    # session context blocks (user profile, emotional state, lore, rank, capability)
+    # through to chat() so they reach the LLM system prompt. Not part of the public
+    # API contract; external callers leave it None.
+    extra_system_context: Optional[str] = None
 
 
 class GreetBody(BaseModel):

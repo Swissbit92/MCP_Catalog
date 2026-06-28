@@ -207,6 +207,28 @@ class MemorySettings(BaseSettings):
                     "cold-start re-index latency after a restart. 0 disables.",
         alias="MEMORY_PREWARM_SESSIONS"
     )
+    context_inject_enabled: bool = Field(
+        default=False,
+        description="ADR-006 M0: pass the session context blocks (cross-session "
+                    "user profile, emotional state, unlocked/on-demand lore, seeker "
+                    "rank, capability) through to the LLM system prompt. These are "
+                    "built by handle_session_chat but were historically DROPPED "
+                    "(ChatBody carried no system prompt). Default False (current "
+                    "behavior) until the eval gate passes; flip to True after Gate 0. "
+                    "Set MEMORY_CONTEXT_INJECT=true to enable.",
+        alias="MEMORY_CONTEXT_INJECT"
+    )
+    context_max_tokens: int = Field(
+        default=2000,
+        ge=0,
+        le=12000,
+        description="ADR-006 M0: token budget cap for the injected session context "
+                    "blocks. Highest-priority blocks (user profile, emotional state) "
+                    "are kept first; lower-priority blocks (lore, rank, capability) "
+                    "are dropped when the budget is exceeded, protecting the context "
+                    "window. 0 = no cap.",
+        alias="MEMORY_CONTEXT_MAX_TOKENS"
+    )
 
     model_config = {
         "env_file": ".env",
