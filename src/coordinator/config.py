@@ -196,6 +196,17 @@ class MemorySettings(BaseSettings):
         description="Number of messages before triggering fact extraction",
         alias="MEMORY_FACT_EXTRACTION_INTERVAL"
     )
+    prewarm_sessions: int = Field(
+        default=10,
+        ge=0,
+        le=200,
+        description="ADR-006 M1: number of most-recently-updated sessions to "
+                    "pre-index into the FAISS store at startup (background daemon "
+                    "thread). The index is otherwise rebuilt lazily from SQLite on "
+                    "first chat per session — pre-warming only removes that one-time "
+                    "cold-start re-index latency after a restart. 0 disables.",
+        alias="MEMORY_PREWARM_SESSIONS"
+    )
 
     model_config = {
         "env_file": ".env",
