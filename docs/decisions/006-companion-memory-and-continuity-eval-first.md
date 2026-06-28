@@ -1,8 +1,8 @@
 ---
 title: Companion memory and continuity (eval-first)
-status: Proposed
+status: Accepted
 created: 2026-06-27
-last_reviewed_on: 2026-06-27
+last_reviewed_on: 2026-06-28
 review_in: 12 months
 applies_to: nephilim
 ---
@@ -18,6 +18,55 @@ the character-fidelity axis and the long-term-companion axis), run after
 Eval-first, staged, reversible; every behavioural change ships behind a flag,
 default OFF, A/B-measured against a frozen baseline before any default flip —
 the same discipline that worked for ADR-005.
+
+### Implementation status — Phase 0 BUILT, Gate 0 run (2026-06-28)
+
+Phase 0 was built in a worktree (branch `feat/adr-006-phase0-memory-prereqs`) via
+the `/crucible:develop` FULL workflow; backend suite 1600→1635 passed, 0
+regressions, two qa-gatekeeper PASSes. **Three of the Phase-0 premises below did
+not survive contact and are corrected here:**
+
+- **FAISS is NOT wiped-with-data-loss on restart.** The per-session index already
+  rebuilds lazily from SQLite (the source of truth) on first chat after a restart —
+  so the "continuity bug" is a one-time cold-start re-index *latency*, not data
+  loss. Phase 0 therefore ships a lightweight **pre-warm** of recent sessions
+  (`MEMORY_PREWARM_SESSIONS`), not disk persistence (which research showed is
+  net-negative at our <50K-vector scale: corruption/version/sync risk for a <20ms
+  rebuild).
+- **The assembled prompt was NOT 1.5–3× larger** from appended context — the
+  appended context was **DROPPED entirely**. `handle_session_chat` built six
+  context blocks (user-profile, emotional, unlocked-lore, on-demand-lore, rank,
+  capability) into a local `system_prompt` used **only for token budgeting**, then
+  discarded them: `ChatBody` carried no system-prompt field, so `chat()` rebuilt
+  the base prompt + wallet state only. **On-demand lore (ADR-003, flag-ON in prod)
+  and emotional state were therefore non-functional on the live session path.**
+  This severed seam became **M0** (below).
+- **Single-session factual recall is served by history, not the system prompt**, so
+  M0's injection moves it only marginally (0.413→0.44); M0's real target is the
+  cross-session path (currently xfail pending user-linkage in Phase 1).
+
+**What shipped (all behind default-OFF flags / pure additions):** assembled-prompt
+token observability (M2: `[Tokens-assembled]` + Ollama `prompt_eval_count`);
+session pre-warm (M1); committed flag defaults aligned to prod + a JWT fail-loud
+validator (M3); the memory-depth eval harness — factual-recall, PICon-style
+contradiction (substring-first, *not* cosine — cosine is provably wrong for
+contradiction), cross-session continuity (M4); and the **M0 seam repair**
+(`ChatBody.extra_system_context` carried through and appended in `chat()`, with a
+priority-ordered token cap), gated by `MEMORY_CONTEXT_INJECT` (default OFF).
+
+**Gate 0 verdict — FAIL on voice; `MEMORY_CONTEXT_INJECT` stays OFF.** Live eval
+(Magidonia-24B, isolated backend, prod untouched): flag-OFF distinctiveness 0.768
+/ flatness 0.006 → flag-ON **0.643 / 0.018**. 5/6 NEPHILIM personas regressed;
+the non-NEPHILIM control (gojo, which receives no rank/capability/lore injection)
+was unchanged at 1.0 — isolating the cause: **injecting the shared NEPHILIM
+lore/rank/capability vocabulary into every persona homogenizes voice.** Memory
+axis benign (contradiction 0.0→0.0, injection fired correctly, peak prompt
+3077/16384 = 19% so the token cap holds). The seam repair + plumbing are **correct
+and merged**; only the *block selection* is wrong. **Follow-up before any flip
+(M0.1, folds into Phase 1): inject user-profile + emotional state only, drop/rework
+the homogenizing lore/rank/capability blocks (and/or XML-tag as metadata with
+per-persona framing), then re-gate.** The mechanism (`extra_system_context`) is
+reused as-is; only *which* blocks populate it changes.
 
 ## Context
 

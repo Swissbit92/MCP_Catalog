@@ -213,9 +213,15 @@ class MemorySettings(BaseSettings):
                     "user profile, emotional state, unlocked/on-demand lore, seeker "
                     "rank, capability) through to the LLM system prompt. These are "
                     "built by handle_session_chat but were historically DROPPED "
-                    "(ChatBody carried no system prompt). Default False (current "
-                    "behavior) until the eval gate passes; flip to True after Gate 0. "
-                    "Set MEMORY_CONTEXT_INJECT=true to enable.",
+                    "(ChatBody carried no system prompt). "
+                    "⚠️ GATE 0 (2026-06-28) FAILED ON VOICE: injecting the shared "
+                    "NEPHILIM lore/rank/capability vocabulary homogenized persona "
+                    "voice (distinctiveness 0.768→0.643; 5/6 NEPHILIM personas "
+                    "regressed, non-NEPHILIM gojo unaffected). DO NOT enable without "
+                    "the selective-injection rework (inject user-profile + emotional "
+                    "only; drop/rework lore/rank/capability) AND a re-gate. The seam "
+                    "repair + plumbing are correct; the block-selection is not. "
+                    "See ADR-006.",
         alias="MEMORY_CONTEXT_INJECT"
     )
     context_max_tokens: int = Field(
