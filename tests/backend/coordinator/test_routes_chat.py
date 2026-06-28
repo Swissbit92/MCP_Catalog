@@ -646,3 +646,37 @@ class TestBuildLlmResponse:
             resp = client.post("/persona/chat", json={"persona": "eeva", "message": "test"})
 
         assert resp.status_code == 200
+
+
+class TestExtraSystemContext:
+    """ADR-006 M0: chat() must append ChatBody.extra_system_context to the system
+    prompt (the seam that was previously dropped). Covered on the pure-LLM path."""
+
+    def test_extra_context_appended_to_system(self):
+        card = _make_card()
+        llm = _make_llm_client("ok")
+        with ExitStack() as stack:
+            _apply(stack, _chat_patches(card, llm, "ok", ["ok"], "single"))
+            resp = client.post("/persona/chat", json={
+                "persona": "eeva", "message": "Hello", "history": [],
+                "extra_system_context": "MEMORY_CONTEXT_MARKER",
+            })
+
+        assert resp.status_code == 200
+        # system prompt passed to the LLM contains BOTH the base and the injected context
+        system_arg = llm.complete.call_args.kwargs.get("system", "")
+        assert "<s>" in system_arg
+        assert "MEMORY_CONTEXT_MARKER" in system_arg
+
+    def test_no_extra_context_leaves_system_clean(self):
+        card = _make_card()
+        llm = _make_llm_client("ok")
+        with ExitStack() as stack:
+            _apply(stack, _chat_patches(card, llm, "ok", ["ok"], "single"))
+            resp = client.post("/persona/chat", json={
+                "persona": "eeva", "message": "Hello", "history": [],
+            })
+
+        assert resp.status_code == 200
+        system_arg = llm.complete.call_args.kwargs.get("system", "")
+        assert "MEMORY_CONTEXT_MARKER" not in system_arg

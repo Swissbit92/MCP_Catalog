@@ -155,6 +155,79 @@ def flatness_rate(responses: List[str]) -> float:
     return round(sum(1 for r in responses if is_flat(r)) / len(responses), 4)
 
 
+# ----- memory-depth metrics (ADR-006 Phase 0; pure, headless) -----
+#
+# These score the COMPANION-DEPTH probes (factual recall, contradiction-
+# consistency, cross-session continuity). They are deliberately substring/
+# pattern based — NOT cosine. Cosine is provably wrong for contradiction
+# detection (negations score HIGH on cosine), and substring recall is the
+# reliable-but-narrow first cut; an NLI cross-encoder is the documented upgrade
+# path if substring proves too brittle (see ADR-006 / M4).
+
+# "Abstention" markers — a healthy response to a false-premise / un-recallable
+# probe says "I don't know" rather than confabulating. Used by abstention probes
+# (LongMemEval pattern).
+_ABSTENTION_MARKERS = [
+    "i don't know", "i do not know", "i'm not sure", "i am not sure",
+    "you haven't told me", "you have not told me", "you didn't mention",
+    "you did not mention", "i don't have that", "i do not have that",
+    "i don't recall", "i do not recall", "we haven't discussed",
+    "we have not discussed", "no record of", "you never mentioned",
+]
+
+
+def recall_rate(response: str, expected_tokens: List[str]) -> float:
+    """Fraction of ``expected_tokens`` present in ``response`` (case-insensitive
+    substring match). 1.0 ⇒ every expected fact surfaced; 0.0 ⇒ none.
+
+    Substring is intentional: a companion that recalls "2.5 BTC" satisfies the
+    "2.5 BTC" token regardless of surrounding phrasing.
+    """
+    if not expected_tokens:
+        return 0.0
+    low = (response or "").lower()
+    hits = sum(1 for tok in expected_tokens if tok and tok.lower() in low)
+    return round(hits / len(expected_tokens), 4)
+
+
+def forbidden_hits(response: str, forbidden_patterns: List[str]) -> List[str]:
+    """Forbidden patterns present in ``response`` (case-insensitive substring).
+
+    For contradiction/confabulation probes: ``forbidden_patterns`` are the wrong
+    answers a contradicting response would contain (e.g. a fact the user never
+    stated). A non-empty result ⇒ the response confabulated/contradicted.
+    """
+    low = (response or "").lower()
+    return [p for p in forbidden_patterns if p and p.lower() in low]
+
+
+def contradiction_rate(
+    responses: List[str], forbidden_patterns_per_response: List[List[str]]
+) -> float:
+    """Fraction of responses containing >=1 forbidden pattern.
+
+    ``responses[i]`` is checked against ``forbidden_patterns_per_response[i]``
+    (parallel lists). Lower ⇒ fewer confabulations/contradictions; 0.0 is the
+    target for the regression gate.
+    """
+    if not responses:
+        return 0.0
+    bad = sum(
+        1
+        for r, pats in zip(responses, forbidden_patterns_per_response)
+        if forbidden_hits(r, pats)
+    )
+    return round(bad / len(responses), 4)
+
+
+def is_abstention(response: str) -> bool:
+    """True if the response honestly abstains ("I don't know") rather than
+    confabulating — the desired behaviour for false-premise/un-recallable probes.
+    """
+    low = (response or "").lower()
+    return any(m in low for m in _ABSTENTION_MARKERS)
+
+
 # ----- helpers -----
 
 def load_probes(path: Path | str | None = None) -> dict:

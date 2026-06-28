@@ -294,6 +294,31 @@ def _build_seeker_rank_context(rank_name: str) -> str:
     )
 
 
+def _assemble_capped_context(blocks_in_priority, max_tokens: int):
+    """ADR-006 M0: join non-empty session-context blocks within a token budget.
+
+    ``blocks_in_priority`` is ordered most-important-first (user profile,
+    emotional state, lore, rank, capability). Blocks are kept in that order until
+    the next one would exceed ``max_tokens`` (estimated), so the highest-priority
+    context survives and lower-priority blocks are dropped first — protecting the
+    context window. ``max_tokens <= 0`` disables the cap. Returns the joined
+    string, or None if nothing is kept.
+    """
+    from ..llm_client import estimate_tokens  # lazy: avoid llm_client<->services cycle
+
+    kept, used = [], 0
+    for b in blocks_in_priority:
+        if not b:
+            continue
+        if max_tokens and max_tokens > 0:
+            t = estimate_tokens(b)
+            if used + t > max_tokens:
+                break  # strict priority: stop at the first block that doesn't fit
+            used += t
+        kept.append(b)
+    return "\n\n".join(kept) if kept else None
+
+
 def handle_session_chat(
     session_id: str,
     message: str,
@@ -405,6 +430,7 @@ def handle_session_chat(
         logger.debug(f"[LoreInjection] Injected on-demand lore ({len(ondemand_lore_context)} chars)")
 
     # PHASE 2 (HERMES): seeker-rank narrative context (flag-gated; NEPHILIM personas)
+    rank_ctx = ""
     if (get_settings().lore.rank_context_enabled and persona_key.startswith("nephilim_")
             and seeker_progression_repo):
         try:
@@ -416,6 +442,7 @@ def handle_session_chat(
             logger.debug(f"[RankContext] skipped (non-fatal): {e}")
 
     # PHASE 2 (HERMES): internal capability context (flag-gated; NEPHILIM personas)
+    cap_ctx = ""
     if get_settings().lore.ondemand_enabled and persona_key.startswith("nephilim_") and seeker_progression_repo:
         try:
             from ..lore_retrieval import build_capability_context
@@ -431,6 +458,31 @@ def handle_session_chat(
             logger.debug(f"[Capability] context skipped (non-fatal): {e}")
 
     system_tokens = estimate_tokens(system_prompt)
+
+    # ADR-006 M0: assemble the session-context blocks (highest priority first) so
+    # they can be carried to chat() and actually reach the LLM. Historically these
+    # were appended to `system_prompt` above but only used for token budgeting and
+    # then dropped (ChatBody carried no system prompt). Token-capped to protect the
+    # context window; gated behind MEMORY_CONTEXT_INJECT (default OFF until Gate 0).
+    _mem_settings = get_settings().memory
+    extra_system_context = None
+    if _mem_settings.context_inject_enabled:
+        extra_system_context = _assemble_capped_context(
+            [
+                user_profile_context,
+                emotional_context,
+                unlocked_lore_context,
+                ondemand_lore_context,
+                rank_ctx,
+                cap_ctx,
+            ],
+            _mem_settings.context_max_tokens,
+        )
+        if extra_system_context:
+            logger.info(
+                f"[SessionContext] injecting {estimate_tokens(extra_system_context)} "
+                f"tokens of session context into the LLM prompt (M0)"
+            )
 
     # Build summary context
     summary_context = ""
@@ -528,6 +580,7 @@ def handle_session_chat(
         history=history_turns,
         message=message,
         session_id=session_id,
+        extra_system_context=extra_system_context,
     )
     response = chat_function(chat_body)
 

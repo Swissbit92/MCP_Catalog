@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..schemas import ChatBody, GreetBody, ResponseMetadata
 from ..config import get_settings
-from ..llm_client import create_llm_client, log_context_stats
+from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
 from ..persona_memory import (
     build_system_prompt,
     build_greeting_user_prompt,
@@ -123,6 +123,18 @@ def chat(body: ChatBody):
         if wallet_state:
             system = f"{system}\n{wallet_state}"
             logger.debug(f"[WalletState] Injected ground-truth wallet state ({len(wallet_state)} chars)")
+
+    # ADR-006 M0: inject the assembled session context (user profile, emotional
+    # state, lore, rank, capability) that handle_session_chat carries via ChatBody.
+    # Same rationale as the wallet block above — chat() rebuilds `system`, so the
+    # upstream context must be re-applied HERE or it is discarded. Covers all
+    # downstream routes (pure LLM, brave, wallet) since they all use `system`.
+    if getattr(body, "extra_system_context", None):
+        system = f"{system}\n\n{body.extra_system_context}"
+        logger.debug(
+            f"[SessionContext] Injected session context "
+            f"({estimate_tokens(body.extra_system_context)} tokens)"
+        )
 
     # R10: Prompt version hash for regression tracking
     prompt_version = hashlib.md5(system.encode()).hexdigest()[:8]

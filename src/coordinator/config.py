@@ -15,7 +15,7 @@ import logging
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
@@ -196,6 +196,45 @@ class MemorySettings(BaseSettings):
         description="Number of messages before triggering fact extraction",
         alias="MEMORY_FACT_EXTRACTION_INTERVAL"
     )
+    prewarm_sessions: int = Field(
+        default=10,
+        ge=0,
+        le=200,
+        description="ADR-006 M1: number of most-recently-updated sessions to "
+                    "pre-index into the FAISS store at startup (background daemon "
+                    "thread). The index is otherwise rebuilt lazily from SQLite on "
+                    "first chat per session — pre-warming only removes that one-time "
+                    "cold-start re-index latency after a restart. 0 disables.",
+        alias="MEMORY_PREWARM_SESSIONS"
+    )
+    context_inject_enabled: bool = Field(
+        default=False,
+        description="ADR-006 M0: pass the session context blocks (cross-session "
+                    "user profile, emotional state, unlocked/on-demand lore, seeker "
+                    "rank, capability) through to the LLM system prompt. These are "
+                    "built by handle_session_chat but were historically DROPPED "
+                    "(ChatBody carried no system prompt). "
+                    "⚠️ GATE 0 (2026-06-28) FAILED ON VOICE: injecting the shared "
+                    "NEPHILIM lore/rank/capability vocabulary homogenized persona "
+                    "voice (distinctiveness 0.768→0.643; 5/6 NEPHILIM personas "
+                    "regressed, non-NEPHILIM gojo unaffected). DO NOT enable without "
+                    "the selective-injection rework (inject user-profile + emotional "
+                    "only; drop/rework lore/rank/capability) AND a re-gate. The seam "
+                    "repair + plumbing are correct; the block-selection is not. "
+                    "See ADR-006.",
+        alias="MEMORY_CONTEXT_INJECT"
+    )
+    context_max_tokens: int = Field(
+        default=2000,
+        ge=0,
+        le=12000,
+        description="ADR-006 M0: token budget cap for the injected session context "
+                    "blocks. Highest-priority blocks (user profile, emotional state) "
+                    "are kept first; lower-priority blocks (lore, rank, capability) "
+                    "are dropped when the budget is exceeded, protecting the context "
+                    "window. 0 = no cap.",
+        alias="MEMORY_CONTEXT_MAX_TOKENS"
+    )
 
     model_config = {
         "env_file": ".env",
@@ -348,6 +387,23 @@ class AuthSettings(BaseSettings):
         alias="AUTH_ENV"
     )
 
+    # The insecure hardcoded fallback secret. Safe only while auth is disabled.
+    _DEV_JWT_SECRET = "dev-secret-change-in-production-min-32-chars!!"
+
+    @model_validator(mode="after")
+    def _reject_dev_secret_when_auth_required(self) -> "AuthSettings":
+        """ADR-006 M3: fail loud if auth is on but JWT still uses the dev secret.
+
+        Previously AUTH_REQUIRED=false masked the insecure default — flipping auth
+        on would have silently signed tokens with a publicly-known key.
+        """
+        if self.auth_required and self.jwt_secret_key == self._DEV_JWT_SECRET:
+            raise ValueError(
+                "JWT_SECRET_KEY must be set to a real secret when AUTH_REQUIRED=true "
+                "(the built-in dev secret is publicly known)."
+            )
+        return self
+
     @property
     def cookie_secure(self) -> bool:
         """Use secure cookies in production (requires HTTPS)."""
@@ -375,10 +431,10 @@ class RoutingSettings(BaseSettings):
     """
 
     semantic_primary: bool = Field(
-        default=False,
+        default=True,
         description=(
             "Promote the bge-m3 semantic router to primary intent classification. "
-            "False (default) keeps the legacy keyword-first order unchanged. "
+            "True (default, matches prod); set False to keep the legacy keyword-first order. "
             "Set ROUTING_SEMANTIC_PRIMARY=true to enable."
         ),
         alias="ROUTING_SEMANTIC_PRIMARY",
@@ -424,11 +480,11 @@ class LoreSettings(BaseSettings):
     """
 
     ondemand_enabled: bool = Field(
-        default=False,
+        default=True,
         description=(
             "Enable per-turn hybrid lore retrieval (keyword + bge-m3) appended to the "
-            "system prompt. False (default) = static 3-entity core only, byte-identical. "
-            "Set LORE_ONDEMAND_ENABLED=true to enable."
+            "system prompt. True (default, matches prod); set False for static "
+            "3-entity core only (byte-identical legacy behavior)."
         ),
         alias="LORE_ONDEMAND_ENABLED",
     )
@@ -456,8 +512,8 @@ class LoreSettings(BaseSettings):
         alias="LORE_MAX_BUDGET_TOKENS",
     )
     rank_context_enabled: bool = Field(
-        default=False,
-        description="Inject a seeker-rank narrative block into the per-turn system prompt for NEPHILIM personas.",
+        default=True,
+        description="Inject a seeker-rank narrative block into the per-turn system prompt for NEPHILIM personas. True (default, matches prod).",
         alias="LORE_RANK_CONTEXT_ENABLED",
     )
 
@@ -563,11 +619,11 @@ class PersonaPromptSettings(BaseSettings):
     """
 
     lean_enabled: bool = Field(
-        default=False,
+        default=True,
         description=(
-            "Globally enable the lean persona prompt for ALL personas. False "
-            "(default) = legacy builder unless a persona is listed in "
-            "PERSONA_LEAN_PROMPT_PERSONAS. Set PERSONA_LEAN_PROMPT=true to enable all."
+            "Globally enable the lean persona prompt for ALL personas. True "
+            "(default, matches prod); set False to use the legacy builder unless a "
+            "persona is listed in PERSONA_LEAN_PROMPT_PERSONAS."
         ),
         alias="PERSONA_LEAN_PROMPT",
     )

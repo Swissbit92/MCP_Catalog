@@ -289,6 +289,39 @@ def init_memory_manager():
     logger.info("Memory manager initialized (Phase 2)")
 
 
+def prewarm_session_indexes(rag, session_repo, message_repo, limit: int) -> int:
+    """ADR-006 M1: pre-index the ``limit`` most-recently-updated sessions.
+
+    Rebuilds each session's FAISS index from its SQLite messages (the same path
+    the chat flow runs lazily on first access), so a restart doesn't impose a
+    cold-start re-index latency on the user's first message. SQLite remains the
+    source of truth — this loses no data and is safe to skip.
+
+    Pure and synchronous for testability; the caller runs it in a daemon thread.
+    Each session is isolated so one failure can't abort the rest. Returns the
+    number of sessions successfully warmed.
+    """
+    if rag is None or limit <= 0:
+        return 0
+    warmed = 0
+    try:
+        sessions = session_repo.get_all_sessions()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug(f"[SessionPrewarm] could not list sessions (non-fatal): {exc}")
+        return 0
+    for s in sessions[:limit]:
+        if s.get("message_count", 0) <= 0:
+            continue
+        try:
+            msgs = message_repo.get_messages_by_session(s["id"])
+            if msgs:
+                rag.index_session(s["id"], msgs)
+                warmed += 1
+        except Exception as exc:
+            logger.debug(f"[SessionPrewarm] session {s.get('id')} skipped (non-fatal): {exc}")
+    return warmed
+
+
 def init_phase3_memory():
     """Initialize Phase 3 advanced memory systems (RAG + Fact Extraction)."""
     global _episodic_memory_rag, _fact_extractor
@@ -315,6 +348,33 @@ def init_phase3_memory():
                 _threading.Thread(target=_prewarm_lore, daemon=True, name="prewarm-lore").start()
         except Exception as e:
             logger.debug(f"[LoreRAG] Lore pre-warm thread start failed (non-fatal): {e}")
+
+        # ADR-006 M1: pre-warm the N most-recently-updated session indexes from
+        # SQLite in a background daemon thread. The per-session FAISS index is
+        # otherwise rebuilt lazily on the first chat after a restart (no data is
+        # lost — SQLite is the source of truth); this only removes that one-time
+        # cold-start re-index latency. Daemon so it never blocks startup; each
+        # session is isolated so one failure can't abort the rest. No-op when
+        # MEMORY_PREWARM_SESSIONS=0.
+        try:
+            from .config import get_settings
+            prewarm_n = get_settings().memory.prewarm_sessions
+            if prewarm_n > 0:
+                import threading as _threading
+
+                def _prewarm_sessions():
+                    warmed = prewarm_session_indexes(
+                        _episodic_memory_rag,
+                        get_session_repo(),
+                        get_message_repo(),
+                        prewarm_n,
+                    )
+                    logger.info(f"[SessionPrewarm] pre-warmed {warmed} session index(es)")
+                _threading.Thread(
+                    target=_prewarm_sessions, daemon=True, name="prewarm-sessions"
+                ).start()
+        except Exception as e:
+            logger.debug(f"[SessionPrewarm] pre-warm thread start failed (non-fatal): {e}")
 
         # Initialize fact extractor
         # Note: Will need LLM client, initialized later in chat flow
