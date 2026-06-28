@@ -1,6 +1,7 @@
 [
   {
     "scenario": "bitcoin_holdings_recall",
+    "type": "factual_recall",
     "query": "What did I tell you about my Bitcoin holdings?",
     "expected_recall": ["2.5 BTC", "bought in 2021", "cost basis $35k"],
     "conversation": [
@@ -18,6 +19,7 @@
   },
   {
     "scenario": "wallet_discussion_continuity",
+    "type": "factual_recall",
     "query": "Remind me about the wallet options we discussed",
     "expected_recall": ["Ledger Nano X", "Trezor Model T", "hardware wallet", "$150", "secure element"],
     "conversation": [
@@ -35,6 +37,7 @@
   },
   {
     "scenario": "tax_and_trading_multi_topic",
+    "type": "factual_recall",
     "query": "Summarize our discussion about trading strategies and tax implications",
     "expected_recall": ["day trading", "FIFO", "capital gains", "wash sale", "tax-loss harvesting"],
     "conversation": [
@@ -52,6 +55,7 @@
   },
   {
     "scenario": "long_conversation_recall",
+    "type": "factual_recall",
     "query": "What were the main security recommendations you gave me?",
     "expected_recall": ["2FA", "unique passwords", "hardware wallet", "never share seed phrase", "verify addresses"],
     "conversation": [
@@ -77,6 +81,7 @@
   },
   {
     "scenario": "technical_concepts_recall",
+    "type": "factual_recall",
     "query": "Explain the blockchain concepts we covered earlier",
     "expected_recall": ["proof-of-work", "mining", "blocks", "transactions", "consensus", "decentralization"],
     "conversation": [
