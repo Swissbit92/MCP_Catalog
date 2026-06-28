@@ -22,9 +22,13 @@ from src.coordinator.models.persona_schema import PersonaCard
 # Flag logic (env-independent — assert defaults + the use_lean_for matrix)
 # --------------------------------------------------------------------------
 
-def test_lean_flag_defaults_off():
-    """Defaults must be OFF regardless of the ambient .env."""
-    assert PersonaPromptSettings.model_fields["lean_enabled"].default is False
+def test_lean_flag_defaults():
+    """Committed default aligns with validated prod (ADR-006 M3): lean ON.
+
+    Asserts model_fields default (env-independent) so it can't be masked by the
+    ambient .env. lean_personas stays "" (the global flag covers all personas).
+    """
+    assert PersonaPromptSettings.model_fields["lean_enabled"].default is True
     assert PersonaPromptSettings.model_fields["lean_personas"].default == ""
 
 
