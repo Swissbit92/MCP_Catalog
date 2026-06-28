@@ -167,6 +167,26 @@ class LLMCompletionService:
                 )
             raise
 
+    def _generate_with_stats(self, prompt: str) -> tuple[str, dict]:
+        """invoke() variant that also returns Ollama's generation_info (token stats).
+
+        Used by complete() for M2 token observability. Mirrors invoke()'s
+        not-found error handling. Returns (stripped_text, generation_info_dict).
+        """
+        try:
+            result = self.llm.generate([prompt])
+            gen = result.generations[0][0]
+            return gen.text.strip(), (gen.generation_info or {})
+        except ResponseError as e:
+            msg = str(e)
+            if "not found" in msg.lower():
+                raise RuntimeError(
+                    "Ollama model not found.\n"
+                    f"Pull it:\n  ollama pull {self.llm.model}\n"
+                    f"base_url={self.llm.base_url}\n"
+                )
+            raise
+
     def complete(self, system: str, user_prompt: str) -> str:
         """Complete a prompt with system and user messages.
 
@@ -182,4 +202,31 @@ class LLMCompletionService:
             ("user", "{user}")
         ])
         rendered = template.format_prompt(system=system, user=user_prompt).to_string()
-        return self.invoke(rendered)
+
+        # M2 (ADR-006 Phase 0): observe the FINAL assembled prompt size. This is
+        # the only place the fully-rendered string (system + role labels + user
+        # block) exists before it reaches Ollama. The pre-send estimate drives a
+        # proactive budget warning; Ollama's prompt_eval_count (when present) is
+        # the ground-truth count. Lazy import of estimate_tokens avoids the
+        # llm_client <-> services circular import.
+        from ..llm_client import estimate_tokens
+
+        settings = get_settings()
+        window = settings.ollama.context_window
+        est = estimate_tokens(rendered)
+        pct = round((est / window) * 100, 1) if window else 0.0
+        logger.info(
+            f"[Tokens-assembled] ~{est}/{window} tokens ({pct}%) est | chars={len(rendered)}"
+        )
+        if window and pct > 85:
+            logger.warning(
+                f"[Tokens-assembled] BUDGET WARNING: assembled prompt ~{pct}% of context "
+                f"window before generation (+{settings.ollama.max_output_tokens}-token output cap)"
+            )
+
+        text, info = self._generate_with_stats(rendered)
+        # prompt_eval_count is omitted/zero on KV-cache hits — guard for None.
+        actual = info.get("prompt_eval_count")
+        if actual:
+            logger.info(f"[Tokens-assembled] actual prompt_eval_count={actual} (Ollama)")
+        return text

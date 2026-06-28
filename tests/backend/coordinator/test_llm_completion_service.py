@@ -171,10 +171,19 @@ class TestLLMCompletionService:
     @patch("src.coordinator.services.llm_completion_service.OllamaLLM")
     @patch("src.coordinator.services.llm_completion_service.ChatPromptTemplate")
     def test_complete(self, mock_prompt_template_class, mock_ollama_class):
-        """Test complete method with system and user prompts."""
-        # Mock Ollama
+        """Test complete method with system and user prompts.
+
+        complete() uses generate() (not invoke()) so it can read Ollama's
+        prompt_eval_count for M2 token observability (ADR-006 Phase 0).
+        """
+        # Mock Ollama generate() -> LLMResult-like (generations[0][0].text/info)
         mock_llm = Mock()
-        mock_llm.invoke.return_value = "Test response"
+        mock_gen = Mock()
+        mock_gen.text = "Test response"
+        mock_gen.generation_info = {"prompt_eval_count": 123}
+        mock_result = Mock()
+        mock_result.generations = [[mock_gen]]
+        mock_llm.generate.return_value = mock_result
         mock_ollama_class.return_value = mock_llm
 
         # Mock ChatPromptTemplate
@@ -197,9 +206,39 @@ class TestLLMCompletionService:
             user="User message"
         )
 
-        # Verify LLM was invoked with formatted prompt
-        mock_llm.invoke.assert_called_once_with("formatted prompt")
+        # Verify LLM.generate was called with the formatted prompt (batch of 1)
+        mock_llm.generate.assert_called_once_with(["formatted prompt"])
         assert response == "Test response"
+
+    @patch("src.coordinator.services.llm_completion_service.OllamaLLM")
+    @patch("src.coordinator.services.llm_completion_service.ChatPromptTemplate")
+    def test_complete_logs_assembled_tokens(self, mock_prompt_template_class, mock_ollama_class, caplog):
+        """M2: complete() emits the [Tokens-assembled] observability log line."""
+        import logging
+
+        mock_llm = Mock()
+        mock_gen = Mock()
+        mock_gen.text = "ok"
+        mock_gen.generation_info = {"prompt_eval_count": 42}
+        mock_result = Mock()
+        mock_result.generations = [[mock_gen]]
+        mock_llm.generate.return_value = mock_result
+        mock_ollama_class.return_value = mock_llm
+
+        mock_template = Mock()
+        mock_prompt = Mock()
+        mock_prompt.to_string.return_value = "some rendered prompt text"
+        mock_template.format_prompt.return_value = mock_prompt
+        mock_prompt_template_class.from_messages.return_value = mock_template
+
+        service = LLMCompletionService(base="http://localhost:11434", model="llama3.1:latest")
+
+        with caplog.at_level(logging.INFO, logger="src.coordinator.services.llm_completion_service"):
+            service.complete("sys", "user")
+
+        assert any("[Tokens-assembled]" in r.message for r in caplog.records)
+        # actual prompt_eval_count is surfaced when present
+        assert any("prompt_eval_count=42" in r.message for r in caplog.records)
 
 
 if __name__ == "__main__":
