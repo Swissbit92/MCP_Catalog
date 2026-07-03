@@ -68,6 +68,43 @@ the homogenizing lore/rank/capability blocks (and/or XML-tag as metadata with
 per-persona framing), then re-gate.** The mechanism (`extra_system_context`) is
 reused as-is; only *which* blocks populate it changes.
 
+### Gate 0.1 verdict (2026-07-03) — FAIL again; block choice is NOT the fix
+
+M0.1 (selective injection: user-profile + emotional state only, commit
+`4bd00ebf`) was re-gated on an isolated `:8001` backend (scratch DB, prod
+untouched, Magidonia-24B, same frozen flag-OFF ruler 0.768):
+
+- **Voice: FAIL.** Selective-ON distinctiveness **0.679 / 0.696** across two
+  fully independent runs (2026-06-28 pre-commit WIP; 2026-07-03 committed code) —
+  a stable −0.07 to −0.09, far beyond the ~0.03 temp-0.9 noise band. **eeva
+  regresses hardest in both runs (0.625 → 0.25/0.375, confused with solace)**;
+  aegis is volatile (0.875/0.5 — per-persona n=8 is coarse); flatness stays
+  clean (0.006/0.0). The all-personas-match-or-beat gate clearly fails.
+- **Memory axis: benign.** Factual recall above the 0.4 floor (PASS),
+  contradiction 0.0 (PASS), cross-session continuity xfail (known — needs
+  Phase-1 user linkage). Ops note: the first probe run "failed" only because
+  `pytest.ini`'s `--cov-fail-under=60` fails live-probe runs that exercise no
+  src code, compounded by a GPU still busy from the persona eval — use
+  `--no-cov` for live probe runs.
+- **Mechanism correction.** Gate 0 blamed the shared NEPHILIM
+  lore/rank/capability *vocabulary*. Gate 0.1 falsifies that as the full story:
+  even "persona-neutral" blocks homogenize, because the `[User Profile]` /
+  `[Emotional State]` blocks are **identically formatted across all personas**
+  and pull every voice toward the same injected text. gojo (which also receives
+  these blocks) held 1.0 — strong voices absorb the injection; the advisory
+  voices (eeva, solace, aegis) blur. Injection-content *choice* is not the
+  lever; **per-persona framing is** — render the same facts in each persona's
+  voice, or tag them as explicitly non-echoable metadata, before any re-gate.
+
+**Consequence: `MEMORY_CONTEXT_INJECT` stays OFF** (default and prod). The M0.1
+code stays merged — it is strictly better than full injection and correct behind
+the flag; the seam, token cap, and tests carry forward. The per-persona framing
+rework moves into **Phase 1** scope alongside two-level memory (where
+cross-session facts — the injection's real payload — get built properly).
+`EVAL_BASE_URL` env override added so the live memory probes can target scratch
+backends. Gate baselines frozen under `tests/evaluation/persona_eval/baselines/`
+(`gate01-post-m01` and `gate01-selective-recheck`).
+
 ## Context
 
 ADR-005 treated persona **voice**. It worked (distinctiveness attribution

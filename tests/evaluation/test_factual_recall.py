@@ -12,6 +12,7 @@ Two layers:
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -72,7 +73,7 @@ class TestFactualRecallLive:
     even pre-M0); M4-gate compares the measured rate against the frozen baseline.
     """
 
-    BASE_URL = "http://localhost:8000"
+    BASE_URL = os.environ.get("EVAL_BASE_URL", "http://localhost:8000")
     RECALL_FLOOR = 0.4
 
     def test_factual_recall_live(self):
