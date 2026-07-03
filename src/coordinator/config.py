@@ -11,12 +11,11 @@ Phase 1.2 of Persona Quality Enhancement Roadmap.
 
 from __future__ import annotations
 
-import os
 import logging
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ class OllamaSettings(BaseSettings):
         alias="OLLAMA_BASE"
     )
     model: str = Field(
-        default="mistral:latest",
+        default="gemma2:9b-instruct-q5_K_M",
         description="Default model for persona responses (fallback if PERSONA_MODEL not set)",
         alias="PERSONA_MODEL"
     )
@@ -56,6 +55,18 @@ class OllamaSettings(BaseSettings):
         le=131072,
         description="Model context window size in tokens",
         alias="MODEL_CONTEXT_WINDOW"
+    )
+    max_output_tokens: int = Field(
+        default=400,
+        ge=64,
+        le=4096,
+        description=(
+            "Hard cap on generated tokens per turn (Ollama num_predict). Turn latency "
+            "is ~linear in output tokens (~16 tok/s on the 24B), so an unbounded reply "
+            "can run 30s+. Generous backstop — normal texting-style replies sit well "
+            "under it; persona response-format guidance drives typical brevity."
+        ),
+        alias="MODEL_MAX_OUTPUT_TOKENS"
     )
 
     # Operation-specific temperature overrides
@@ -110,10 +121,14 @@ class BraveSettings(BaseSettings):
         alias="BRAVE_SAFESEARCH"
     )
     timeout: int = Field(
-        default=10,
+        default=20,
         ge=1,
         le=60,
-        description="Search timeout in seconds",
+        description=(
+            "Search timeout in seconds. Covers the ephemeral `docker run` container "
+            "cold-start + Brave API call. 10s was too tight on a cold image pull "
+            "(silently returned no results); 20s gives margin once the image is cached."
+        ),
         alias="BRAVE_SEARCH_TIMEOUT"
     )
 
@@ -144,9 +159,28 @@ class MemorySettings(BaseSettings):
     """Memory and RAG configuration (Phase 3)."""
 
     embedding_model: str = Field(
-        default="nomic-embed-text:latest",
-        description="Ollama embedding model for RAG semantic search",
+        default="bge-m3:latest",
+        description="Ollama embedding model for RAG semantic search "
+                    "(bge-m3: 8192-token native context, dense+sparse)",
         alias="MEMORY_EMBEDDING_MODEL"
+    )
+    embedding_max_tokens: int = Field(
+        default=8192,
+        ge=256,
+        le=40960,
+        description="Native input window of the embedding model. Text is "
+                    "chunked/truncated below a safety margin of this before "
+                    "embedding to avoid Ollama HTTP 500 overflow errors. "
+                    "(bge-m3=8192, nomic-embed-text=2048, qwen3-embedding=32768)",
+        alias="MEMORY_EMBEDDING_MAX_TOKENS"
+    )
+    embedding_chunk_overlap_tokens: int = Field(
+        default=128,
+        ge=0,
+        le=1024,
+        description="Token overlap between chunks when an oversized message is "
+                    "split before embedding (preserves cross-chunk context)",
+        alias="MEMORY_EMBEDDING_CHUNK_OVERLAP_TOKENS"
     )
     summarization_interval: int = Field(
         default=30,
@@ -162,90 +196,45 @@ class MemorySettings(BaseSettings):
         description="Number of messages before triggering fact extraction",
         alias="MEMORY_FACT_EXTRACTION_INTERVAL"
     )
-
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",
-        "populate_by_name": True,
-    }
-
-
-class MongoDBSettings(BaseSettings):
-    """MongoDB MCP configuration."""
-
-    enabled: bool = Field(
+    prewarm_sessions: int = Field(
+        default=10,
+        ge=0,
+        le=200,
+        description="ADR-006 M1: number of most-recently-updated sessions to "
+                    "pre-index into the FAISS store at startup (background daemon "
+                    "thread). The index is otherwise rebuilt lazily from SQLite on "
+                    "first chat per session — pre-warming only removes that one-time "
+                    "cold-start re-index latency after a restart. 0 disables.",
+        alias="MEMORY_PREWARM_SESSIONS"
+    )
+    context_inject_enabled: bool = Field(
         default=False,
-        description="Enable MongoDB MCP integration",
-        alias="MONGODB_ENABLED"
+        description="ADR-006 M0: pass the session context blocks (cross-session "
+                    "user profile, emotional state, unlocked/on-demand lore, seeker "
+                    "rank, capability) through to the LLM system prompt. These are "
+                    "built by handle_session_chat but were historically DROPPED "
+                    "(ChatBody carried no system prompt). "
+                    "⚠️ GATE 0 (2026-06-28) FAILED ON VOICE: injecting the shared "
+                    "NEPHILIM lore/rank/capability vocabulary homogenized persona "
+                    "voice (distinctiveness 0.768→0.643; 5/6 NEPHILIM personas "
+                    "regressed, non-NEPHILIM gojo unaffected). DO NOT enable without "
+                    "the selective-injection rework (inject user-profile + emotional "
+                    "only; drop/rework lore/rank/capability) AND a re-gate. The seam "
+                    "repair + plumbing are correct; the block-selection is not. "
+                    "See ADR-006.",
+        alias="MEMORY_CONTEXT_INJECT"
     )
-    uri: str = Field(
-        default="",
-        description="MongoDB connection URI",
-        alias="MONGODB_URI"
-    )
-    timeout: int = Field(
-        default=30,
-        ge=1,
-        le=300,
-        description="Operation timeout in seconds",
-        alias="MONGODB_TIMEOUT"
-    )
-    max_response_bytes: int = Field(
-        default=100000,
-        ge=1000,
-        le=10000000,
-        description="Maximum response size in bytes",
-        alias="MONGODB_MAX_RESPONSE_BYTES"
-    )
-    cache_current_price: int = Field(
-        default=60,
+    context_max_tokens: int = Field(
+        default=2000,
         ge=0,
-        description="Cache TTL for current price queries",
-        alias="MONGODB_CACHE_CURRENT_PRICE"
+        le=12000,
+        description="ADR-006 M0: token budget cap for the injected session context "
+                    "blocks. Highest-priority blocks (user profile, emotional state) "
+                    "are kept first; lower-priority blocks (lore, rank, capability) "
+                    "are dropped when the budget is exceeded, protecting the context "
+                    "window. 0 = no cap.",
+        alias="MEMORY_CONTEXT_MAX_TOKENS"
     )
-    cache_technical: int = Field(
-        default=60,
-        ge=0,
-        description="Cache TTL for technical analysis queries",
-        alias="MONGODB_CACHE_TECHNICAL"
-    )
-    cache_historical: int = Field(
-        default=3600,
-        ge=0,
-        description="Cache TTL for historical price queries",
-        alias="MONGODB_CACHE_HISTORICAL"
-    )
-    cache_trading: int = Field(
-        default=300,
-        ge=0,
-        description="Cache TTL for trading summary queries",
-        alias="MONGODB_CACHE_TRADING"
-    )
-
-    @property
-    def is_enabled(self) -> bool:
-        """Check if MongoDB is enabled (flag true and URI set)."""
-        return self.enabled and bool(self.uri.strip())
-
-    def get_cache_ttl(self, cache_key: str) -> int:
-        """Get cache TTL for a specific cache key.
-
-        Cache keys use the pattern: {token}_{type}_{timeframe}
-        e.g., 'btc_current_price_1h', 'eth_technical_daily', 'bot_status'
-        """
-        # Match by suffix pattern so all tokens get the same TTL per query type
-        if "current_price" in cache_key:
-            return self.cache_current_price
-        elif "technical" in cache_key:
-            return self.cache_technical
-        elif "historical" in cache_key:
-            return self.cache_historical
-        elif "trading_summary" in cache_key:
-            return self.cache_trading
-        elif cache_key.startswith("bot_"):
-            return 30  # Bot state: short TTL (30s)
-        return 60
 
     model_config = {
         "env_file": ".env",
@@ -291,11 +280,6 @@ class JupiterSettings(BaseSettings):
         default="strategies",
         description="Directory containing strategy JSON files",
         alias="STRATEGIES_DIR"
-    )
-    mongodb_write_uri: str = Field(
-        default="",
-        description="MongoDB URI for writing trade history",
-        alias="MONGODB_WRITE_URI"
     )
 
     model_config = {
@@ -403,6 +387,23 @@ class AuthSettings(BaseSettings):
         alias="AUTH_ENV"
     )
 
+    # The insecure hardcoded fallback secret. Safe only while auth is disabled.
+    _DEV_JWT_SECRET = "dev-secret-change-in-production-min-32-chars!!"
+
+    @model_validator(mode="after")
+    def _reject_dev_secret_when_auth_required(self) -> "AuthSettings":
+        """ADR-006 M3: fail loud if auth is on but JWT still uses the dev secret.
+
+        Previously AUTH_REQUIRED=false masked the insecure default — flipping auth
+        on would have silently signed tokens with a publicly-known key.
+        """
+        if self.auth_required and self.jwt_secret_key == self._DEV_JWT_SECRET:
+            raise ValueError(
+                "JWT_SECRET_KEY must be set to a real secret when AUTH_REQUIRED=true "
+                "(the built-in dev secret is publicly known)."
+            )
+        return self
+
     @property
     def cookie_secure(self) -> bool:
         """Use secure cookies in production (requires HTTPS)."""
@@ -412,6 +413,243 @@ class AuthSettings(BaseSettings):
     def is_google_configured(self) -> bool:
         """Check if Google OAuth credentials are set."""
         return bool(self.google_client_id.strip())
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class RoutingSettings(BaseSettings):
+    """Intent-routing / semantic-router configuration.
+
+    Phase 0 of the HERMES-Agents track: optionally promote the bge-m3 semantic
+    router to PRIMARY intent classification. When ``semantic_primary`` is False
+    (default) the legacy keyword-first order is preserved byte-for-byte.
+    """
+
+    semantic_primary: bool = Field(
+        default=True,
+        description=(
+            "Promote the bge-m3 semantic router to primary intent classification. "
+            "True (default, matches prod); set False to keep the legacy keyword-first order. "
+            "Set ROUTING_SEMANTIC_PRIMARY=true to enable."
+        ),
+        alias="ROUTING_SEMANTIC_PRIMARY",
+    )
+    semantic_threshold: float = Field(
+        default=0.66,
+        ge=0.50,
+        le=1.0,
+        description=(
+            "Cosine confidence floor for the semantic-PRIMARY path (only used when "
+            "semantic_primary=True). Empirically tuned for bge-m3 max-over-examples "
+            "scoring via tests/evaluation/tune_routing_threshold.py on a HELD-OUT set "
+            "(acc 0.91, wallet precision 1.0, wallet recall 0.96 at 0.66). The legacy "
+            "fallback path keeps its own 0.75 centroid threshold."
+        ),
+        alias="ROUTING_SEMANTIC_THRESHOLD",
+    )
+    semantic_margin: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=0.5,
+        description=(
+            "Minimum gap (top - 2nd centroid score) to accept a route; below it the "
+            "query falls through to NEEDS_NEITHER. 0.0 (default) disables the gate "
+            "— the sweep found no accuracy gain from it on the current eval set."
+        ),
+        alias="ROUTING_SEMANTIC_MARGIN",
+    )
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class LoreSettings(BaseSettings):
+    """On-demand hybrid lore retrieval configuration (HERMES-Agents Phase 2).
+
+    When ``ondemand_enabled`` is False (default) the static 3-entity-per-persona
+    lore prefill is the only lore in the prompt — byte-identical to pre-Phase-2.
+    """
+
+    ondemand_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable per-turn hybrid lore retrieval (keyword + bge-m3) appended to the "
+            "system prompt. True (default, matches prod); set False for static "
+            "3-entity core only (byte-identical legacy behavior)."
+        ),
+        alias="LORE_ONDEMAND_ENABLED",
+    )
+    retrieval_k: int = Field(
+        default=5, ge=1, le=20,
+        description="Number of lore entries to retrieve per semantic (Tier-2b) query.",
+        alias="LORE_RETRIEVAL_K",
+    )
+    embed_min_relevance: float = Field(
+        default=0.5, ge=0.3, le=0.9,
+        description=(
+            "Cosine floor for embedding-tier lore retrieval. Same bge-m3 calibration "
+            "as memory RAG min_relevance (0.5 recall-leaning floor)."
+        ),
+        alias="LORE_EMBED_MIN_RELEVANCE",
+    )
+    keyword_window_messages: int = Field(
+        default=4, ge=1, le=10,
+        description="How many recent messages to scan for keyword/alias matches (Tier-2a).",
+        alias="LORE_KEYWORD_WINDOW",
+    )
+    max_budget_tokens: int = Field(
+        default=600, ge=100, le=2000,
+        description="Soft token ceiling for the <dynamic_lore> block; lowest-priority entries drop first.",
+        alias="LORE_MAX_BUDGET_TOKENS",
+    )
+    rank_context_enabled: bool = Field(
+        default=True,
+        description="Inject a seeker-rank narrative block into the per-turn system prompt for NEPHILIM personas. True (default, matches prod).",
+        alias="LORE_RANK_CONTEXT_ENABLED",
+    )
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class AgentSettings(BaseSettings):
+    """Persona-safe agentic behaviour configuration (HERMES-Agents Phase 3).
+
+    Gates single-action, in-character tool use where ALL enforcement is
+    deterministic middleware, never LLM self-policing. When ``enabled`` is False
+    (default) the existing handle_brave_query / handle_wallet_query paths run
+    unchanged — byte-identical to pre-Phase-3.
+
+    The two safety flags (``argument_allowlist`` / ``injection_guard``) default
+    True so the interceptor and injection guard harden the EXISTING tool paths
+    even before ``enabled`` is flipped, at zero functional cost when off.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable persona-safe single-action agentic tool calls (the two-stage "
+            "pipeline). False (default) = byte-identical to pre-Phase-3. "
+            "Set AGENTIC_ENABLED=true to enable."
+        ),
+        alias="AGENTIC_ENABLED",
+    )
+    argument_allowlist: bool = Field(
+        default=True,
+        description=(
+            "Enforce the per-tool argument-level allowlist in the tool-call "
+            "interceptor. Default ON — disabling drops to mcp_access checks only "
+            "(removes the argument schema validation layer)."
+        ),
+        alias="AGENTIC_ARGUMENT_ALLOWLIST",
+    )
+    injection_guard: bool = Field(
+        default=True,
+        description=(
+            "Block tool triggers sourced from RAG/lore context and sanitize "
+            "memory writes (trust hierarchy: system > user > retrieved). Default "
+            "ON — shippable independently of AGENTIC_ENABLED."
+        ),
+        alias="AGENTIC_INJECTION_GUARD",
+    )
+    trigger_similarity_threshold: float = Field(
+        default=0.85,
+        ge=0.5,
+        le=1.0,
+        description=(
+            "Cosine floor above which a proposed tool argument is treated as "
+            "mirroring retrieved (RAG/lore) content — i.e. a suspected indirect "
+            "injection. bge-m3 scoring, reuses the RAG embedder."
+        ),
+        alias="AGENTIC_TRIGGER_SIMILARITY_THRESHOLD",
+    )
+    extraction_coherence_threshold: float = Field(
+        default=0.55,
+        ge=0.3,
+        le=0.9,
+        description=(
+            "Cosine floor for the argument-extraction semantic gate: an extracted "
+            "argument must be this topically related to the user message or the "
+            "extraction is rejected (catches well-formed-but-hallucinated values)."
+        ),
+        alias="AGENTIC_EXTRACTION_COHERENCE_THRESHOLD",
+    )
+    extraction_max_retries: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Max grammar-constrained extraction attempts before regex fallback.",
+        alias="AGENTIC_EXTRACTION_MAX_RETRIES",
+    )
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class PersonaPromptSettings(BaseSettings):
+    """Lean persona system-prompt configuration (ADR-005 Phase B).
+
+    Gates a leaner exemplar-first / voice-last system-prompt builder that drops
+    the duplicated wiki lore dump, dedupes repeated directives, and consumes a
+    per-persona ``voice_signature`` for inter-character distinctiveness.
+
+    When ``lean_enabled`` is False (default) AND a persona is not in
+    ``lean_personas``, the legacy builder runs unchanged — byte-identical to
+    pre-Phase-B, so the frozen legacy persona-eval baseline stays valid and
+    revert is instant. ``lean_personas`` gives the ADR-required PER-PERSONA
+    fallback: only personas that match-or-beat their legacy baseline in the
+    acceptance A/B get added; the rest stay on the legacy prompt.
+    """
+
+    lean_enabled: bool = Field(
+        default=True,
+        description=(
+            "Globally enable the lean persona prompt for ALL personas. True "
+            "(default, matches prod); set False to use the legacy builder unless a "
+            "persona is listed in PERSONA_LEAN_PROMPT_PERSONAS."
+        ),
+        alias="PERSONA_LEAN_PROMPT",
+    )
+    lean_personas: str = Field(
+        default="",
+        description=(
+            "Comma-separated persona keys (e.g. 'nephilim_eeva,nephilim_solace') "
+            "to serve the lean prompt while the global flag is off. The per-persona "
+            "acceptance-gate allowlist. Empty (default) = none."
+        ),
+        alias="PERSONA_LEAN_PROMPT_PERSONAS",
+    )
+
+    def lean_persona_set(self) -> frozenset[str]:
+        """Parsed, normalized set of per-persona lean-prompt opt-ins."""
+        return frozenset(
+            k.strip() for k in self.lean_personas.split(",") if k.strip()
+        )
+
+    def use_lean_for(self, persona_key: Optional[str]) -> bool:
+        """Whether the lean prompt should be used for this persona key."""
+        if self.lean_enabled:
+            return True
+        if not persona_key:
+            return False
+        return persona_key in self.lean_persona_set()
 
     model_config = {
         "env_file": ".env",
@@ -455,11 +693,14 @@ class CoordinatorSettings(BaseSettings):
     # Subsystem settings (nested)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     brave: BraveSettings = Field(default_factory=BraveSettings)
-    mongodb: MongoDBSettings = Field(default_factory=MongoDBSettings)
     memory: MemorySettings = Field(default_factory=MemorySettings)
     jupiter: JupiterSettings = Field(default_factory=JupiterSettings)
     email: EmailSettings = Field(default_factory=EmailSettings)
     auth: AuthSettings = Field(default_factory=AuthSettings)
+    routing: RoutingSettings = Field(default_factory=RoutingSettings)
+    lore: LoreSettings = Field(default_factory=LoreSettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
+    prompt: PersonaPromptSettings = Field(default_factory=PersonaPromptSettings)
 
     model_config = {
         "env_file": ".env",

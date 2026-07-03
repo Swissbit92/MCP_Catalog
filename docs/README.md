@@ -37,11 +37,11 @@ docs/
 
 **Quick start:**
 ```bash
+# macOS/Linux
+./scripts/docker/setup-docker.sh
+
 # Windows PowerShell
 .\scripts\docker\setup-docker.ps1
-
-# Linux/Mac
-./scripts/docker/setup-docker.sh
 ```
 
 ## Development
@@ -59,8 +59,8 @@ docs/
 - Citation and response synthesis
 
 **Current MCP servers:**
-- Brave Search (ephemeral, 2-3s lifecycle)
-- MongoDB (long-running, stateful)
+- Brave Search (ephemeral, 2-3 s lifecycle)
+- Jupiter/Solana Wallet (long-running, stateful)
 
 ### [development/TESTING_GUIDE.md](development/TESTING_GUIDE.md)
 
@@ -168,7 +168,14 @@ python tests/manual/comprehensive_persona_test.py --persona nephilim_eeva --quic
 - What data the AI companion can see per-message (wallet inventory, balances, trade history)
 - Hard guardrails: 3-wallet limit, secret key ceremony, mnemonic wipe
 - SQLite tables for wallet persistence
-- Dual-write trade pattern (MongoDB + SQLite fallback)
+- Trade pattern: SQLite-backed
+
+## Decisions (ADRs)
+
+| ADR | Title | Status |
+|-----|-------|--------|
+| [decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md](decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md) | Lore as typed-markdown-wiki not a graph DB | Accepted |
+| [decisions/002-remove-mongodb-mcp.md](decisions/002-remove-mongodb-mcp.md) | Remove MongoDB MCP from nephilim | Accepted |
 
 ## Lore
 

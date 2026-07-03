@@ -10,7 +10,7 @@ describe('API Service', () => {
 
   it('fetchPersonas should return a list of personas from API', async () => {
     const mockPersonas = [
-      { key: 'Eeva', display_name: 'Eeva', style: 'strategic', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search', 'mongodb'], image: 'images/personas/nephilim_eeva/card.png' },
+      { key: 'Eeva', display_name: 'Eeva', style: 'strategic', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search'], image: 'images/personas/nephilim_eeva/card.png' },
       { key: 'Gojo', display_name: 'Gojo', style: 'cool', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search'], image: 'images/personas/gojo/card.png' },
     ];
 
@@ -44,7 +44,7 @@ describe('API Service', () => {
   it('fetchPersonas should handle personas with missing optional fields', async () => {
     const mockPersonas = [
       { key: 'minimal', display_name: 'Minimal Persona' }, // Missing style, rarity, celestial_order, etc.
-      { key: 'full', display_name: 'Full Persona', style: 'confident', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search', 'mongodb'], voice: { greeting: 'Hi!' } }
+      { key: 'full', display_name: 'Full Persona', style: 'confident', rarity: 'legendary', celestial_order: 'archon', mcp_access: ['brave_search'], voice: { greeting: 'Hi!' } }
     ];
 
     (fetch as jest.Mock).mockImplementationOnce(() =>
@@ -236,7 +236,7 @@ describe('API Service', () => {
           style: 'friendly',
           rarity: 'legendary',
           celestial_order: 'archon',
-          mcp_access: ['brave_search', 'mongodb'],
+          mcp_access: ['brave_search'],
         },
         session: {
           id: '1',

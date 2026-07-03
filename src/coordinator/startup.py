@@ -4,15 +4,12 @@
 from __future__ import annotations
 
 import os
-import sqlite3
 import logging
 from typing import Optional
 
 from .config import get_settings
 from .ollama_utils import assert_model_available
 from .mcp_client_stdio import BraveMCPClientStdio
-from .mongodb_mcp_client import MongoDBMCPClient
-from .cache import get_cache, MongoDBCache
 from .persona_memory import _load_all_cards_cached, ensure_all_summaries_serialized
 from .repositories.session_repository import SessionRepository
 from .repositories.message_repository import MessageRepository
@@ -25,7 +22,6 @@ from .repositories.wallet_registry_repository import WalletRegistryRepository
 from .repositories.wallet_summary_repository import WalletSummaryRepository
 from .repositories.trade_history_repository import TradeHistoryRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
-from .services.mongodb_handlers import MongoDBService
 from .memory_rag import EpisodicMemoryRAG
 from .fact_extractor import FactExtractor
 
@@ -37,9 +33,6 @@ os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True) if os.path.dirname(_DB_PAT
 
 # MCP Clients
 _brave_client: Optional[BraveMCPClientStdio] = None
-_mongodb_client: Optional[MongoDBMCPClient] = None
-_mongodb_cache: Optional[MongoDBCache] = None
-_mongodb_service: Optional[MongoDBService] = None
 
 # Jupiter MCP + Strategy Scheduler
 _jupiter_client = None
@@ -49,7 +42,6 @@ _strategy_service = None
 _wallet_repo = None
 _trade_proposal_repo = None
 _strategy_scheduler = None
-_mongo_write_client = None
 
 # Repositories
 _session_repo: Optional[SessionRepository] = None
@@ -79,21 +71,6 @@ _fact_extractor: Optional[FactExtractor] = None
 def get_brave_client() -> Optional[BraveMCPClientStdio]:
     """Get the global Brave MCP client instance (STDIO ephemeral containers)."""
     return _brave_client
-
-
-def get_mongodb_client() -> Optional[MongoDBMCPClient]:
-    """Get the global MongoDB MCP client instance."""
-    return _mongodb_client
-
-
-def get_mongodb_cache() -> Optional[MongoDBCache]:
-    """Get the global MongoDB cache instance."""
-    return _mongodb_cache
-
-
-def get_mongodb_service() -> Optional[MongoDBService]:
-    """Get the global MongoDB service instance."""
-    return _mongodb_service
 
 
 def get_session_repo() -> SessionRepository:
@@ -184,6 +161,19 @@ def get_fact_extractor() -> Optional[FactExtractor]:
     return _fact_extractor
 
 
+# HERMES-Agents Phase 3: deterministic tool-call interceptor (stateless singleton)
+_tool_interceptor = None
+
+
+def get_tool_interceptor():
+    """Get the shared ToolCallInterceptor (lazy; stateless, safe to share)."""
+    global _tool_interceptor
+    if _tool_interceptor is None:
+        from .services.tool_interceptor import ToolCallInterceptor
+        _tool_interceptor = ToolCallInterceptor()
+    return _tool_interceptor
+
+
 # Jupiter MCP getters
 
 def get_jupiter_client():
@@ -264,41 +254,6 @@ def init_brave_client():
         _brave_client = None
 
 
-def init_mongodb_client():
-    """Initialize MongoDB MCP client if enabled."""
-    global _mongodb_client, _mongodb_cache, _mongodb_service
-
-    mongo_cfg = get_settings().mongodb
-    if not mongo_cfg.is_enabled:
-        logger.info("MongoDB MCP is disabled (no URI or feature flag off)")
-        return
-
-    try:
-        mongodb_uri = mongo_cfg.uri
-        timeout = mongo_cfg.timeout
-        max_response_bytes = mongo_cfg.max_response_bytes
-
-        _mongodb_client = MongoDBMCPClient(
-            connection_uri=mongodb_uri,
-            timeout=timeout,
-            max_response_bytes=max_response_bytes
-        )
-
-        # Initialize cache
-        _mongodb_cache = get_cache()
-
-        # Initialize service
-        _mongodb_service = MongoDBService(_mongodb_client, _mongodb_cache)
-
-        logger.info(f"MongoDB MCP client initialized (timeout={timeout}s, max_response={max_response_bytes} bytes)")
-        logger.info("MongoDB cache initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize MongoDB MCP client: {e}")
-        _mongodb_client = None
-        _mongodb_cache = None
-        _mongodb_service = None
-
-
 def init_repositories():
     """Initialize database repositories."""
     global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
@@ -334,6 +289,39 @@ def init_memory_manager():
     logger.info("Memory manager initialized (Phase 2)")
 
 
+def prewarm_session_indexes(rag, session_repo, message_repo, limit: int) -> int:
+    """ADR-006 M1: pre-index the ``limit`` most-recently-updated sessions.
+
+    Rebuilds each session's FAISS index from its SQLite messages (the same path
+    the chat flow runs lazily on first access), so a restart doesn't impose a
+    cold-start re-index latency on the user's first message. SQLite remains the
+    source of truth — this loses no data and is safe to skip.
+
+    Pure and synchronous for testability; the caller runs it in a daemon thread.
+    Each session is isolated so one failure can't abort the rest. Returns the
+    number of sessions successfully warmed.
+    """
+    if rag is None or limit <= 0:
+        return 0
+    warmed = 0
+    try:
+        sessions = session_repo.get_all_sessions()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug(f"[SessionPrewarm] could not list sessions (non-fatal): {exc}")
+        return 0
+    for s in sessions[:limit]:
+        if s.get("message_count", 0) <= 0:
+            continue
+        try:
+            msgs = message_repo.get_messages_by_session(s["id"])
+            if msgs:
+                rag.index_session(s["id"], msgs)
+                warmed += 1
+        except Exception as exc:
+            logger.debug(f"[SessionPrewarm] session {s.get('id')} skipped (non-fatal): {exc}")
+    return warmed
+
+
 def init_phase3_memory():
     """Initialize Phase 3 advanced memory systems (RAG + Fact Extraction)."""
     global _episodic_memory_rag, _fact_extractor
@@ -342,6 +330,51 @@ def init_phase3_memory():
         # Initialize RAG memory with embeddings (uses config default)
         _episodic_memory_rag = EpisodicMemoryRAG()
         logger.info("Episodic Memory RAG initialized (Phase 3)")
+
+        # Phase-2 (HERMES): pre-warm the global lore corpus in a background thread
+        # when on-demand lore retrieval is enabled. Reuses the RAG embedder; daemon
+        # so it never blocks startup. No-op (store stays None) when the flag is off.
+        try:
+            from .config import get_settings
+            if get_settings().lore.ondemand_enabled:
+                import threading as _threading
+
+                def _prewarm_lore():
+                    try:
+                        _episodic_memory_rag.index_lore_corpus()
+                        logger.info("[LoreRAG] Lore corpus pre-warm complete")
+                    except Exception as exc:
+                        logger.debug(f"[LoreRAG] Lore corpus pre-warm failed (non-fatal): {exc}")
+                _threading.Thread(target=_prewarm_lore, daemon=True, name="prewarm-lore").start()
+        except Exception as e:
+            logger.debug(f"[LoreRAG] Lore pre-warm thread start failed (non-fatal): {e}")
+
+        # ADR-006 M1: pre-warm the N most-recently-updated session indexes from
+        # SQLite in a background daemon thread. The per-session FAISS index is
+        # otherwise rebuilt lazily on the first chat after a restart (no data is
+        # lost — SQLite is the source of truth); this only removes that one-time
+        # cold-start re-index latency. Daemon so it never blocks startup; each
+        # session is isolated so one failure can't abort the rest. No-op when
+        # MEMORY_PREWARM_SESSIONS=0.
+        try:
+            from .config import get_settings
+            prewarm_n = get_settings().memory.prewarm_sessions
+            if prewarm_n > 0:
+                import threading as _threading
+
+                def _prewarm_sessions():
+                    warmed = prewarm_session_indexes(
+                        _episodic_memory_rag,
+                        get_session_repo(),
+                        get_message_repo(),
+                        prewarm_n,
+                    )
+                    logger.info(f"[SessionPrewarm] pre-warmed {warmed} session index(es)")
+                _threading.Thread(
+                    target=_prewarm_sessions, daemon=True, name="prewarm-sessions"
+                ).start()
+        except Exception as e:
+            logger.debug(f"[SessionPrewarm] pre-warm thread start failed (non-fatal): {e}")
 
         # Initialize fact extractor
         # Note: Will need LLM client, initialized later in chat flow
@@ -384,7 +417,7 @@ def init_db():
 def init_jupiter():
     """Initialize Jupiter MCP client, execution service, and strategy service."""
     global _jupiter_client, _jupiter_ops, _wallet_execution_service, _strategy_service
-    global _wallet_repo, _trade_proposal_repo, _mongo_write_client
+    global _wallet_repo, _trade_proposal_repo
 
     from .config import get_settings
     jupiter_cfg = get_settings().jupiter
@@ -405,17 +438,6 @@ def init_jupiter():
         _wallet_repo = WalletRepository(_DB_PATH)
         _trade_proposal_repo = TradeProposalRepository(_DB_PATH)
 
-        # Init MongoDB write client if configured
-        mongodb_write_uri = jupiter_cfg.mongodb_write_uri
-        if mongodb_write_uri:
-            try:
-                import pymongo
-                mongo_client = pymongo.MongoClient(mongodb_write_uri)
-                _mongo_write_client = mongo_client["wallet_data"]
-                logger.info("MongoDB write client initialized for trade history")
-            except Exception as e:
-                logger.warning(f"MongoDB write client init failed: {e}")
-
         # Init Jupiter Docker client (deferred — starts on set_private_key())
         _jupiter_client = JupiterDockerClient(
             image=jupiter_cfg.mcp_image,
@@ -427,13 +449,11 @@ def init_jupiter():
         # Init services
         _wallet_execution_service = WalletExecutionService(
             jupiter_ops=_jupiter_ops,
-            mongo_write_client=_mongo_write_client,
             trade_history_repo=_trade_history_repo,
             wallet_summary_repo=_wallet_summary_repo,
         )
         _strategy_service = StrategyService(
             strategies_dir=jupiter_cfg.strategies_dir,
-            mongo_write=_mongo_write_client,
         )
 
         logger.info(f"Jupiter MCP initialized (image={jupiter_cfg.mcp_image}, rpc={jupiter_cfg.solana_rpc_url})")
@@ -539,16 +559,6 @@ def initialize_all():
     except Exception as e:
         logger.warning(f"Brave MCP initialization warning: {e}")
 
-    # Initialize MongoDB MCP
-    try:
-        init_mongodb_client()
-        if _mongodb_client:
-            logger.info("MongoDB MCP enabled (trading data available)")
-        else:
-            logger.info("MongoDB MCP disabled (no URI or feature flag off)")
-    except Exception as e:
-        logger.warning(f"MongoDB MCP initialization warning: {e}")
-
     # Initialize Jupiter MCP
     try:
         init_jupiter()
@@ -571,14 +581,19 @@ def initialize_all():
     except Exception as e:
         logger.warning(f"Summary check failed: {e}")
 
-    # R4: Pre-warm semantic router centroids in background (reuses nomic-embed-text already pulled)
+    # R4: Pre-warm semantic router centroids in background (reuses the RAG embedding model already pulled)
     try:
         import threading as _threading
         def _prewarm_semantic():
             try:
                 from .tools.semantic_router import warm_centroids
-                ok = warm_centroids()
-                logger.info(f"[SemanticRouter] Centroid pre-warm {'succeeded' if ok else 'skipped (no embedding model)'}")
+                from .config import get_settings
+                primary = get_settings().routing.semantic_primary
+                ok = warm_centroids(include_primary=primary)
+                logger.info(
+                    f"[SemanticRouter] Centroid pre-warm {'succeeded' if ok else 'skipped (no embedding model)'}"
+                    f"{' (incl. primary set)' if primary else ''}"
+                )
             except Exception as exc:
                 logger.debug(f"[SemanticRouter] Centroid pre-warm failed (non-fatal): {exc}")
         _threading.Thread(target=_prewarm_semantic, daemon=True, name="prewarm-semantic").start()

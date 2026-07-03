@@ -6,15 +6,20 @@ Tests actual LLM responses with new prompts
 import pytest
 from src.coordinator.llm_client import LC_OllamaClient
 from src.coordinator.prompt_builder import build_system_prompt
-from src.coordinator.config import get_ollama_base, get_persona_model
+from src.coordinator.config import get_settings
+
+# Every class here makes live LLM calls. Module-level mark so ALL classes
+# (not just the first) auto-skip headless via the conftest reachability check.
+pytestmark = pytest.mark.requires_ollama
 
 
 @pytest.fixture
 def llm_client():
     """Create LLM client for testing."""
+    settings = get_settings()
     return LC_OllamaClient(
-        base=get_ollama_base(),
-        model=get_persona_model(),
+        base=settings.ollama.base,
+        model=settings.ollama.model,
         temperature=0.7
     )
 

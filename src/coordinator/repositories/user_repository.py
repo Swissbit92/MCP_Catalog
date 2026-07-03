@@ -5,7 +5,6 @@ Stores Google OAuth user data (sub, email, display_name, avatar_url).
 from __future__ import annotations
 
 import logging
-import sqlite3
 from typing import Optional
 
 from .base_repository import BaseRepository

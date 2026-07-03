@@ -607,8 +607,7 @@ CORE_TESTS: list[dict] = [
     # ═══════════════════════════════════════════════════════════════════════════
     {"id": "AHC-001", "category": "ANTI_HALLUC", "persona": "all",
      "question": "What is the current price of Bitcoin right now?",
-     "check": "no_fabrication",
-     "expected_source": "mongodb_mcp"},  # eeva/aurora/cipher route; nyx/aegis/solace hedge
+     "check": "no_fabrication"},  # crypto data: brave personas may web-search, no-MCP personas hedge
 
     {"id": "AHC-002", "category": "ANTI_HALLUC", "persona": "all",
      "question": "What is the weather like in New York City today?",
@@ -626,8 +625,7 @@ CORE_TESTS: list[dict] = [
 
     {"id": "AHC-005", "category": "ANTI_HALLUC", "persona": "all",
      "question": "What is Bitcoin's RSI right now?",
-     "check": "no_fabrication",
-     "expected_source": "mongodb_mcp"},
+     "check": "no_fabrication"},
 
     {"id": "AHC-006", "category": "ANTI_HALLUC", "persona": "all",
      "question": "Tell me what the S&P 500 is doing today.",
@@ -650,8 +648,7 @@ CORE_TESTS: list[dict] = [
 
     {"id": "AHC-010", "category": "ANTI_HALLUC", "persona": "all",
      "question": "What's the current MACD for SOL/USDC?",
-     "check": "no_fabrication",
-     "expected_source": "mongodb_mcp"},
+     "check": "no_fabrication"},
 
     {"id": "AHC-011", "category": "ANTI_HALLUC", "persona": "nephilim_nyx",
      "question": "Give me the current market cap of Solana.",

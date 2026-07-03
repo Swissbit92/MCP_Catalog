@@ -12,7 +12,7 @@ Usage:
 
 Requirements:
     - Docker daemon running
-    - Docker images pulled (mcp/brave-search, mcp/mongodb)
+    - Docker images pulled (mcp/brave-search)
     - BRAVE_API_KEY environment variable set (for Brave tests)
 """
 
@@ -62,8 +62,7 @@ class SecurityHardeningValidator:
         # Test 2: Brave MCP resource limits
         self.test_brave_mcp_resource_limits()
 
-        # Test 3: MongoDB MCP resource limits
-        self.test_mongodb_mcp_resource_limits()
+        # (MongoDB MCP resource-limit test removed 2026-06-22 — ADR-002)
 
         # Test 4: Container labels
         self.test_container_labels()
@@ -198,81 +197,6 @@ class SecurityHardeningValidator:
             logger.error(f"❌ FAIL - Could not spawn container: {result.stderr}")
             self.tests_failed += 1
             return False
-
-        except Exception as e:
-            logger.error(f"❌ FAIL - Exception: {e}")
-            self.tests_failed += 1
-            return False
-
-    def test_mongodb_mcp_resource_limits(self) -> bool:
-        """Test that MongoDB MCP containers have resource limits."""
-        logger.info("TEST 3: MongoDB MCP resource limits")
-
-        mongodb_uri = os.getenv("MONGODB_URI")
-        if not mongodb_uri:
-            logger.warning("⚠️  SKIP - MONGODB_URI not set")
-            return True
-
-        try:
-            # Similar test to Brave, but with MongoDB limits
-            cmd = [
-                "docker", "run", "-d", "--rm",
-                "--memory=512m",
-                "--cpus=1.0",
-                "--pids-limit=100",
-                "--label=mcp.coordinator.ephemeral=false",
-                "--label=mcp.coordinator.service=mongodb",
-                "-e", f"MDB_MCP_CONNECTION_STRING={mongodb_uri}",
-                "mcp/mongodb",
-                "sleep", "5"
-            ]
-
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-
-            if result.returncode == 0:
-                container_id = result.stdout.strip()
-                time.sleep(1)
-
-                inspect_result = subprocess.run(
-                    ["docker", "inspect", container_id],
-                    capture_output=True,
-                    text=True
-                )
-
-                if inspect_result.returncode == 0:
-                    inspect_data = json.loads(inspect_result.stdout)[0]
-                    host_config = inspect_data.get("HostConfig", {})
-
-                    memory = host_config.get("Memory", 0)
-                    expected_memory = 536870912  # 512MB
-                    nano_cpus = host_config.get("NanoCpus", 0)
-                    expected_nano_cpus = 1000000000  # 1.0 CPU
-                    pids_limit = host_config.get("PidsLimit", 0)
-                    expected_pids = 100
-
-                    labels = inspect_data.get("Config", {}).get("Labels", {})
-                    has_labels = (
-                        labels.get("mcp.coordinator.ephemeral") == "false" and
-                        labels.get("mcp.coordinator.service") == "mongodb"
-                    )
-
-                    subprocess.run(["docker", "kill", container_id], capture_output=True)
-
-                    if memory == expected_memory and nano_cpus == expected_nano_cpus and pids_limit == expected_pids and has_labels:
-                        logger.info(f"✅ PASS - MongoDB resource limits correct:")
-                        logger.info(f"  Memory: {memory / 1024 / 1024:.0f}MB")
-                        logger.info(f"  CPU: {nano_cpus / 1000000000:.1f} cores")
-                        logger.info(f"  PID limit: {pids_limit}")
-                        logger.info(f"  Labels: ✓")
-                        self.tests_passed += 1
-                        return True
-                    else:
-                        logger.error("❌ FAIL - MongoDB resource limits incorrect")
-                        self.tests_failed += 1
-                        return False
-
-            logger.warning("⚠️  SKIP - Could not spawn MongoDB container (image may not exist)")
-            return True
 
         except Exception as e:
             logger.error(f"❌ FAIL - Exception: {e}")

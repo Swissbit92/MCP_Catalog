@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from .base_repository import BaseRepository
@@ -34,7 +34,7 @@ class UserProfileRepository(BaseRepository):
             Newly created UserProfile instance
         """
         profile = UserProfile(user_id)
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
         try:
             self._execute("""
@@ -76,7 +76,7 @@ class UserProfileRepository(BaseRepository):
         Args:
             profile: UserProfile instance to save
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
         cur = self._execute("""
             UPDATE user_profiles
@@ -158,7 +158,7 @@ class UserProfileRepository(BaseRepository):
             user_id: User identifier
             session_id: Chat session identifier
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
         cur = self._execute("""
             INSERT OR IGNORE INTO user_sessions (user_id, session_id, created_at)

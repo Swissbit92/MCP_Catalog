@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nephilim.backend</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/swissbit./nephilim/nephilim/.venv/bin/python</string>
+        <string>-m</string>
+        <string>uvicorn</string>
+        <string>src.coordinator.server:app</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8000</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/swissbit./nephilim/nephilim</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- /usr/local/bin holds the `docker` CLI symlink (Docker Desktop). Without
+             it on PATH the launchd backend can't reach Docker, so Brave-search MCP
+             (and Jupiter MCP) silently disable at startup. -->
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-backend.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-backend.err.log</string>
+</dict>
+</plist>

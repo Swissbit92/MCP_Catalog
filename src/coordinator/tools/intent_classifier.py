@@ -8,15 +8,11 @@ from enum import Enum
 from typing import List, Optional
 
 from .keywords import (
+    EXPLICIT_SEARCH_COMMANDS,
     NO_SEARCH_KEYWORDS,
     SEARCH_KEYWORDS,
-    MONGODB_PRICE_KEYWORDS,
-    MONGODB_HISTORICAL_KEYWORDS,
-    MONGODB_TRADING_KEYWORDS,
-    MONGODB_TECHNICAL_KEYWORDS,
-    BOT_STATE_KEYWORDS,
+    WALLET_FASTPATH,
 )
-from .token_registry import resolve_token
 
 
 # Negation detection: action verbs prefixed with "not"/"don't" reverse intent.
@@ -33,10 +29,63 @@ _NEGATED_ACTION = re.compile(
 class QueryIntent(Enum):
     """Query intent classification for MCP routing."""
     NEEDS_WEB_SEARCH = "web"      # Brave MCP
-    NEEDS_MONGODB = "mongodb"      # MongoDB MCP
-    NEEDS_BOTH = "both"            # Multi-MCP
     NEEDS_NEITHER = "llm"          # Pure LLM
     NEEDS_WALLET = "wallet"        # Jupiter wallet / Solana trading
+
+
+def _brave_accessible(mcp_access: Optional[List[str]], persona_rarity: str) -> bool:
+    """Whether Brave web search is available — per-persona mcp_access takes priority,
+    else rarity-based fallback. Mirrors the legacy inline logic."""
+    if mcp_access is not None:
+        return "brave_search" in mcp_access
+    return persona_rarity.lower() in {"rare", "epic", "legendary"}
+
+
+def _classify_semantic_primary(
+    query: str,
+    query_lower: str,
+    can_use_brave: bool,
+    can_use_wallet: bool,
+    routing,
+) -> QueryIntent:
+    """Semantic-PRIMARY intent classification (flag-ON path).
+
+    Order: high-precision keyword fast-path → bge-m3 semantic router → NEEDS_NEITHER.
+    Follow-up detection is handled by the caller before this runs. Deliberately does
+    NOT fall back to the fuzzy SEARCH_KEYWORDS/WALLET_KEYWORDS lists — the whole point
+    is to route ambiguous queries by intent similarity, not keyword presence. A miss
+    falls through to NEEDS_NEITHER (pure LLM), the safe default for a companion.
+    """
+    # 1. Keyword fast-path — high-precision, zero-latency, no embed round-trip.
+    if can_use_wallet and any(kw in query_lower for kw in WALLET_FASTPATH):
+        if not _NEGATED_ACTION.search(query_lower):
+            return QueryIntent.NEEDS_WALLET
+    if can_use_brave and any(kw in query_lower for kw in EXPLICIT_SEARCH_COMMANDS):
+        return QueryIntent.NEEDS_WEB_SEARCH
+
+    # 2. Semantic router — the primary decision.
+    try:
+        from .semantic_router import route_by_embedding
+        semantic_intent = route_by_embedding(
+            query=query,
+            can_use_brave=can_use_brave,
+            can_use_mongodb=False,
+            can_use_wallet=can_use_wallet,
+            threshold=routing.semantic_threshold,
+            margin=routing.semantic_margin,
+            drop_llm_only_centroid=True,
+        )
+        if semantic_intent == "wallet":
+            # Negation guard applies to semantic wallet results too.
+            if not _NEGATED_ACTION.search(query_lower):
+                return QueryIntent.NEEDS_WALLET
+        elif semantic_intent == "web_search":
+            return QueryIntent.NEEDS_WEB_SEARCH
+    except Exception:
+        pass  # Semantic router failure is non-fatal — fall through.
+
+    # 3. No confident route → pure LLM.
+    return QueryIntent.NEEDS_NEITHER
 
 
 def classify_query_intent(
@@ -52,7 +101,7 @@ def classify_query_intent(
         query: User query string
         persona_rarity: Persona rarity level (common, rare, epic, legendary)
         mcp_access: Optional explicit list of allowed MCP services from the persona
-                    JSON ``mcp_access`` field (e.g. ``["brave_search", "mongodb"]``).
+                    JSON ``mcp_access`` field (e.g. ``["brave_search"]``).
                     When provided this takes priority over ``persona_rarity``-based
                     gating entirely.
         last_assistant_message: Optional last assistant message for follow-up detection.
@@ -85,7 +134,25 @@ def classify_query_intent(
         if is_short_affirmative and last_was_wallet:
             return QueryIntent.NEEDS_WALLET
 
-    # Wallet intent keywords (check before MongoDB/Brave)
+    # ------------------------------------------------------------------
+    # SEMANTIC-PRIMARY branch (flag-ON only). Follow-up detection above is
+    # shared. When the flag is OFF the legacy keyword-first body below runs
+    # unchanged (byte-identical).
+    # ------------------------------------------------------------------
+    try:
+        from ..config import get_settings
+        _routing = get_settings().routing
+    except Exception:
+        _routing = None
+    if _routing is not None and _routing.semantic_primary:
+        _can_use_brave = _brave_accessible(mcp_access, persona_rarity)
+        if can_use_wallet or _can_use_brave:
+            return _classify_semantic_primary(
+                query, query_lower, _can_use_brave, can_use_wallet, _routing
+            )
+        # No MCP capability → legacy body returns NEEDS_NEITHER anyway.
+
+    # Wallet intent keywords (check before Brave)
     WALLET_KEYWORDS = [
         # Direct commands
         "swap ", "swap usdc", "swap sol", "buy sol", "sell sol",
@@ -142,22 +209,12 @@ def classify_query_intent(
         if not _NEGATED_ACTION.search(query_lower):
             return QueryIntent.NEEDS_WALLET
 
-    # Determine MCP permissions — per-persona mcp_access takes priority
+    # Determine Brave access — per-persona mcp_access takes priority
     if mcp_access is not None:
-        # Per-persona MCP access (from persona JSON mcp_access field)
         can_use_brave = "brave_search" in mcp_access
-        can_use_mongodb = "mongodb" in mcp_access
     else:
         # Fallback: rarity-based access for personas that have no mcp_access field.
-        # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026)
-        # because they were never read — all current personas define mcp_access explicitly.
-        # These hardcoded sets are intentional; they cover edge-cases if a future persona
-        # lacks an mcp_access field (e.g. a quickly-added persona during development).
-        can_use_mongodb = persona_rarity.lower() in {"epic", "legendary"}
         can_use_brave = persona_rarity.lower() in {"rare", "epic", "legendary"}
-
-    # Check bot state intent early (before definition/data checks)
-    has_bot_state_intent = any(kw in query_lower for kw in BOT_STATE_KEYWORDS)
 
     # Check for definition/math keywords (NO MCP needed)
     # But allow queries that are asking for prices/values/opinions/web data despite having "what is/are"
@@ -171,114 +228,38 @@ def classify_query_intent(
     opinion_keywords = ["saying", "think", "believe", "opinion", "sentiment", "talking about", "experts say", "analysts"]
     has_opinion_intent = any(kw in query_lower for kw in opinion_keywords)
 
-    # Check if query needs web search despite having definition keywords
+    # Check if query needs web search
     has_web_search_intent = any(kw in query_lower for kw in SEARCH_KEYWORDS)
 
-    # Check if query is asking for data despite having definition keywords
-    data_keywords = ["price", "value", "worth", "cost", "indicator", "analysis", "rsi", "macd"]
-    has_data_intent = any(kw in query_lower for kw in data_keywords)
-
-    # MongoDB technical keywords also count as data intent (e.g., "fear and greed", "adx", "vwap")
-    if not has_data_intent and any(kw in query_lower for kw in MONGODB_TECHNICAL_KEYWORDS):
-        has_data_intent = True
-
-    # Bot state queries override definition intent (e.g., "what is my bot doing" has "what is" but is a data query)
-    if has_bot_state_intent:
-        has_data_intent = True
-
-    if has_definition_intent and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
-        # Pure educational/definition queries don't need MCPs
+    if has_definition_intent and not has_opinion_intent and not has_web_search_intent:
         return QueryIntent.NEEDS_NEITHER
 
-    if is_educational and not has_opinion_intent and not has_data_intent and not has_web_search_intent:
-        # Educational queries like "Why was Bitcoin created?" should not trigger MCPs
+    if is_educational and not has_opinion_intent and not has_web_search_intent:
         return QueryIntent.NEEDS_NEITHER
-
-    # Check MongoDB triggers first (highest priority for crypto data queries)
-    # Detect MongoDB intent BEFORE checking rarity permissions
-    # Multi-token: resolve_token() detects any of 13 supported tokens
-    has_mongodb_intent = False
-    resolved_token = resolve_token(query_lower)
-    if resolved_token is not None:
-        # Check specific MongoDB keyword groups
-        if any(kw in query_lower for kw in MONGODB_PRICE_KEYWORDS):
-            has_mongodb_intent = True
-        elif any(kw in query_lower for kw in MONGODB_HISTORICAL_KEYWORDS):
-            has_mongodb_intent = True
-        elif any(kw in query_lower for kw in MONGODB_TRADING_KEYWORDS):
-            has_mongodb_intent = True
-        elif any(kw in query_lower for kw in MONGODB_TECHNICAL_KEYWORDS):
-            has_mongodb_intent = True
-        # Generic "price" with any crypto token also triggers MongoDB intent
-        elif "price" in query_lower:
-            has_mongodb_intent = True
-
-    # Bot state queries also route through MongoDB (different database, same MCP)
-    if has_bot_state_intent:
-        has_mongodb_intent = True
-
-    # Only grant MongoDB access if persona has permission
-    needs_mongodb = has_mongodb_intent and can_use_mongodb
 
     # Check web search triggers
-    needs_web = False
-    # Don't fallback to web search for MongoDB queries when persona lacks access
-    can_fallback_to_web = not (has_mongodb_intent and not can_use_mongodb)
+    if can_use_brave and (not has_definition_intent or has_opinion_intent or has_web_search_intent):
+        if any(kw in query_lower for kw in SEARCH_KEYWORDS):
+            return QueryIntent.NEEDS_WEB_SEARCH
+        elif has_opinion_intent:
+            return QueryIntent.NEEDS_WEB_SEARCH
 
-    # Allow web search if: no definition intent, OR has opinion intent, OR has web search keywords
-    if can_use_brave and can_fallback_to_web and (not has_definition_intent or has_opinion_intent or has_web_search_intent):
-        # Crypto news/articles need web search, NOT MongoDB
-        if resolved_token is not None and any(word in query_lower for word in ["news", "article", "report", "announcement"]):
-            needs_web = True
-            # If query also asks for price AND news, keep both
-            if not ("price" in query_lower or "cost" in query_lower):
-                needs_mongodb = False  # News only = web only
+    # R4: Semantic embedding fallback — catches ambiguous queries that miss all keywords.
+    # Only runs when the persona has at least one MCP capability; skips for pure-LLM personas.
+    if can_use_brave or can_use_wallet:
+        try:
+            from .semantic_router import route_by_embedding
+            semantic_intent = route_by_embedding(
+                query=query,
+                can_use_brave=can_use_brave,
+                can_use_mongodb=False,
+                can_use_wallet=can_use_wallet,
+            )
+            if semantic_intent == "wallet":
+                return QueryIntent.NEEDS_WALLET
+            elif semantic_intent == "web_search":
+                return QueryIntent.NEEDS_WEB_SEARCH
+        except Exception:
+            pass  # Semantic router failure is non-fatal — fall through to NEEDS_NEITHER
 
-        # General web search keywords (but not if MongoDB already triggered for crypto price)
-        elif not needs_mongodb:
-            if any(kw in query_lower for kw in SEARCH_KEYWORDS):
-                needs_web = True
-            # Opinion/sentiment queries need web search for current expert views
-            elif has_opinion_intent:
-                needs_web = True
-
-        # "current" in crypto context means MongoDB, not web search
-        if needs_mongodb and "current" in query_lower and resolved_token is not None:
-            # Check if it's asking for current price data (MongoDB)
-            # vs current news/events (web)
-            if "news" not in query_lower and "article" not in query_lower:
-                needs_web = False  # Current price data, not current news
-
-    # Return intent
-    if needs_mongodb and needs_web:
-        return QueryIntent.NEEDS_BOTH
-    elif needs_mongodb:
-        return QueryIntent.NEEDS_MONGODB
-    elif needs_web:
-        return QueryIntent.NEEDS_WEB_SEARCH
-    elif has_mongodb_intent and not can_use_mongodb:
-        # MongoDB query detected but persona doesn't have access
-        # Don't fallback to web search - return NEITHER
-        return QueryIntent.NEEDS_NEITHER
-    else:
-        # R4: Semantic embedding fallback — catches ambiguous queries that miss all keywords.
-        # Only runs when the persona has at least one MCP capability; skips for pure-LLM personas.
-        if can_use_brave or can_use_mongodb or can_use_wallet:
-            try:
-                from .semantic_router import route_by_embedding
-                semantic_intent = route_by_embedding(
-                    query=query,
-                    can_use_brave=can_use_brave,
-                    can_use_mongodb=can_use_mongodb,
-                    can_use_wallet=can_use_wallet,
-                )
-                if semantic_intent == "wallet":
-                    return QueryIntent.NEEDS_WALLET
-                elif semantic_intent == "web_search":
-                    return QueryIntent.NEEDS_WEB_SEARCH
-                elif semantic_intent == "mongodb":
-                    return QueryIntent.NEEDS_MONGODB
-            except Exception:
-                pass  # Semantic router failure is non-fatal — fall through to NEEDS_NEITHER
-
-        return QueryIntent.NEEDS_NEITHER
+    return QueryIntent.NEEDS_NEITHER

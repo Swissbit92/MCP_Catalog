@@ -54,29 +54,17 @@ describe('SourceIndicator', () => {
     });
   });
 
-  describe('when source_type is mongodb_mcp', () => {
+  describe('when source_type is brave_mcp with data timestamp', () => {
     const metadata: ResponseMetadata = {
-      source_type: 'mongodb_mcp',
-      tools_used: ['bitcoin_current_price'],
+      source_type: 'brave_mcp',
+      tools_used: ['brave_web_search'],
       cache_status: 'miss',
       data_timestamp: '2025-12-11 20:00:00',
     };
 
-    it('should display Trading Data label', () => {
+    it('should display web search label', () => {
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText('The Crystal Grid')).toBeInTheDocument();
-    });
-
-    it('should apply amber hex color', () => {
-      const { container } = render(<SourceIndicator metadata={metadata} />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.style.color).toBe('rgb(243, 156, 18)');
-    });
-
-    it('should display formatted tool name', () => {
-      render(<SourceIndicator metadata={metadata} />);
-      // bitcoin_current_price should be formatted as "current price"
-      expect(screen.getByText(/current price/i)).toBeInTheDocument();
+      expect(screen.getByText('The Outer Archives')).toBeInTheDocument();
     });
 
     it('should display data timestamp', () => {
@@ -85,34 +73,10 @@ describe('SourceIndicator', () => {
     });
   });
 
-  describe('when source_type is multi_mcp', () => {
-    const metadata: ResponseMetadata = {
-      source_type: 'multi_mcp',
-      tools_used: ['brave_web_search', 'bitcoin_current_price'],
-    };
-
-    it('should display Multi-Source Analysis label', () => {
-      render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText('Converged Insight')).toBeInTheDocument();
-    });
-
-    it('should apply lavender hex color', () => {
-      const { container } = render(<SourceIndicator metadata={metadata} />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.style.color).toBe('rgb(224, 195, 252)');
-    });
-
-    it('should display multiple tools', () => {
-      render(<SourceIndicator metadata={metadata} />);
-      const toolsText = screen.getByText(/web search.*current price/i);
-      expect(toolsText).toBeInTheDocument();
-    });
-  });
-
   describe('cache status indicator', () => {
     it('should display lightning icon when cache_status is hit', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: ['bitcoin_current_price'],
         cache_status: 'hit',
       };
@@ -124,7 +88,7 @@ describe('SourceIndicator', () => {
 
     it('should not display lightning icon when cache_status is miss', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: ['bitcoin_current_price'],
         cache_status: 'miss',
       };
@@ -158,7 +122,7 @@ describe('SourceIndicator', () => {
 
     it('should format seconds correctly', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: [],
         data_timestamp: '2025-12-11T19:59:45Z', // 15 seconds ago
       };
@@ -169,7 +133,7 @@ describe('SourceIndicator', () => {
 
     it('should format minutes correctly', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: [],
         data_timestamp: '2025-12-11T19:55:00Z', // 5 minutes ago
       };
@@ -180,7 +144,7 @@ describe('SourceIndicator', () => {
 
     it('should format hours correctly', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: [],
         data_timestamp: '2025-12-11T18:00:00Z', // 2 hours ago
       };
@@ -191,7 +155,7 @@ describe('SourceIndicator', () => {
 
     it('should format days correctly', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: [],
         data_timestamp: '2025-12-09T20:00:00Z', // 2 days ago
       };
@@ -202,7 +166,7 @@ describe('SourceIndicator', () => {
 
     it('should handle invalid timestamp gracefully', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
+        source_type: 'brave_mcp',
         tools_used: [],
         data_timestamp: 'invalid-timestamp',
       };
@@ -214,44 +178,24 @@ describe('SourceIndicator', () => {
   });
 
   describe('tool name formatting', () => {
-    it('should format bitcoin_current_price', () => {
+    it('should format brave_web_search', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
-        tools_used: ['bitcoin_current_price'],
+        source_type: 'brave_mcp',
+        tools_used: ['brave_web_search'],
       };
 
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText(/current price/i)).toBeInTheDocument();
+      expect(screen.getByText(/web search/i)).toBeInTheDocument();
     });
 
-    it('should format bitcoin_historical_prices', () => {
+    it('should format multiple tools', () => {
       const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
-        tools_used: ['bitcoin_historical_prices'],
+        source_type: 'brave_mcp',
+        tools_used: ['brave_web_search', 'jupiter_swap'],
       };
 
       render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText(/historical prices/i)).toBeInTheDocument();
-    });
-
-    it('should format bitcoin_trading_summary', () => {
-      const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
-        tools_used: ['bitcoin_trading_summary'],
-      };
-
-      render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText(/trading summary/i)).toBeInTheDocument();
-    });
-
-    it('should format bitcoin_technical_analysis', () => {
-      const metadata: ResponseMetadata = {
-        source_type: 'mongodb_mcp',
-        tools_used: ['bitcoin_technical_analysis'],
-      };
-
-      render(<SourceIndicator metadata={metadata} />);
-      expect(screen.getByText(/technical analysis/i)).toBeInTheDocument();
+      expect(screen.getByText(/web search/i)).toBeInTheDocument();
     });
   });
 

@@ -2,7 +2,7 @@
 title: Adding MCP Servers to MCP Coordinator
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -20,7 +20,7 @@ This guide explains how to integrate new Model Context Protocol (MCP) servers in
 - [Overview](#overview)
 - [MCP Architecture Patterns](#mcp-architecture-patterns)
   - [Pattern 1: Ephemeral STDIO (Brave Search)](#pattern-1-ephemeral-stdio-brave-search)
-  - [Pattern 2: Long-Running STDIO (MongoDB)](#pattern-2-long-running-stdio-mongodb)
+  - [Pattern 2: Long-Running STDIO (Jupiter/Solana Wallet)](#pattern-2-long-running-stdio-jupitersolana-wallet)
 - [Choosing a Pattern](#choosing-a-pattern)
 - [Adding a New MCP Server](#adding-a-new-mcp-server)
 - [Step-by-Step Examples](#step-by-step-examples)
@@ -51,8 +51,8 @@ Backend Container (mounts /var/run/docker.sock)
     ├─> spawns: docker run -i --rm docker.io/mcp/brave-search
     │   (ephemeral: lives 2-3 seconds, processes request, dies)
     │
-    ├─> spawns: docker run -i --rm docker.io/mcp/mongodb
-    │   (long-running: stays alive for multiple requests)
+    ├─> spawns: docker run -i --rm docker.io/mcp/[jupiter/solana-wallet]
+    │   (long-running: stays alive for wallet operations)
     │
     └─> spawns: docker run -i --rm docker.io/mcp/[any-mcp-server]
         (universal pattern for all MCP servers)
@@ -161,9 +161,9 @@ def _spawn_mcp_container(self, request: Dict[str, Any]) -> str:
 
 ---
 
-### Pattern 2: Long-Running STDIO (MongoDB)
+### Pattern 2: Long-Running STDIO (Jupiter/Solana Wallet)
 
-**Use When:** The MCP server expects to stay alive across multiple requests.
+**Use When:** The MCP server expects to stay alive across multiple requests (e.g. wallet operations with connection state).
 
 **Characteristics:**
 - Spawns `docker run -i --rm` **once**
@@ -171,92 +171,19 @@ def _spawn_mcp_container(self, request: Dict[str, Any]) -> str:
 - Processes **multiple requests** via same stdin
 - Returns results via stdout
 - **Must be manually terminated** when done
-- Maintains internal state
+- Maintains internal state (e.g. authenticated session)
 
 **Example MCP Servers:**
-- MongoDB (database connections)
+- Jupiter/Solana wallet (current implementation)
 - Database clients (Postgres, Neo4j)
 - Services with initialization overhead
-- Stateful integrations
-
-**Implementation:**
-
-```python
-# src/coordinator/mongodb/docker_client.py (MongoDB pattern)
-
-def _start_mcp_server(self) -> subprocess.Popen:
-    """
-    Start long-running MCP server process.
-    Container stays alive for multiple requests.
-    """
-    cmd = [
-        "docker", "run",
-        "-i",                          # Interactive mode (keep stdin open)
-        "--rm",                        # Remove after exit
-        "-e", "MDB_MCP_CONNECTION_STRING",
-        "mcp/mongodb"
-    ]
-
-    env = os.environ.copy()
-    env["MDB_MCP_CONNECTION_STRING"] = self.connection_uri
-
-    # Start container (stays alive)
-    process = subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-        text=True,
-        encoding='utf-8',
-        errors='replace',
-        bufsize=1  # Line buffered
-    )
-
-    # Give Docker a moment to initialize
-    time.sleep(2)
-
-    # Store process reference for later use
-    self._process = process
-    return process
-
-def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Send request to long-running MCP server.
-    Reuses same container for multiple calls.
-    """
-    request = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/call",
-        "params": {
-            "name": tool_name,
-            "arguments": arguments
-        }
-    }
-
-    # Send to existing container
-    self._process.stdin.write(json.dumps(request) + "\n")
-    self._process.stdin.flush()
-
-    # Read response (container stays alive)
-    response_line = self._process.stdout.readline()
-    return json.loads(response_line)
-
-def close(self):
-    """
-    Terminate long-running container when done.
-    """
-    if self._process:
-        self._process.terminate()
-        self._process.wait(timeout=5)
-```
 
 **Key Points:**
 - Container **does NOT exit** after response
 - Reuse same process for multiple calls
 - Must call `close()` to terminate
 - More efficient for repeated operations
+- See `src/coordinator/services/wallet_mcp_service.py` for the live implementation
 
 ---
 
@@ -270,7 +197,7 @@ Does the MCP server exit after responding to a request?
 │         Examples: Brave Search, web APIs, stateless lookups
 │
 └─ NO → Use Long-Running STDIO Pattern (Pattern 2)
-          Examples: MongoDB, database clients, stateful services
+          Examples: Jupiter/Solana wallet, database clients, stateful services
 ```
 
 **How to Test:**
@@ -971,22 +898,6 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
 - If hangs: Switch to long-running pattern
 - If timeout on valid requests: Increase timeout value
 
-### Wrong Pattern Chosen
-
-**Symptom Ephemeral → Long-Running:**
-- Requests timeout
-- Container doesn't exit
-- Hangs waiting for more input
-
-**Solution:** Migrate to long-running pattern (see Pattern 2)
-
-**Symptom Long-Running → Ephemeral:**
-- Frequent container restarts
-- Slow performance (spawning overhead)
-- Resource waste
-
-**Solution:** Keep long-running if there's initialization overhead, otherwise ephemeral is fine
-
 ### JSON-RPC Errors
 
 **Symptom:** `{"error": {"code": -32600, "message": "Invalid Request"}}`
@@ -1055,11 +966,11 @@ The `mcp_access` field in each persona's JSON overrides the tier-based fallback:
 
 | Persona | Order | `mcp_access` |
 |---------|-------|--------------|
-| E.E.V.A. | Archon | `["brave", "mongodb"]` |
-| Aegis | Warden | `["brave"]` |
-| Aurora | Warden | `["brave", "mongodb"]` |
-| Solace | Warden | `["brave"]` |
-| Cipher | Sage | `["brave", "mongodb"]` |
+| E.E.V.A. | Archon | `["brave_search", "solana_wallet"]` |
+| Aegis | Warden | `["brave_search"]` |
+| Aurora | Warden | `["brave_search"]` |
+| Solace | Warden | `["brave_search"]` |
+| Cipher | Sage | `["brave_search"]` |
 | Nyx | Sage | `[]` (none) |
 | Legacy / Wanderer personas | Wanderer | not set (fallback: none) |
 
@@ -1089,20 +1000,16 @@ def get_tools_for_persona(
 
     # --- Primary: per-persona mcp_access field ---
     if mcp_access is not None:
-        if "brave" in mcp_access:
+        if "brave_search" in mcp_access:
             tools.extend(BRAVE_TOOLS)
-        if "mongodb" in mcp_access:
-            tools.extend(MONGODB_TOOLS)
+        if "solana_wallet" in mcp_access:
+            tools.extend(WALLET_TOOLS)
         return tools
 
     # --- Fallback: hardcoded rarity sets for personas without mcp_access field ---
-    # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026).
-    # All current personas define mcp_access explicitly; these sets are a safety net.
+    # All current personas define mcp_access explicitly; this is a safety net only.
     if rarity.lower() in {"rare", "epic", "legendary"}:
         tools.extend(BRAVE_TOOLS)
-
-    if rarity.lower() in {"epic", "legendary"}:
-        tools.extend(MONGODB_TOOLS)
 
     return tools
 ```
@@ -1113,7 +1020,7 @@ def get_tools_for_persona(
 {
   "key": "nephilim_cipher",
   "celestial_order": "sage",
-  "mcp_access": ["brave_search", "mongodb"],
+  "mcp_access": ["brave_search"],
   ...
 }
 ```
@@ -1128,10 +1035,9 @@ should always set `mcp_access` explicitly.
 # Test per-persona mcp_access field (primary path)
 from src.coordinator.tool_definitions import get_tools_for_persona
 
-# Cipher: Sage with explicit mcp_access overriding the fallback
-cipher_tools = get_tools_for_persona("nephilim_cipher", "sage", mcp_access=["brave", "mongodb"])
+# Cipher: Sage with explicit mcp_access (brave only)
+cipher_tools = get_tools_for_persona("nephilim_cipher", "sage", mcp_access=["brave_search"])
 assert any(t["function"]["name"] == "brave_web_search" for t in cipher_tools)
-assert any(t["function"]["name"].startswith("mongodb") for t in cipher_tools)
 
 # Nyx: Sage with empty mcp_access — no tools despite sage tier
 nyx_tools = get_tools_for_persona("nephilim_nyx", "sage", mcp_access=[])
@@ -1141,8 +1047,8 @@ assert len(nyx_tools) == 0
 wanderer_tools = get_tools_for_persona("legacy_persona", "wanderer")
 assert len(wanderer_tools) == 0
 
-# E.E.V.A.: Archon with full mcp_access
-eeva_tools = get_tools_for_persona("nephilim_eeva", "archon", mcp_access=["brave", "mongodb"])
+# E.E.V.A.: Archon with brave + wallet mcp_access
+eeva_tools = get_tools_for_persona("nephilim_eeva", "archon", mcp_access=["brave_search", "solana_wallet"])
 assert len(eeva_tools) > 0
 ```
 

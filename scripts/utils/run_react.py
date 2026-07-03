@@ -82,7 +82,7 @@ def check_ollama(base: str, model: str):
 def check_npm():
     """Check if npm is available."""
     try:
-        result = subprocess.run(["npm", "--version"], capture_output=True, text=True, timeout=5, shell=True)
+        result = subprocess.run(["npm", "--version"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             print(f"npm version: {result.stdout.strip()}")
             return True
@@ -136,7 +136,7 @@ def main():
     time.sleep(3)
 
     try:
-        react_proc = subprocess.Popen(react_cmd, cwd=react_cwd, shell=True)
+        react_proc = subprocess.Popen(react_cmd, cwd=react_cwd)
     except FileNotFoundError:
         print("ERROR: Could not start React UI (npm missing?).")
         print("   -> Install Node.js and run: cd react-ui && npm install")

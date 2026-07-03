@@ -37,12 +37,12 @@ mnemonic>=0.21              # BIP39 mnemonic phrase generation for wallet recove
 aiosmtplib==3.0.0           # Async SMTP for trade email notifications
 apscheduler==3.10.4         # Background scheduler for autonomous strategy execution
 cryptography>=42.0.0        # AES-GCM encryption for private key storage
-pymongo>=4.6.0              # MongoDB direct write client for trade history
 
 # Google OAuth + JWT Authentication
 google-auth>=2.40.0
 PyJWT>=2.8.0
 
-# Note: This project requires Node.js and npm for the React UI
-# Install Node.js from: https://nodejs.org/
-# After installing Node.js, run: cd react-ui && npm install
+# Note: This project requires Node.js + npm for the React UI (Node 20 LTS recommended).
+# react-scripts breaks on Node 17+ unless NODE_OPTIONS=--openssl-legacy-provider is set —
+# that flag is already baked into the react-ui/package.json scripts.
+# Install Node.js from: https://nodejs.org/  then: cd react-ui && npm install

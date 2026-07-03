@@ -2,7 +2,7 @@
 title: Docker Quick Start Guide - SQLite Edition
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -58,9 +58,8 @@ nano .env.docker
 
 **Optional customizations**:
 - `BRAVE_API_KEY` - Add API key to enable web search (get free key at https://brave.com/search/api/)
-- `PERSONA_MODEL` - Change LLM model (default: `nchapman/gemma-2-9b-it-abliterated:9b`)
+- `PERSONA_MODEL` - Change LLM model (default: `gemma2:9b-instruct-q5_K_M`)
 - `PERSONA_TEMPERATURE` - Adjust creativity (default: `0.9`)
-- `MONGODB_URI` - Add MongoDB connection for trading data features
 
 ---
 
@@ -101,7 +100,7 @@ ai-companion-web    nephilim-frontend       Up (healthy)
 
 ```bash
 # Pull the default model (9GB download - takes 10-15 minutes)
-docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+docker exec -it ai-companion-brain ollama pull gemma2:9b-instruct-q5_K_M
 
 # Optional: Pull embedding model for Phase 3 memory features
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
@@ -113,17 +112,17 @@ docker exec -it ai-companion-brain ollama list
 Expected output:
 ```
 NAME                                         SIZE
-nchapman/gemma-2-9b-it-abliterated:9b       9.0 GB
+gemma2:9b-instruct-q5_K_M                   9.0 GB
 nomic-embed-text:latest                      274 MB
 ```
 
 **Alternative models** (if you prefer):
 ```bash
+# Daily-driver persona model — uncensored, higher quality (larger; needs more RAM)
+docker exec -it ai-companion-brain ollama pull hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M
+
 # General purpose (censored, more formal)
 docker exec -it ai-companion-brain ollama pull llama3.1:latest
-
-# Smaller/faster (3.8GB)
-docker exec -it ai-companion-brain ollama pull mistral:latest
 ```
 
 ---
@@ -198,7 +197,7 @@ docker-compose build frontend
 docker-compose up -d frontend
 ```
 
-> **Important:** Always run `verify_startup.py` after rebuilding the backend. This checks that the database, Ollama, Brave MCP, and MongoDB MCP all initialized correctly. Without this step, broken MCP subsystems can silently return 500 errors.
+> **Important:** Always run `verify_startup.py` after rebuilding the backend. This checks that the database, Ollama, and Brave MCP all initialized correctly. Without this step, broken MCP subsystems can silently return 500 errors.
 
 ---
 
@@ -307,12 +306,12 @@ docker-compose --env-file .env.docker up -d
 **Solution**:
 ```bash
 # Option 1: Stop the other application
+# On Mac/Linux
+lsof -ti:3000 | xargs kill -9
+
 # On Windows
 netstat -ano | findstr :3000
 taskkill /PID <PID> /F
-
-# On Mac/Linux
-lsof -ti:3000 | xargs kill -9
 
 # Option 2: Change the port in docker-compose.yml
 # Edit docker-compose.yml line with "3000:80" to "3001:80"
@@ -422,34 +421,33 @@ docker-compose up -d
 
 ---
 
-## Advanced: GPU Support (NVIDIA Only)
+## Advanced: GPU Support
 
-If you have an NVIDIA GPU and want faster LLM responses:
+**Apple Silicon (Mac Mini M4 Pro / M1/M2/M3/M4):** Run Ollama natively for automatic Metal GPU acceleration — Docker-on-Mac always runs Ollama CPU-only regardless of the GPU section in `docker-compose.yml`.
 
-1. **Install NVIDIA Docker runtime**:
-   - https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+```bash
+# macOS — native Ollama for Metal GPU (recommended)
+ollama serve
+ollama pull gemma2:9b-instruct-q5_K_M
+```
 
-2. **Uncomment GPU section** in `docker-compose.yml`:
-   ```yaml
-   ollama:
-     deploy:
-       resources:
-         reservations:
-           devices:
-             - driver: nvidia
-               count: 1
-               capabilities: [gpu]
-   ```
+Then run only the backend + frontend containers via Docker, and point `OLLAMA_BASE` at the host:
+```bash
+OLLAMA_BASE=http://host.docker.internal:11434 docker-compose --env-file .env.docker up -d backend frontend nginx
+```
 
-3. **Restart Ollama**:
-   ```bash
-   docker-compose up -d ollama
-   ```
-
-4. **Verify GPU is detected**:
-   ```bash
-   docker exec -it mcp_ollama nvidia-smi
-   ```
+**NVIDIA GPU (Windows/Linux only):** Install the NVIDIA Docker runtime and uncomment the GPU section in `docker-compose.yml` under the `ollama` service:
+```yaml
+ollama:
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+```
+See https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html for the runtime setup.
 
 ---
 
@@ -460,11 +458,11 @@ If you have an NVIDIA GPU and want faster LLM responses:
 ```bash
 # See available models: https://ollama.com/library
 
-# Example: Pull Mistral 7B
-docker exec -it ai-companion-brain ollama pull mistral:latest
+# Example: Pull the daily-driver persona model
+docker exec -it ai-companion-brain ollama pull hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M
 
 # Update .env.docker
-PERSONA_MODEL=mistral:latest
+PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M
 
 # Restart backend
 docker-compose restart backend
@@ -580,7 +578,7 @@ If you want to deploy this to the cloud for others to use:
 
 **Common Questions**:
 - **How much RAM do I need?** Minimum 8GB, recommended 16GB+
-- **Does this work on ARM (M1/M2 Mac)?** Yes! Docker will handle architecture automatically
+- **Does this work on ARM (M1/M2/M3/M4 Mac)?** Yes — Docker Desktop runs ARM64 natively. Note: Ollama-in-Docker is CPU-only on Mac; use native Ollama (`ollama serve`) for Metal GPU acceleration.
 - **Can I use this without internet?** Yes, after initial model download
 - **How do I add personas?** Copy `personas/template.jsonc` and customize
 
@@ -652,7 +650,7 @@ FastAPI Backend → Loads persona from ./personas/eeva.json
     ↓
 Backend → Calls Ollama at http://ollama:11434/api/generate
     ↓
-Ollama → Runs LLM (dolphin-llama3:8b) → Returns response
+Ollama → Runs LLM (gemma2:9b-instruct-q5_K_M) → Returns response
     ↓
 Backend → Saves message to SQLite ./data/chats.db
     ↓

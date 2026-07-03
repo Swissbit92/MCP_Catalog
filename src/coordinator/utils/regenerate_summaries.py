@@ -15,9 +15,12 @@ import sys
 import io
 from pathlib import Path
 
-# Fix Windows console encoding
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+# Fix Windows console encoding (no-op elsewhere). Guard by platform: macOS/Linux
+# stdout is already UTF-8, and unconditionally rewrapping clobbers a captured
+# stream that may lack a .buffer attribute.
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))

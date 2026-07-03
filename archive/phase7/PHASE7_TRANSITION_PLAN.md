@@ -1,5 +1,7 @@
 # Phase 7: Full NEPHILIM UI Transition — Tracking Document
 
+> Note (archived): path references below are from the old Windows dev machine. Current path: ~/nephilim/nephilim
+
 > **Status:** Complete ✅
 > **Started:** 2026-02-16
 > **Completed:** 2026-02-17

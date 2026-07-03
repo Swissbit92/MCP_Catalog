@@ -75,3 +75,16 @@ react-ui/public/images/gwen_NSFW_bg.png
 react-ui/public/images/gwen_NSFW_card.png
 personas/_summaries/Gwen_alt.json
 
+
+# secrets — never commit (rotate the already-leaked creds!)
+.env
+.env.docker
+# generated artifacts / caches
+/personas/_summaries/
+/tests/manual/results/
+
+# coverage / pytest artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/

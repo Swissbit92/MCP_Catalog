@@ -11,28 +11,38 @@ MCP Coordinator is a **local-first persona-driven chat interface** combining a F
 - **Frontend**: React 19 + TypeScript with Framer Motion animations and Tailwind CSS
 - **Persistence**: SQLite database (`chats.db`) for sessions, messages, and collections
 - **Personas**: JSON-defined characters in `personas/` with lore, voice, behavior, and expertise
-- **MCP Integration**: Brave Search (web) and MongoDB (trading data) via Docker STDIO containers
+- **MCP Integration**: Brave Search (web) via ephemeral Docker STDIO containers; Solana/Jupiter wallet via long-running Docker container
 
 ## Development Commands
 
 Full command reference: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — Docker, local dev, testing, persona test suite, Ollama setup.
 
-**Access:** Frontend `http://localhost:3000` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
+**Access (local dev, macOS):** Frontend `http://localhost:3001` | Backend `http://localhost:8000` | API Docs `http://localhost:8000/docs`
 
 Quick hits:
 
 ```bash
-# Docker start (most common)
-docker-compose --env-file .env.docker up -d
+# Local dev — PRIMARY on macOS (native Ollama + Metal GPU). Backend, then frontend:
+.venv/bin/python -m uvicorn src.coordinator.server:app --port 8000
+cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into the script (Node 17+)
+
+# Backend tests (~1,400; 63% coverage, gate --cov-fail-under=60). Live tests
+# auto-skip when Ollama/Brave/Docker are unreachable (tests/conftest.py).
+pytest tests/
+OLLAMA_BASE=http://127.0.0.1:1 pytest tests/   # force headless: live tests skip
 
 # Full persona test suite (primary quality gate, ~60 min)
-python tests/manual/comprehensive_persona_test.py
+.venv/bin/python tests/manual/comprehensive_persona_test.py
 
-# Post-rebuild verification (MANDATORY)
-python scripts/docker/verify_startup.py
+# Docker (full stack + MCP containers; for Linux/NVIDIA GPU — runs Ollama CPU-only on Mac)
+docker-compose --env-file .env.docker up -d
 ```
 
-> **⚠️ Docker serves legacy UI unless rebuilt.** For Phase 7 NEPHILIM UI, use local dev per `docs/DEVELOPMENT.md`.
+> **Writing backend tests:** mark anything that hits Ollama/Brave/Docker with `@pytest.mark.requires_ollama`/`requires_api_key`/`requires_docker` (else it fails headless). Use `asyncio.run()` not `get_event_loop()`, `TestClient(app)` without the `with` (skips lifespan), and don't add `__init__.py` to the test tree. Full conventions: [`docs/development/TESTING_GUIDE.md`](docs/development/TESTING_GUIDE.md).
+
+> **⚠️ macOS:** run Ollama natively for Metal GPU acceleration — Docker-on-Mac runs Ollama CPU-only. Docker also serves the legacy UI unless rebuilt, so use local dev for the Phase 7 NEPHILIM UI (`docs/DEVELOPMENT.md`).
+
+**Always-on (launchd):** `com.nephilim.backend` (uvicorn :8000) + `com.nephilim.frontend` (static `scripts/serve_frontend.py` :3001) run under launchd with RunAtLoad+KeepAlive. Reinstall after changes: `scripts/launchd/install.sh` (rebuild frontend first: `cd react-ui && npm run build`). Migration cleanup punch list: `docs/MAC_MIGRATION_CLEANUP.md`.
 
 ## Project Structure
 
@@ -48,7 +58,6 @@ repositories/                  # SQLite data access — ALL extend BaseRepositor
                                #   user_profile, user (OAuth), trade_proposal, wallet
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
 tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
-mongodb/                       # MongoDB MCP client
 ```
 
 **Key files:**
@@ -56,8 +65,9 @@ mongodb/                       # MongoDB MCP client
 - `prompt_builder.py` - System prompt construction from persona JSON (XML-tagged sections with bookend pattern)
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
-- `memory_manager.py`, `memory_rag.py` - RAG semantic search
-- `tools/intent_classifier.py` - Query intent classification (wallet, brave, mongodb, llm) with follow-up detection
+- `memory_manager.py`, `memory_rag.py` - RAG semantic search (bge-m3 embeddings via modern `langchain_ollama` + `num_ctx`; cosine `1 − D/2` scoring, `min_relevance=0.5` recall floor)
+- `memory_text_utils.py` - embedding-input guard (normalize, drop-empty, chunk oversized / truncate query before embedding — prevents Ollama HTTP 500 overflow)
+- `tools/intent_classifier.py` - Query intent classification (wallet, brave, llm) with follow-up detection
 - `tools/keywords.py` - Keyword dictionaries for intent classification routing
 
 ### Frontend (`react-ui/src/`)
@@ -93,7 +103,7 @@ utils/                         # animations.ts, helpers, celestialOrder.ts
 Required in `.env`:
 ```bash
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=gemma2:9b-instruct-q5_K_M
+PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M   # daily driver; gemma2:9b-instruct-q5_K_M = fallback/smoke-test
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
@@ -101,8 +111,7 @@ PERSONA_DIR=personas
 
 Optional (see `.env.docker` for full list):
 - `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access` in persona JSON)
-- `MONGODB_URI` - Trading data (access controlled per-persona via `mcp_access` in persona JSON)
-- `MEMORY_EMBEDDING_MODEL` - RAG embeddings
+- `MEMORY_EMBEDDING_MODEL` - RAG embeddings (default `bge-m3:latest`, 8192-token ctx; `ollama pull bge-m3`). `MEMORY_EMBEDDING_MAX_TOKENS` (8192) caps input before chunking
 
 ## Code Style
 
@@ -139,20 +148,21 @@ Optional (see `.env.docker` for full list):
 2. User message → POST `/sessions/{session_id}/chat` with persona, message
 3. Backend builds system prompt from persona JSON + cached CV summary (XML-tagged sections)
 4. For wallet-capable personas: ground-truth wallet state injected into system prompt (anti-hallucination)
-5. Intent classifier routes query → wallet / brave / mongodb / pure LLM
+5. Intent classifier routes query → wallet / brave / pure LLM
 6. Ollama generates response with per-persona sampling overrides (min_p, repeat_penalty), stored in SQLite
 7. Post-processor strips leaked tool names via regex, enforces first-person
 8. Frontend renders with Celestial Order theming
 
 ### MCP Integration Patterns
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
-- **Long-Running (MongoDB):** Container stays alive for multiple requests
+- **Long-Running (Jupiter/Solana):** Container stays alive for wallet operations
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
 
 ### MCP Query Routing Pipeline
 Queries flow through a two-layer classification system:
 
-1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which MCP to use (web/mongodb/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`.
+1. **Intent Classifier** (`tools/intent_classifier.py`): Keyword-based routing determines which tool to use (web/wallet/llm). Uses keyword dictionaries from `tools/keywords.py`. A bge-m3 embedding **semantic router** (`tools/semantic_router.py`) runs as a fallback for queries that miss all keywords.
+   - **Semantic-PRIMARY mode** (HERMES-Agents Phase 0, flag-gated `ROUTING_SEMANTIC_PRIMARY`): promotes the semantic router ahead of the fuzzy keyword lists — order becomes follow-up → high-precision keyword fast-path (`WALLET_FASTPATH`/`EXPLICIT_SEARCH_COMMANDS`) → semantic router → NEEDS_NEITHER. Default **on** (matches prod; set `ROUTING_SEMANTIC_PRIMARY=false` to revert to the byte-identical legacy keyword-first order). The primary path uses **max-over-examples** (nearest-example) scoring, not mean centroids (centroids smear and over-route chitchat). Threshold/margin tuned via `tests/evaluation/tune_routing_threshold.py` on a held-out set (`ROUTING_SEMANTIC_THRESHOLD=0.66`, wallet precision 1.0 / recall 0.96 / acc 0.91). `ROUTING_*` settings live in `config.RoutingSettings`.
 2. **Tool Calling Service** (`services/tool_calling_service.py`): When Brave search is needed, force-executes the search directly via Docker instead of relying on the local LLM to generate JSON tool calls (small models are unreliable at structured tool calling). This "keyword force search" pattern bypasses the LLM tool-calling loop entirely.
 
 **Anti-hallucination guards:**
@@ -163,12 +173,12 @@ Queries flow through a two-layer classification system:
 ## Important Implementation Details
 
 ### Celestial Order & Per-Persona MCP Access
-MCP access is now controlled per-persona via the `mcp_access` field in persona JSONs, with legacy rarity-based env var fallback:
-- **E.E.V.A.** (Archon): Brave + MongoDB (all access)
-- **Aegis** (Warden): Brave only (productivity needs web, not trading)
-- **Aurora** (Warden): Brave + MongoDB (Oracle gazes into data)
-- **Solace** (Warden): Brave only (empathy needs resources, not trading)
-- **Cipher** (Sage): Brave + MongoDB (Maven's identity is data research)
+MCP access is controlled per-persona via the `mcp_access` field in persona JSONs:
+- **E.E.V.A.** (Archon): Brave + Solana wallet
+- **Aegis** (Warden): Brave only (productivity needs web)
+- **Aurora** (Warden): Brave only (Oracle insight via web)
+- **Solace** (Warden): Brave only (empathy needs resources)
+- **Cipher** (Sage): Brave only (Maven's research is web-based)
 - **Nyx** (Sage): None (creativity flows from imagination)
 - **Wanderer personas** (Gojo, etc.): None (pure LLM)
 
@@ -197,6 +207,12 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for: backend startup, M
 ## NEPHILIM System
 
 6 interconnected personas (E.E.V.A., Aegis, Solace, Nyx, Cipher, Aurora) with worldbuilding, progression (5 ranks), and gamification. Prompt construction via `prompt_builder.py` (XML-tagged bookend pattern). Anti-hallucination for wallet personas via ground-truth injection.
+
+**On-demand lore + capabilities (HERMES-Agents Phase 2, flag-gated `LORE_ONDEMAND_ENABLED`, default ON — matches prod; set `LORE_ONDEMAND_ENABLED=false` to revert).** Beyond the static 3-entity-per-persona prefill, when enabled the coordinator retrieves query-relevant lore per turn and appends it after the cached `build_system_prompt` (never inside it — `lru_cache` would poison). Hybrid: deterministic alias/keyword match + bge-m3 semantic search over the full 34-entity wiki (`memory_rag.search_lore`, reuses the RAG embedder; `canon_only` for the semantic tier), deduped vs the static core, trimmed to `LORE_MAX_BUDGET_TOKENS`. This lights up the 16 previously-dormant wiki entities (NPCs/ranks/concepts/faction). "Skills" are **internal** `entity_type: capability` wiki entries (`docs/lore/wiki/capabilities/`) gated by persona + rank + affinity (`lore_retrieval.py`) — never user-invokable; a brief diegetic unlock toast (`CapabilityUnlockToast`, persona voice) fires via `response.metadata.capability_unlocks`. Progression fixes shipped alongside: `affinity_level` now increments (was dead → affinity-gated lore never fired), and an optional seeker-rank prompt block (`LORE_RANK_CONTEXT_ENABLED`). Tuning/eval: `tests/evaluation/eval_lore_retrieval.py`. See [ADR-003](docs/decisions/003-on-demand-hybrid-lore-retrieval.md).
+
+**Persona-safe agentic behaviour (HERMES-Agents Phase 3, flag-gated `AGENTIC_ENABLED`, default OFF).** Single in-character tool action per turn (web-search path) where ALL enforcement is deterministic middleware, never LLM self-policing. Pipeline (`services/agentic_pipeline.py`) is two-stage: Stage 1 deterministic (grammar-constrained arg extraction `argument_extractor.py` → injection-source check `injection_guard.py` → pre-execution interceptor `tool_interceptor.py` → execute); Stage 2 the LLM renders the result in-voice via `build_scene_contract()` (Voice/Action split, diegetic tool aliases) and never sees raw function grammar. The interceptor enforces per-persona `mcp_access` + an argument-level allowlist (token-enum/amount for swaps; length/control-char for queries) + hard-blocks `execute_swap` from a non-`user_confirmed` source; the injection guard enforces the trust hierarchy (system > user > RAG: retrieved content can inform but never *trigger* a tool) and sanitizes memory writes. Tool *selection* stays on the bge-m3 router; the 24B is constrained to argument-filling only (3-retry → regex fallback). Wallet actions stay on the existing propose→confirm→execute flow. Output runs through the shared `_finalize_response` (inherits tool-name strip + private-key redaction + first-person). Separate tool-call red-team eval (`tests/evaluation/test_tool_call_safety_redteam.py` + `golden_agentic/`) — text-safety ≠ tool-call safety. See [ADR-004](docs/decisions/004-persona-safe-agentic-tool-calls.md).
+
+**Lean persona prompt (ADR-005 Phase B, flag-gated `PERSONA_LEAN_PROMPT`, default ON — matches prod; set `PERSONA_LEAN_PROMPT=false` to revert).** `build_system_prompt` dispatches to `_build_system_prompt_lean` (exemplar-first / voice-last, deduped, drops the static wiki dump — still available per-turn via `LORE_ONDEMAND_ENABLED`) when `settings.prompt.use_lean_for(persona_key)` is true: global `PERSONA_LEAN_PROMPT` or the per-persona `PERSONA_LEAN_PROMPT_PERSONAS` allowlist. The legacy builder (`_build_system_prompt_legacy`) is byte-identical and untouched → instant revert + the frozen eval baseline stays valid. Distinctiveness comes from a per-persona `voice_signature` (diction/cadence/pattern/anchor/exemplars), excluded from the CV-summary fingerprint so it never drifts the legacy `<identity>`. **Acceptance gate (`tests/evaluation/persona_eval/`) PASSED 7/7**: distinctiveness attribution 0.393→0.732. To A/B a candidate, run a flag-ON backend on a spare port and point `run_eval.py --base-url` at it. See [ADR-005](docs/decisions/005-persona-architecture-simplification-eval-first.md).
 
 > **Full reference:** [`docs/NEPHILIM_REFERENCE.md`](docs/NEPHILIM_REFERENCE.md) — personas, schema, progression tables, visual theme, onboarding, Phase 7 details.
 > **Lore documents:** [`docs/lore/README.md`](docs/lore/README.md) — worldbuilding, factions, ranks.

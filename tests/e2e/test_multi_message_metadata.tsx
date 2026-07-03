@@ -1,7 +1,7 @@
 /**
  * Quick test to verify multi-message metadata propagation fix
  *
- * Bug: Source tags (pure LLM, Brave, MongoDB MCP) only showed on first message
+ * Bug: Source tags (pure LLM, Brave) only showed on first message
  * Fix: Remove `i === 0` conditionals so ALL messages get metadata
  *
  * Run: npm test -- test_multi_message_metadata
@@ -26,8 +26,8 @@ describe('Multi-Message Metadata Propagation', () => {
       message_count: 3,
       used_search: false,
       metadata: {
-        source_type: 'mongodb_mcp',
-        tools_used: ['bitcoin_current_price'],
+        source_type: 'brave_mcp',
+        tools_used: ['brave_web_search'],
         cache_status: 'hit'
       },
       emotional_state: {
@@ -80,8 +80,8 @@ describe('Multi-Message Metadata Propagation', () => {
     // ✅ FIX VALIDATION: Each message should have metadata
     assistantMessages.forEach((msg, index) => {
       expect(msg.metadata).toBeDefined();
-      expect(msg.metadata.source_type).toBe('mongodb_mcp');
-      expect(msg.metadata.tools_used).toEqual(['bitcoin_current_price']);
+      expect(msg.metadata.source_type).toBe('brave_mcp');
+      expect(msg.metadata.tools_used).toEqual(['brave_web_search']);
       expect(msg.metadata.cache_status).toBe('hit');
 
       expect(msg.emotional_state).toBeDefined();

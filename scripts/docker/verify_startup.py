@@ -170,16 +170,7 @@ def verify_subsystems(checks: dict, env: dict) -> list[tuple[str, bool, str]]:
     else:
         results.append(("brave_mcp", True, f"disabled (no API key) — got={brave_status}"))
 
-    # MongoDB MCP — expected enabled if MONGODB_ENABLED=true and MONGODB_URI is non-empty
-    mongo_enabled = env.get("MONGODB_ENABLED", "false").lower() == "true"
-    mongo_uri = env.get("MONGODB_URI", "")
-    mongo_status = checks.get("mongodb_mcp", "unknown")
-    if mongo_enabled and mongo_uri:
-        mongo_ok = mongo_status == "enabled"
-        results.append(("mongodb_mcp", mongo_ok,
-                        f"expected=enabled, got={mongo_status}" if not mongo_ok else "enabled"))
-    else:
-        results.append(("mongodb_mcp", True, f"disabled (config) — got={mongo_status}"))
+    # MongoDB MCP removed 2026-06-22 (ADR-002) — no longer a startup check.
 
     for name, passed, detail in results:
         icon = f"{Colors.GREEN}PASS{Colors.RESET}" if passed else f"{Colors.RED}FAIL{Colors.RESET}"
@@ -204,7 +195,7 @@ def run_test_queries(base_url: str, checks: dict) -> list[tuple[str, bool, str]]
     else:
         results.append(("persona_load", False, f"status={status}, body={str(body)[:100]}"))
 
-    # Pick a persona with MCP access for testing (nephilim_eeva has brave + mongodb)
+    # Pick a persona with MCP access for testing (nephilim_eeva has brave + wallet)
     persona_key = "nephilim_eeva"
     if isinstance(body, list):
         keys = [p.get("key") for p in body if isinstance(p, dict) and p.get("key")]
@@ -252,19 +243,7 @@ def run_test_queries(base_url: str, checks: dict) -> list[tuple[str, bool, str]]
         detail = f"got reply ({len(reply_text)} chars)" if brave_ok else f"status={status}, body={str(chat_body)[:120]}"
         results.append(("brave_query", brave_ok, detail))
 
-    # Test: MongoDB query (only if enabled)
-    if checks.get("mongodb_mcp") == "enabled":
-        print("      ... testing MongoDB MCP (trading data)...")
-        status, chat_body = http_post_json(
-            f"{base_url}/sessions/{session_id}/chat",
-            {"persona": persona_key, "message": "Show me the latest Bitcoin trading data from the database"},
-            timeout=120,
-        )
-        reply = chat_body.get("reply") or chat_body.get("answer", "") if isinstance(chat_body, dict) else ""
-        reply_text = reply if isinstance(reply, str) else " ".join(reply) if isinstance(reply, list) else str(reply)
-        mongo_ok = status == 200 and len(reply_text) > 0
-        detail = f"got reply ({len(reply_text)} chars)" if mongo_ok else f"status={status}, body={str(chat_body)[:120]}"
-        results.append(("mongodb_query", mongo_ok, detail))
+    # MongoDB query test removed 2026-06-22 (ADR-002) — MongoDB MCP no longer exists.
 
     _print_results(results)
     return results

@@ -2,7 +2,7 @@
 title: Wallet Metadata & AI Context Layer
 status: active
 created: 2026-04-03
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-23
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -22,7 +22,7 @@ The AI companion manages Solana/Jupiter wallets for users — creating, funding,
 - Lost context across sessions (wallet state recomputed per-message)
 - Could not enforce wallet count limits (no multi-wallet support)
 - Never showed the user their recovery phrase
-- Trade history was lost when MongoDB was unavailable
+- Trade history depended on an external MongoDB store (since removed — SQLite is now the sole store)
 
 The Wallet Metadata Layer solves all of these by extending the existing SQLite + BaseRepository pattern with three new tables, an enriched prompt injection, and a 4-step wallet creation ceremony.
 
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS wallet_balance_cache (
 
 ### `wallet_trades_local`
 
-Local SQLite trade history — dual-write fallback so records are never lost when MongoDB is unavailable.
+Local SQLite trade history — the sole trade-record store. (The former MongoDB dual-write was removed 2026-06-22, [ADR-002](../decisions/002-remove-mongodb-mcp.md).)
 
 ```sql
 CREATE TABLE IF NOT EXISTS wallet_trades_local (
@@ -295,17 +295,18 @@ Step 4: Mnemonic zeroed (\x00) and deleted from _wallet_flows
 
 ---
 
-## Dual-Write Trade Pattern
+## Trade Persistence
 
 ```
 Trade Executed (WalletExecutionService.execute_swap)
   │
-  ├─ _persist_trade(trade_doc)          → MongoDB wallet_trades (if configured)
-  ├─ _persist_trade_local(trade_doc)    → SQLite wallet_trades_local (always)
-  └─ _update_summary(trade_doc)         → SQLite wallet_activity_summary (always)
+  ├─ _persist_trade_local(trade_doc)    → SQLite wallet_trades_local (sole store)
+  └─ _update_summary(trade_doc)         → SQLite wallet_activity_summary
 ```
 
-MongoDB is the primary trade store when available. SQLite is the safety net — trade records are **never lost** regardless of MongoDB configuration.
+SQLite `wallet_trades_local` is the single source of truth for trade history; all reads come from it. The former MongoDB dual-write path was removed 2026-06-22 ([ADR-002](../decisions/002-remove-mongodb-mcp.md)).
+
+> **Note:** position open/close events and HITL approval decisions are currently log-only — their former MongoDB collections (`open_positions`, `approval_decisions`) were removed and not re-homed to SQLite. `StrategyService.has_open_position()` therefore always returns `False` (fail-open). Wire these to SQLite if durable position/audit tracking is needed.
 
 ---
 

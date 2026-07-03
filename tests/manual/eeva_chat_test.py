@@ -8,8 +8,9 @@ import sys
 import time
 import requests
 
-# Fix Windows console encoding for emoji/unicode in LLM responses
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+# Fix Windows console encoding for emoji/unicode in LLM responses (no-op off Windows)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 BASE = "http://localhost:8000"
 PERSONA = "nephilim_eeva"

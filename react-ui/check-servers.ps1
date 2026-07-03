@@ -1,3 +1,7 @@
+# [REFERENCE ONLY — Windows] Dev helper from the original Windows environment.
+# Superseded on the macOS deployment by launchd (com.nephilim.backend / com.nephilim.frontend)
+# and the npm scripts in package.json. Kept for Windows reference; not used on macOS.
+
 try {
     $resp = Invoke-WebRequest -Uri 'http://localhost:8000/health' -TimeoutSec 5
     Write-Host "BACKEND UP: $($resp.Content)"

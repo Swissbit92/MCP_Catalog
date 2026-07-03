@@ -9,7 +9,7 @@ This module implements Phase 2 of the Persona Memory Enhancement project:
 
 from __future__ import annotations
 from typing import List, Dict, Optional, Any, TYPE_CHECKING
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 import logging
 
 from .llm_client import estimate_tokens
@@ -129,7 +129,7 @@ class MessageImportanceScorer:
                 else:
                     msg_time = datetime.fromtimestamp(message["timestamp"])
 
-                age_hours = (datetime.utcnow() - msg_time).total_seconds() / 3600
+                age_hours = (datetime.now(timezone.utc).replace(tzinfo=None) - msg_time).total_seconds() / 3600
                 # Decay over days: 1.0 at 0 hours, 0.5 at 24 hours, 0.33 at 48 hours
                 time_decay = 1.0 / (1.0 + age_hours / 24)
                 score *= (0.5 + 0.5 * time_decay)  # 0.5-1.0 multiplier

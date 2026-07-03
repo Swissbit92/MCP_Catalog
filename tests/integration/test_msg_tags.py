@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Test if nchapman model actually uses <msg> tags in raw output."""
 
+import pytest
+
 from src.coordinator.llm_client import LC_OllamaClient
 from src.coordinator.prompt_builder import build_system_prompt
 from src.coordinator.config import settings
+
+# Makes a live LLM call (LC_OllamaClient). Auto-skips headless via conftest.
+pytestmark = pytest.mark.requires_ollama
+
 
 def test_raw_llm_output():
     """Check if LLM uses <msg> tags without post-processing."""

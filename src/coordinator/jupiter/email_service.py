@@ -125,7 +125,7 @@ async def send_strategy_summary(
         subject = f"[E.E.V.A.] Daily Summary — {strategy_id} ({trade_count} trades)"
 
         lines = [
-            f"E.E.V.A. Strategy Daily Summary",
+            "E.E.V.A. Strategy Daily Summary",
             "=" * 40,
             f"Strategy: {strategy_id}",
             f"Trades today: {trade_count}",

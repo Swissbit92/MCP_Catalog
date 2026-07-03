@@ -4,7 +4,11 @@ Tests message parsing, API response format, and schema validation
 """
 
 import pytest
-from src.coordinator.routes.chat import _parse_multi_message_response
+# parse_multi_message_response moved to services.message_processing_service
+# (was previously a private helper in routes.chat). Aliased to keep test bodies stable.
+from src.coordinator.services.message_processing_service import (
+    parse_multi_message_response as _parse_multi_message_response,
+)
 from src.coordinator.schemas import ResponseMetadata
 
 

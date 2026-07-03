@@ -1,0 +1,3 @@
+# Frozen eval baselines are run-local data, not source. Keep the dir, ignore contents.
+*
+!.gitignore

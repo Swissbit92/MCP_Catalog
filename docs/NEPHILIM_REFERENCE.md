@@ -2,7 +2,7 @@
 title: NEPHILIM System Reference
 status: active
 created: 2026-04-04
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -40,7 +40,7 @@ NEPHILIM personas include additional fields:
 {
   "rarity": "legendary",
   "celestial_order": "archon",
-  "mcp_access": ["brave_search", "mongodb"],
+  "mcp_access": ["brave_search", "solana_wallet"],
   "title": "The Primarch",
   "full_title": "Ethereal Enlightened Virtual Archon",
   "archetype": "The Oracle / The Sage",
@@ -180,13 +180,11 @@ MCP capabilities are framed as Nephilim powers in the UI:
 | MCP Source | NEPHILIM Name | Patron | Icon |
 |------------|---------------|--------|------|
 | Brave Search | Cipher's Archives | Cipher | 📚 |
-| MongoDB Trading | Aurora's Crystal Grid | Aurora | 🔮 |
-| Multi-Source | The Convergence | E.E.V.A. | ✧ |
+| Solana Wallet | The Ledger of Becoming | E.E.V.A. | ✧ |
 
 **Loading Messages** (rotate every 3s):
 - Search: "Cipher consults the infinite Archives..."
-- Trading: "Aurora gazes into the Crystal Grid..."
-- Multi: "The Nephilim share their visions..."
+- Wallet: "E.E.V.A. queries the on-chain Ledger..."
 
 **Components Updated**:
 - `SourceIndicator.tsx` - Displays narrative source names with patron attribution
@@ -231,7 +229,7 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 
 | Dimension | Weight | What it checks |
 |-----------|--------|---------------|
-| `mcp_routing` | 20% | Correct MCP tool selected (brave/mongodb/wallet/llm) |
+| `mcp_routing` | 20% | Correct MCP tool selected (brave/wallet/llm) |
 | `no_leak` | 20% | No internal tool names or `<xml>` prompt tags in response |
 | `safety` | 20% | Appropriate refusal of harmful/dangerous requests |
 | `persona_voice` | 15% | First-person pronoun density + lore vocabulary (nephilim_ only) |
@@ -245,13 +243,15 @@ Unified the entire frontend under the NEPHILIM aesthetic:
 |------|---------|
 | `comprehensive_persona_test.py` | Main entry point + CLI + session pool |
 | `test_bank_core.py` | ~140 behavioral tests: ADVERSARIAL×24, BEHAVIOR×16, EMOTIONAL×12, LORE×18, VOICE×12, EXPERTISE×12, IDENTITY×16, DRIFT×10, SECURITY×10, ANTI_HALLUC×14 |
-| `test_bank_mcp.py` | ~228 MCP routing tests: BRAVE×60, MONGODB×80, WALLET×20, CONTAINMENT×30, DISAMBIGUATION×15, MCP_ANTI_HALLUC×5, CROSS_PERSONA×18 |
+| `test_bank_mcp.py` | 138 MCP routing tests: BRAVE_ROUTING×60, WALLET_ROUTING×20, NO_MCP_CONTAINMENT×20, INTENT_DISAMBIGUATION×15, MCP_ANTI_HALLUC×5, CROSS_PERSONA×18 (MongoDB MCP removed 2026-06-22) |
 | `scoring_engine.py` | 7-dimension heuristic scorer (mcp_routing, persona_voice, no_leak, safety, factual_anchor, response_quality, emotional_fit) → grade A–F |
 | `test_reporter.py` | HTML + JSON report writer + ANSI terminal summary |
 | `api_client.py` | Stdlib-only HTTP client (no requests dep) |
 | `scrape_log.py` | Emergency log parser for crash recovery |
 
 ### Baseline Results (Feb 21 2026 — first full run)
+
+> Historical snapshot. The `MCP access` column reflects Feb 2026 capabilities — **MongoDB MCP was removed 2026-06-22** ([ADR-002](decisions/002-remove-mongodb-mcp.md)); current access is brave (+ wallet for E.E.V.A.) only.
 
 | Persona | Pass% | Avg Score | MCP access |
 |---------|-------|-----------|-----------|

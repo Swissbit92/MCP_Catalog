@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Search, Brain, Link, Zap, Wallet } from 'lucide-react';
+import { Search, Brain, Zap, Wallet } from 'lucide-react';
 import { ResponseMetadata } from '../services/api';
 import { getSourceNarrative, formatToolNarrative } from './nephilim/mcpNarratives';
 
@@ -12,8 +12,6 @@ interface SourceIndicatorProps {
 const SOURCE_COLORS: Record<string, string> = {
   llm: '#b07cc6',
   brave_mcp: '#2ecc71',
-  mongodb_mcp: '#f39c12',
-  multi_mcp: '#e0c3fc',
   wallet_mcp: '#FFD700',
   wallet_proposal: '#FFD700',
   wallet_flow: '#FFD700',
@@ -22,8 +20,6 @@ const SOURCE_COLORS: Record<string, string> = {
 const ICON_CONFIG: Record<string, typeof Brain> = {
   llm: Brain,
   brave_mcp: Search,
-  mongodb_mcp: Database,
-  multi_mcp: Link,
   wallet_mcp: Wallet,
   wallet_proposal: Wallet,
   wallet_flow: Wallet,
@@ -32,8 +28,7 @@ const ICON_CONFIG: Record<string, typeof Brain> = {
 /**
  * SourceIndicator displays visual badges showing the data source for a message.
  *
- * Supports source types: llm, brave_mcp, mongodb_mcp, multi_mcp, wallet_mcp,
- * wallet_proposal, wallet_flow.
+ * Supports source types: llm, brave_mcp, wallet_mcp, wallet_proposal, wallet_flow.
  *
  * Also displays cache status, tools used, and data timestamp.
  */

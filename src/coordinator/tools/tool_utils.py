@@ -11,11 +11,7 @@ from dataclasses import dataclass
 
 from .keywords import NO_SEARCH_KEYWORDS, SEARCH_KEYWORDS
 from .intent_classifier import QueryIntent, classify_query_intent
-from .tool_generators import (
-    get_brave_search_tool,
-    get_mongodb_tools,
-    get_bot_state_tools,
-)
+from .tool_generators import get_brave_search_tool
 
 
 @dataclass
@@ -160,22 +156,13 @@ def get_tools_for_persona(
         # Per-persona MCP access (from persona JSON mcp_access field)
         if "brave_search" in mcp_access:
             tools.append(get_brave_search_tool())
-        if "mongodb" in mcp_access:
-            tools.extend(get_mongodb_tools())
-        if "bot_state" in mcp_access:
-            tools.extend(get_bot_state_tools())
         if "solana_wallet" in mcp_access:
             from .wallet_tool_generators import get_wallet_tools
             tools.extend(get_wallet_tools())
     else:
         # Fallback: rarity-based access for personas that have no mcp_access field.
-        # BRAVE_ENABLED_RARITIES / MONGODB_ENABLED_RARITIES env vars were removed (Feb 2026)
-        # because they were never read — all current personas define mcp_access explicitly.
-        # These hardcoded sets are intentional safety nets for edge-cases.
         if persona_rarity.lower() in {"rare", "epic", "legendary"}:
             tools.append(get_brave_search_tool())
-        if persona_rarity.lower() in {"epic", "legendary"}:
-            tools.extend(get_mongodb_tools())
 
     return tools
 
@@ -185,6 +172,7 @@ def get_tools_for_query(
     persona_key: str,
     persona_rarity: str,
     mcp_access: Optional[List[str]] = None,
+    precomputed_intent: Optional[QueryIntent] = None,
 ) -> List[Dict[str, Any]]:
     """
     Layer 2: Dynamic tool injection based on query intent.
@@ -197,28 +185,26 @@ def get_tools_for_query(
         persona_rarity: Persona rarity level
         mcp_access: Optional explicit list of allowed MCP services from the persona
                     JSON ``mcp_access`` field.  When provided, overrides rarity gating.
+        precomputed_intent: If the caller already classified intent (e.g. chat.py,
+                    which classifies before calling this), pass it here to skip a
+                    redundant ``classify_query_intent`` call — which, under semantic
+                    routing, would be a second Ollama embedding round-trip. None =
+                    classify internally (backward compatible). Passing it also fixes
+                    a latent bug: this internal call omitted ``last_assistant_message``,
+                    so a short wallet follow-up ("yes") built an empty tool list here.
 
     Returns:
         List of tool definitions relevant to this specific query
     """
-    intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
+    if precomputed_intent is not None:
+        intent = precomputed_intent
+    else:
+        intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
 
     tools = []
 
     if intent == QueryIntent.NEEDS_WEB_SEARCH:
         tools.append(get_brave_search_tool())
-
-    elif intent == QueryIntent.NEEDS_MONGODB:
-        tools.extend(get_mongodb_tools())
-        # Include bot state tools if persona has access and query matches bot keywords
-        if mcp_access and "bot_state" in mcp_access:
-            from .keywords import BOT_STATE_KEYWORDS
-            if any(kw in query.lower() for kw in BOT_STATE_KEYWORDS):
-                tools.extend(get_bot_state_tools())
-
-    elif intent == QueryIntent.NEEDS_BOTH:
-        tools.append(get_brave_search_tool())
-        tools.extend(get_mongodb_tools())
 
     elif intent == QueryIntent.NEEDS_WALLET:
         from .wallet_tool_generators import get_wallet_tools

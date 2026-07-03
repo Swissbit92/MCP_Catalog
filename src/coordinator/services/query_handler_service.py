@@ -5,16 +5,12 @@ from __future__ import annotations
 
 import re
 import time
-import json
 import logging
 from typing import Optional, Any
 
 from ..schemas import ResponseMetadata
-from ..config import get_settings, get_persona_temperature_override
-from .llm_completion_service import LLMCompletionService
 # LC_OllamaClient imported lazily inside methods to break circular import with llm_client.py
-from ..tool_definitions import build_mongodb_synthesis_prompt
-from .citation_service import CitationService, validate_citations
+from .citation_service import validate_citations
 from .first_person_service import post_process_first_person
 
 logger = logging.getLogger(__name__)
@@ -65,10 +61,9 @@ class QueryHandlerService:
 
         Args:
             brave_client: Brave MCP client for web search
-            mongodb_service: MongoDB service for trading data
+            mongodb_service: Unused (MongoDB MCP removed). Kept for call-site compat.
         """
         self.brave_client = brave_client
-        self.mongodb_service = mongodb_service
 
     @staticmethod
     def _build_wallet_state_context(user_id: str) -> str:
@@ -283,153 +278,6 @@ class QueryHandlerService:
 
         return response
 
-    def handle_mongodb_query(
-        self,
-        message: str,
-        system_prompt: str,
-        user_compiled: str,
-        mongodb_tools: list,
-        metadata: ResponseMetadata,
-        persona_name: str,
-        persona_card: dict
-    ) -> dict:
-        """Handle MongoDB-only query (multi-token + bot state).
-
-        Args:
-            message: User's query message
-            system_prompt: Persona system prompt
-            user_compiled: Compiled user prompt with history
-            mongodb_tools: List of MongoDB tool definitions
-            metadata: Response metadata object
-            persona_name: Display name of persona
-            persona_card: Full persona card dict
-
-        Returns:
-            Response dict with answer, used_search, metadata, rewritten
-        """
-        from ..tools.token_registry import resolve_token, resolve_timeframe, get_token_display_name  # noqa: PLC0415
-
-        logger.info("MongoDB-only query detected, using direct handlers")
-        tool_names = [t["function"]["name"] for t in mongodb_tools]
-        logger.info(f"Available MongoDB tools: {tool_names}")
-
-        # Resolve token from user message (default to btc for backward compat)
-        token = resolve_token(message) or "btc"
-        timeframe = resolve_timeframe(message)
-        display_name = get_token_display_name(token)
-        logger.info(f"[MongoDB] Resolved token={token} ({display_name}), timeframe={timeframe}")
-
-        # Determine which handler to call based on available tools and message content
-        msg_lower = message.lower()
-
-        # Bot state tools take priority if present and message matches
-        _BOT_TOOL_NAMES = {"bot_status", "bot_positions", "bot_trade_history"}
-        has_bot_tools = bool(_BOT_TOOL_NAMES & set(tool_names))
-
-        try:
-            mongodb_result = None
-
-            if has_bot_tools and any(kw in msg_lower for kw in [
-                "bot", "strategy", "position", "trade event", "trade history",
-                "bot trades", "bot status", "bot running", "stop loss", "take profit",
-            ]):
-                # Route to bot state handlers
-                if any(kw in msg_lower for kw in ["position", "open position", "active position"]):
-                    mongodb_result = self.mongodb_service.handle_bot_positions()
-                    tool_used = "bot_positions"
-                elif any(kw in msg_lower for kw in [
-                    "trade event", "trade history", "recent trade", "bot trades",
-                    "filled", "entry", "exit",
-                ]):
-                    mongodb_result = self.mongodb_service.handle_bot_trades()
-                    tool_used = "bot_trade_history"
-                else:
-                    mongodb_result = self.mongodb_service.handle_bot_status()
-                    tool_used = "bot_status"
-            elif any(kw in msg_lower for kw in ["technical", "analysis", "indicator", "rsi", "macd",
-                                                  "bollinger", "ema", "sma", "adx", "supertrend",
-                                                  "squeeze", "fear", "greed", "fng", "vwap",
-                                                  "fibonacci", "ichimoku", "signal"]):
-                mongodb_result = self.mongodb_service.handle_crypto_technical_analysis(
-                    token=token, reason="User query about technical analysis", timeframe=timeframe
-                )
-                tool_used = "crypto_technical_analysis"
-            elif any(kw in msg_lower for kw in ["history", "historical", "past", "ago", "was", "trend over"]):
-                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
-                start_date = date_match.group(1) if date_match else "2025-12-01"
-                mongodb_result = self.mongodb_service.handle_crypto_historical_prices(
-                    token=token, reason="User query about historical data",
-                    start_date=start_date, timeframe=timeframe,
-                )
-                tool_used = "crypto_historical_prices"
-            elif any(kw in msg_lower for kw in ["bought", "purchased", "dca", "trading summary",
-                                                  "purchase history", "how much", "portfolio"]):
-                mongodb_result = self.mongodb_service.handle_crypto_trading_summary(
-                    token=token, reason="User query about trading stats"
-                )
-                tool_used = "crypto_trading_summary"
-            else:
-                # Default: current price
-                mongodb_result = self.mongodb_service.handle_crypto_current_price(
-                    token=token, reason="User query about current price", timeframe=timeframe,
-                )
-                tool_used = "crypto_current_price"
-
-            if mongodb_result:
-                formatted_data = json.dumps(mongodb_result, indent=2)
-
-                service = LLMCompletionService(
-                    base=get_settings().ollama.base,
-                    model=get_settings().ollama.model,
-                    temperature=get_persona_temperature_override(persona_card)
-                )
-
-                # Build enhanced synthesis prompt with persona flavor guidance
-                synthesis_system = build_mongodb_synthesis_prompt(
-                    persona_system=system_prompt,
-                    has_mongodb_data=True,
-                    token_name=display_name,
-                )
-                logger.info(f"[MongoDB Synthesis] Using enhanced synthesis prompt (length: {len(synthesis_system)} chars)")
-
-                # User prompt with MongoDB data
-                synthesis_prompt = f"""[MongoDB Data Retrieved]
-{formatted_data}
-
-User Query: {user_compiled}"""
-
-                answer = service.complete(system=synthesis_system, user_prompt=synthesis_prompt)
-
-                metadata.source_type = "mongodb_mcp"
-                metadata.tools_used = [tool_used]
-                metadata.cache_status = mongodb_result.get("cache_status", "miss")
-                metadata.data_timestamp = mongodb_result.get("timestamp", "")
-
-                logger.info(f"MongoDB query completed: tool={tool_used}, token={token}, cache={metadata.cache_status}")
-
-                # Use shared finalization logic (Phase 2 DRY)
-                return self._finalize_response(
-                    answer=answer,
-                    persona_name=persona_name,
-                    metadata=metadata,
-                    used_search=True
-                )
-        except Exception as e:
-            logger.error(f"MongoDB query failed: {e}")
-
-        # Fallback to regular LLM response
-        from ..llm_client import create_llm_client  # noqa: PLC0415
-        client = create_llm_client(persona_card)
-        answer = client.complete(system=system_prompt, user_prompt=user_compiled)
-
-        # Use shared finalization logic (Phase 2 DRY)
-        return self._finalize_response(
-            answer=answer,
-            persona_name=persona_name,
-            metadata=metadata,
-            used_search=False
-        )
-
     def handle_brave_query(
         self,
         system_prompt: str,
@@ -498,57 +346,92 @@ User Query: {user_compiled}"""
 
         return response
 
-    def handle_multi_mcp_query(
+    def handle_agentic_query(
         self,
+        message: str,
         system_prompt: str,
         user_compiled: str,
-        brave_tools: list,
+        tools: list,
         metadata: ResponseMetadata,
         persona_name: str,
-        persona_card: dict
-    ) -> dict:
-        """Handle Multi-MCP query (Brave + MongoDB).
+        persona_card: dict,
+        conversation_history: Optional[list] = None,
+    ) -> Optional[dict]:
+        """Phase-3 agentic path for the web-search action (AGENTIC_ENABLED).
 
-        Args:
-            system_prompt: Persona system prompt
-            user_compiled: Compiled user prompt with history
-            brave_tools: List of Brave tool definitions
-            metadata: Response metadata object
-            persona_name: Display name of persona
+        Runs the two-stage AgenticPipeline (deterministic execute -> in-voice
+        render) and adapts the result through the shared ``_finalize_response``
+        so the agentic path inherits the same output safety (tool-name strip,
+        private-key redaction, first-person enforcement) as every other path.
 
-        Returns:
-            Response dict with answer, used_search, metadata, citation_valid, search_results_count, rewritten
+        Returns a response dict, or ``None`` to signal the caller to fall back to
+        the legacy path (e.g. an unexpected HITL hand-off). Wallet actions are NOT
+        handled here — they stay on the existing propose->confirm->execute flow.
         """
-        logger.info("Multi-MCP query detected (Brave + MongoDB)")
-
+        from .agentic_pipeline import AgenticPipeline
+        from .tool_interceptor import ToolCallInterceptor
+        from .injection_guard import InjectionGuard
+        from .argument_extractor import ArgumentExtractor
+        from .search_execution_service import SearchExecutionService
+        from ..tools.tool_utils import ToolCall, format_search_results_for_llm
         from ..llm_client import create_llm_client  # noqa: PLC0415
-        client = create_llm_client(persona_card, mcp_client=self.brave_client)
 
-        answer, tool_call, search_results = client.complete_with_tools(
+        search_exec = SearchExecutionService(mcp_client=self.brave_client)
+
+        def brave_executor(args: dict):
+            return search_exec.execute_search(
+                ToolCall(name="brave_web_search", arguments=args)
+            )
+
+        def complete_fn(system: str, user: str) -> str:
+            return create_llm_client(persona_card).complete(system=system, user_prompt=user)
+
+        pipeline = AgenticPipeline(
+            interceptor=ToolCallInterceptor(),
+            injection_guard=InjectionGuard(),
+            extractor=ArgumentExtractor(),
+            tool_executors={"brave_web_search": brave_executor},
+            llm_complete_fn=complete_fn,
+            result_formatters={"brave_web_search": format_search_results_for_llm},
+        )
+
+        result = pipeline.execute(
+            intent_tool="brave_web_search",
+            user_message=message,
             persona_system=system_prompt,
-            user_prompt=user_compiled,
-            tools=brave_tools
+            persona_card=persona_card,
+            conversation_context=user_compiled,
+            # The route-level tool trigger comes purely from the user message; no
+            # RAG/lore content feeds the tool decision at this layer, so the
+            # injection-source check operates on the (empty) retrieved context.
+            rag_context="",
+            lore_context="",
+            conversation_history=conversation_history,
         )
 
-        metadata.source_type = "multi_mcp"
-        metadata.tools_used = ["brave_web_search"]
+        if result.hitl_required:
+            # Search never requires HITL; defensively fall back to legacy routing.
+            return None
 
-        # Validate citations
-        search_count = len(search_results) if search_results else 0
-        answer, has_valid_citations, citation_details = validate_citations(
-            answer=answer,
-            used_search=True,
-            search_results_count=search_count
+        metadata.source_type = "agentic_blocked" if result.was_blocked else "agentic"
+        metadata.tools_used = [result.tool_called] if (result.tool_called and not result.was_blocked) else []
+
+        used_search = bool(result.tool_called) and not result.was_blocked
+        search_count = None
+        if isinstance(result.tool_result_raw, list):
+            search_count = len(result.tool_result_raw)
+
+        logger.info(
+            f"[Agentic] completed: tool={result.tool_called}, blocked={result.was_blocked}, "
+            f"structured_args={result.used_structured_output}, results={search_count}"
         )
 
-        # Use shared finalization logic (Phase 2 DRY)
         return self._finalize_response(
-            answer=answer,
+            answer=result.rendered_response,
             persona_name=persona_name,
             metadata=metadata,
-            used_search=True,
-            citation_valid=has_valid_citations,
-            search_results_count=search_count
+            used_search=used_search,
+            search_results_count=search_count,
         )
 
     def handle_wallet_query(
@@ -574,7 +457,6 @@ User Query: {user_compiled}"""
 
         Multi-turn wallet creation flow is managed via _wallet_flows session state.
         """
-        from ..tools.wallet_tool_generators import WALLET_TOOLS
 
         logger.info(f"[WalletQuery] Handling wallet intent for user={user_id}")
 

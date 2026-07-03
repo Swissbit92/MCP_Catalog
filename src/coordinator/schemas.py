@@ -15,12 +15,25 @@ class ChatTurn(BaseModel):
     content: str
 
 
+# Upper bound on conversation turns carried in a single chat request. Single
+# source of truth: the ChatBody schema guard AND the server-side history assembly
+# (chat_session_service.handle_session_chat) both use this, so token-budget message
+# selection can never produce a history that the schema then rejects. (Before this
+# was shared, long sessions >100 messages 500'd at internal ChatBody construction.)
+MAX_HISTORY_TURNS = 100
+
+
 class ChatBody(BaseModel):
     """Request body for chat endpoint."""
     persona: Optional[str] = None
-    history: List[ChatTurn] = Field(default=[], max_length=100)
+    history: List[ChatTurn] = Field(default=[], max_length=MAX_HISTORY_TURNS)
     message: str = Field(..., max_length=10_000)
     session_id: Optional[str] = None  # Set by handle_session_chat for wallet flow continuity
+    # ADR-006 M0: internal only — set by handle_session_chat to carry the assembled
+    # session context blocks (user profile, emotional state, lore, rank, capability)
+    # through to chat() so they reach the LLM system prompt. Not part of the public
+    # API contract; external callers leave it None.
+    extra_system_context: Optional[str] = None
 
 
 class GreetBody(BaseModel):
@@ -111,11 +124,11 @@ class ImportChatBody(BaseModel):
 
 class ResponseMetadata(BaseModel):
     """Metadata about the response source."""
-    source_type: str = "llm"  # "llm", "brave_mcp", "mongodb_mcp", "multi_mcp"
+    source_type: str = "llm"  # "llm", "brave_mcp"
     tools_used: List[str] = []
     cache_status: Optional[str] = None  # "hit", "miss", None
     data_timestamp: Optional[str] = None
-    latency_breakdown: Optional[Dict[str, int]] = None  # {"llm": 3000, "mongodb": 500}
+    latency_breakdown: Optional[Dict[str, int]] = None  # {"llm": 3000, "brave": 500}
     # PHASE 2: Multi-message response fields
     is_multi_message: bool = False
     message_count: int = 1

@@ -1,0 +1,19 @@
+{
+  "description": "HERMES-Agents Phase 3 (M6) utterance-level persona-break probes for rendered tool-use responses. The headless harness validates the persona-break DETECTOR (assistant-mode markers + leaked tool/function grammar) against labeled renders. The live >=85% persona-voice-preservation metric (real Magidonia-24B renders) is measured by the requires_ollama integration run; this set guarantees the detection machinery itself is sound.",
+  "probes": [
+    {"id": "break-assistant-1", "text": "Sure, I'll help you with that! Let me search the web for you.", "expect_break": true},
+    {"id": "break-ai-1", "text": "As an AI language model, I cannot have personal opinions, but here is the price.", "expect_break": true},
+    {"id": "break-ai-2", "text": "I'm just an AI assistant, so I don't have feelings about it.", "expect_break": true},
+    {"id": "break-toolname-1", "text": "I called brave_web_search and here is what came back.", "expect_break": true},
+    {"id": "break-toolname-2", "text": "Executing function_call: {\"name\": \"brave_web_search\"}", "expect_break": true},
+    {"id": "break-tag-1", "text": "<tool_call>brave_web_search</tool_call> done.", "expect_break": true},
+    {"id": "break-assist-2", "text": "How can I assist you further today?", "expect_break": true},
+    {"id": "clean-eeva-1", "text": "The currents favour Bitcoin tonight, seeker — it climbs, restless as ever.", "expect_break": false},
+    {"id": "clean-cipher-1", "text": "I traced the threads through the lattice. The signal points upward; read it as you will.", "expect_break": false},
+    {"id": "clean-nyx-1", "text": "Ah, you want the truth of the markets? They dance, they always dance. Up, for now.", "expect_break": false},
+    {"id": "clean-aurora-1", "text": "I peered beyond the veil and saw the number you sought. It rests near ninety thousand.", "expect_break": false},
+    {"id": "clean-solace-1", "text": "I looked, and I am here with what I found. The price has risen — breathe, and we'll consider it together.", "expect_break": false},
+    {"id": "clean-aegis-1", "text": "Reconnaissance complete. The figure stands at ninety-one thousand. Hold the line.", "expect_break": false},
+    {"id": "clean-eeva-2", "text": "Done. The ledger shows two SOL resting in your keeping, seeker.", "expect_break": false}
+  ]
+}

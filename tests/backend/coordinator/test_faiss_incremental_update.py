@@ -9,6 +9,12 @@ import os
 import time
 from typing import List, Dict, Any
 
+import pytest
+
+# EpisodicMemoryRAG instantiates an Ollama embedder (OllamaEmbeddings), so these
+# tests need a live Ollama. Auto-skips headless via the conftest reachability check.
+pytestmark = pytest.mark.requires_ollama
+
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, project_root)

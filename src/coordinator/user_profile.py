@@ -7,8 +7,8 @@ creating continuity and deeper relationships over time.
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Optional, Any
-from datetime import datetime
+from typing import Dict, Optional, Any
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -140,9 +140,9 @@ class UserProfile:
 
         # Update timestamps
         if not self.data["first_interaction"]:
-            self.data["first_interaction"] = datetime.utcnow().isoformat()
+            self.data["first_interaction"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
-        self.data["last_updated"] = datetime.utcnow().isoformat()
+        self.data["last_updated"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
         logger.info(
             f"[UserProfile] Updated profile for {self.user_id}: "
@@ -291,6 +291,6 @@ class UserProfile:
                     other_profile.data["first_interaction"]
                 )
 
-        self.data["last_updated"] = datetime.utcnow().isoformat()
+        self.data["last_updated"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
         logger.info(f"[UserProfile] Merged profile {other_profile.user_id} into {self.user_id}")

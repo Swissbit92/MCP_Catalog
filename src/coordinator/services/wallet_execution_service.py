@@ -1,5 +1,5 @@
 # src/coordinator/services/wallet_execution_service.py
-"""Executes confirmed trades via Jupiter MCP and persists results to MongoDB."""
+"""Executes confirmed trades via Jupiter MCP and persists results to SQLite."""
 from __future__ import annotations
 
 import uuid
@@ -19,20 +19,17 @@ class WalletExecutionService:
 
     Never called directly from chat handler.
 
-    Dual-write pattern: trades are written to both MongoDB (if configured)
-    and SQLite wallet_trades_local (always). Activity summary is updated
-    on every trade.
+    Trades are written to SQLite wallet_trades_local (always).
+    Activity summary is updated on every trade.
     """
 
     def __init__(
         self,
         jupiter_ops: Any,  # JupiterOperations
-        mongo_write_client: Any = None,  # pymongo client, optional
         trade_history_repo: Any = None,  # TradeHistoryRepository, optional
         wallet_summary_repo: Any = None,  # WalletSummaryRepository, optional
     ):
         self.jupiter_ops = jupiter_ops
-        self.mongo_write = mongo_write_client
         self.trade_history_repo = trade_history_repo
         self.wallet_summary_repo = wallet_summary_repo
 
@@ -52,7 +49,7 @@ class WalletExecutionService:
         stop_loss_price: Optional[float] = None,
         take_profit_price: Optional[float] = None,
     ) -> dict:
-        """Execute a token swap and record to MongoDB.
+        """Execute a token swap and record to SQLite.
 
         Args:
             user_id: User identifier
@@ -72,6 +69,18 @@ class WalletExecutionService:
         Returns:
             Trade document with tx_signature and status
         """
+        # Phase 3 defence-in-depth: the on-chain spend chokepoint accepts only the
+        # two legitimate, confirmed execution modes. An agentic/chat path can never
+        # reach here with an unrecognised mode — this is the last guard before a
+        # real Solana transaction, independent of the tool-call interceptor.
+        _ALLOWED_EXECUTION_MODES = {"adhoc_confirmed", "strategy_autonomous"}
+        if execution_mode not in _ALLOWED_EXECUTION_MODES:
+            raise ValueError(
+                f"[WalletExecution] refusing swap: execution_mode "
+                f"'{execution_mode}' is not a confirmed mode "
+                f"{sorted(_ALLOWED_EXECUTION_MODES)}"
+            )
+
         idempotency_key = str(uuid.uuid4())
 
         logger.info(
@@ -129,10 +138,7 @@ class WalletExecutionService:
             "email_sent": False,
         }
 
-        # Write to MongoDB
-        await self._persist_trade(trade_doc)
-
-        # Dual-write to SQLite (local fallback)
+        # Write to SQLite
         await self._persist_trade_local(trade_doc)
 
         # Update activity summary
@@ -140,20 +146,6 @@ class WalletExecutionService:
 
         logger.info(f"[WalletExecution] Trade complete: tx={tx_signature}")
         return trade_doc
-
-    async def _persist_trade(self, trade_doc: dict) -> None:
-        """Write trade to MongoDB wallet_trades collection."""
-        if self.mongo_write is None:
-            logger.debug("[WalletExecution] No MongoDB write client — skipping persistence")
-            return
-        try:
-            self.mongo_write["wallet_trades"].insert_one(trade_doc)
-            logger.info(
-                f"[WalletExecution] Trade persisted to MongoDB: {trade_doc.get('tx_signature')}"
-            )
-        except Exception as e:
-            logger.error(f"[WalletExecution] MongoDB write failed: {e}")
-            # Non-fatal: trade executed, just not recorded
 
     async def _persist_trade_local(self, trade_doc: dict) -> None:
         """Write trade to SQLite wallet_trades_local table (dual-write fallback)."""
@@ -224,28 +216,8 @@ class WalletExecutionService:
         stop_loss_price: Optional[float] = None,
         take_profit_price: Optional[float] = None,
     ) -> None:
-        """Record an open position to MongoDB open_positions collection."""
-        if self.mongo_write is None:
-            return
-
-        position_doc = {
-            "strategy_id": strategy_id,
-            "entry_price": entry_price,
-            "position_size": position_size,
-            "position_token": position_token,
-            "position_value_usdc": position_value_usdc,
-            "stop_loss_price": stop_loss_price,
-            "take_profit_price": take_profit_price,
-            "entry_tx_signature": tx_signature,
-            "entry_timestamp": datetime.now(timezone.utc).isoformat(),
-            "status": "open",
-        }
-
-        try:
-            self.mongo_write["open_positions"].insert_one(position_doc)
-            logger.info(f"[WalletExecution] Position opened: strategy={strategy_id}")
-        except Exception as e:
-            logger.error(f"[WalletExecution] Failed to record open position: {e}")
+        """Record that a position was opened (no-op: MongoDB write path removed)."""
+        logger.info(f"[WalletExecution] Position opened: strategy={strategy_id}")
 
     async def close_position(
         self,
@@ -253,23 +225,7 @@ class WalletExecutionService:
         tx_signature: str,
         trigger: str,  # 'stop_loss', 'take_profit', 'manual'
     ) -> None:
-        """Mark a position as closed in MongoDB."""
-        if self.mongo_write is None:
-            return
-        try:
-            self.mongo_write["open_positions"].update_one(
-                {"strategy_id": strategy_id, "status": "open"},
-                {
-                    "$set": {
-                        "status": "closed",
-                        "exit_trigger": trigger,
-                        "exit_tx_signature": tx_signature,
-                        "exit_timestamp": datetime.now(timezone.utc).isoformat(),
-                    }
-                },
-            )
-            logger.info(
-                f"[WalletExecution] Position closed: strategy={strategy_id}, trigger={trigger}"
-            )
-        except Exception as e:
-            logger.error(f"[WalletExecution] Failed to close position: {e}")
+        """Record that a position was closed (no-op: MongoDB write path removed)."""
+        logger.info(
+            f"[WalletExecution] Position closed: strategy={strategy_id}, trigger={trigger}"
+        )

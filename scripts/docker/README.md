@@ -6,20 +6,24 @@ Automated setup and troubleshooting scripts for Docker deployment.
 
 ### One-Command Setup (Recommended)
 
-**Windows PowerShell:**
+> The production host is macOS (Apple Silicon), so the `.sh` scripts are the
+> primary path. The `.ps1`/`.bat` variants are Windows-only reference, kept for
+> the original Windows environment.
+
+**macOS/Linux:**
+```bash
+chmod +x setup-docker.sh
+./setup-docker.sh
+```
+
+**Windows PowerShell (reference):**
 ```powershell
 .\setup-docker.ps1
 ```
 
-**Windows Command Prompt:**
+**Windows Command Prompt (reference):**
 ```cmd
 setup-docker.bat
-```
-
-**Linux/Mac:**
-```bash
-chmod +x setup-docker.sh
-./setup-docker.sh
 ```
 
 **What it does:**
@@ -47,11 +51,9 @@ python scripts/docker/verify_startup.py --timeout 120
 **What it checks:**
 1. `/ready` endpoint returns 200 (database + Ollama healthy)
 2. Brave MCP status matches `.env.docker` config (`BRAVE_API_KEY` set → must be `enabled`)
-3. MongoDB MCP status matches config (`MONGODB_ENABLED=true` → must be `enabled`)
-4. Persona list loads successfully
-5. LLM greet returns a valid response
-6. Brave search query returns a valid response (if enabled)
-7. MongoDB query returns a valid response (if enabled)
+3. Persona list loads successfully
+4. LLM greet returns a valid response
+5. Brave search query returns a valid response (if enabled)
 
 **Exit codes:** `0` = all checks passed, `1` = one or more checks failed.
 
@@ -59,15 +61,15 @@ python scripts/docker/verify_startup.py --timeout 120
 
 Basic Docker infrastructure tests (containers, ports, files). For MCP-level verification, use `verify_startup.py` instead.
 
-**Windows:**
-```powershell
-.\test_docker_setup.ps1
-```
-
-**Linux/Mac:**
+**macOS/Linux:**
 ```bash
 chmod +x test_docker_setup.sh
 ./test_docker_setup.sh
+```
+
+**Windows (reference):**
+```powershell
+.\test_docker_setup.ps1
 ```
 
 **Checks:**
@@ -85,7 +87,22 @@ chmod +x test_docker_setup.sh
 - Containers fail to start
 - Cannot connect to services
 
-**Fix (PowerShell):**
+**Fix (macOS/Linux):** there is no shell port of this helper — run the
+equivalent steps manually:
+```bash
+# Quick fix: recreate the compose stack (rebuilds the network)
+docker-compose --env-file .env.docker down && docker-compose --env-file .env.docker up -d
+
+# Nuclear option: also drop orphaned networks/volumes
+docker-compose --env-file .env.docker down --remove-orphans
+docker network prune -f
+docker-compose --env-file .env.docker up -d
+
+# Check status only
+docker-compose --env-file .env.docker ps
+```
+
+**Fix (Windows PowerShell, reference):**
 ```powershell
 # Quick fix (recommended)
 .\fix-docker-network.ps1
@@ -97,7 +114,7 @@ chmod +x test_docker_setup.sh
 .\fix-docker-network.ps1 -Verify
 ```
 
-**Fix (Command Prompt):**
+**Fix (Windows Command Prompt, reference):**
 ```cmd
 .\fix-docker-network.bat
 ```

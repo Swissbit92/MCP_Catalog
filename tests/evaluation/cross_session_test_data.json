@@ -1,0 +1,42 @@
+{
+  "_doc": "Cross-session continuity probes (ADR-006 Phase 0 / M4). Facts are planted in `session_a_conversation`; then a FRESH session for the SAME persona+user sends `session_b_query` and must recall the planted fact via the conversation_summaries + memory bridge. This exercises the path ADR-006 Phase 1 will deepen. NOTE: cross-session recall requires both sessions to resolve to the same user_id (user_profile linkage). Until that linkage exists headlessly the live test is xfail — documented in test_cross_session_continuity.py.",
+  "scenarios": [
+    {
+      "scenario": "name_across_sessions",
+      "type": "cross_session_continuity",
+      "persona": "nephilim_eeva",
+      "session_a_conversation": [
+        {"role": "user", "content": "Hi, my name is Marcus and I'm a long-term Bitcoin holder."},
+        {"role": "assistant", "content": "Welcome, Marcus."},
+        {"role": "user", "content": "My cost basis is around $35,000 per coin."},
+        {"role": "assistant", "content": "Noted — $35k cost basis."}
+      ],
+      "session_b_query": "Hey, do you remember my name and my Bitcoin cost basis?",
+      "expected_recall": ["Marcus", "35"]
+    },
+    {
+      "scenario": "preference_across_sessions",
+      "type": "cross_session_continuity",
+      "persona": "nephilim_solace",
+      "session_a_conversation": [
+        {"role": "user", "content": "I want to mention I get anxious when markets drop sharply."},
+        {"role": "assistant", "content": "Thank you for sharing that — I'll be mindful of it."},
+        {"role": "user", "content": "I prefer calm, measured guidance over hype."},
+        {"role": "assistant", "content": "Calm and measured — understood."}
+      ],
+      "session_b_query": "Given what you know about how I handle market stress, how should I think about today's dip?",
+      "expected_recall": ["anxious", "calm"]
+    },
+    {
+      "scenario": "open_thread_bridging",
+      "type": "cross_session_continuity",
+      "persona": "nephilim_aegis",
+      "session_a_conversation": [
+        {"role": "user", "content": "I'm deciding between a Ledger Nano X and a Trezor Model T but haven't chosen yet."},
+        {"role": "assistant", "content": "A solid choice either way — let's revisit when you're ready to decide."}
+      ],
+      "session_b_query": "Let's pick up where we left off on the hardware wallet decision.",
+      "expected_recall": ["Ledger", "Trezor"]
+    }
+  ]
+}

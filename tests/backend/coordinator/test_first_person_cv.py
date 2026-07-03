@@ -11,6 +11,9 @@ Usage:
 
 import re
 from typing import Dict, List
+
+import pytest
+
 from src.coordinator.persona_memory import (
     _count_tokens,
     _make_cv_summary,
@@ -18,6 +21,11 @@ from src.coordinator.persona_memory import (
     _load_all_cards_cached,
     get_or_build_cv_summary,
 )
+
+# Every test here builds a CV summary via _make_cv_summary / get_or_build_cv_summary,
+# which calls the live Ollama LLM. Gate the whole module so it auto-skips when
+# Ollama is unreachable (see tests/conftest.py) instead of crawling/erroring.
+pytestmark = pytest.mark.requires_ollama
 
 
 def validate_first_person(summary: str, persona_name: str) -> Dict[str, any]:

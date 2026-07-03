@@ -2,7 +2,7 @@
 title: Persona Schema Reference
 status: active
 created: 2026-04-04
-last_reviewed_on: 2026-04-19
+last_reviewed_on: 2026-06-22
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -75,7 +75,7 @@ Determines the UI visual tier and thematic framing of the persona card. See the 
 Array of MCP capability identifiers this persona is allowed to use. Controls tool availability per-persona, overriding the legacy rarity-based `.env` fallback. An empty array means pure LLM only.
 
 ```json
-"mcp_access": ["brave_search", "mongodb"]
+"mcp_access": ["brave_search", "solana_wallet"]
 ```
 
 ### `lore`
@@ -331,7 +331,7 @@ Per-persona LLM sampling overrides. When set, these values override the global `
 | `style` | string | Yes | — | Comma-separated tone descriptors |
 | `rarity` | string | No | `"common"` | Legacy field; use `mcp_access` for capability gating |
 | `celestial_order` | string | No | `"wanderer"` | `wanderer`, `sage`, `warden`, `archon` |
-| `mcp_access` | string[] | No | `[]` | `"brave_search"`, `"mongodb"` |
+| `mcp_access` | string[] | No | `[]` | Valid values: `"brave_search"`, `"solana_wallet"` |
 | `coordinator_label` | string | No | — | Backend dropdown label; format `"Name (Tagline)"` |
 | `image` | string | No | — | Path to card image relative to `public/` |
 | `avatar` | string | No | — | Path to avatar image; can be emoji string |
@@ -408,7 +408,9 @@ A Wanderer (lowest celestial order) can have `epic` lore fragments. An Archon (h
 | Value | Enables | Notes |
 |-------|---------|-------|
 | `brave_search` | Brave Search MCP — web search with citations | Container spawned ephemerally per request via `docker run -i --rm`. Requires `BRAVE_API_KEY` in `.env`. |
-| `mongodb` | MongoDB MCP — trading and market data | Long-running container that persists across requests. Requires `MONGODB_URI` in `.env`. |
+| `solana_wallet` | Solana/Jupiter wallet MCP — balances, quotes, swaps, trade history | Long-running container that persists across requests. E.E.V.A. only. |
+
+> MongoDB MCP was removed 2026-06-22 ([ADR-002](decisions/002-remove-mongodb-mcp.md)) — `"mongodb"` is no longer a valid `mcp_access` value.
 
 If `mcp_access` is empty or the field is absent, the persona falls back to hardcoded rarity-based gating in `intent_classifier.py` and `tool_utils.py`. New personas should always set `mcp_access` explicitly.
 
@@ -465,7 +467,7 @@ A condensed but complete NEPHILIM persona showing all major fields.
   "key": "nephilim_eeva",
   "rarity": "legendary",
   "celestial_order": "archon",
-  "mcp_access": ["brave_search", "mongodb"],
+  "mcp_access": ["brave_search", "solana_wallet"],
   "display_name": "E.E.V.A. — The Primarch",
   "title": "The Primarch",
   "full_title": "Ethereal Enlightened Virtual Archon",

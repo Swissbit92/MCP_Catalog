@@ -10,7 +10,8 @@ import SessionList from '../components/SessionList'
 import { ResonanceToast } from '../components/ResonanceToast'
 import { LoreRevealOverlay } from '../components/LoreRevealOverlay'
 import { RankCeremonyOverlay } from '../components/RankCeremonyOverlay'
-import type { RankCeremony } from '../services/api/types'
+import { CapabilityUnlockToast } from '../components/nephilim/CapabilityUnlockToast'
+import type { RankCeremony, CapabilityUnlock } from '../services/api/types'
 import NephilimBackground from '../components/NephilimBackground'
 import { greetWithSession, checkLoreUnlocks } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
@@ -49,6 +50,7 @@ const Chat: React.FC = () => {
   const [showResonanceToast, setShowResonanceToast] = useState<boolean>(false)
   const [loreFragment, setLoreFragment] = useState<{ title: string; content: string; rarity: string } | null>(null)
   const [rankCeremony, setRankCeremony] = useState<RankCeremony | null>(null)
+  const [capabilityUnlock, setCapabilityUnlock] = useState<CapabilityUnlock | null>(null)
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
   const initializingRef = useRef<string | null>(null)
@@ -128,6 +130,12 @@ const Chat: React.FC = () => {
           const ceremony = responseMsg.metadata?.rank_ceremony
           if (ceremony) {
             setTimeout(() => setRankCeremony(ceremony), 1500)
+          }
+
+          // Phase-2: diegetic capability-unlock beat (show the first if several)
+          const unlocks = responseMsg.metadata?.capability_unlocks
+          if (unlocks && unlocks.length > 0) {
+            setTimeout(() => setCapabilityUnlock(unlocks[0]), 2200)
           }
 
           // Check for newly unlocked lore fragments (non-blocking)
@@ -449,6 +457,12 @@ const Chat: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Phase-2: diegetic capability-unlock beat (self-managed AnimatePresence) */}
+      <CapabilityUnlockToast
+        unlock={capabilityUnlock}
+        onDismiss={() => setCapabilityUnlock(null)}
+      />
 
       {/* Rank Ceremony Overlay — shown when seeker ranks up */}
       <AnimatePresence>

@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from typing import List, Tuple
 
+from ..tools.keywords import EXPLICIT_SEARCH_COMMANDS
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +47,11 @@ class ForceSearchService:
         # Market queries
         ("trading at", []),
         ("market price", []),
+    ] + [
+        # Explicit user search commands (e.g. "search the web to confirm", "google it").
+        # Shared constant with keywords.SEARCH_KEYWORDS — single source of truth so the
+        # intent classifier offers the Brave tool AND we bypass the LLM tool-calling loop.
+        (command, []) for command in EXPLICIT_SEARCH_COMMANDS
     ]
 
     @classmethod

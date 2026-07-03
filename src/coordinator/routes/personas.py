@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 
 from ..schemas import SummaryBody
 from ..persona_memory import (
-    get_persona_card,
     get_or_build_cv_summary,
     _load_all_cards_cached
 )

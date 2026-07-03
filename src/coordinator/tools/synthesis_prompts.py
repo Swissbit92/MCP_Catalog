@@ -1,11 +1,114 @@
 # src/coordinator/tools/synthesis_prompts.py
-# System prompt builders for synthesizing search results and MongoDB data
+# System prompt builders for synthesizing web search results
 # Includes anti-hallucination rules and persona voice preservation
 
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
+
+# HERMES-Agents Phase 3 — ecosystem-default diegetic (in-world) action names.
+# Maps a real tool name to the in-world phrase the persona uses to refer to it,
+# so tool-use reasoning stays inside the fiction (per "Talk Less, Call Right":
+# in-world action names reduce the assistant-mode "Sure, I'll help!" revert).
+# Personas may override any of these via the `agentic_action_aliases` field.
+DEFAULT_ACTION_ALIASES: Dict[str, str] = {
+    "brave_web_search": "consult the Lattice",
+    "wallet_get_balances": "examine the Sigil Ledger",
+    "solana_get_quote": "weigh the Exchange Currents",
+    "solana_rsi_check": "cast the Oracle's Eye",
+    "solana_propose_swap": "inscribe a Rite of Exchange",
+    "wallet_create_guided": "forge a new Sigil",
+}
+
+
+def _diegetic_name(tool_name: str, aliases: Optional[Dict[str, str]]) -> str:
+    """Resolve the in-world phrase for a tool, persona override > default > name."""
+    if aliases and tool_name in aliases:
+        return aliases[tool_name]
+    return DEFAULT_ACTION_ALIASES.get(tool_name, tool_name)
+
+
+def build_scene_contract(
+    persona_system: str,
+    tools: List[Dict[str, Any]],
+    persona_card: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Build the Phase-3 agentic system prompt: Voice + Action contract.
+
+    Unlike ``build_tool_system_prompt`` this NEVER embeds raw function-call JSON
+    grammar. The system already selects tools deterministically (bge-m3 router)
+    and fills arguments via grammar-constrained extraction, so the model is not
+    asked to emit a ``function_call`` object here. The contract instead:
+
+    1. **Voice section** — anchors the persona; governs HOW the character acts,
+       never WHO it is. Contains no tool grammar.
+    2. **Action section** — lists the available actions by their in-world
+       (diegetic) names, with action-first sequencing rules. Only present when
+       ``tools`` is non-empty (the result-rendering stage passes ``tools=[]`` so
+       it gets a pure Voice contract).
+
+    Args:
+        persona_system: The persona's base system prompt.
+        tools: OpenAI-format tool specs available this turn (may be empty).
+        persona_card: Optional persona dict; read for ``agentic_action_aliases``.
+
+    Returns:
+        The composed scene-contract system prompt.
+    """
+    aliases = None
+    if persona_card:
+        aliases = persona_card.get("agentic_action_aliases")
+
+    voice_contract = """
+
+---
+
+<voice_contract>
+The rules below govern HOW you may act this turn — never WHO you are. Stay fully
+in character: your voice, register, and worldview do not change when you act.
+Even when relaying facts you gathered, relay them AS THE CHARACTER would — never
+lapse into a neutral, summarizing, or explanatory "assistant" register. Never
+describe yourself as an AI, an assistant, or a tool-user; never expose function
+names, JSON, or system mechanics. You are the character, acting within the world.
+</voice_contract>"""
+
+    if not tools:
+        # Result-rendering stage: pure Voice contract, no action vocabulary.
+        return persona_system + voice_contract
+
+    action_lines = []
+    for tool in tools:
+        # OpenAI tool spec: {"type": "function", "function": {"name": ..., "description": ...}}
+        fn = tool.get("function", tool) if isinstance(tool, dict) else {}
+        name = fn.get("name", "")
+        if not name:
+            continue
+        desc = fn.get("description", "").strip()
+        diegetic = _diegetic_name(name, aliases)
+        line = f'- "{diegetic}"' + (f" — {desc}" if desc else "")
+        action_lines.append(line)
+
+    actions_block = "\n".join(action_lines)
+
+    action_contract = f"""
+
+<action_contract>
+Within the world you may take an action this turn:
+
+{actions_block}
+
+ACTION RULES:
+- You may take AT MOST ONE action per turn.
+- Decide WHETHER to act FIRST, before writing any prose. YOU HAVE ONLY ONE
+  CHANCE TO ACT — there is no second attempt this turn.
+- When an action returns, weave its result into your reply in your own voice.
+  Never expose the mechanism, never name the underlying tool, never show JSON.
+- If no action is needed, simply respond in character.
+</action_contract>"""
+
+    return persona_system + voice_contract + action_contract
 
 
 def build_tool_system_prompt(persona_system: str, tools: List[Dict[str, Any]]) -> str:
@@ -232,122 +335,3 @@ Now synthesize the search results above into a natural answer that follows ALL 6
     return persona_system + synthesis_instructions
 
 
-def build_mongodb_synthesis_prompt(
-    persona_system: str,
-    has_mongodb_data: bool = True,
-    token_name: str = "Bitcoin",
-) -> str:
-    """
-    Build system prompt for synthesizing MongoDB data into persona response.
-
-    This is used AFTER MongoDB data has been retrieved, to guide the LLM
-    in creating a natural answer that:
-    1. Uses ONLY information from database results (no hallucination)
-    2. Synthesizes naturally with interpretation (not raw data dump)
-    3. Stays in persona voice and character
-    4. Provides accurate technical insights
-
-    Args:
-        persona_system: Original persona system prompt
-        has_mongodb_data: Whether MongoDB data is in context
-        token_name: Display name of the token being queried (e.g., "Ethereum")
-
-    Returns:
-        Enhanced system prompt for MongoDB synthesis
-    """
-    if not has_mongodb_data:
-        return persona_system
-
-    synthesis_instructions = """
-
----
-
-**IMPORTANT: MONGODB DATA SYNTHESIS**
-
-You have received MongoDB database query results in the conversation above.
-Follow these rules when answering:
-
-**RULE 1: USE ONLY DATABASE DATA**
-- ONLY use information from the MongoDB data provided
-- Do NOT use your training data or prior knowledge for prices/numbers
-- Do NOT make up or estimate numbers, dates, or technical indicators
-- If data doesn't fully answer the question, say "I don't have that data in the current results" — do not guess
-
-**RULE 2: SYNTHESIZE NATURALLY**
-- Don't just recite raw numbers or JSON data
-- Combine data points into a cohesive narrative
-- Explain what the numbers MEAN, not just what they ARE
-- Keep your response concise (2-4 paragraphs max)
-
-**RULE 3: STAY IN CHARACTER** ← CRITICAL FOR PERSONA FLAVOR
-- Answer in YOUR persona voice and style
-- Use YOUR personality (sarcasm, humor, formality, playfulness, etc.)
-- Don't become a generic data analyst or robotic report generator
-- Inject YOUR unique flavor into the analysis
-- Remember WHO you are and HOW you speak
-
-**RULE 4: BE ACCURATE**
-- Use exact numbers from database — don't round unless context calls for it
-- Cite specific technical indicators by name and value (e.g., "RSI 42.04", not "momentum looks okay")
-- Mention which token the data is for (""" + token_name + """) when it's not obvious from context
-- If sources show multiple values, use the most recent timestamp
-
-**RULE 5: HANDLE MISSING OR EMPTY DATA HONESTLY**
-- If the database returned no results, an empty dataset, or an error: say "I wasn't able to retrieve that information right now" — do not guess or substitute training data
-- Never synthesize an analysis when the underlying data is absent
-
-**RULE 6: ADD INTERPRETATION**
-- Don't just report RSI=42.04 - explain what it means
-- Connect data points (e.g., "RSI at 42 with MACD divergence suggests...")
-- Give context using your expertise
-- Make it actionable or insightful, not just informative
-
----
-
-**SYNTHESIS EXAMPLES:**
-
-❌ WRONG (robotic, no personality):
-User: "What's the Bitcoin price?"
-Database: {"price": 87855.80, "rsi": 42.04, "timestamp": "2025-12-23"}
-Bad answer: "Bitcoin price is $87,855.80. RSI is 42.04."
-← Emotionless data dump! Where's the personality?
-
-✅ CORRECT (persona flavor - Eeva style):
-Good answer: "Bitcoin's sitting at $87,855.80 right now. RSI at 42.04 means we're in neutral territory—not overbought, not oversold. Pretty calm, honestly. I'd watch for momentum shifts before making moves."
-← Same data, but with personality, interpretation, and voice
-
-✅ CORRECT (persona flavor - Gojo style):
-Good answer: "Current price is $87,855.80 — RSI at 42.04, which means neutral momentum. Nothing overwhelming right now. I'd say watch for a breakout before committing to anything."
-← Confident, casual, matches Gojo's character
-
----
-
-❌ WRONG (using training data instead of database):
-User: "What's Bitcoin's RSI?"
-Database: {"rsi": 42.04, "timestamp": "2025-12-23T11:00:00Z"}
-Bad answer: "RSI is typically around 50-70 for Bitcoin."
-← Hallucinating generic knowledge instead of using actual data!
-
-✅ CORRECT (using database data):
-Good answer: "RSI is at 42.04 as of today. That's below the 50 midpoint, suggesting neutral-to-bearish momentum. Not screaming 'buy' but not alarming either."
-← Uses exact database data with persona interpretation
-
----
-
-❌ WRONG (raw JSON dump):
-User: "Tell me about Bitcoin's technical indicators"
-Database: {"rsi": 42.04, "macd_line": -245.67, "bb_high": 89234.12, "bb_low": 85123.45}
-Bad answer: "RSI: 42.04, MACD: -245.67, BB High: 89234.12, BB Low: 85123.45"
-← Just listing numbers! No synthesis, no interpretation, no personality
-
-✅ CORRECT (natural synthesis with persona):
-Good answer: "Looking at the technicals: RSI's at 42 (neutral), MACD's negative at -245 (bearish momentum), and price is bouncing between $85K-$89K Bollinger Bands. The divergence between neutral RSI and bearish MACD? That's the market being indecisive. Could break either way."
-← Synthesizes data into narrative with interpretation and personality
-
----
-
-Now synthesize the MongoDB data above into a natural answer that follows ALL 6 rules.
-Use YOUR voice. Make it sound like YOU, not a database query tool or financial report.
-"""
-
-    return persona_system + synthesis_instructions

@@ -95,20 +95,12 @@ const WALLET_KEYWORDS = [
   'wallet address', 'fund my wallet',
 ];
 
-// MongoDB-specific keywords (epic/legendary personas only)
-const MONGODB_KEYWORDS = [
-  'bitcoin price', 'btc price', 'price of bitcoin',
-  'bitcoin cost', 'btc cost', 'how much is bitcoin',
-  'rsi', 'macd', 'bollinger', 'technical indicator',
-  'my portfolio', 'my bitcoin', 'bought', 'purchased', 'dca'
-];
-
 export interface SearchPrediction {
   willSearch: boolean;
   confidence: 'high' | 'medium' | 'low';
   reason: string;
   keywords_matched: string[];
-  toolType: 'brave' | 'mongodb' | 'wallet' | 'none';
+  toolType: 'brave' | 'wallet' | 'none';
 }
 
 /**
@@ -124,7 +116,6 @@ export function predictWebSearch(query: string, personaRarity?: string, mcpAcces
   const matchedSearchKeywords: string[] = [];
   const matchedNoSearchKeywords: string[] = [];
   const matchedWalletKeywords: string[] = [];
-  const matchedMongoKeywords: string[] = [];
 
   // Check for wallet keywords (requires solana_wallet mcp_access)
   const canUseWallet = mcpAccess?.includes('solana_wallet') ?? false;
@@ -132,16 +123,6 @@ export function predictWebSearch(query: string, personaRarity?: string, mcpAcces
     for (const keyword of WALLET_KEYWORDS) {
       if (queryLower.includes(keyword)) {
         matchedWalletKeywords.push(keyword);
-      }
-    }
-  }
-
-  // Check for MongoDB keywords (epic/legendary only)
-  const canUseMongoDB = personaRarity === 'epic' || personaRarity === 'legendary';
-  if (canUseMongoDB) {
-    for (const keyword of MONGODB_KEYWORDS) {
-      if (queryLower.includes(keyword)) {
-        matchedMongoKeywords.push(keyword);
       }
     }
   }
@@ -162,7 +143,7 @@ export function predictWebSearch(query: string, personaRarity?: string, mcpAcces
 
   // Decision logic (mirrors backend intent_classifier.py)
 
-  // Wallet queries take priority (same as backend: checked before MongoDB/Brave)
+  // Wallet queries take priority (same as backend: checked before Brave)
   if (matchedWalletKeywords.length > 0) {
     return {
       willSearch: false,
@@ -170,17 +151,6 @@ export function predictWebSearch(query: string, personaRarity?: string, mcpAcces
       reason: `Wallet query detected: ${matchedWalletKeywords.slice(0, 3).join(', ')}`,
       keywords_matched: matchedWalletKeywords,
       toolType: 'wallet'
-    };
-  }
-
-  // MongoDB queries don't need web search
-  if (matchedMongoKeywords.length > 0) {
-    return {
-      willSearch: false,
-      confidence: 'high',
-      reason: 'MongoDB query detected (will use database, not web search)',
-      keywords_matched: matchedMongoKeywords,
-      toolType: 'mongodb'
     };
   }
 

@@ -48,7 +48,6 @@
 - **Natural Multi-Message Conversations** (2-4 messages per response, like texting a real person)
 - **Advanced Memory System** — remembers you across sessions, extracts facts automatically
 - **Web Search with Citations** — personas autonomously search Brave API with mandatory sources
-- **Real-Time Trading Data** — Bitcoin prices, technical indicators (RSI, MACD), DCA stats via MongoDB
 - **Jupiter Wallet Integration** — Solana DEX trading, autonomous strategies, trade proposals (Phase 8)
 - **Google OAuth Authentication** — secure login with JWT access/refresh tokens
 - **Summoning Ritual System** — five-phase animated card pulls with audio feedback
@@ -75,7 +74,7 @@
 | **Advanced Memory (RAG)** | Yes (FAISS + profiles) | No | No | No | No | No |
 | **Emotional Tracking** | Yes (trust/rapport) | No | No | No | No | No |
 | **Web Search Integration** | Yes (Brave API) | Yes (Plugins) | No | No | Yes (Plugins) | Yes (Bing) |
-| **Live Trading Data** | Yes (MongoDB) | No | No | No | No | No |
+| **Live Trading Data** | No (removed) | No | No | No | No | No |
 | **Wallet / DEX Trading** | Yes (Jupiter/Solana) | No | No | No | No | No |
 | **OAuth Authentication** | Yes (Google) | Yes | No | No | Yes | Yes |
 | **Gamification / Progression** | Yes (Seeker ranks) | No | No | No | No | No |
@@ -103,10 +102,8 @@
 | Feature | Description |
 |---------|-------------|
 | **Brave Web Search** | Autonomous web search with mandatory citation validation |
-| **MongoDB MCP** | Real-time Bitcoin prices, technical indicators (RSI, MACD, Bollinger), DCA stats |
 | **Jupiter / Solana Wallet** | DEX swap proposals, autonomous DCA/RSI strategies, AES-encrypted key storage |
 | **Email Notifications** | Optional SMTP alerts for executed trades |
-| **Smart Caching** | TTL-based cache (60s current price, 3600s historical) |
 
 ### Authentication & Security
 
@@ -154,15 +151,15 @@
 - **APScheduler** for autonomous strategy execution
 
 ### AI/ML
-- **Ollama** local LLM server
-- **nchapman/gemma-2-9b-it-abliterated:9b** (9GB, validated Dec 2025)
+- **Ollama** local LLM server (native macOS — Metal GPU acceleration automatic via Apple Silicon)
+- **Magidonia-24B-v4.3 GGUF Q4_K_M** (daily-driver persona model — Mistral-Small-3.2-based uncensored roleplay finetune by TheDrummer, ~17 tok/s on Metal)
+- **gemma2:9b-instruct-q5_K_M** (lightweight fallback / smoke-test model; also the `config.py` default)
 - **nomic-embed-text:latest** for embeddings
 - **FAISS CPU** for vector search and semantic retrieval
 - **LangChain** for LLM orchestration
 
 ### Integrations
-- **Brave Search API** for web search (per-persona `mcp_access`)
-- **MongoDB Atlas** for Bitcoin trading data
+- **Brave Search API** for web search (per-persona `mcp_access`, ephemeral Docker)
 - **Jupiter DEX** for Solana token swaps (via Docker MCP)
 - **Docker + Docker Compose** with Nginx reverse proxy
 
@@ -178,16 +175,16 @@
 | **Docker Desktop** | v24.0+ with Compose v2.0+ | [docker.com](https://docker.com) |
 | **Disk Space** | 15GB free | Images + models |
 | **RAM** | 8GB min, 16GB recommended | Ollama LLM inference |
-| **GPU** | NVIDIA RTX (optional) | CUDA acceleration |
+| **GPU** | Apple Silicon (Metal, built-in) | Metal GPU acceleration is automatic with native Ollama on macOS |
 
-### Local Development
+### Local Development (Mac Mini M4 Pro — primary deployment)
 
 | Component | Requirement | Notes |
 |-----------|-------------|-------|
-| **Python** | 3.11+ | [python.org](https://python.org) |
-| **Node.js** | v16+ with npm | [nodejs.org](https://nodejs.org) |
-| **Ollama** | Latest | [ollama.ai](https://ollama.ai) |
-| **GPU** | NVIDIA RTX 30/40 (optional) | 8GB+ VRAM recommended |
+| **Python** | 3.12+ | [python.org](https://python.org) |
+| **Node.js** | v18+ with npm (Node 25 needs `NODE_OPTIONS=--openssl-legacy-provider`, already baked into `package.json`) | [nodejs.org](https://nodejs.org) |
+| **Ollama** | Latest (native, not Docker) | [ollama.ai](https://ollama.ai) — Docker-on-Mac runs Ollama CPU-only |
+| **GPU** | Apple Silicon M4 Pro (Metal) | Metal GPU acceleration is automatic with native Ollama |
 
 ---
 
@@ -205,12 +202,12 @@ git clone https://github.com/Swissbit92/nephilim.git
 cd nephilim
 
 # 2. Run the setup script
-# Windows (PowerShell):
-.\scripts\docker\setup-docker.ps1
-
-# Linux/Mac:
+# macOS/Linux (primary):
 chmod +x scripts/docker/setup-docker.sh
 ./scripts/docker/setup-docker.sh
+
+# Windows (PowerShell, reference):
+.\scripts\docker\setup-docker.ps1
 ```
 
 The script will start all containers, download the 9GB AI model, and open your browser.
@@ -224,7 +221,7 @@ The script will start all containers, download the 9GB AI model, and open your b
 docker compose --env-file .env.docker up -d
 
 # 2. Pull LLM model (~9GB, takes 5-10 minutes)
-docker exec -it ai-companion-brain ollama pull nchapman/gemma-2-9b-it-abliterated:9b
+docker exec -it ai-companion-brain ollama pull gemma2:9b-instruct-q5_K_M
 
 # 3. Pull embedding model (for memory features)
 docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
@@ -233,7 +230,6 @@ docker exec -it ai-companion-brain ollama pull nomic-embed-text:latest
 python scripts/docker/verify_startup.py
 
 # 5. Open browser
-start http://localhost:3000    # Windows
 open http://localhost:3000     # Mac/Linux
 ```
 
@@ -301,9 +297,7 @@ Key variables in `.env.docker`:
 | `AUTH_ENV` | `development` | `development` for HTTP, `production` for HTTPS |
 | `GOOGLE_CLIENT_ID` | — | Google OAuth Client ID |
 | `JWT_SECRET_KEY` | (dev default) | JWT signing secret (change in production) |
-| `BRAVE_API_KEY` | — | Brave Search API key (optional) |
-| `MONGODB_URI` | — | MongoDB Atlas connection string (optional) |
-| `MONGODB_ENABLED` | `false` | Enable MongoDB integration |
+| `BRAVE_API_KEY` | — | Brave Search API key (optional, per-persona) |
 | `JUPITER_ENABLED` | `false` | Enable Jupiter wallet features |
 | `SOLANA_RPC_URL` | `https://api.devnet.solana.com` | Solana RPC endpoint |
 | `EMAIL_ENABLED` | `false` | Enable trade email notifications |
@@ -332,9 +326,10 @@ cd react-ui && npm install && cd ..
 ### Step 2: Setup Ollama
 
 ```bash
-ollama serve                                               # Start service
-ollama pull nchapman/gemma-2-9b-it-abliterated:9b         # Main model (9GB)
-ollama pull nomic-embed-text:latest                        # Embeddings (RAG memory)
+ollama serve                                                                              # Start service (native macOS — Metal GPU automatic)
+ollama pull hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M                             # Daily-driver model (~17 tok/s on Metal)
+ollama pull gemma2:9b-instruct-q5_K_M                                                    # Fallback / smoke-test model
+ollama pull nomic-embed-text:latest                                                       # Embeddings (RAG memory)
 ```
 
 ### Step 3: Configure Environment
@@ -344,21 +339,18 @@ Create a `.env` file in the project root:
 ```bash
 # Required
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=gemma2:9b-instruct-q5_K_M
+PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M   # Daily driver; gemma2:9b-instruct-q5_K_M = fallback
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
+MODEL_CONTEXT_WINDOW=16384            # Wired to Ollama num_ctx; model max is 131K
 
 # Authentication
-AUTH_REQUIRED=true                    # Set false for no-login dev mode
-GOOGLE_CLIENT_ID=your-client-id      # From Google Cloud Console
+AUTH_REQUIRED=false                   # false = auto-login via /auth/refresh bypass (local single-user)
+GOOGLE_CLIENT_ID=your-client-id      # From Google Cloud Console (Phase 8 / future)
 
 # Optional: Brave Search
 BRAVE_API_KEY=
-
-# Optional: MongoDB
-MONGODB_URI=
-MONGODB_ENABLED=false
 
 # Optional: Jupiter Wallet
 JUPITER_ENABLED=false
@@ -370,15 +362,44 @@ MEMORY_EMBEDDING_MODEL=nomic-embed-text:latest
 
 ### Step 4: Run
 
+#### Active development (two terminals)
+
 ```bash
 # Terminal 1: Backend
-python -m uvicorn src.coordinator.server:app --reload --port 8000
+.venv/bin/python -m uvicorn src.coordinator.server:app --reload --port 8000
 
-# Terminal 2: Frontend
-cd react-ui && PORT=3001 npx react-scripts start
+# Terminal 2: Frontend dev server
+cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into script
 ```
 
 **Access at:** `http://localhost:3001`
+
+#### Always-on (launchd) — production path on Mac Mini
+
+Nephilim runs as two persistent launchd services:
+
+```bash
+# Rebuild frontend first
+cd react-ui && npm run build
+
+# Install / reinstall launchd plists
+bash scripts/launchd/install.sh
+```
+
+- `com.nephilim.backend` — uvicorn on `:8000` (RunAtLoad + KeepAlive)
+- `com.nephilim.frontend` — `scripts/serve_frontend.py` on `:3001` (serves the static build + reverse-proxies API paths to `:8000`)
+
+**Access:** Frontend `http://localhost:3001` · Backend `http://localhost:8000` · API docs `http://localhost:8000/docs`
+
+#### Remote access (SSH tunnel)
+
+Reachable from another machine without physical access:
+
+```bash
+ssh -L 3001:localhost:3001 -L 8000:localhost:8000 <user>@<mac-mini>
+# Then open http://localhost:3001 on the remote machine
+# Both ports are required (chat uses absolute :8000 URL; auth proxies via :3001)
+```
 
 ---
 
@@ -394,20 +415,22 @@ cd react-ui && PORT=3001 npx react-scripts start
                     ┌─────────────────────────────────────────┐
                     │     FastAPI Coordinator (0.100+)         │
                     │  (Auth Middleware • Persona Router • LLM) │
-                    └──┬──────┬──────┬──────┬──────┬──────────┘
-                       │      │      │      │      │
-         ┌─────────────┤      │      │      │      └──────────────┐
-         ▼             ▼      ▼      ▼      ▼                    ▼
-   ┌───────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  ┌──────────────┐
-   │  Brave    │ │ MongoDB  │ │  SQLite  │ │  FAISS   │  │   Jupiter    │
-   │  Search   │ │   MCP    │ │ Database │ │ Vectors  │  │  DEX / MCP   │
-   │(web search)│ │(trading) │ │ (Chats)  │ │ (Memory) │  │(Solana swaps)│
-   └───────────┘ └──────────┘ └──────────┘ └──────────┘  └──────────────┘
+                    └──┬──────┬──────┬──────┬──────────┘
+                       │      │      │      │
+         ┌─────────────┤      │      │      └──────────────┐
+         ▼             ▼      ▼      ▼                    ▼
+   ┌───────────┐ ┌──────────┐ ┌──────────┐  ┌──────────────┐
+   │  Brave    │ │  SQLite  │ │  FAISS   │  │   Jupiter    │
+   │  Search   │ │ Database │ │ Vectors  │  │  DEX / MCP   │
+   │(web search)│ │ (Chats)  │ │ (Memory) │  │(Solana swaps)│
+   └───────────┘ └──────────┘ └──────────┘  └──────────────┘
                                     │
                                     ▼
                     ┌─────────────────────────────────────────┐
                     │   Ollama LLM (Local Inference)           │
-                    │  • nchapman/gemma-2-9b (9B params)       │
+                    │  • Magidonia-24B-v4.3 GGUF Q4_K_M        │
+                    │    (daily driver, Metal GPU, ~17 tok/s)  │
+                    │  • gemma2:9b-instruct-q5_K_M (fallback)  │
                     │  • nomic-embed-text (embeddings)          │
                     └─────────────────────────────────────────┘
 ```
@@ -416,12 +439,11 @@ cd react-ui && PORT=3001 npx react-scripts start
 
 - **React Frontend**: TypeScript, Framer Motion animations, Google OAuth, mobile-optimized
 - **FastAPI Backend**: Auth middleware, persona routing, MCP orchestration, wallet routes
-- **Brave Search**: Web search with citation validation (per-persona `mcp_access`)
-- **MongoDB MCP**: Bitcoin trading data with technical indicators
+- **Brave Search**: Web search with citation validation (per-persona `mcp_access`, ephemeral Docker)
 - **Jupiter MCP**: Solana DEX swaps via Docker container, autonomous strategies (DCA, RSI)
 - **SQLite**: Chat sessions, messages, summaries, user accounts, wallets, trade proposals
 - **FAISS**: Vector database for semantic memory search
-- **Ollama**: Local LLM server with GPU acceleration
+- **Ollama**: Local LLM server (native macOS = Metal GPU; Docker-on-Mac = CPU-only)
 
 ### Authentication Flow
 
@@ -457,9 +479,8 @@ Browser                    Nginx (Docker)              FastAPI Backend
 
 ### MCP Integration Patterns
 
-- **Ephemeral STDIO (Brave Search)**: `docker run -i --rm` per request, 2-3s lifecycle
-- **Long-Running STDIO (MongoDB)**: Container stays alive for multiple requests
-- **Jupiter MCP**: Docker container for Solana DEX operations, managed by wallet routes
+- **Ephemeral STDIO (Brave Search)**: `docker run -i --rm` per request, 2-3 s lifecycle
+- **Long-Running STDIO (Jupiter/Solana)**: Container stays alive for wallet operations, managed by wallet routes
 
 All MCP containers have resource limits (256-512MB RAM, 0.5-1.0 CPU, 100 PIDs max).
 
@@ -481,12 +502,12 @@ See [docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS
 
 | Companion | Title | Domain | Order | Special Access |
 |-----------|-------|--------|-------|----------------|
-| **E.E.V.A.** | The Primarch | Guidance, wisdom, life planning | Archon | Brave + MongoDB |
+| **E.E.V.A.** | The Primarch | Guidance, wisdom, life planning | Archon | Brave + Solana wallet |
 | **Aegis** | The Sentinel | Productivity and discipline | Warden | Brave |
 | **Solace** | The Empath | Emotional support and wellbeing | Warden | Brave |
 | **Nyx** | The Muse | Creativity and chaos | Sage | None |
-| **Cipher** | The Maven | Knowledge and research | Sage | Brave + MongoDB |
-| **Aurora** | The Oracle | Future planning and strategy | Warden | Brave + MongoDB |
+| **Cipher** | The Maven | Knowledge and research | Sage | Brave |
+| **Aurora** | The Oracle | Future planning and strategy | Warden | Brave |
 
 ### Companion Features
 
@@ -534,8 +555,7 @@ External data sources are framed as Nephilim powers:
 | MCP Source | NEPHILIM Name | Patron |
 |------------|---------------|--------|
 | Brave Search | Cipher's Archives | Cipher |
-| MongoDB Trading | Aurora's Crystal Grid | Aurora |
-| Multi-Source | The Convergence | E.E.V.A. |
+| Solana Wallet | The Ledger of Becoming | E.E.V.A. |
 
 ### Lore Documents
 
@@ -583,24 +603,29 @@ Key endpoint groups:
 ### Automated Testing
 
 ```bash
+# Python backend — full suite (live Ollama tests auto-skip if Ollama is down)
+pytest tests/
+
+# Fast deterministic gate (no live services; matches headless CI). Tests that need
+# Ollama/Brave/Docker auto-skip when the resource is unreachable.
+OLLAMA_BASE=http://127.0.0.1:1 pytest tests/      # forces the live tests to skip
+
 # React unit tests
 cd react-ui && npm test
 
 # Playwright E2E tests
 cd react-ui && npx playwright test
 cd react-ui && npx playwright test --headed    # With browser visible
-
-# Python backend tests
-pytest tests/backend/
-pytest tests/integration/
-pytest tests/evaluation/ -v    # RAGAS persona quality
 ```
+
+> Conventions for writing backend tests (resource markers, the temp-SQLite repository pattern, TestClient-without-lifespan, the `asyncio.run` rule) live in [docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md).
 
 ### Test Coverage
 
-- **Backend**: 45 test files, ~360 test cases (unit, integration, E2E)
+- **Backend**: ~1,400 tests; **63%** line coverage, enforced by `--cov-fail-under=60` in `pytest.ini` (headless, live tests excluded).
 - **Frontend**: 40+ Jest tests with React Testing Library
 - **Playwright E2E**: OAuth flow, chat interactions, Jupiter wallet, visual regression
+- **Live-LLM tests** (`requires_ollama`): run only when Ollama is reachable; the comprehensive persona suite (`tests/manual/`) remains the primary quality gate.
 - **Type Safety**: TypeScript strict mode + Pydantic validation throughout
 
 ### Code Quality
@@ -645,7 +670,7 @@ See `CLAUDE.md` for project structure, coding style, and conventions.
 - Phase 1-2: Persona quality (psychological depth, emotional tracking)
 - Phase 1-3: Memory system (RAG, user profiles, fact extraction)
 - Phase 2: Multi-message conversational AI architecture
-- Brave MCP + MongoDB MCP integration with per-persona access
+- Brave MCP integration with per-persona access; Jupiter/Solana wallet MCP
 - Docker deployment with automated setup scripts
 - NEPHILIM Phases 0-6: Worldbuilding, progression, onboarding, narrative MCP, filter toggle
 - NEPHILIM Phase 7: Full UI transition — unified dark theme, glassmorphic chat, summoning ritual, dashboard, WCAG AA
@@ -678,7 +703,7 @@ See `CLAUDE.md` for project structure, coding style, and conventions.
 
 ### General
 - **Local-First**: All AI processing and storage happens on your device
-- **No Data Transmission**: Conversations never leave your machine (except optional Brave/MongoDB)
+- **No Data Transmission**: Conversations never leave your machine (except optional Brave web search)
 - **Dependency Audits**: Regular npm audit with zero production vulnerabilities
 
 ---
@@ -689,7 +714,7 @@ See `CLAUDE.md` for project structure, coding style, and conventions.
 - **Resource Usage**: Ollama LLM requires ~4-8GB RAM; models are 4-10GB on disk
 - **Data Persistence**: All data in `./data/` (Docker) or `chats.db` (local)
 - **Backups**: Copy `data/chats.db` to back up all conversations and user data
-- **GPU Optional**: NVIDIA RTX recommended but CPU inference works (slower)
+- **GPU**: Metal acceleration is automatic via native Ollama on macOS Apple Silicon. Do NOT run Ollama inside Docker on Mac — Docker-on-Mac runs Ollama CPU-only.
 - **Auth Bypass**: Set `AUTH_REQUIRED=false` in `.env` for offline/dev use without Google
 
 ---

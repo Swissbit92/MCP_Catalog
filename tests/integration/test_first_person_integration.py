@@ -17,11 +17,13 @@ Usage:
     python test_first_person_integration.py
 """
 
+import pytest
 import requests
 import re
 from typing import Dict, List, Tuple
 import sys
 
+pytestmark = pytest.mark.requires_ollama
 
 BASE_URL = "http://localhost:8000"
 
@@ -136,8 +138,11 @@ def send_chat_message(persona: str, message: str) -> str:
         )
         response.raise_for_status()
         data = response.json()
-        # API uses "answer" key, not "response"
-        return data.get("answer", "")
+        # API uses "answer" key, not "response"; answer may be a list (multi-message)
+        answer = data.get("answer", "")
+        if isinstance(answer, list):
+            answer = " ".join(str(m) for m in answer)
+        return answer
     except Exception as e:
         print(f"  ❌ ERROR: {e}")
         return ""

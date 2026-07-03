@@ -21,14 +21,40 @@ from fastapi import HTTPException
 
 from ..repositories.base_repository import utc_now_iso
 
-from ..schemas import ChatBody, ChatTurn, AppendMessageBody
+from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
-from .llm_completion_service import LLMCompletionService
 from ..persona_memory import build_system_prompt, get_persona_card
 
 logger = logging.getLogger(__name__)
+
+
+def _assemble_capped_history(
+    raw_turns: list[ChatTurn],
+    summary_turn: ChatTurn | None = None,
+) -> list[ChatTurn]:
+    """Assemble chat history bounded to MAX_HISTORY_TURNS.
+
+    Token-budget message selection can exceed the ChatBody count guard on a large
+    context window; this keeps the summary (if any) at the front plus the most
+    recent raw turns so the result never violates the schema. Older raw turns are
+    already represented by the summary + RAG-injected memories.
+
+    Guarantees ``len(result) <= MAX_HISTORY_TURNS``.
+    """
+    reserve = 1 if summary_turn is not None else 0
+    max_raw = MAX_HISTORY_TURNS - reserve
+    capped = raw_turns[-max_raw:] if len(raw_turns) > max_raw else list(raw_turns)
+    if len(raw_turns) > max_raw:
+        logger.info(
+            f"[Memory] Capping history {len(raw_turns)} -> {max_raw} raw turns "
+            f"(token budget exceeded the {MAX_HISTORY_TURNS}-turn ChatBody guard; "
+            f"older turns covered by summary/RAG)"
+        )
+    if summary_turn is not None:
+        return [summary_turn] + capped
+    return capped
 
 
 # ─────────────────────────────────────────────────────────────
@@ -165,6 +191,134 @@ def _build_unlocked_lore_context(
         return ""
 
 
+def _estimate_lore_tokens(text: str) -> int:
+    """Cheap token estimate (~1.3 tokens/word) for lore-budget accounting."""
+    return int(len(text.split()) * 1.3)
+
+
+def _build_ondemand_lore_context(
+    query: str,
+    recent_messages: list,
+    persona_key: str,
+    episodic_memory_rag,
+    settings,
+) -> str:
+    """Phase-2 hybrid lore retrieval → <dynamic_lore> block (HERMES-Agents).
+
+    Tier-1 (keyword): deterministic alias/name match over the query + recent
+    messages (priority 9). Tier-2 (embedding): bge-m3 semantic search over the
+    lore corpus (priority 6, canon-only). Results are deduped, the static
+    3-entity core is excluded, and the block is trimmed to a token budget
+    (lowest priority dropped first). Flag-OFF → empty string (byte-identical).
+    """
+    if not getattr(settings.lore, "ondemand_enabled", False):
+        return ""
+    if episodic_memory_rag is None or getattr(episodic_memory_rag, "lore_store", None) is None:
+        return ""
+
+    from .. import lore_loader  # noqa: PLC0415
+
+    core_ids = lore_loader.get_static_core_ids(persona_key)
+    candidates: dict[str, dict] = {}  # entity_id -> {body, priority, score}
+
+    # --- Tier 1: keyword / alias (deterministic) ---
+    try:
+        window = recent_messages[-settings.lore.keyword_window_messages:] if recent_messages else []
+        scan_text = " ".join([query] + [
+            (m.get("content", "") if isinstance(m, dict) else str(m)) for m in window
+        ]).lower()
+        for alias, entity_id in lore_loader.get_alias_index().items():
+            if len(alias) < 4:
+                continue  # skip noise-prone short aliases
+            if alias in scan_text and entity_id not in core_ids:
+                meta = lore_loader.load_entity_with_metadata(entity_id)
+                if meta and meta.get("body"):
+                    candidates[entity_id] = {"body": meta["body"], "priority": 9, "score": 1.0}
+    except Exception as e:
+        logger.debug(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
+
+    # --- Tier 2: embedding (semantic, canon-only) ---
+    try:
+        hits = episodic_memory_rag.search_lore(
+            query, k=settings.lore.retrieval_k,
+            min_relevance=settings.lore.embed_min_relevance, canon_only=True,
+        )
+        for meta, score in hits:
+            eid = meta.get("entity_id")
+            if not eid or eid in core_ids or eid in candidates:
+                continue
+            candidates[eid] = {"body": meta.get("body", ""), "priority": 6, "score": float(score)}
+    except Exception as e:
+        logger.debug(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
+
+    if not candidates:
+        return ""
+
+    # Rank: priority desc, then score desc. Trim to token budget.
+    ordered = sorted(candidates.items(), key=lambda kv: (kv[1]["priority"], kv[1]["score"]), reverse=True)
+    budget = settings.lore.max_budget_tokens
+    used, kept = 0, []
+    for eid, c in ordered:
+        body = " ".join(c["body"].split()[:120])  # cap each entry ~120 words
+        cost = _estimate_lore_tokens(body)
+        if used + cost > budget and kept:
+            continue
+        kept.append((eid, body))
+        used += cost
+    if not kept:
+        return ""
+
+    lines = [
+        "<dynamic_lore>",
+        "Relevant fragments of the realm, surfaced for this moment. Weave them in "
+        "naturally if they fit; never recite them verbatim or mention this context.",
+    ]
+    for eid, body in kept:
+        lines.append(f"### {eid}\n{body}")
+    lines.append("</dynamic_lore>")
+    return "\n".join(lines)
+
+
+def _build_seeker_rank_context(rank_name: str) -> str:
+    """Phase-2: narrative seeker-rank block (empty for Initiate / unknown).
+
+    Framed as guidance, not a literal label, to avoid the model parroting the rank.
+    """
+    if not rank_name or rank_name == "Initiate":
+        return ""
+    return (
+        "<seeker_rank>\n"
+        f"This Seeker walks as a {rank_name}. Shape the depth of your guidance and "
+        "the mysteries you reveal to one of their standing — but never state their rank as a bare label.\n"
+        "</seeker_rank>"
+    )
+
+
+def _assemble_capped_context(blocks_in_priority, max_tokens: int):
+    """ADR-006 M0: join non-empty session-context blocks within a token budget.
+
+    ``blocks_in_priority`` is ordered most-important-first (user profile,
+    emotional state, lore, rank, capability). Blocks are kept in that order until
+    the next one would exceed ``max_tokens`` (estimated), so the highest-priority
+    context survives and lower-priority blocks are dropped first — protecting the
+    context window. ``max_tokens <= 0`` disables the cap. Returns the joined
+    string, or None if nothing is kept.
+    """
+    from ..llm_client import estimate_tokens  # lazy: avoid llm_client<->services cycle
+
+    kept, used = [], 0
+    for b in blocks_in_priority:
+        if not b:
+            continue
+        if max_tokens and max_tokens > 0:
+            t = estimate_tokens(b)
+            if used + t > max_tokens:
+                break  # strict priority: stop at the first block that doesn't fit
+            used += t
+        kept.append(b)
+    return "\n\n".join(kept) if kept else None
+
+
 def handle_session_chat(
     session_id: str,
     message: str,
@@ -263,7 +417,72 @@ def handle_session_chat(
         system_prompt = f"{system_prompt}\n\n{unlocked_lore_context}"
         logger.debug(f"[LoreInjection] Injected unlocked lore context ({len(unlocked_lore_context)} chars)")
 
+    # PHASE 2 (HERMES): on-demand hybrid lore retrieval (flag-gated; empty when off)
+    ondemand_lore_context = _build_ondemand_lore_context(
+        query=message,
+        recent_messages=db_messages,
+        persona_key=persona_key,
+        episodic_memory_rag=episodic_memory_rag,
+        settings=get_settings(),
+    )
+    if ondemand_lore_context:
+        system_prompt = f"{system_prompt}\n\n{ondemand_lore_context}"
+        logger.debug(f"[LoreInjection] Injected on-demand lore ({len(ondemand_lore_context)} chars)")
+
+    # PHASE 2 (HERMES): seeker-rank narrative context (flag-gated; NEPHILIM personas)
+    rank_ctx = ""
+    if (get_settings().lore.rank_context_enabled and persona_key.startswith("nephilim_")
+            and seeker_progression_repo):
+        try:
+            _profile = seeker_progression_repo.get_seeker_profile(effective_user_id)
+            rank_ctx = _build_seeker_rank_context((_profile or {}).get("rank_name", "Initiate"))
+            if rank_ctx:
+                system_prompt = f"{system_prompt}\n\n{rank_ctx}"
+        except Exception as e:
+            logger.debug(f"[RankContext] skipped (non-fatal): {e}")
+
+    # PHASE 2 (HERMES): internal capability context (flag-gated; NEPHILIM personas)
+    cap_ctx = ""
+    if get_settings().lore.ondemand_enabled and persona_key.startswith("nephilim_") and seeker_progression_repo:
+        try:
+            from ..lore_retrieval import build_capability_context
+            _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
+            _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
+            cap_ctx = build_capability_context(
+                persona_key, _prof.get("rank_name", "Initiate"),
+                _aff.get("affinity_level", 0), get_settings(),
+            )
+            if cap_ctx:
+                system_prompt = f"{system_prompt}\n\n{cap_ctx}"
+        except Exception as e:
+            logger.debug(f"[Capability] context skipped (non-fatal): {e}")
+
     system_tokens = estimate_tokens(system_prompt)
+
+    # ADR-006 M0: assemble the session-context blocks (highest priority first) so
+    # they can be carried to chat() and actually reach the LLM. Historically these
+    # were appended to `system_prompt` above but only used for token budgeting and
+    # then dropped (ChatBody carried no system prompt). Token-capped to protect the
+    # context window; gated behind MEMORY_CONTEXT_INJECT (default OFF until Gate 0).
+    _mem_settings = get_settings().memory
+    extra_system_context = None
+    if _mem_settings.context_inject_enabled:
+        extra_system_context = _assemble_capped_context(
+            [
+                user_profile_context,
+                emotional_context,
+                unlocked_lore_context,
+                ondemand_lore_context,
+                rank_ctx,
+                cap_ctx,
+            ],
+            _mem_settings.context_max_tokens,
+        )
+        if extra_system_context:
+            logger.info(
+                f"[SessionContext] injecting {estimate_tokens(extra_system_context)} "
+                f"tokens of session context into the LLM prompt (M0)"
+            )
 
     # Build summary context
     summary_context = ""
@@ -332,17 +551,22 @@ def handle_session_chat(
         all_context_messages.sort(key=lambda x: x.get("index", 0))
 
     # Convert to ChatTurn format
-    history_turns = [
+    raw_turns = [
         ChatTurn(role=msg["role"], content=msg["content"])
         for msg in all_context_messages
     ]
 
-    # Prepend summary context
+    # Assemble the final history, capping to MAX_HISTORY_TURNS (summary + most-recent
+    # raw turns). select_messages bounds by TOKEN budget, which on a large context
+    # window can exceed the ChatBody count guard — without this cap, long sessions
+    # 500 at the ChatBody construction below.
+    summary_turn = None
     if summary_context:
-        history_turns.insert(0, ChatTurn(
+        summary_turn = ChatTurn(
             role="assistant",
             content=f"[Context from earlier in our conversation]\n\n{summary_context}"
-        ))
+        )
+    history_turns = _assemble_capped_history(raw_turns, summary_turn)
 
     logger.info(
         f"[Memory] Selected {len(history_turns)}/{len(db_messages)} messages "
@@ -356,6 +580,7 @@ def handle_session_chat(
         history=history_turns,
         message=message,
         session_id=session_id,
+        extra_system_context=extra_system_context,
     )
     response = chat_function(chat_body)
 
@@ -429,10 +654,17 @@ def handle_session_chat(
         # Update RAG index with new messages
         if episodic_memory_rag:
             all_messages_updated = message_repo.get_messages_by_session(session_id)
+            # Phase 3 trust-hierarchy: sanitize the user message before it enters
+            # long-term memory so a stored tool-call payload cannot fire on a
+            # later turn (gated by AGENTIC_INJECTION_GUARD, default ON).
+            indexed_user_content = message
+            if get_settings().agent.injection_guard:
+                from .injection_guard import get_injection_guard
+                indexed_user_content = get_injection_guard().sanitize_memory_write(message)
             episodic_memory_rag.update_session(
                 session_id=session_id,
                 new_messages=[
-                    {"role": "user", "content": message},
+                    {"role": "user", "content": indexed_user_content},
                     {"role": "assistant", "content": response["answer"]}
                 ],
                 full_history=all_messages_updated
@@ -490,18 +722,23 @@ def handle_session_chat(
         logger.error(f"[Phase3] Post-conversation updates failed: {e}")
 
     # NEPHILIM Progression System - Track conversation progress for NEPHILIM personas
-    ceremony_data = _track_nephilim_progression(
+    progression = _track_nephilim_progression(
         session_id=session_id,
         persona_key=persona_key,
         user_id=user_id,
         seeker_progression_repo=seeker_progression_repo
-    )
+    ) or {}
+    ceremony_data = progression.get("ceremony")
+    capability_unlocks = progression.get("capability_unlocks") or []
 
-    # Inject rank ceremony into response metadata if rank-up occurred
-    if ceremony_data:
+    # Inject rank ceremony + capability unlocks into response metadata
+    if ceremony_data or capability_unlocks:
         if "metadata" not in response or response["metadata"] is None:
             response["metadata"] = {}
-        response["metadata"]["rank_ceremony"] = ceremony_data
+        if ceremony_data:
+            response["metadata"]["rank_ceremony"] = ceremony_data
+        if capability_unlocks:
+            response["metadata"]["capability_unlocks"] = capability_unlocks
 
     return response
 
@@ -547,6 +784,14 @@ def _track_nephilim_progression(
             user_id=effective_user_id,
             persona_key=persona_key,
             count=2  # User message + assistant response
+        )
+
+        # Phase-2 fix: deepen affinity_level (+1/exchange after the drive-by gate)
+        # so affinity-gated lore can actually unlock. Returns milestone if crossed.
+        affinity_result = seeker_progression_repo.increment_affinity(
+            user_id=effective_user_id,
+            persona_key=persona_key,
+            amount=1,
         )
 
         # Award resonance for the conversation
@@ -605,11 +850,28 @@ def _track_nephilim_progression(
                             f"'{frag.get('fragment_title')}' ({frag.get('rarity')})"
                         )
 
-        return ceremony_data
+        # Phase-2: detect newly-unlocked internal capabilities → diegetic unlock beat
+        capability_unlocks = []
+        try:
+            _settings = get_settings()
+            if _settings.lore.ondemand_enabled:
+                from ..lore_retrieval import detect_new_capability_unlocks
+                _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
+                _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
+                capability_unlocks = detect_new_capability_unlocks(
+                    seeker_progression_repo, effective_user_id, persona_key,
+                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0), _settings,
+                )
+                for cap in capability_unlocks:
+                    logger.info(f"[NEPHILIM] Capability awakened for {effective_user_id}: {cap['id']}")
+        except Exception as e:
+            logger.debug(f"[Capability] unlock detection failed (non-fatal): {e}")
+
+        return {"ceremony": ceremony_data, "capability_unlocks": capability_unlocks}
 
     except Exception as e:
         logger.warning(f"[NEPHILIM] Progression tracking failed: {e}")
-        return None
+        return {"ceremony": None, "capability_unlocks": []}
 
 
 def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
@@ -650,6 +912,7 @@ def _check_and_summarize(session_id: str, persona_key: str, deps: dict):
 
             # Set LLM client if not already set
             if not conversation_summarizer.llm_client:
+                from ..llm_client import create_llm_client  # noqa: PLC0415
                 conversation_summarizer.set_llm_client(
                     create_llm_client({}, temperature=cfg.ollama.temp_summarization)
                 )
