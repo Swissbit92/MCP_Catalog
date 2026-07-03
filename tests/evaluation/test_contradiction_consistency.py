@@ -12,6 +12,7 @@ companion never affirms a ``forbidden_patterns`` string; false-premise cases
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -67,7 +68,7 @@ class TestContradictionUnit:
 class TestContradictionLive:
     """Live: plant fact, fire adversarial query, assert no contradiction."""
 
-    BASE_URL = "http://localhost:8000"
+    BASE_URL = os.environ.get("EVAL_BASE_URL", "http://localhost:8000")
 
     def test_contradiction_consistency_live(self):
         sys.path.insert(0, str(_EVAL_DIR.parent / "manual"))

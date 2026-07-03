@@ -214,14 +214,16 @@ class MemorySettings(BaseSettings):
                     "rank, capability) through to the LLM system prompt. These are "
                     "built by handle_session_chat but were historically DROPPED "
                     "(ChatBody carried no system prompt). "
-                    "⚠️ GATE 0 (2026-06-28) FAILED ON VOICE: injecting the shared "
-                    "NEPHILIM lore/rank/capability vocabulary homogenized persona "
-                    "voice (distinctiveness 0.768→0.643; 5/6 NEPHILIM personas "
-                    "regressed, non-NEPHILIM gojo unaffected). DO NOT enable without "
-                    "the selective-injection rework (inject user-profile + emotional "
-                    "only; drop/rework lore/rank/capability) AND a re-gate. The seam "
-                    "repair + plumbing are correct; the block-selection is not. "
-                    "See ADR-006.",
+                    "⚠️ GATE 0 (2026-06-28) FAILED ON VOICE (full six-block inject: "
+                    "distinctiveness 0.768→0.643). ⚠️ GATE 0.1 (2026-07-03) ALSO "
+                    "FAILED: M0.1 selective injection (user-profile + emotional only, "
+                    "the current code path) still homogenizes — 0.768→0.679/0.696 "
+                    "across two independent runs, eeva 0.625→0.25/0.375. Identically-"
+                    "formatted blocks pull every persona toward the same injected "
+                    "text; block CHOICE is not the fix. DO NOT enable without "
+                    "per-persona framing of the injected content (render facts in "
+                    "the persona's voice, or tag as non-echoable metadata) AND a "
+                    "re-gate. Seam + plumbing remain correct. See ADR-006.",
         alias="MEMORY_CONTEXT_INJECT"
     )
     context_max_tokens: int = Field(

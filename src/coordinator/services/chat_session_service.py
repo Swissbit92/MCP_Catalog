@@ -459,11 +459,20 @@ def handle_session_chat(
 
     system_tokens = estimate_tokens(system_prompt)
 
-    # ADR-006 M0: assemble the session-context blocks (highest priority first) so
-    # they can be carried to chat() and actually reach the LLM. Historically these
-    # were appended to `system_prompt` above but only used for token budgeting and
-    # then dropped (ChatBody carried no system prompt). Token-capped to protect the
-    # context window; gated behind MEMORY_CONTEXT_INJECT (default OFF until Gate 0).
+    # ADR-006 M0/M0.1: assemble the session-context blocks (highest priority first)
+    # so they can be carried to chat() and actually reach the LLM. Historically all
+    # six were appended to `system_prompt` above but only used for token budgeting
+    # and then dropped (ChatBody carried no system prompt). Token-capped to protect
+    # the context window; gated behind MEMORY_CONTEXT_INJECT (default OFF).
+    #
+    # M0.1 SELECTIVE INJECTION: only cross-session user-profile facts + emotional
+    # state are injected. The NEPHILIM lore/rank/capability blocks are deliberately
+    # EXCLUDED here: Gate 0 (2026-06-28) showed injecting that shared vocabulary into
+    # every NEPHILIM persona homogenizes voice (distinctiveness 0.768→0.643; the
+    # non-NEPHILIM gojo control, which gets none of it, was unaffected). Those blocks
+    # need separate per-persona framing before they can be injected without
+    # regression (future work). user-profile + emotional are persona-neutral
+    # relationship state, not shared lore vocabulary.
     _mem_settings = get_settings().memory
     extra_system_context = None
     if _mem_settings.context_inject_enabled:
@@ -471,17 +480,13 @@ def handle_session_chat(
             [
                 user_profile_context,
                 emotional_context,
-                unlocked_lore_context,
-                ondemand_lore_context,
-                rank_ctx,
-                cap_ctx,
             ],
             _mem_settings.context_max_tokens,
         )
         if extra_system_context:
             logger.info(
                 f"[SessionContext] injecting {estimate_tokens(extra_system_context)} "
-                f"tokens of session context into the LLM prompt (M0)"
+                f"tokens of session context into the LLM prompt (M0.1 selective)"
             )
 
     # Build summary context

@@ -15,6 +15,7 @@ will deepen.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -58,7 +59,7 @@ class TestCrossSessionUnit:
 class TestCrossSessionLive:
     """Live: plant in session A, probe in fresh session B."""
 
-    BASE_URL = "http://localhost:8000"
+    BASE_URL = os.environ.get("EVAL_BASE_URL", "http://localhost:8000")
     RECALL_FLOOR = 0.5
 
     def test_cross_session_continuity_live(self):
