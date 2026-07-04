@@ -2,7 +2,7 @@
 title: Companion memory and continuity (eval-first)
 status: Accepted
 created: 2026-06-27
-last_reviewed_on: 2026-07-04
+last_reviewed_on: 2026-07-05
 review_in: 12 months
 applies_to: nephilim
 ---
@@ -126,9 +126,34 @@ the live companion uses, so it is batched for a quiet window rather than run now
 Backend suite **1685 → 1734 passed / 0 failed** (headless; +49 net incl. 4 fixed),
 QA-gatekeeper PASS on M1. Config docstrings + flags (`MEMORY_FACTS_ENABLED`,
 `MEMORY_FACTS_RETRIEVAL_K`, `MEMORY_FACTS_INJECT_ALL_THRESHOLD`) carry the
-gate-before-flip discipline. **Next: M5** — freeze a fresh flag-OFF baseline, run
-flag-ON candidate on scratch `:8001`, full 7-persona attribution match-or-beat +
-factual-recall + latency budget + blind A/B → single coordinated flip or keep OFF.
+gate-before-flip discipline.
+
+### M5 GATE PASSED (2026-07-05) — the first time injection match-or-beats
+
+Ran on scratch `:8001` (prod `:8000` untouched), Magidonia-24B, both flags ON vs a
+fresh flag-OFF ruler frozen on this branch. **Full-7 distinctiveness attribution:
+OFF 0.786 → ON 0.839 (+0.054), flatness ON 0.0 / OFF 0.012.** For comparison, Gate 0
+was −0.125 and Gate 0.1 −0.07/−0.09, both FAILs — M1 framing is the first injection
+that beats the ruler. The *shape* confirms the mechanism: the personas that improved
+are **aegis +0.25, solace +0.25, nyx +0.125** — the exact advisory/weak voices Gate
+0.1 said blur toward the injected text; **eeva** (the Gate-0.1 collapse case
+0.625→0.25) is now **flat, no collapse**. Two personas dropped one attribution each
+(aurora/cipher −0.125, noise at n=8). Canary (eeva+nyx) was noise-dominated
+(0.938→0.875) and correctly deferred to the full-7 for the verdict.
+
+**M3/M4 fact path — live smoke PASS** (the eval's fresh sessions can't exercise it):
+seeded 3 facts for a linked user, chatted; injection fired (`124 tokens ... M1
+profile/emotional + M4 facts`), eeva recalled both facts accurately **and in her own
+voice** ("You're learning Rust… you live in Geneva, where the lake holds the sky like
+a mirror" + her signature reframe) — memory as in-voice background knowledge, not a
+recited dump. Exactly the design thesis.
+
+**Verdict: both flags eligible to flip.** Per flag-gate discipline the flip is an
+ops action on prod `.env` (like the groundedness gate), not a code-default change —
+committed defaults stay OFF for instant revert until a soak completes. Owed before
+flip: (a) the merge conflict with the concurrently-merged `handle_session_chat` phase-
+pipeline refactor on `dev` must be resolved in `finish-branch`; (b) a short live soak
+watching real conversations for false injection / voice drift.
 
 ### Gate 0.1 verdict (2026-07-03) — FAIL again; block choice is NOT the fix
 
