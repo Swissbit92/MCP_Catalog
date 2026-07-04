@@ -240,6 +240,34 @@ class MemorySettings(BaseSettings):
                     "window. 0 = no cap.",
         alias="MEMORY_CONTEXT_MAX_TOKENS"
     )
+    facts_enabled: bool = Field(
+        default=False,
+        description="ADR-006 Phase 1 (M3/M4): enable the ontology-lite fact store — "
+                    "async triplet extraction on write (memory_facts) + framed fact "
+                    "retrieval on read. Extraction runs fully off the interactive path "
+                    "(background worker) at the summarization cadence; retrieval injects "
+                    "through the same per-persona <remembered> framing as M1. Default OFF "
+                    "pending the M5 acceptance gate (full 7-persona attribution + "
+                    "factual-recall + latency budget). Independent of MEMORY_CONTEXT_INJECT.",
+        alias="MEMORY_FACTS_ENABLED"
+    )
+    facts_retrieval_k: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="ADR-006 M4: top-k facts retrieved per turn once the active-fact "
+                    "count exceeds facts_inject_all_threshold; below that, inject all.",
+        alias="MEMORY_FACTS_RETRIEVAL_K"
+    )
+    facts_inject_all_threshold: int = Field(
+        default=15,
+        ge=0,
+        le=200,
+        description="ADR-006 M4: below this many active facts, inject them all and skip "
+                    "vector search (research: retrieval is wasted complexity at low fact "
+                    "counts); at/above it, semantically retrieve top-k.",
+        alias="MEMORY_FACTS_INJECT_ALL_THRESHOLD"
+    )
 
     model_config = {
         "env_file": ".env",

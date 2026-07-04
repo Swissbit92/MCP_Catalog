@@ -686,6 +686,25 @@ def handle_session_chat(
             )
             logger.debug(f"[Phase3 RAG] Updated vector index for session {session_id}")
 
+        # ADR-006 Phase 1 (M3): async ontology-lite fact extraction. Fully OFF the
+        # interactive path — enqueue a job and move on; a background worker runs the
+        # LLM extraction + recency-wins write. Gated MEMORY_FACTS_ENABLED (default OFF)
+        # and batched at the same cadence as the legacy extractor. Requires a linked
+        # user_id (a brand-new user's facts wait until their profile is created below,
+        # same as the legacy path).
+        _mem = get_settings().memory
+        fact_worker = deps.get("fact_extraction_worker")
+        if (fact_worker and _mem.facts_enabled and user_id
+                and len(db_messages) % _mem.fact_extraction_interval == 0):
+            try:
+                from ..fact_extraction_worker import ExtractionJob
+                recent_for_facts = message_repo.get_messages_by_session(session_id)[-20:]
+                fact_worker.enqueue(ExtractionJob(
+                    user_id=user_id, messages=recent_for_facts, session_id=session_id
+                ))
+            except Exception as e:
+                logger.debug(f"[FactWorker] enqueue skipped (non-fatal): {e}")
+
         # Extract facts and update user profile (configurable interval to save compute)
         fact_interval = get_settings().memory.fact_extraction_interval
         if user_profile_repo and len(db_messages) % fact_interval == 0:
