@@ -137,6 +137,15 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "what's everyone saying about eth lately",
         "did anything big happen today",
         "how are people feeling about the market",
+        # 2026-07-04 incident (session dcc3693d): this example set was 100%
+        # crypto/market-phrased, so a sports/current-events temporal follow-up
+        # ("what was their last match") scored under threshold and fell
+        # through to NEEDS_NEITHER with zero grounding. Non-crypto coverage:
+        "what was their last match",
+        "who won the game last night",
+        "what was the final score",
+        "did they make the playoffs",
+        "were they eliminated from the tournament",
     ],
 }
 

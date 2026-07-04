@@ -56,20 +56,14 @@ class TestForceSearchRegression:
 
 
 class TestForceSearchLastPhrasingGap:
-    """2026-07-04 incident (session dcc3693d): FORCE_PATTERNS' 'latest' entry does
+    """2026-07-04 incident (session dcc3693d): FORCE_PATTERNS' 'latest' entry did
     not cover 'last' phrasing, so a clear temporal/outcome follow-up like "what
-    was their last match" never force-searches — see tests/evaluation/force_search_eval_set.json
-    for the full corpus. Belt-and-suspenders fix lands in Milestone 2 alongside the
-    groundedness gate (both target the same failure #5 root cause)."""
+    was their last match" never force-searched — see tests/evaluation/force_search_eval_set.json
+    for the full corpus. Fixed alongside the groundedness gate (both target the
+    same failure #5 root cause); the groundedness gate remains the safety net
+    for phrasings this keyword pattern still can't reasonably cover (e.g. "were
+    they eliminated" — no explicit last/latest keyword at all)."""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "M2 pending: FORCE_PATTERNS has 'latest' but not 'last' — "
-            "'what was their last match' never force-searches, matching the "
-            "exact incident query. See tests/evaluation/force_search_eval_set.json."
-        ),
-    )
     @pytest.mark.parametrize("query", [
         "what was their last match",
         "who won the last game",
