@@ -9,8 +9,6 @@ from typing import List, Optional
 
 from .keywords import (
     EXPLICIT_SEARCH_COMMANDS,
-    NO_SEARCH_KEYWORDS,
-    SEARCH_KEYWORDS,
     WALLET_FASTPATH,
 )
 
@@ -135,131 +133,20 @@ def classify_query_intent(
             return QueryIntent.NEEDS_WALLET
 
     # ------------------------------------------------------------------
-    # SEMANTIC-PRIMARY branch (flag-ON only). Follow-up detection above is
-    # shared. When the flag is OFF the legacy keyword-first body below runs
-    # unchanged (byte-identical).
+    # Semantic router is the primary (and only) intent classifier.
+    # ROUTING_SEMANTIC_PRIMARY was retired 2026-07-04 (audit cleanup step 5):
+    # the bge-m3 semantic path had graduated to the prod default, so the legacy
+    # keyword-first body was removed. Follow-up detection above is shared. A
+    # persona with no MCP capability has nothing to route to → pure LLM.
     # ------------------------------------------------------------------
     try:
         from ..config import get_settings
         _routing = get_settings().routing
     except Exception:
         _routing = None
-    if _routing is not None and _routing.semantic_primary:
-        _can_use_brave = _brave_accessible(mcp_access, persona_rarity)
-        if can_use_wallet or _can_use_brave:
-            return _classify_semantic_primary(
-                query, query_lower, _can_use_brave, can_use_wallet, _routing
-            )
-        # No MCP capability → legacy body returns NEEDS_NEITHER anyway.
-
-    # Wallet intent keywords (check before Brave)
-    WALLET_KEYWORDS = [
-        # Direct commands
-        "swap ", "swap usdc", "swap sol", "buy sol", "sell sol",
-        "buy usdc", "exchange usdc", "exchange sol",
-        # Portfolio queries
-        "my balance", "my wallet", "my portfolio", "my holdings",
-        "how much sol", "what's in my wallet", "wallet balance",
-        # Advisory conversations (key for co-pilot feel)
-        "should i buy", "good time to buy", "good time to sell",
-        "dca into", "dollar cost average", "accumulate sol",
-        "is this a good time", "what do you think about buying",
-        # Strategy management
-        "rsi strategy", "dca strategy", "set up a strategy",
-        "automate my", "start trading", "stop trading",
-        "pause strategy", "pause my strategy", "stop my strategy",
-        "cancel strategy", "resume strategy",
-        # Performance review
-        "trade history", "my trades", "strategy performance",
-        "how did my strategy", "how are my trades",
-        "p&l", "profit and loss", "trading returns",
-        # Wallet management
-        "create wallet", "new wallet", "solana wallet",
-        "my address", "public address", "private key",
-        "create a wallet", "set up a wallet",
-        # Quote/price
-        "solana quote", "jupiter quote", "swap quote",
-        "get a quote", "check rsi", "sol rsi",
-        # Common misspellings / aliases
-        "jupyter wallet", "jupyter quote", "jupyter swap",
-        "jupter wallet", "jupter quote",
-        "my sol", "my usdc", "my tokens",
-        "wallet address", "fund my wallet",
-        # Natural queries that previously missed
-        "active wallet", "active wallets",
-        "have a wallet", "have any wallet", "have wallets",
-        "how many wallet", "how many wallets",
-        "tell me the address", "tell me my address",
-        "show my wallet", "show my balance",
-        "my active", "do i have",
-        # Post-action queries (must include wallet context to avoid hijacking unrelated queries)
-        "wallets now", "happened to my wallet", "what happened to my wallet",
-        "what happened with my wallet", "what happened to my balance",
-        # Jupiter DEX (catch before Brave routes it as web search)
-        "jupiter",
-        # Wallet deletion follow-up
-        "deleted wallet", "deleted wallets",
-        # Internal tool names (route to wallet context so LLM doesn't hallucinate)
-        "wallet_get_balances", "solana_propose_swap", "solana_get_quote",
-        "solana_rsi_check", "wallet_create_guided", "solana_trade_history",
-    ]
-
-    if can_use_wallet and any(kw in query_lower for kw in WALLET_KEYWORDS):
-        # Negation guard: "not buying Bitcoin", "I'm not going to swap" → skip wallet routing
-        if not _NEGATED_ACTION.search(query_lower):
-            return QueryIntent.NEEDS_WALLET
-
-    # Determine Brave access — per-persona mcp_access takes priority
-    if mcp_access is not None:
-        can_use_brave = "brave_search" in mcp_access
-    else:
-        # Fallback: rarity-based access for personas that have no mcp_access field.
-        can_use_brave = persona_rarity.lower() in {"rare", "epic", "legendary"}
-
-    # Check for definition/math keywords (NO MCP needed)
-    # But allow queries that are asking for prices/values/opinions/web data despite having "what is/are"
-    has_definition_intent = any(kw in query_lower for kw in NO_SEARCH_KEYWORDS)
-
-    # Educational queries that mention Bitcoin but aren't asking for data
-    educational_phrases = ["why was", "how does", "how do i", "how to", "what does", "who is", "who was"]
-    is_educational = any(phrase in query_lower for phrase in educational_phrases)
-
-    # Opinion/sentiment queries should NOT be blocked by definition intent
-    opinion_keywords = ["saying", "think", "believe", "opinion", "sentiment", "talking about", "experts say", "analysts"]
-    has_opinion_intent = any(kw in query_lower for kw in opinion_keywords)
-
-    # Check if query needs web search
-    has_web_search_intent = any(kw in query_lower for kw in SEARCH_KEYWORDS)
-
-    if has_definition_intent and not has_opinion_intent and not has_web_search_intent:
-        return QueryIntent.NEEDS_NEITHER
-
-    if is_educational and not has_opinion_intent and not has_web_search_intent:
-        return QueryIntent.NEEDS_NEITHER
-
-    # Check web search triggers
-    if can_use_brave and (not has_definition_intent or has_opinion_intent or has_web_search_intent):
-        if any(kw in query_lower for kw in SEARCH_KEYWORDS):
-            return QueryIntent.NEEDS_WEB_SEARCH
-        elif has_opinion_intent:
-            return QueryIntent.NEEDS_WEB_SEARCH
-
-    # R4: Semantic embedding fallback — catches ambiguous queries that miss all keywords.
-    # Only runs when the persona has at least one MCP capability; skips for pure-LLM personas.
-    if can_use_brave or can_use_wallet:
-        try:
-            from .semantic_router import route_by_embedding
-            semantic_intent = route_by_embedding(
-                query=query,
-                can_use_brave=can_use_brave,
-                can_use_mongodb=False,
-                can_use_wallet=can_use_wallet,
-            )
-            if semantic_intent == "wallet":
-                return QueryIntent.NEEDS_WALLET
-            elif semantic_intent == "web_search":
-                return QueryIntent.NEEDS_WEB_SEARCH
-        except Exception:
-            pass  # Semantic router failure is non-fatal — fall through to NEEDS_NEITHER
-
+    _can_use_brave = _brave_accessible(mcp_access, persona_rarity)
+    if _routing is not None and (can_use_wallet or _can_use_brave):
+        return _classify_semantic_primary(
+            query, query_lower, _can_use_brave, can_use_wallet, _routing
+        )
     return QueryIntent.NEEDS_NEITHER

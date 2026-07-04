@@ -69,7 +69,7 @@ services:
       AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
       AUTH_ENV: ${AUTH_ENV:-development}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-min-32-chars!!}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set (min 32 chars) — no insecure default}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-1}
       JWT_REFRESH_EXPIRE_DAYS: ${JWT_REFRESH_EXPIRE_DAYS:-30}
 

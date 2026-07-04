@@ -6,52 +6,18 @@ Tests prompt construction, curiosity blocks, and message parsing
 import pytest
 from src.coordinator.prompt_builder import (
     build_system_prompt,
-    _build_system_prompt_legacy,
     _build_curiosity_block,
-    CONVERSATIONAL_BEHAVIOR_RULES,
-    CONVERSATIONAL_EXAMPLES
 )
 from src.coordinator.persona_loader import get_persona_card
 
 
 class TestConversationalPromptConstruction:
-    """Test that system prompts include conversational elements."""
+    """Test that system prompts include conversational elements.
 
-    def test_conversational_rules_in_prompt(self):
-        """Verify CONVERSATIONAL_BEHAVIOR_RULES included in system prompt.
-
-        The prompt was migrated to XML-tagged sections, so the old uppercase
-        headers ("CONVERSATIONAL ENGAGEMENT", etc.) no longer exist — assert the
-        current section tag plus the actual rule/format text that is injected.
-
-        Pinned to the LEGACY builder: it asserts legacy-specific section text. The
-        lean prompt (ADR-005 Phase B, now the live default) is covered separately
-        in test_lean_prompt.py. Independent of the ambient PERSONA_LEAN_PROMPT flag.
-        """
-        prompt = _build_system_prompt_legacy("Eeva")
-
-        assert "<companion_behavior>" in prompt
-        assert "COMPANION, not a Q&A bot" in prompt
-        assert "Show genuine curiosity" in prompt
-        assert "<response_format>" in prompt
-        assert "MULTI-MESSAGE FORMAT" in prompt
-        assert "<msg>" in prompt
-
-    def test_few_shot_examples_in_prompt(self):
-        """Verify few-shot examples included in system prompt.
-
-        Examples now live inside the <response_format> block (no "EXAMPLE
-        CONVERSATIONS" header after the XML migration).
-
-        Pinned to the LEGACY builder (legacy-specific few-shot text); the lean
-        prompt is covered in test_lean_prompt.py. Flag-independent.
-        """
-        prompt = _build_system_prompt_legacy("Eeva")
-
-        assert "<response_format>" in prompt
-        assert "Example 1" in prompt
-        assert "Had kind of a rough day" in prompt  # Example 1
-        assert "Just bought some more Bitcoin" in prompt  # Example 2
+    The lean builder is now the only system-prompt builder (PERSONA_LEAN_PROMPT
+    retired 2026-07-04). Lean prompt content is asserted in test_lean_prompt.py;
+    this file keeps the builder-agnostic curiosity/token-budget/parsing tests.
+    """
 
     def test_curiosity_block_for_persona_with_psychology(self):
         """Verify curiosity guidance generated from psychological profile."""

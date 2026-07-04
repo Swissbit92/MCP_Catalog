@@ -1,0 +1,70 @@
+name: CI
+
+# Minimal safety net (audit 2026-07-04, step 4).
+# Runs headless: no Ollama / Brave / Docker in CI, so all @requires_* tests
+# auto-skip via tests/conftest.py. Coverage is a LOCAL gate (pytest.ini
+# --cov-fail-under=60 needs the live model paths); CI clears addopts and runs
+# the suite purely as a pass/fail regression gate.
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pytest, headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-test.txt
+      - name: Lint (ruff — advisory)
+        # Advisory, not blocking: the repo carries a ~1500-issue pre-existing
+        # ruff backlog (mostly pyupgrade typing modernization + import sorting,
+        # no undefined-name bugs). Surfacing it on PRs is useful; gating on it
+        # would keep CI permanently red. Burn the backlog down in a dedicated
+        # pass, then drop continue-on-error to make it a real gate.
+        continue-on-error: true
+        run: ruff check src tests
+      - name: Run tests (headless — live tests auto-skip)
+        env:
+          # Point Ollama at a closed port so requires_ollama tests skip fast.
+          OLLAMA_BASE: http://127.0.0.1:1
+        # test_selective_context_inject is temporarily ignored: it is
+        # order-dependent / non-hermetic (leaks get_settings()+embedder state,
+        # reaches a live embedder on a fresh checkout) and is coupled to the
+        # MEMORY_CONTEXT_INJECT flag. It will be fixed or removed when that flag
+        # is retired (audit step 5). TODO: drop --ignore once hermetic.
+        run: >-
+          pytest tests/ -o addopts= -p no:cacheprovider -q
+          --ignore=tests/backend/coordinator/test_selective_context_inject.py
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: react-ui/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build

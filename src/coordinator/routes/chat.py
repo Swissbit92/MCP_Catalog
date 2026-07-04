@@ -100,6 +100,23 @@ def _get_dependencies():
     }
 
 
+def _complete_or_503(card, system: str, user_prompt: str, *, log_context: str) -> str:
+    """Run a plain LLM completion, translating any failure into a retryable 503.
+
+    Ollama can be transiently unavailable; surface that as a 503 whose detail is
+    the exception *type name only* (never the raw message — no internal leak).
+    """
+    try:
+        client = create_llm_client(card)
+        return client.complete(system=system, user_prompt=user_prompt)
+    except Exception as e:
+        logger.error(f"{log_context} LLM completion failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail=f"LLM service temporarily unavailable: {type(e).__name__}",
+        )
+
+
 @router.post("/persona/chat")
 def chat(body: ChatBody):
     """Chat with a persona, with autonomous tool support (web search, Solana wallet) for MCP-capable personas."""
@@ -234,15 +251,7 @@ def chat(body: ChatBody):
     if not tools:
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
-        try:
-            client = create_llm_client(card)
-            answer = client.complete(system=system, user_prompt=user_compiled)
-        except Exception as e:
-            logger.error(f"[Chat] LLM completion failed for {persona_key}: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=503,
-                detail=f"LLM service temporarily unavailable: {type(e).__name__}"
-            )
+        answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} no-tools:")
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
@@ -283,15 +292,7 @@ def chat(body: ChatBody):
 
     else:
         # Fallback to regular completion
-        try:
-            client = create_llm_client(card)
-            answer = client.complete(system=system, user_prompt=user_compiled)
-        except Exception as e:
-            logger.error(f"[Chat] LLM fallback completion failed for {persona_key}: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=503,
-                detail=f"LLM service temporarily unavailable: {type(e).__name__}"
-            )
+        answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} fallback:")
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
 
@@ -326,15 +327,7 @@ def greet(body: GreetBody):
     system = build_system_prompt(body.persona)
     user_prompt = build_greeting_user_prompt(body.persona)
 
-    try:
-        client = create_llm_client(card)
-        answer = client.complete(system=system, user_prompt=user_prompt)
-    except Exception as e:
-        logger.error(f"[Greet] LLM completion failed for {body.persona}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=503,
-            detail=f"LLM service temporarily unavailable: {type(e).__name__}"
-        )
+    answer = _complete_or_503(card, system, user_prompt, log_context=f"[Greet] {body.persona}:")
 
     # Post-process to enforce first-person
     persona_name = card.get("display_name") or card.get("key") or "Persona"

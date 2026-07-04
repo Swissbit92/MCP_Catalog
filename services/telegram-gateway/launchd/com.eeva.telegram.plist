@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.eeva.telegram</string>
+
+    <!--
+        Long-running long-polling daemon. Calls the venv python binary DIRECTLY
+        (never via bash — macOS TCC blocks bash launched by launchd).
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/venv/bin/python</string>
+        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/bin/run_telegram_bot.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway</string>
+
+    <!--
+        Daemon semantics: start on load, restart if it ever exits. This is the
+        OPPOSITE of the eeva-dca one-shot job. The flock singleton guard in
+        run_telegram_bot.py prevents a KeepAlive restart from colliding with a
+        still-shutting-down poller (Telegram 409 Conflict on double getUpdates).
+    -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Throttle restart storms if it crashes on boot (e.g. backend not up yet). -->
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/logs/launchd-telegram.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/logs/launchd-telegram.stderr.log</string>
+
+    <!--
+        SECURITY: only PATH here. No secrets in the plist (it is world-readable
+        under ~/Library/LaunchAgents). The bot token + allowlist come solely from
+        .env (chmod 600), loaded by config.py. This process must NEVER see KuCoin
+        / MongoDB / trading credentials — its .env holds only Telegram vars.
+    -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>Nice</key>
+    <integer>5</integer>
+</dict>
+</plist>
