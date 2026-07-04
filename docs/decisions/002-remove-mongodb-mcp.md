@@ -26,6 +26,8 @@ Additional bloat: `bot_state` capability (also MongoDB-backed) was never meaning
 
 The Atlas `Eeva_Admin` connection URI had previously been committed in a tracked `.env` file and pushed to GitHub — a credential exposure requiring rotation regardless of the removal decision. (The credential value is deliberately omitted here; it must be treated as compromised and rotated.)
 
+> **Rotation status (2026-07-04):** rotation of the exposed MongoDB/Brave/JWT credentials is **unconfirmed** and tracked as an outstanding action item. See the rotation-status table in [SECURITY.md](../../SECURITY.md), which is the source of truth — update it with the date once each provider-side rotation is completed.
+
 ## Decision
 
 **Fully remove the MongoDB MCP integration from nephilim.** Scope:

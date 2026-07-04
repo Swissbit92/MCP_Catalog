@@ -1,16 +1,21 @@
 # Testing dependencies for MCP Coordinator
+# Pinned to the versions the suite is validated against (audit 2026-07-04, step 4).
+# Bump deliberately, not incidentally — floating >= let CI drift from local.
 
 # Core testing framework
-pytest>=7.4.0
-pytest-cov>=4.1.0
-pytest-asyncio>=0.21.0
-pytest-mock>=3.11.1
-pytest-xdist>=3.3.1  # For parallel test execution
+pytest==9.1.1
+pytest-cov==7.1.0
+pytest-asyncio==1.4.0
+pytest-mock==3.15.1
+pytest-xdist==3.8.0          # parallel test execution
 
 # Code coverage
-coverage[toml]>=7.3.0
+coverage[toml]==7.14.2
 
 # Test utilities
-faker>=20.0.0  # For generating test data
-freezegun>=1.2.2  # For mocking datetime
-httpx>=0.25.0  # For async HTTP testing
+faker==40.23.0               # generating test data
+freezegun==1.5.5             # mocking datetime
+httpx==0.28.1                # async HTTP testing
+
+# Lint / format (also run in CI)
+ruff==0.15.18

@@ -11,6 +11,15 @@ applies_to: nephilim
 
 Punch list from bringing nephilim back online on the Mac Mini M4 Pro (48 GB, Apple Silicon/Metal, native Ollama+MLX) after migrating off the Windows/NVIDIA-RTX-4090 Zephyrus. Audit performed 2026-06-21.
 
+> **2026-07-04 audit follow-up (repo-audit cleanup, step 4).** Closed the Node-durability
+> remedy from the react-scripts/OpenSSL blocker below: added `react-ui/.nvmrc` (Node 20)
+> and an `engines` field to `react-ui/package.json`. The remaining open `[ ]` items are the
+> **cosmetic Windows→Mac / NVIDIA→Metal doc-reframes** in `Readme.md` and
+> `docs/setup/DOCKER_QUICKSTART.md` — **intentionally deferred**: they are low-risk prose
+> churn, and some NVIDIA/Docker content is legitimately retained for future Docker/Linux
+> use. Reframe opportunistically when those files are next touched; not worth a dedicated
+> pass.
+
 ## Bringup status (2026-06-21)
 
 - ✅ Site live & **always-on via launchd** — `com.nephilim.backend` (uvicorn :8000) + `com.nephilim.frontend` (static `serve_frontend.py` :3001, "NEPHILIM Realm"); RunAtLoad + KeepAlive. Plists + `install.sh` version-controlled in `scripts/launchd/`.

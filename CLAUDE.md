@@ -196,7 +196,6 @@ MCP access is controlled per-persona via the `mcp_access` field in persona JSONs
 
 ### React Performance
 - `React.memo` for expensive components (MessageBubble, CharacterCard)
-- Virtualized message list with react-window
 - Hardware-accelerated Framer Motion animations
 - `useCallback` on all context CRUD functions (ChatContext) and event handlers (Chat.tsx, CharacterCardV2Showcase)
 - `useMemo` for derived state (search filtering in CharacterCardV2Showcase)
