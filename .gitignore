@@ -88,3 +88,6 @@ personas/_summaries/Gwen_alt.json
 .coverage.*
 htmlcov/
 .pytest_cache/
+
+# repo-audit raw per-lens dumps (only the synthesized report is versioned)
+docs/audits/.raw/
