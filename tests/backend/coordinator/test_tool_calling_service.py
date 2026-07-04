@@ -143,3 +143,60 @@ def test_followup_passthrough_when_disabled(monkeypatch):
     mock_mcp.search_web.assert_called_once()
     sent_query = mock_mcp.search_web.call_args[0][0]
     assert sent_query.strip() == "search the web for it"
+
+
+# ---------------------------------------------------------- synthesis de-poison
+
+# A conversation whose EARLIER assistant turn is a refusal/apology (the poison),
+# with a self-contained latest question so resolution is a no-op.
+POISONED_CONVERSATION = "\n\n".join(
+    [
+        "User: what is the current bitcoin price",
+        "Assistant: I cannot access live data. I hallucinated before and cannot "
+        "be trusted; I am unable to perform web searches.",
+        "User: current bitcoin price now",
+    ]
+)
+
+
+def _service_capturing_synthesis(monkeypatch, *, trust_enabled):
+    monkeypatch.setenv("SEARCH_QUERY_RESOLUTION_ENABLED", "false")  # query = latest turn
+    monkeypatch.setenv("SEARCH_SYNTHESIS_TRUST_RESULTS", "true" if trust_enabled else "false")
+    get_settings.cache_clear()
+
+    mock_mcp = MagicMock()
+    mock_mcp.search_web.return_value = [
+        SearchResult(title="Bitcoin price", url="https://x", description="$91,000 today")
+    ]
+    search_executor = SearchExecutionService(mcp_client=mock_mcp)
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = "Bitcoin is at $91,000."
+    service = ToolCallingService(llm_service=mock_llm, search_executor=search_executor)
+    return service, mock_llm
+
+
+def test_synthesis_trust_on_scopes_out_poisoned_history(monkeypatch):
+    """flag ON: the synthesis LLM must NOT see the earlier refusal/apology."""
+    service, mock_llm = _service_capturing_synthesis(monkeypatch, trust_enabled=True)
+    service.complete_with_tools(
+        persona_system="You are E.E.V.A.",
+        user_prompt=POISONED_CONVERSATION,
+        tools=[{"type": "function", "function": {"name": "brave_web_search"}}],
+    )
+    # The synthesis call is the last complete() call; its user arg is call_args[0][1].
+    synthesis_user = mock_llm.complete.call_args[0][1]
+    assert "hallucinated" not in synthesis_user.lower()
+    assert "cannot access" not in synthesis_user.lower()
+    assert "current bitcoin price now" in synthesis_user  # the resolved question survives
+
+
+def test_synthesis_trust_off_keeps_full_history(monkeypatch):
+    """flag OFF (default): byte-identical legacy — full conversation reaches synthesis."""
+    service, mock_llm = _service_capturing_synthesis(monkeypatch, trust_enabled=False)
+    service.complete_with_tools(
+        persona_system="You are E.E.V.A.",
+        user_prompt=POISONED_CONVERSATION,
+        tools=[{"type": "function", "function": {"name": "brave_web_search"}}],
+    )
+    synthesis_user = mock_llm.complete.call_args[0][1]
+    assert "hallucinated" in synthesis_user.lower()  # legacy passes the whole log
