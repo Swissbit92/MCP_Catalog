@@ -1,0 +1,40 @@
+{
+  "purpose": "Frozen baseline before the 2026-07-04 groundedness/routing fix chain. Every downstream milestone in this fix is validated against match-or-beat vs this snapshot, per ADR-005/006 eval-first discipline.",
+  "created": "2026-07-04",
+  "git_commit": "6ad18f54",
+  "git_branch_at_freeze": "dev",
+  "trigger_incident": "session dcc3693d-0aff-41ef-bd92-d943d008cb3e (Telegram) — E.E.V.A. fabricated a FIFA World Cup 2026 match result (Switzerland vs Algeria, then a fake Brazil 4-3 elimination) with zero search grounding on the second claim, and reinforced the fabrication when the user confirmed it conversationally.",
+  "flags_at_freeze": {
+    "SEARCH_QUERY_RESOLUTION_ENABLED": true,
+    "SEARCH_SYNTHESIS_TRUST_RESULTS": true,
+    "SEARCH_RELEVANCE_GATE_ENABLED": false,
+    "ROUTING_SEMANTIC_PRIMARY": true,
+    "ROUTING_SEMANTIC_THRESHOLD": 0.66,
+    "ROUTING_SEMANTIC_MARGIN": 0.0,
+    "relevance_min_cosine_default": 0.40,
+    "GROUNDEDNESS_GATE_ENABLED": "does not exist yet — introduced in this fix chain"
+  },
+  "routing_eval_baseline": {
+    "artifact": "tests/evaluation/baselines/routing_tuning_results_pre_groundedness_fix_2026-07-04.json",
+    "source": "unmodified snapshot of tests/evaluation/routing_tuning_results.json as it existed at freeze time",
+    "headline_metrics_at_threshold_0.66": {
+      "wallet_precision": 1.0,
+      "wallet_recall": 0.96,
+      "accuracy": 0.91
+    }
+  },
+  "relevance_gate_eval_baseline": {
+    "artifact": null,
+    "note": "No precision/recall/false-abstention eval exists yet for the relevance gate — this is a genuine gap being filled in Milestone 4. relevance_min_cosine=0.40 is explicitly documented in config/search.py as an untuned, conservative placeholder."
+  },
+  "groundedness_eval_baseline": {
+    "artifact": null,
+    "note": "No groundedness-gate mechanism exists yet at freeze time (Milestone 2 introduces it) — there is nothing to baseline for this specific mechanism. The baseline for 'current behavior' on the 5 confirmed failure inputs is documented qualitatively in docs/decisions/007-generation-time-groundedness-gate.md once authored."
+  },
+  "test_suite_baseline": {
+    "command": "OLLAMA_BASE=http://127.0.0.1:1 .venv/bin/pytest tests/ -q --no-cov",
+    "passed": 1671,
+    "skipped": 44,
+    "failed": 0
+  }
+}
