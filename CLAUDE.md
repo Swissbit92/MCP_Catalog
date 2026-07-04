@@ -52,7 +52,7 @@ docker-compose --env-file .env.docker up -d
 
 ```
 server.py, startup.py          # App entry, lifecycle
-config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent; __init__ = composition root + get_settings), API schemas
+config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent/groundedness; __init__ = composition root + get_settings), API schemas
 routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py
 services/                      # Business logic (llm_completion, tool_calling, citation, chat_session, query_handler, wallet_*, strategy, etc.)
 repositories/                  # SQLite data access — ALL extend BaseRepository via db_adapter (connection pooling)

@@ -13,6 +13,9 @@ Near-term dated items only. Strategic direction lives in the ecosystem [VISION.m
 
 ## Next (this month)
 
+- [ ] **Groundedness gate (ADR-007) go/no-go** — `GROUNDEDNESS_GATE_ENABLED` is built and tested but OFF; needs a live-conversation soak decision before enabling in production.
+- [ ] **Relevance gate (`SEARCH_RELEVANCE_GATE_ENABLED`) go/no-go** — tuned to `SEARCH_RELEVANCE_MIN_COSINE=0.28` against an n=8 eval set (2026-07-04); expand `tests/evaluation/relevance_gate_eval_set.json` with more real Brave query/result pairs before a confident production enablement decision — 8 samples is a first-pass calibration, not a robust validation.
+- [ ] **Cross-turn groundedness reinforcement-check** (`GROUNDEDNESS_REINFORCEMENT_CHECK_ENABLED`, flag reserved, unimplemented) — re-gate a later turn that "confirms" an older ungrounded claim (from before the gate was enabled, or a classifier false-negative) instead of treating the confirmation as corroborating evidence. Requires a conversation-state schema change (tagging messages unverified); deliberately deferred out of the 2026-07-04 fix chain, not silently dropped — see [ADR-007](decisions/007-generation-time-groundedness-gate.md).
 - [ ] **Telegram gateway live soak** (`services/telegram-gateway/`, 2026-07-04) — run under launchd, confirm stability + graceful nephilim-restart handling via the manual smoke-test checklist.
 - [ ] Add a second Telegram `chat_id` (e.g. a family member) to the gateway allowlist when ready — config-only (`TG_ALLOWED_CHAT_IDS` + optional `TG_CHAT_PERSONAS` for a non-E.E.V.A. persona), no code change.
 

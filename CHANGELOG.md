@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-07-04) — Search-routing/anti-hallucination fix chain (ADR-007)
+
+A real Telegram conversation (session `dcc3693d`) exposed E.E.V.A. confidently fabricating a FIFA World Cup 2026 match result (score, date, opponent) with zero grounding, then agreeing with and elaborating on her own fabrication when the user "confirmed" it. Traced to five distinct root causes, all fixed:
+
+- **Generation-time groundedness gate (ADR-007, new, `GROUNDEDNESS_GATE_ENABLED`, default OFF)** — the deepest gap: once intent routing decides no tool is needed, `routes/chat.py`'s bare-completion branches call none of the existing anti-hallucination guards (all three live inside `tool_calling_service.py`, unreachable from this path). `GroundednessGateService` runs a second cheap LLM classification on the draft itself, decoupled from routing, and replaces an ungrounded real-world claim with an honest offer-to-search. Narrowly scoped (persona lore, general knowledge, and already-grounded turns explicitly excluded) to avoid false-abstention on legitimate answers. See [ADR-007](docs/decisions/007-generation-time-groundedness-gate.md).
+- **Routing coverage** — `ForceSearchService.FORCE_PATTERNS` gained a `"last"` entry (had `"latest"` but missed "what was their last match"); the semantic router's `web_search` example set (previously 100% crypto/market-phrased) gained sports/temporal/outcome examples.
+- **Wallet/lore lexeme collision** — "tell me about your history" (pure lore) was misrouted to the wallet tool via a shared "history" lexeme with the wallet example "my trade history". Replaced with "show my past trades", validated via a real bge-m3 sweep: wallet false-positives stayed at 0, wallet precision stayed 1.0, wallet/web recall both improved slightly.
+- **Query-resolution gaps** — the echo-guard now recognizes context-dependent-but-non-pronoun phrases ("next match", "last match") as carrying no topic on their own, closing a near-verbatim-echo-reaches-Brave gap; a leading correction preamble ("no, I meant...") no longer inflates the word count past the follow-up-detection trigger threshold.
+- **Relevance-gate tuning** — new `tests/evaluation/tune_relevance_threshold.py` (real bge-m3 sweep, n=8 eval set — small, first-pass calibration) found `SEARCH_RELEVANCE_MIN_COSINE=0.28` catches the incident's exact junk shape with zero measured false-abstention, replacing the prior untuned 0.40 placeholder. The gate itself (`SEARCH_RELEVANCE_GATE_ENABLED`) remains OFF pending an explicit go/no-go.
+
+Eval-first throughout (ADR-005/006 discipline): a frozen baseline, extended eval corpora for all 5 failure modes (including regressions locked in as `xfail` before each fix, then un-marked once genuinely fixed), and match-or-beat validation via real bge-m3 sweeps, not just unit mocks. 1671→1697 backend tests, 0 regressions.
+
 ### Added (2026-07-04) — Telegram gateway subsystem (`services/telegram-gateway/`)
 
 A thin, single-user Telegram bot letting the user chat with the NEPHILIM personas from the Telegram app — built as a standalone repo first, then folded in as a subsystem (own venv/tests/launchd, zero changes to the coordinator API) once it became clear the client and the session-API contract it depends on belong in the same repo/PR.
