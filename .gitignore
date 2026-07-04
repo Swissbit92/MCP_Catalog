@@ -91,6 +91,13 @@ personas/_summaries/Gwen_alt.json
 .coverage.*
 htmlcov/
 .pytest_cache/
+.ruff_cache/
+
+# live runtime data (user chats — never commit)
+data/
+
+# in-repo git worktrees (managed by git worktree, never commit)
+.claude/worktrees/
 
 # repo-audit raw per-lens dumps (only the synthesized report is versioned)
 docs/audits/.raw/
