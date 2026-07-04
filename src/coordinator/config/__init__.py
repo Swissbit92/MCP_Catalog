@@ -19,6 +19,7 @@ from pydantic_settings import BaseSettings
 
 from .agent import AgentSettings
 from .auth import AuthSettings
+from .groundedness import GroundednessSettings
 from .llm import OllamaSettings
 from .lore import LoreSettings
 from .memory import MemorySettings
@@ -71,6 +72,7 @@ class CoordinatorSettings(BaseSettings):
     lore: LoreSettings = Field(default_factory=LoreSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
     search: SearchSettings = Field(default_factory=SearchSettings)
+    groundedness: GroundednessSettings = Field(default_factory=GroundednessSettings)
 
     model_config = {
         "env_file": ".env",
@@ -164,6 +166,7 @@ __all__ = [
     "AuthSettings",
     "BraveSettings",
     "EmailSettings",
+    "GroundednessSettings",
     "JupiterSettings",
     "LoreSettings",
     "MemorySettings",

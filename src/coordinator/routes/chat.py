@@ -117,6 +117,36 @@ def _complete_or_503(card, system: str, user_prompt: str, *, log_context: str) -
         )
 
 
+def _apply_groundedness_gate(
+    card, user_message: str, answer: str, metadata: ResponseMetadata
+) -> str:
+    """Run the groundedness gate (ADR-007) on a no-tool-call draft.
+
+    Covers the routing-miss case: when the intent router decides no tool is
+    needed at all, none of the SearchSettings guards (query_resolution,
+    relevance_gate) are reachable — they live inside the tool-calling path.
+    This is a second, independent check on the DRAFT itself.
+
+    No-op (returns `answer` unchanged) when GROUNDEDNESS_GATE_ENABLED is off —
+    byte-identical to legacy in that case. Fails open on any error (including
+    LLM-client construction) so this can never make a response worse than the
+    pre-gate path.
+    """
+    from ..services.groundedness_gate_service import GroundednessGateService
+
+    try:
+        client = create_llm_client(card)
+        gate = GroundednessGateService(llm_client=client)
+        verdict = gate.check(user_message, answer)
+        if verdict.should_abstain:
+            metadata.source_type = "groundedness_abstain"
+            return gate.abstain_message()
+        return answer
+    except Exception as e:  # noqa: BLE001 - gate must never break chat
+        logger.warning(f"[GroundednessGate] Integration error ({e}); returning original answer")
+        return answer
+
+
 @router.post("/persona/chat")
 def chat(body: ChatBody):
     """Chat with a persona, with autonomous tool support (web search, Solana wallet) for MCP-capable personas."""
@@ -252,6 +282,7 @@ def chat(body: ChatBody):
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
         answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} no-tools:")
+        answer = _apply_groundedness_gate(card, body.message, answer, metadata)
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
@@ -291,8 +322,11 @@ def chat(body: ChatBody):
         )
 
     else:
-        # Fallback to regular completion
+        # Fallback to regular completion (tools were offered but none were
+        # brave_web_search — still no tool actually executes this turn, so the
+        # same groundedness gap applies as the no-tools branch above).
         answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} fallback:")
+        answer = _apply_groundedness_gate(card, body.message, answer, metadata)
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
 
