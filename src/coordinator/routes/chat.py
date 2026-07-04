@@ -84,6 +84,7 @@ def _get_dependencies():
         get_episodic_memory_rag,
         get_fact_extractor,
         get_fact_extraction_worker,
+        get_memory_fact_repo,
         get_seeker_progression_repo,
     )
     return {
@@ -98,6 +99,7 @@ def _get_dependencies():
         "episodic_memory_rag": get_episodic_memory_rag(),
         "fact_extractor": get_fact_extractor(),
         "fact_extraction_worker": get_fact_extraction_worker(),
+        "memory_fact_repo": get_memory_fact_repo(),
         "seeker_progression_repo": get_seeker_progression_repo(),
     }
 

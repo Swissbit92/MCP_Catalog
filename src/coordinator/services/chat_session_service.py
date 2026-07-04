@@ -27,6 +27,7 @@ from ..config import get_settings
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
 from ..persona_memory import build_system_prompt, get_persona_card
 from ..context_framing import frame_injected_context
+from ..memory_fact_retrieval import select_facts_for_injection, render_facts_narrative
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +321,41 @@ def _assemble_capped_context(blocks_in_priority, max_tokens: int):
     return "\n\n".join(kept) if kept else None
 
 
+def _build_facts_narrative(deps: dict, user_id: str, query: str, mem_settings) -> str:
+    """ADR-006 M4: read the ontology-lite fact store and render a prose narrative.
+
+    Inject-all below the threshold (skip vector search); above it, cosine-rank via
+    the bge-m3 embedder (reused from the episodic RAG) and keep top-k. Returns ""
+    when there is no fact store, no user, or no active facts. Never raises.
+    """
+    repo = deps.get("memory_fact_repo")
+    if repo is None or not user_id:
+        return ""
+    try:
+        facts = repo.get_active_facts(user_id)
+        if not facts:
+            return ""
+        subject_names = {}
+        for sid in {f.get("subject_id") for f in facts}:
+            ent = repo.get_entity(sid) if sid else None
+            subject_names[sid] = (ent or {}).get("name", "self")
+        embed_fn = None
+        if len(facts) > mem_settings.facts_inject_all_threshold:
+            rag = deps.get("episodic_memory_rag")
+            embed_fn = getattr(getattr(rag, "embeddings", None), "embed_query", None)
+        selected = select_facts_for_injection(
+            facts, query,
+            k=mem_settings.facts_retrieval_k,
+            inject_all_threshold=mem_settings.facts_inject_all_threshold,
+            embed_fn=embed_fn,
+            subject_names=subject_names,
+        )
+        return render_facts_narrative(selected, subject_names=subject_names)
+    except Exception as e:
+        logger.debug(f"[FactRetrieval] narrative build skipped (non-fatal): {e}")
+        return ""
+
+
 def handle_session_chat(
     session_id: str,
     message: str,
@@ -480,23 +516,28 @@ def handle_session_chat(
     # then wrap once in a per-persona non-echoable frame (context_framing) so the
     # memory reads as background knowledge, not text to recite. Still gated behind
     # MEMORY_CONTEXT_INJECT (default OFF) pending the full 7-persona attribution gate.
+    # Two independent flags feed the ONE framed injection (single coordinated flip
+    # at the M5 gate): MEMORY_CONTEXT_INJECT carries the profile+emotional narrative
+    # (M1); MEMORY_FACTS_ENABLED carries the ontology-lite fact-store narrative (M4).
+    # When facts are enabled they supersede the legacy user_profile blob narrative
+    # (the fact store is the richer, deduped source). All blocks are capped by
+    # priority and wrapped once in the per-persona non-echoable frame.
     _mem_settings = get_settings().memory
     extra_system_context = None
+    memory_blocks = []
+    if _mem_settings.facts_enabled and user_id:
+        memory_blocks.append(_build_facts_narrative(deps, user_id, message, _mem_settings))
+    elif _mem_settings.context_inject_enabled and user_profile:
+        memory_blocks.append(user_profile.get_narrative_context(max_facts=10, max_topics=5))
     if _mem_settings.context_inject_enabled:
-        profile_narrative = (
-            user_profile.get_narrative_context(max_facts=10, max_topics=5)
-            if user_profile else ""
-        )
-        emotional_narrative = emotional_state.to_narrative_context()
-        capped = _assemble_capped_context(
-            [profile_narrative, emotional_narrative],
-            _mem_settings.context_max_tokens,
-        )
+        memory_blocks.append(emotional_state.to_narrative_context())
+    if any(memory_blocks):
+        capped = _assemble_capped_context(memory_blocks, _mem_settings.context_max_tokens)
         extra_system_context = frame_injected_context(persona_key, card, capped)
         if extra_system_context:
             logger.info(
                 f"[SessionContext] injecting {estimate_tokens(extra_system_context)} "
-                f"tokens of framed session context into the LLM prompt (M1 per-persona)"
+                f"tokens of framed session context (M1 profile/emotional + M4 facts)"
             )
 
     # Build summary context
