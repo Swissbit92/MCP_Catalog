@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-07-04) — Repo-audit cleanup, tranche 1 (steps 1–6)
+
+Acting on [docs/audits/2026-07-04-nephilim.md](docs/audits/2026-07-04-nephilim.md) §5. Security-first, each step protected by the prior; full headless suite green throughout, real-server end-to-end verified (`/persona/greet` + `/persona/chat` → HTTP 200, in-character).
+
+- **Security (step 2):** `routes/wallet.py` stops leaking `str(e)` to clients on the two financial endpoints (→ `type(e).__name__`, matching `routes/chat.py`); `docker-compose.yml` force-requires `JWT_SECRET_KEY` (`${VAR:?}`, no committed `change-me` default).
+- **Dead code / artifacts (step 3):** deleted `src/shared/persona_assets.py` + `archive/prompt_optimization/*.py`; `git rm` 38 tracked run-artifacts under `tests/manual/results/`; removed 5 confirmed-unused npm deps (`react-window`, `react-virtualized-auto-sizer`, `yaml`, `refractor`, `react-syntax-highlighter`) + `@types` (KEPT `workbox-webpack-plugin` — verified in use).
+- **Safety net + docs (steps 1, 4):** added minimal GH Actions CI (headless pytest gate + frontend build; ruff advisory over the pre-existing backlog), `pyproject.toml` (ruff), pinned `requirements-test.txt`, `.nvmrc`/`engines`. New `SECURITY.md` (incl. credential-rotation status table — rotation of the historically-leaked MongoDB/Brave/JWT creds remains an **outstanding action item**) + `docs/THREAT_LEVEL.md` (clears cms). `AUTH_REQUIRED=false` documented as an accepted local-only posture.
+- **Flag retirement (step 5):** retired `PERSONA_LEAN_PROMPT`, `ROUTING_SEMANTIC_PRIMARY`, and `LORE_ONDEMAND_ENABLED` — all had graduated to default-on and matched prod, so their legacy/OFF branches (the legacy prompt builder, the keyword-first router body, the static-3-entity lore path) were removed. Net −505 lines. Behavior-preserving (flags were on in prod). `MEMORY_CONTEXT_INJECT` kept parked (failed its voice gate 2×). See ADR-003/005.
+- **De-duplication (step 6):** extracted `_complete_or_503()` (3× LLM→503 blocks in `routes/chat.py`) and `_wallet_slot_preflight()` (2× wallet-cap checks in `query_handler_service.py`); bumped 5 silent `logger.debug` catches (lore/rank/capability context) to `warning`. Deferred: `StrEnum` for `source_type`/`role` (cross-boundary typing migration, own change).
+
 ### Fixed (2026-07-04) — web-search follow-up query resolution (default-OFF, live-verified)
 
 - **"search the web for it" no longer returns junk + confabulation.** A deictic follow-up turn was passed to Brave verbatim (the topic from prior turns discarded by `QueryExtractionService.extract_latest_user_message`), so Brave returned meta-results ("Search the web in Chrome — Google Chrome Help", "Brave Search", …); those are non-empty, so the "no results → I don't know" guard never fired and the LLM confabulated over irrelevant grounding (the observed World Cup incident: fabricated scores + those exact junk sources). Root cause: the full multi-turn history was already present in `user_prompt` at the force-search query-build site — it was just thrown away.
