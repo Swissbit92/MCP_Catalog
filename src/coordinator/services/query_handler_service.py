@@ -8,7 +8,7 @@ import time
 import logging
 from typing import Optional, Any
 
-from ..schemas import ResponseMetadata
+from ..schemas import ResponseMetadata, SourceType
 # LC_OllamaClient imported lazily inside methods to break circular import with llm_client.py
 from .citation_service import validate_citations
 from .first_person_service import post_process_first_person
@@ -321,7 +321,7 @@ class QueryHandlerService:
 
         elapsed = time.time() - start_time
 
-        metadata.source_type = "brave_mcp"
+        metadata.source_type = SourceType.BRAVE_MCP
         metadata.tools_used = ["brave_web_search"] if tool_call else []
 
         # Validate citations
@@ -421,7 +421,7 @@ class QueryHandlerService:
             # Search never requires HITL; defensively fall back to legacy routing.
             return None
 
-        metadata.source_type = "agentic_blocked" if result.was_blocked else "agentic"
+        metadata.source_type = SourceType.AGENTIC_BLOCKED if result.was_blocked else SourceType.AGENTIC
         metadata.tools_used = [result.tool_called] if (result.tool_called and not result.was_blocked) else []
 
         used_search = bool(result.tool_called) and not result.was_blocked
@@ -512,7 +512,7 @@ class QueryHandlerService:
                     logger.warning(f"[WalletQuery] Legacy wallet lookup failed during deletion: {e}")
 
             if not wallets:
-                metadata.source_type = "wallet_mcp"
+                metadata.source_type = SourceType.WALLET_MCP
                 metadata.tools_used = []
                 return self._finalize_response(
                     answer="You have no active wallet to delete.",
@@ -555,7 +555,7 @@ class QueryHandlerService:
                 wallet_name="My Wallet",
                 persona_name=persona_name,
                 metadata=metadata,
-                source_type="wallet_flow",
+                source_type=SourceType.WALLET_FLOW,
                 log_context="[WalletQuery]",
             )
 
@@ -582,11 +582,11 @@ class QueryHandlerService:
                 wallet_name=tool_call.arguments.get("wallet_name", "My Wallet"),
                 persona_name=persona_name,
                 metadata=metadata,
-                source_type="wallet_mcp",
+                source_type=SourceType.WALLET_MCP,
                 log_context="[WalletCreate]",
             )
 
-        metadata.source_type = "wallet_mcp"
+        metadata.source_type = SourceType.WALLET_MCP
         metadata.tools_used = [tool_call.name] if tool_call else []
 
         return self._finalize_response(

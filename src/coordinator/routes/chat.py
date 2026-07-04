@@ -8,7 +8,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from ..schemas import ChatBody, GreetBody, ResponseMetadata
+from ..schemas import ChatBody, GreetBody, ResponseMetadata, SourceType
 from ..config import get_settings
 from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
 from ..persona_memory import (
@@ -139,7 +139,7 @@ def _apply_groundedness_gate(
         gate = GroundednessGateService(llm_client=client)
         verdict = gate.check(user_message, answer)
         if verdict.should_abstain:
-            metadata.source_type = "groundedness_abstain"
+            metadata.source_type = SourceType.GROUNDEDNESS_ABSTAIN
             return gate.abstain_message()
         return answer
     except Exception as e:  # noqa: BLE001 - gate must never break chat
@@ -210,7 +210,7 @@ def chat(body: ChatBody):
 
     # Prepare metadata and persona_name early (needed by wallet pre-check and all downstream paths)
     metadata = ResponseMetadata(
-        source_type="llm",
+        source_type=SourceType.LLM,
         tools_used=[],
         cache_status=None,
         data_timestamp=None

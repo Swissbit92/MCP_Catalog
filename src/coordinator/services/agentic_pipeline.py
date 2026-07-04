@@ -25,6 +25,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+from ..schemas import SourceType
 from ..tools.synthesis_prompts import build_scene_contract
 
 logger = logging.getLogger(__name__)
@@ -141,7 +142,7 @@ class AgenticPipeline:
                 tool_called=intent_tool,
                 tool_args=args,
                 hitl_required=True,
-                source_type="agentic_hitl",
+                source_type=SourceType.AGENTIC_HITL,
                 used_structured_output=used_structured,
             )
 
@@ -185,7 +186,7 @@ class AgenticPipeline:
             tool_called=intent_tool,
             tool_args=args,
             tool_result_raw=raw_result,
-            source_type="agentic",
+            source_type=SourceType.AGENTIC,
             used_structured_output=used_structured,
         )
 
@@ -266,5 +267,5 @@ class AgenticPipeline:
         return AgentResult(
             rendered_response=rendered,
             was_blocked=blocked,
-            source_type="agentic_blocked" if blocked else "agentic",
+            source_type=SourceType.AGENTIC_BLOCKED if blocked else SourceType.AGENTIC,
         )
