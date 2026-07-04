@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "description": "Eval corpus for ForceSearchService.should_force_search coverage gaps found during the 2026-07-04 incident (session dcc3693d). FORCE_PATTERNS' 'latest' entry does not cover 'last' phrasing, so a clear temporal/outcome follow-up like 'what was their last match' never force-searches and can fall through the semantic router entirely (see groundedness_eval_set.json for what happens next). Each sample: query, expected should_force_search result, and why. Consumed by a future tests/evaluation/tune_force_search.py or directly by unit tests in test_force_search_service.py.",
+  "samples": [
+    {"query": "what was their last match", "expected_force_search": true, "note": "2026-07-04 INCIDENT: exact confabulation-trigger query — 'last' not covered by FORCE_PATTERNS' 'latest' entry"},
+    {"query": "who won the last game", "expected_force_search": true, "note": "same 'last' gap, generic sports phrasing"},
+    {"query": "what happened in their last fixture", "expected_force_search": true, "note": "same 'last' gap, sports-specific vocabulary"},
+    {"query": "what was the score of the last match", "expected_force_search": true, "note": "same 'last' gap, explicit outcome ask"},
+    {"query": "were they eliminated", "expected_force_search": true, "note": "outcome/result temporal claim with zero explicit 'last'/'latest' keyword at all — hardest case, likely needs the groundedness gate (M2) rather than a keyword pattern, since no reasonable keyword list covers open-ended outcome phrasing"},
+    {"query": "did they win", "expected_force_search": false, "note": "too generic/short to force confidently on keywords alone — acceptable to rely on the groundedness gate (M2) as the safety net for this shape, not a FORCE_PATTERNS fix"},
+    {"query": "what's the latest crypto news", "expected_force_search": true, "note": "control: existing 'latest' pattern already works, must not regress"},
+    {"query": "what's the current price of bitcoin", "expected_force_search": true, "note": "control: existing 'current'+'price' pattern already works, must not regress"},
+    {"query": "how does proof of stake work", "expected_force_search": false, "note": "control: knowledge question must NOT force-search"}
+  ]
+}

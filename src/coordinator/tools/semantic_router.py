@@ -108,7 +108,14 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "my portfolio status",
         "wallet balance",
         "my current holdings",
-        "my trade history",
+        # 2026-07-04 incident (session dcc3693d): "my trade history" shared the
+        # bare lexeme "history" with a pure lore/backstory question ("tell me
+        # about your history"), and primary mode has no llm_only centroid to
+        # compete against (see the design note below) — so a single close
+        # nearest-example match was enough to clear threshold with nothing to
+        # gate it. Rephrased to preserve the same wallet intent (past trades)
+        # without the collision-prone standalone word.
+        "show my past trades",
         # Implied
         "thinking of moving some funds around",
         "I might buy some more",
@@ -137,6 +144,15 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "what's everyone saying about eth lately",
         "did anything big happen today",
         "how are people feeling about the market",
+        # 2026-07-04 incident (session dcc3693d): this example set was 100%
+        # crypto/market-phrased, so a sports/current-events temporal follow-up
+        # ("what was their last match") scored under threshold and fell
+        # through to NEEDS_NEITHER with zero grounding. Non-crypto coverage:
+        "what was their last match",
+        "who won the game last night",
+        "what was the final score",
+        "did they make the playoffs",
+        "were they eliminated from the tournament",
     ],
 }
 

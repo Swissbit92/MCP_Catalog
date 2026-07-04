@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "description": "Eval corpus for tune_relevance_threshold.py (Milestone 4). Each sample is a (query, results[]) pair with an expected verdict: 'relevant' (the gate must NOT abstain) or 'off_topic' (the gate should abstain — best result score should fall below relevance_min_cosine). Modeled on tune_routing_threshold.py's sweep-and-pin-precision-first shape, but here the costly class is false-abstention on genuinely-relevant results (SEARCH_RELEVANCE_GATE_ENABLED must never make real answers worse), so the sweep should pin false-abstention-rate low FIRST, then maximize junk-catch recall — the inverse priority order from the routing sweep, where wallet false-positives were the costly class.",
+  "samples": [
+    {
+      "query": "Switzerland next match FIFA World Cup 2026",
+      "results": [
+        {"title": "How to search the contents of the current page for text or links", "description": "Firefox Help — use Ctrl+F to search within a page for specific text."},
+        {"title": "Refine Google searches", "description": "Google Search Help — use quotes for exact matches and keyboard shortcuts to refine results."}
+      ],
+      "expected_verdict": "off_topic",
+      "note": "2026-07-04 INCIDENT: exact junk shape from the deictic-follow-up mis-resolution — generic 'how to search' help pages, zero topical overlap with a sports-fixture query"
+    },
+    {
+      "query": "Switzerland next match FIFA World Cup 2026",
+      "results": [
+        {"title": "Switzerland vs Algeria set for Round of 32 - FIFA.com", "description": "Switzerland will face Algeria in the Round of 32 on July 2 in Vancouver."}
+      ],
+      "expected_verdict": "relevant",
+      "note": "genuinely on-topic result for the same query — control case"
+    },
+    {
+      "query": "history of voice assistants",
+      "results": [
+        {"title": "Voice Assistant Timeline: A Short History of the Voice Revolution", "description": "Siri launched in 2010, followed by Google Assistant and Amazon Alexa."}
+      ],
+      "expected_verdict": "relevant",
+      "note": "2026-07-04 INCIDENT: this WAS the correct grounded answer for the (wrongly-resolved) query it was given — the gate is not responsible for query resolution being wrong, only for judging result-to-query fit, which was actually fine here"
+    },
+    {
+      "query": "current price of bitcoin",
+      "results": [
+        {"title": "Bitcoin (BTC) Price, Charts, and News", "description": "Live BTC price, market cap, and 24h trading volume."}
+      ],
+      "expected_verdict": "relevant",
+      "note": "control: clearly on-topic crypto result"
+    },
+    {
+      "query": "what's the weather in zurich today",
+      "results": [
+        {"title": "Zurich Weather Forecast - 10 Day", "description": "Current conditions and 10-day forecast for Zurich, Switzerland."}
+      ],
+      "expected_verdict": "relevant",
+      "note": "non-crypto domain control case, must not be penalized by a crypto-tuned floor"
+    },
+    {
+      "query": "who won the last election in a small paraphrase-distant way",
+      "results": [
+        {"title": "2026 General Election Results", "description": "Incumbent party secures majority; full results and county-by-county breakdown."}
+      ],
+      "expected_verdict": "relevant",
+      "note": "FALSE-ABSTENTION RISK CASE: correct/relevant result but lexically distant paraphrase from the query — this is the case a too-high relevance_min_cosine would wrongly reject; weight this heavily when picking the threshold"
+    },
+    {
+      "query": "explain proof of stake",
+      "results": [
+        {"title": "What Is Proof of Stake? A Beginner's Guide", "description": "Proof of stake (PoS) is a consensus mechanism where validators are chosen based on staked coins."}
+      ],
+      "expected_verdict": "relevant",
+      "note": "conceptual query with a conceptual (not news) result — must not be penalized as off-topic just because it isn't a 'current event'"
+    },
+    {
+      "query": "latest ethereum news",
+      "results": [
+        {"title": "Privacy Policy - Example News Aggregator", "description": "This site uses cookies to improve your experience. Learn more about our data practices."}
+      ],
+      "expected_verdict": "off_topic",
+      "note": "generic boilerplate/legal-page junk unrelated to the query — same failure shape as the incident, different domain"
+    }
+  ]
+}

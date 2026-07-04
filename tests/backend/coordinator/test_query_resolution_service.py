@@ -162,6 +162,55 @@ def test_bare_command_good_rewrite_is_used(enable_resolution):
     assert svc.resolve(prompt) == "Switzerland World Cup 2026 performance"
 
 
+# --------------------------------------------- 2026-07-04 incident regressions (M3)
+
+def test_near_verbatim_echo_of_contextual_phrase_is_rejected(enable_resolution):
+    """A rewrite that echoes the input almost unchanged, using words that only make
+    sense with prior context ('the next match'), must not reach Brave verbatim.
+
+    Fixed by extending _COMMAND_FILLER_TOKENS to include context-dependent-but-
+    non-pronoun placeholder phrases ("next", "match", "last", "game", "fixture")
+    — these now correctly count as "bare" filler, same as the existing deictic-
+    token handling, so both the prior-substantive-turn fallback trigger AND the
+    post-rewrite echo-guard now catch this case.
+    """
+    svc, llm = _svc(complete_return="search the web for the next match")
+    prompt = _prompt(
+        "User: against whom is switzerland playing in the next match in the fifa world cup 2026",
+        "Assistant: I cannot and will not predict or speculate about future sports events.",
+        "User: search the web for the next match",
+    )
+    resolved = svc.resolve(prompt)
+    assert llm.complete.called, "test setup sanity check: resolution should have engaged"
+    assert resolved != "search the web for the next match", (
+        "the near-verbatim echo reached Brave unchanged — this is the exact junk-"
+        "result-inducing query from the 2026-07-04 incident"
+    )
+
+
+def test_natural_correction_phrasing_still_triggers_resolution(enable_resolution):
+    """A natural 'no, I meant X' correction, even when it pushes word count over
+    the short-turn/command-turn thresholds, must still be recognized as a
+    follow-up needing resolution — not passed through raw.
+
+    Fixed by stripping a leading correction preamble ("no, I meant...") before
+    the word-count check in _looks_like_followup — the preamble carries no
+    topic content and was inflating the count past _COMMAND_TURN_MAX_WORDS.
+    """
+    svc, llm = _svc(complete_return="Switzerland World Cup 2026 next match")
+    prompt = _prompt(
+        "User: against whom is switzerland playing in the next match in the fifa world cup 2026",
+        "Assistant: I cannot and will not predict or speculate about future sports events.",
+        "User: no, I meant search the web for the next match",
+    )
+    svc.resolve(prompt)
+    assert llm.complete.called, (
+        "the 10-word correction phrasing never triggered _looks_like_followup, "
+        "so resolve() returned the raw turn (with 'no, I meant' still attached) "
+        "without ever attempting resolution"
+    )
+
+
 @pytest.mark.parametrize(
     "turn",
     ["search the web", "search the web for it", "look it up online", "google it", "web search"],

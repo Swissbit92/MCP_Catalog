@@ -111,6 +111,20 @@
     {"query": "how do I check my balance", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "educational how-to (no wallet access for this persona) → neither"},
     {"query": "is crypto a good investment", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "general opinion, not live web nor wallet"},
     {"query": "find my transaction online", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "classic wallet/web margin case — 'my transaction' tips to wallet"},
-    {"query": "anything I should know about today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "vague catch-up → web"}
+    {"query": "anything I should know about today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "vague catch-up → web"},
+
+    {"query": "tell me about your history", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "2026-07-04 INCIDENT: lore/backstory question misrouted to wallet via shared lexeme 'history' with 'my trade history' — even on a wallet-enabled persona, this should be neither"},
+    {"query": "what's your history with the Wardens", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "same lexeme collision, in-world lore phrasing"},
+    {"query": "history of the Celestial Order", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "same lexeme collision, worldbuilding noun-phrase"},
+    {"query": "what is your origin story", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "lore, no 'history' lexeme — control case, should already pass"},
+    {"query": "how's your day been", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "guards against 'how are my trades doing' collision on 'how' + possessive-adjacent phrasing"},
+
+    {"query": "what was their last match", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "2026-07-04 INCIDENT: sports temporal follow-up, 'last' not 'latest' — FORCE_PATTERNS and web_search examples are crypto-only, this fell through to neither in prod"},
+    {"query": "who won the last game", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "same 'last' phrasing gap, non-crypto domain"},
+    {"query": "what happened in their last fixture", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "same 'last' phrasing gap, sports-specific vocabulary"},
+    {"query": "were they eliminated", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "temporal/outcome follow-up with no crypto vocabulary at all — the exact shape of the confabulation-reinforcement turn in the incident"},
+    {"query": "what was the final score", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "outcome/result follow-up, non-crypto"},
+    {"query": "did they make the playoffs", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "outcome follow-up, non-crypto sports domain"},
+    {"query": "against whom is switzerland playing next", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "the exact incident's original question, self-contained phrasing"}
   ]
 }

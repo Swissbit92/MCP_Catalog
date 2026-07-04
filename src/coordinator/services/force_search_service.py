@@ -44,6 +44,12 @@ class ForceSearchService:
         ("today", ["price", "news", "happening"]),
         ("recent", ["news", "update", "development", "change"]),
 
+        # 2026-07-04 incident (session dcc3693d): "latest" doesn't cover "last"
+        # phrasing ("what was their last match") — a clear temporal/outcome
+        # follow-up fell through routing entirely with zero grounding. See
+        # tests/evaluation/force_search_eval_set.json and ADR-007.
+        ("last", ["match", "game", "fixture", "result", "score", "news", "update"]),
+
         # Market queries
         ("trading at", []),
         ("market price", []),

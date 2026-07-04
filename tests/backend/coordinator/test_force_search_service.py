@@ -55,6 +55,25 @@ class TestForceSearchRegression:
         assert ForceSearchService.should_force_search(query) is True
 
 
+class TestForceSearchLastPhrasingGap:
+    """2026-07-04 incident (session dcc3693d): FORCE_PATTERNS' 'latest' entry did
+    not cover 'last' phrasing, so a clear temporal/outcome follow-up like "what
+    was their last match" never force-searched — see tests/evaluation/force_search_eval_set.json
+    for the full corpus. Fixed alongside the groundedness gate (both target the
+    same failure #5 root cause); the groundedness gate remains the safety net
+    for phrasings this keyword pattern still can't reasonably cover (e.g. "were
+    they eliminated" — no explicit last/latest keyword at all)."""
+
+    @pytest.mark.parametrize("query", [
+        "what was their last match",
+        "who won the last game",
+        "what happened in their last fixture",
+        "what was the score of the last match",
+    ])
+    def test_last_phrasing_forces_search(self, query):
+        assert ForceSearchService.should_force_search(query) is True
+
+
 class TestForceSearchNoOverTrigger:
     """High-precision phrases must NOT fire on benign queries (no bare 'search')."""
 

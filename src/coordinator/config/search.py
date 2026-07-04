@@ -101,13 +101,23 @@ class SearchSettings(BaseSettings):
         alias="SEARCH_RELEVANCE_GATE_ENABLED",
     )
     relevance_min_cosine: float = Field(
-        default=0.40,
+        default=0.28,
         ge=0.0,
         le=1.0,
         description=(
             "Cosine floor (bge-m3, exact 1 - D/2) below which the best search "
             "result is treated as off-topic and the relevance gate abstains. "
-            "Conservative default to avoid false abstains; tune on real searches."
+            "Tuned 2026-07-04 (ADR-007, tests/evaluation/tune_relevance_threshold.py) "
+            "on relevance_gate_eval_set.json (n=8, small — first-pass calibration, "
+            "not a large-scale validation): 0.28 catches the 2026-07-04 incident's "
+            "exact junk shape (a sports-fixture query scoring 0.263 against generic "
+            "'how to search a webpage' results) with ZERO false-abstention on any "
+            "of 6 relevant samples. A real, measured tension exists at higher "
+            "thresholds: a second junk sample (cosine 0.347) sits only 0.011 below "
+            "a deliberately-adversarial lexically-distant-but-relevant sample "
+            "(0.358) — raising the floor to catch the former would also falsely "
+            "abstain on the latter. 0.40 (the prior untuned placeholder) was "
+            "conservative-by-guess, not conservative-by-data."
         ),
         alias="SEARCH_RELEVANCE_MIN_COSINE",
     )
