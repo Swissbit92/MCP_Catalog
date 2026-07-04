@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -427,20 +426,12 @@ class AuthSettings(BaseSettings):
 class RoutingSettings(BaseSettings):
     """Intent-routing / semantic-router configuration.
 
-    Phase 0 of the HERMES-Agents track: optionally promote the bge-m3 semantic
-    router to PRIMARY intent classification. When ``semantic_primary`` is False
-    (default) the legacy keyword-first order is preserved byte-for-byte.
+    The bge-m3 semantic router is the primary (and only) intent classifier
+    (HERMES-Agents Phase 0). ROUTING_SEMANTIC_PRIMARY was retired 2026-07-04
+    (audit cleanup step 5) once it had graduated to the prod default; the legacy
+    keyword-first order was removed. These knobs tune the semantic path.
     """
 
-    semantic_primary: bool = Field(
-        default=True,
-        description=(
-            "Promote the bge-m3 semantic router to primary intent classification. "
-            "True (default, matches prod); set False to keep the legacy keyword-first order. "
-            "Set ROUTING_SEMANTIC_PRIMARY=true to enable."
-        ),
-        alias="ROUTING_SEMANTIC_PRIMARY",
-    )
     semantic_threshold: float = Field(
         default=0.66,
         ge=0.50,
@@ -477,19 +468,12 @@ class RoutingSettings(BaseSettings):
 class LoreSettings(BaseSettings):
     """On-demand hybrid lore retrieval configuration (HERMES-Agents Phase 2).
 
-    When ``ondemand_enabled`` is False (default) the static 3-entity-per-persona
-    lore prefill is the only lore in the prompt — byte-identical to pre-Phase-2.
+    Per-turn hybrid lore retrieval is always on: LORE_ONDEMAND_ENABLED was
+    retired 2026-07-04 (audit cleanup step 5) once it had graduated to the prod
+    default; the static-3-entity-only legacy path was removed. These knobs tune
+    the retrieval.
     """
 
-    ondemand_enabled: bool = Field(
-        default=True,
-        description=(
-            "Enable per-turn hybrid lore retrieval (keyword + bge-m3) appended to the "
-            "system prompt. True (default, matches prod); set False for static "
-            "3-entity core only (byte-identical legacy behavior)."
-        ),
-        alias="LORE_ONDEMAND_ENABLED",
-    )
     retrieval_k: int = Field(
         default=5, ge=1, le=20,
         description="Number of lore entries to retrieve per semantic (Tier-2b) query.",
@@ -605,60 +589,10 @@ class AgentSettings(BaseSettings):
     }
 
 
-class PersonaPromptSettings(BaseSettings):
-    """Lean persona system-prompt configuration (ADR-005 Phase B).
-
-    Gates a leaner exemplar-first / voice-last system-prompt builder that drops
-    the duplicated wiki lore dump, dedupes repeated directives, and consumes a
-    per-persona ``voice_signature`` for inter-character distinctiveness.
-
-    When ``lean_enabled`` is False (default) AND a persona is not in
-    ``lean_personas``, the legacy builder runs unchanged — byte-identical to
-    pre-Phase-B, so the frozen legacy persona-eval baseline stays valid and
-    revert is instant. ``lean_personas`` gives the ADR-required PER-PERSONA
-    fallback: only personas that match-or-beat their legacy baseline in the
-    acceptance A/B get added; the rest stay on the legacy prompt.
-    """
-
-    lean_enabled: bool = Field(
-        default=True,
-        description=(
-            "Globally enable the lean persona prompt for ALL personas. True "
-            "(default, matches prod); set False to use the legacy builder unless a "
-            "persona is listed in PERSONA_LEAN_PROMPT_PERSONAS."
-        ),
-        alias="PERSONA_LEAN_PROMPT",
-    )
-    lean_personas: str = Field(
-        default="",
-        description=(
-            "Comma-separated persona keys (e.g. 'nephilim_eeva,nephilim_solace') "
-            "to serve the lean prompt while the global flag is off. The per-persona "
-            "acceptance-gate allowlist. Empty (default) = none."
-        ),
-        alias="PERSONA_LEAN_PROMPT_PERSONAS",
-    )
-
-    def lean_persona_set(self) -> frozenset[str]:
-        """Parsed, normalized set of per-persona lean-prompt opt-ins."""
-        return frozenset(
-            k.strip() for k in self.lean_personas.split(",") if k.strip()
-        )
-
-    def use_lean_for(self, persona_key: Optional[str]) -> bool:
-        """Whether the lean prompt should be used for this persona key."""
-        if self.lean_enabled:
-            return True
-        if not persona_key:
-            return False
-        return persona_key in self.lean_persona_set()
-
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",
-        "populate_by_name": True,
-    }
+# NOTE: PersonaPromptSettings (PERSONA_LEAN_PROMPT) was retired 2026-07-04 (audit
+# cleanup step 5). The lean exemplar-first / voice-last builder graduated to
+# default-on for every persona and is now the only system-prompt builder; the
+# legacy builder and its flag/allowlist were removed. See ADR-005.
 
 
 class SearchSettings(BaseSettings):
@@ -760,7 +694,6 @@ class CoordinatorSettings(BaseSettings):
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     lore: LoreSettings = Field(default_factory=LoreSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
-    prompt: PersonaPromptSettings = Field(default_factory=PersonaPromptSettings)
     search: SearchSettings = Field(default_factory=SearchSettings)
 
     model_config = {

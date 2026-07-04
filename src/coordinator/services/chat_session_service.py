@@ -209,10 +209,8 @@ def _build_ondemand_lore_context(
     messages (priority 9). Tier-2 (embedding): bge-m3 semantic search over the
     lore corpus (priority 6, canon-only). Results are deduped, the static
     3-entity core is excluded, and the block is trimmed to a token budget
-    (lowest priority dropped first). Flag-OFF → empty string (byte-identical).
+    (lowest priority dropped first).
     """
-    if not getattr(settings.lore, "ondemand_enabled", False):
-        return ""
     if episodic_memory_rag is None or getattr(episodic_memory_rag, "lore_store", None) is None:
         return ""
 
@@ -441,16 +439,16 @@ def handle_session_chat(
         except Exception as e:
             logger.debug(f"[RankContext] skipped (non-fatal): {e}")
 
-    # PHASE 2 (HERMES): internal capability context (flag-gated; NEPHILIM personas)
+    # PHASE 2 (HERMES): internal capability context (NEPHILIM personas)
     cap_ctx = ""
-    if get_settings().lore.ondemand_enabled and persona_key.startswith("nephilim_") and seeker_progression_repo:
+    if persona_key.startswith("nephilim_") and seeker_progression_repo:
         try:
             from ..lore_retrieval import build_capability_context
             _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
             _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
             cap_ctx = build_capability_context(
                 persona_key, _prof.get("rank_name", "Initiate"),
-                _aff.get("affinity_level", 0), get_settings(),
+                _aff.get("affinity_level", 0),
             )
             if cap_ctx:
                 system_prompt = f"{system_prompt}\n\n{cap_ctx}"
@@ -858,14 +856,13 @@ def _track_nephilim_progression(
         # Phase-2: detect newly-unlocked internal capabilities → diegetic unlock beat
         capability_unlocks = []
         try:
-            _settings = get_settings()
-            if _settings.lore.ondemand_enabled:
+            if seeker_progression_repo:
                 from ..lore_retrieval import detect_new_capability_unlocks
                 _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
                 _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
                 capability_unlocks = detect_new_capability_unlocks(
                     seeker_progression_repo, effective_user_id, persona_key,
-                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0), _settings,
+                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0),
                 )
                 for cap in capability_unlocks:
                     logger.info(f"[NEPHILIM] Capability awakened for {effective_user_id}: {cap['id']}")

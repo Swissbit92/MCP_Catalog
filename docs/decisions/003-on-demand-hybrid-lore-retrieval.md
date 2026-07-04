@@ -11,7 +11,7 @@ applies_to: nephilim
 
 ## Status
 
-Accepted (HERMES-Agents Phase 2). Shipped behind `LORE_ONDEMAND_ENABLED` (default OFF).
+Accepted (HERMES-Agents Phase 2). Shipped behind `LORE_ONDEMAND_ENABLED`; graduated to the prod default, and the flag + the static-3-entity-only legacy path were **retired 2026-07-04** (audit cleanup step 5) — per-turn on-demand retrieval is now unconditional.
 
 ## Context
 

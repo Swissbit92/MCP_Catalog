@@ -15,9 +15,9 @@ import src.coordinator.services.chat_session_service as css
 _build = css._build_ondemand_lore_context
 
 
-def _settings(enabled=True, k=5, min_rel=0.5, window=4, budget=600):
+def _settings(k=5, min_rel=0.5, window=4, budget=600):
     return SimpleNamespace(lore=SimpleNamespace(
-        ondemand_enabled=enabled, retrieval_k=k, embed_min_relevance=min_rel,
+        retrieval_k=k, embed_min_relevance=min_rel,
         keyword_window_messages=window, max_budget_tokens=budget,
     ))
 
@@ -39,16 +39,10 @@ def _patch_loader(monkeypatch, aliases=None, bodies=None, core=None):
     )
 
 
-class TestFlagOff:
-    def test_flag_off_returns_empty_and_no_search(self, monkeypatch):
-        rag = _rag()
-        out = _build("tell me about ananke", [], "nephilim_eeva", rag, _settings(enabled=False))
-        assert out == ""
-        rag.search_lore.assert_not_called()
-
+class TestEmptyGuards:
     def test_lore_store_none_returns_empty(self):
         rag = SimpleNamespace(lore_store=None, search_lore=MagicMock())
-        out = _build("x", [], "nephilim_eeva", rag, _settings(enabled=True))
+        out = _build("x", [], "nephilim_eeva", rag, _settings())
         assert out == ""
         rag.search_lore.assert_not_called()
 

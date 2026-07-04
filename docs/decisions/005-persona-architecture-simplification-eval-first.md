@@ -11,6 +11,11 @@ applies_to: nephilim
 
 ## Status
 
+> **Update 2026-07-04 (flag retired):** Phase B shipped and graduated to prod
+> default for all 7 personas. `PERSONA_LEAN_PROMPT`, its per-persona allowlist,
+> and the legacy builder (`_build_system_prompt_legacy`) were **retired** (audit
+> cleanup step 5) — the lean builder is now the only system-prompt builder.
+
 **Proposed — plan only, no code.** Drafted 2026-06-26 from a four-agent
 research pass (two internal codebase audits + two external web-research passes)
 triggered by the HERMES-Agents Phase 3 persona-voice-fix failure ([ADR-004](004-persona-safe-agentic-tool-calls.md)).
