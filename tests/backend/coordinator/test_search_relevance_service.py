@@ -11,11 +11,23 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.coordinator.config import get_settings
+from src.coordinator.config import SearchSettings, get_settings
 from src.coordinator.models.mcp_models import SearchResult
 from src.coordinator.services.search_execution_service import SearchExecutionService
 from src.coordinator.services.search_relevance_service import SearchRelevanceService
 from src.coordinator.services.tool_calling_service import ToolCallingService
+
+
+def test_relevance_min_cosine_default_is_the_2026_07_04_tuned_value():
+    """Env-independent: assert the model_fields default directly, not a live
+    settings instance (which could be overridden by the ambient .env).
+
+    Tuned value from tests/evaluation/tune_relevance_threshold.py against
+    relevance_gate_eval_set.json (ADR-007) — 0.28 catches the 2026-07-04
+    incident's exact junk shape with zero measured false-abstention on the
+    (small, n=8) eval set. Was 0.40 (an untuned, guessed placeholder).
+    """
+    assert SearchSettings.model_fields["relevance_min_cosine"].default == 0.28
 
 
 class _StubEmbedder:
