@@ -23,7 +23,7 @@ from fastapi import HTTPException
 
 from ..repositories.base_repository import utc_now_iso
 
-from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS, SourceType
+from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS, MessageRole, SourceType
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
@@ -610,7 +610,7 @@ def _select_turn_history(state: ChatTurnState, deps: ChatDeps) -> None:
     summary_turn = None
     if state.summary_context:
         summary_turn = ChatTurn(
-            role="assistant",
+            role=MessageRole.ASSISTANT,
             content=f"[Context from earlier in our conversation]\n\n{state.summary_context}",
         )
     state.history_turns = _assemble_capped_history(raw_turns, summary_turn)
@@ -639,7 +639,7 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
     response = state.response
     now = utc_now_iso()
 
-    user_msg_body = AppendMessageBody(role="user", content=state.message, ts=now, source_type=SourceType.LLM)
+    user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
     add_message_function(state.session_id, user_msg_body)
 
     source_type = SourceType.LLM
@@ -653,7 +653,7 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
 
         for idx, msg_content in enumerate(answer_for_db):
             assistant_msg_body = AppendMessageBody(
-                role="assistant",
+                role=MessageRole.ASSISTANT,
                 content=msg_content,
                 ts=now,
                 source_type=source_type,
@@ -665,7 +665,7 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
     else:
         content = answer_for_db[0] if isinstance(answer_for_db, list) else answer_for_db
         assistant_msg_body = AppendMessageBody(
-            role="assistant",
+            role=MessageRole.ASSISTANT,
             content=content,
             ts=now,
             source_type=source_type,
