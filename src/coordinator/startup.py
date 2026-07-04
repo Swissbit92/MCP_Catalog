@@ -20,6 +20,7 @@ from .repositories.seeker_progression_repository import SeekerProgressionReposit
 from .repositories.user_repository import UserRepository
 from .repositories.wallet_registry_repository import WalletRegistryRepository
 from .repositories.wallet_summary_repository import WalletSummaryRepository
+from .repositories.wallet_flow_repository import WalletFlowRepository
 from .repositories.trade_history_repository import TradeHistoryRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .memory_rag import EpisodicMemoryRAG
@@ -55,6 +56,7 @@ _user_repo: Optional[UserRepository] = None
 # Wallet Metadata Layer
 _wallet_registry_repo: Optional[WalletRegistryRepository] = None
 _wallet_summary_repo: Optional[WalletSummaryRepository] = None
+_wallet_flow_repo: Optional[WalletFlowRepository] = None
 _trade_history_repo: Optional[TradeHistoryRepository] = None
 
 # Memory Management (Phase 2)
@@ -144,6 +146,11 @@ def get_wallet_registry_repo() -> Optional[WalletRegistryRepository]:
 def get_wallet_summary_repo() -> Optional[WalletSummaryRepository]:
     """Get the wallet summary repository."""
     return _wallet_summary_repo
+
+
+def get_wallet_flow_repo() -> Optional[WalletFlowRepository]:
+    """Get the guided wallet-creation flow-state repository."""
+    return _wallet_flow_repo
 
 
 def get_trade_history_repo() -> Optional[TradeHistoryRepository]:
@@ -259,6 +266,7 @@ def init_repositories():
     global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
     global _user_profile_repo, _seeker_progression_repo, _user_repo
     global _wallet_registry_repo, _wallet_summary_repo, _trade_history_repo
+    global _wallet_flow_repo
 
     _session_repo = SessionRepository(_DB_PATH)
     _message_repo = MessageRepository(_DB_PATH)
@@ -273,9 +281,12 @@ def init_repositories():
     _wallet_registry_repo = WalletRegistryRepository(_DB_PATH)
     _wallet_summary_repo = WalletSummaryRepository(_DB_PATH)
     _trade_history_repo = TradeHistoryRepository(_DB_PATH)
+    _wallet_flow_repo = WalletFlowRepository(_DB_PATH)
 
     # Reset all wallet unlock states on startup (wallets are locked until user provides password)
     _wallet_summary_repo.reset_all_unlock_states()
+    # Sweep any wallet-creation flows abandoned before a restart
+    _wallet_flow_repo.sweep_stale()
 
     logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression + OAuth + Wallet Metadata)")
 

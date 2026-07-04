@@ -15,10 +15,10 @@ from .first_person_service import post_process_first_person
 
 logger = logging.getLogger(__name__)
 
-# In-memory multi-turn wallet creation state
-# session_id -> {"step": int, "user_id": str, "wallet_name": str}
-# Cleared on server restart (acceptable for guided UI flow)
-_wallet_flows: dict[str, dict] = {}
+# Multi-turn guided wallet-creation state is persisted in SQLite via
+# WalletFlowRepository (see startup.get_wallet_flow_repo) — durable across
+# restarts and safe under multiple workers. The BIP39 mnemonic is never stored
+# there; it stays a request-local variable in the step handler.
 
 # Regex to strip leaked internal tool names from LLM responses (zero-latency guardrail)
 _TOOL_NAME_PATTERN = re.compile(
@@ -47,7 +47,11 @@ _DANGEROUS_CMD_PATTERN = re.compile(
 
 def has_active_wallet_flow(session_id: Optional[str]) -> bool:
     """Check whether *session_id* has an in-progress guided wallet creation flow."""
-    return bool(session_id and _wallet_flows.get(session_id))
+    if not session_id:
+        return False
+    from ..startup import get_wallet_flow_repo  # lazy: avoid import cycle
+    repo = get_wallet_flow_repo()
+    return bool(repo and repo.get(session_id))
 
 
 class QueryHandlerService:
@@ -493,13 +497,16 @@ class QueryHandlerService:
         ProposalCard or StrategyApprovalCard structured message WITHOUT calling
         Jupiter MCP execute tools.
 
-        Multi-turn wallet creation flow is managed via _wallet_flows session state.
+        Multi-turn wallet creation flow state is persisted via WalletFlowRepository
+        (startup.get_wallet_flow_repo); the mnemonic is never persisted.
         """
 
         logger.info(f"[WalletQuery] Handling wallet intent for user={user_id}")
 
         # Check if this is part of a guided wallet creation flow
-        flow_state = _wallet_flows.get(session_id or "")
+        from ..startup import get_wallet_flow_repo  # lazy: avoid import cycle
+        flow_repo = get_wallet_flow_repo()
+        flow_state = flow_repo.get(session_id or "") if flow_repo else None
         if flow_state:
             return self._handle_wallet_creation_step(
                 message=message,
@@ -584,13 +591,14 @@ class QueryHandlerService:
 
             from ..services.wallet_proposal_service import build_wallet_creation_step
             session_key = session_id or ""
-            _wallet_flows[session_key] = {
-                "step": 1,
-                "user_id": user_id or "default_user",
-                "wallet_name": "My Wallet",
-                "slots_used": slots_used,
-                "slots_max": slots_max,
-            }
+            if flow_repo:
+                flow_repo.upsert(session_key, {
+                    "step": 1,
+                    "user_id": user_id or "default_user",
+                    "wallet_name": "My Wallet",
+                    "slots_used": slots_used,
+                    "slots_max": slots_max,
+                })
             step_msg = build_wallet_creation_step(step=1, slots_used=slots_used, slots_max=slots_max)
             metadata.source_type = "wallet_flow"
             metadata.tools_used = ["wallet_create_guided"]
@@ -627,13 +635,14 @@ class QueryHandlerService:
 
             from ..services.wallet_proposal_service import build_wallet_creation_step
             session_key = session_id or ""
-            _wallet_flows[session_key] = {
-                "step": 1,
-                "user_id": user_id,
-                "wallet_name": tool_call.arguments.get("wallet_name", "My Wallet"),
-                "slots_used": slots_used,
-                "slots_max": slots_max,
-            }
+            if flow_repo:
+                flow_repo.upsert(session_key, {
+                    "step": 1,
+                    "user_id": user_id,
+                    "wallet_name": tool_call.arguments.get("wallet_name", "My Wallet"),
+                    "slots_used": slots_used,
+                    "slots_max": slots_max,
+                })
             step_msg = build_wallet_creation_step(step=1, slots_used=slots_used, slots_max=slots_max)
             metadata.source_type = "wallet_mcp"
             metadata.tools_used = ["wallet_create_guided"]
@@ -675,15 +684,17 @@ class QueryHandlerService:
             encrypt_private_key, generate_mnemonic, generate_keypair_from_mnemonic,
             cache_session_key,
         )
-        from ..startup import get_wallet_repo
+        from ..startup import get_wallet_repo, get_wallet_flow_repo
 
+        flow_repo = get_wallet_flow_repo()
         step = flow_state.get("step", 1)
 
         if step == 1:
             # User provided wallet name
             flow_state["wallet_name"] = message.strip() or "My Wallet"
             flow_state["step"] = 2
-            _wallet_flows[session_id] = flow_state
+            if flow_repo:
+                flow_repo.upsert(session_id, flow_state)
             step_msg = build_wallet_creation_step(step=2, wallet_name=flow_state["wallet_name"])
             metadata.source_type = "wallet_mcp"
             return self._finalize_response(
@@ -731,7 +742,8 @@ class QueryHandlerService:
                 # Zero out sensitive data before clearing
                 mnemonic_phrase = "\x00" * len(mnemonic_phrase)
                 del mnemonic_phrase
-                del _wallet_flows[session_id]
+                if flow_repo:
+                    flow_repo.delete(session_id)
                 metadata.source_type = "wallet_mcp"
                 return self._finalize_response(
                     answer="I encountered an error saving your wallet. Please try again.",
@@ -769,11 +781,13 @@ class QueryHandlerService:
             except Exception as e:
                 logger.warning(f"[WalletCreation] Summary update failed (non-fatal): {e}")
 
-            # Hold mnemonic in flow state for step 3 display (memory only, never persisted)
+            # Advance to step 3. The mnemonic is displayed in THIS response only and
+            # is never persisted (it is only ever wiped at step 3, never re-read), so
+            # it stays a request-local variable and no seed phrase touches disk.
             flow_state["step"] = 3
-            flow_state["mnemonic"] = mnemonic_phrase
             flow_state["public_address"] = public_address
-            _wallet_flows[session_id] = flow_state
+            if flow_repo:
+                flow_repo.upsert(session_id, flow_state)
 
             step_msg = build_wallet_creation_step(
                 step=3,
@@ -809,19 +823,13 @@ class QueryHandlerService:
                     used_search=False,
                 )
 
-            # User confirmed — permanently wipe mnemonic
+            # User confirmed — complete the flow. The mnemonic was never persisted
+            # (shown once at step 2, request-local), so there is nothing to wipe here.
             public_address = flow_state.get("public_address", "N/A")
-            mnemonic_ref = flow_state.get("mnemonic", "")
+            if flow_repo:
+                flow_repo.delete(session_id)
 
-            # Overwrite mnemonic in flow state with zeros, then delete
-            if mnemonic_ref:
-                flow_state["mnemonic"] = "\x00" * len(mnemonic_ref)
-            flow_state.pop("mnemonic", None)
-
-            # Clear flow state entirely
-            del _wallet_flows[session_id]
-
-            logger.info(f"[WalletCreation] Mnemonic wiped for user={user_id}, wallet creation complete")
+            logger.info(f"[WalletCreation] Flow complete for user={user_id}, wallet creation done")
 
             step_msg = build_wallet_creation_step(step=4, public_address=public_address)
             metadata.source_type = "wallet_mcp"
@@ -833,10 +841,9 @@ class QueryHandlerService:
                 used_search=True,
             )
 
-        # Unknown step — clear and restart (also wipe any mnemonic in state)
-        if "mnemonic" in flow_state:
-            flow_state["mnemonic"] = "\x00" * len(flow_state["mnemonic"])
-        del _wallet_flows[session_id]
+        # Unknown step — clear and restart (no persisted secrets to wipe)
+        if flow_repo:
+            flow_repo.delete(session_id)
         return self._finalize_response(
             answer="Something went wrong with the wallet setup. Let's start over — say 'create wallet' when ready.",
             persona_name=persona_name,
