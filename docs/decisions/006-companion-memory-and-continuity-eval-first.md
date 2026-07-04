@@ -2,7 +2,7 @@
 title: Companion memory and continuity (eval-first)
 status: Accepted
 created: 2026-06-27
-last_reviewed_on: 2026-06-28
+last_reviewed_on: 2026-07-04
 review_in: 12 months
 applies_to: nephilim
 ---
@@ -67,6 +67,68 @@ and merged**; only the *block selection* is wrong. **Follow-up before any flip
 the homogenizing lore/rank/capability blocks (and/or XML-tag as metadata with
 per-persona framing), then re-gate.** The mechanism (`extra_system_context`) is
 reused as-is; only *which* blocks populate it changes.
+
+### 2026-07-04 — dev-iteration & knowledge-graph decisions
+
+Two decisions taken during Phase-1 pre-scoping:
+
+- **Persona-count reduction rejected; eeva+nyx canary pair adopted for development.**
+  A proposal to disable all personas except two and harden them first was declined:
+  every quality win to date has been a *shared-mechanism* fix (ADR-005 lifted all 7
+  at once), personas are near-pure JSON data with negligible cost at rest, and the
+  full 7-persona spread is the diagnostic instrument that *caught* the injection
+  homogenization (tuning framing on 2 voices risks overfitting and rediscovering the
+  blur on re-enable). Instead, **iterate fast on eeva (product-central, the
+  injection-collapse case) + nyx (weakest voice, 0.50 attribution) as a dev canary,
+  then run the full 7-persona gate before any merge or flag flip** — same discipline
+  as ADR-005 Phase B. (Latest per-persona attribution, `baseline_lean-candidate_20260627`:
+  aurora/gojo 0.875 > eeva/aegis/cipher 0.75 > solace 0.625 > nyx 0.50.)
+- **Knowledge-graph / Neo4j memory rejected on evidence — see Alternatives Considered.**
+  The structured-fact instinct is folded into Phase 1's SQLite store as *ontology-lite*
+  (temporal validity, provenance/confidence, a controlled predicate vocabulary), not a
+  graph database.
+
+### Phase 1 BUILT (2026-07-04) — M1–M4 in a worktree, behind default-OFF flags, eval gate deferred
+
+Built via `/crucible:develop` FULL in worktree `~/nephilim-wt-phase1` (branch
+`feature/adr-006-phase1-memory-facts`, off `origin/main`) + a dedicated py3.12 venv;
+prod `:8000` untouched. **Nothing merged, nothing flipped** — every behavioural path
+stays behind `MEMORY_CONTEXT_INJECT` / `MEMORY_FACTS_ENABLED` (both default OFF). The
+empirical eval (the M5 gate) was **deferred** — it monopolizes the single Ollama GPU
+the live companion uses, so it is batched for a quiet window rather than run now.
+
+- **M1 — per-persona framing rework** (the twice-failed critical path). New
+  `context_framing.py:frame_injected_context()` wraps injected memory in a
+  non-echoable `<remembered>` frame with a per-persona, non-imitation preamble;
+  prose narrative variants `UserProfile.get_narrative_context` /
+  `EmotionalState.to_narrative_context` replace the identical `**Header**\n- field:
+  value` skeletons that Gate 0.1 tied to homogenization (old methods kept for their
+  other callers). Injection assembly reworked in `chat_session_service`; the
+  Ollama-touching guard tests were made hermetic (fixing 4 headless-only failures).
+  `run_eval.py` gained a `--personas eeva,nyx` canary flag; nyx got 3
+  `voice_signature.exemplars` (was empty). Validated: eval canary + full-7 gate
+  **owed** (M5).
+- **M2 — two-table ontology-lite store.** `memory_entities` + `memory_facts`
+  (subject-predicate-object, bi-temporal `valid_from`/`valid_to` = invalidate-not-
+  delete, `confidence`, provenance, `superseded_by`, `~30`-predicate controlled
+  vocabulary). `MemoryFactRepository` with recency-wins `supersede_and_add`;
+  dual-covered `_ensure_table` + alembic `4memory_facts` (verified `upgrade head`).
+- **M3 — fully-async extraction.** `triplet_extractor.py` (Mem0-style few-shot with
+  an empty-output abstention example, closed-vocab mapping, verbatim quote-span
+  fabrication guard) + `fact_write_policy.py` (recency-wins) + `fact_extraction_
+  worker.py` (daemon queue+thread, non-blocking enqueue, failing job dropped not
+  fatal). Enqueued off the interactive path at the summarization cadence.
+- **M4 — retrieval + framed injection.** `memory_fact_retrieval.py`: prose
+  rendering (predicate→clause) + inject-all below `facts_inject_all_threshold` (skip
+  vector search) / cosine top-k above, routed through M1's framing. Shared
+  `MemoryFactRepository` singleton in `startup` (worker write + retrieval read).
+
+Backend suite **1685 → 1734 passed / 0 failed** (headless; +49 net incl. 4 fixed),
+QA-gatekeeper PASS on M1. Config docstrings + flags (`MEMORY_FACTS_ENABLED`,
+`MEMORY_FACTS_RETRIEVAL_K`, `MEMORY_FACTS_INJECT_ALL_THRESHOLD`) carry the
+gate-before-flip discipline. **Next: M5** — freeze a fresh flag-OFF baseline, run
+flag-ON candidate on scratch `:8001`, full 7-persona attribution match-or-beat +
+factual-recall + latency budget + blind A/B → single coordinated flip or keep OFF.
 
 ### Gate 0.1 verdict (2026-07-03) — FAIL again; block choice is NOT the fix
 
@@ -219,7 +281,42 @@ eval probes produce a believable frozen baseline.
   deletions, dedup that FAISS can't do); FAISS is the semantic index over them.
 - Fact **extraction on write** is a bounded LLM step; keep it cheap (small output,
   batched at summarization cadence, not every turn).
+- **Ontology-lite schema (the evidence-backed slice of the knowledge-graph idea —
+  see Alternatives Considered).** The fact table carries: (a) **temporal validity**
+  `valid_from` / `valid_to` — supersede by *invalidating*, not deleting, so
+  "sister was sick" → "sister recovered" keeps both with validity intervals
+  (MemPalace pattern, 96.6% recall@5 on LongMemEval in two SQLite tables);
+  (b) **provenance + confidence** columns (source session, extraction confidence) —
+  cheap now, painful to retrofit, and what makes contradiction resolution
+  debuggable; (c) a **controlled predicate vocabulary** (~20–40 predicates:
+  `likes`, `works_as`, `related_to`, `worried_about`, …) — the useful ~10% of an
+  "ontology" that makes dedup/conflict tractable, without a formal OWL schema.
+- **Per-persona framing of injected facts** (the Gate-0/0.1 prerequisite): facts
+  render in the retrieving persona's voice or ship as non-echoable metadata — never
+  as identically-formatted blocks. This is the critical path; fact-store structure
+  rides behind it.
 - Flag `MEMORY_FACTS_ENABLED`, default OFF.
+
+**Kickoff scope & locked decisions (2026-07-04, via `/crucible:develop` FULL).**
+Five milestones, QA-gated each, in a `~/nephilim-wt` worktree + py3.12 venv (prod
+`:8000` untouched, evals on a scratch `:8001`/DB): **M1** eval-canary tooling
+(`--personas` filter on `run_eval.py`; generalize memory probes past the hardcoded
+`nephilim_eeva`) **+ the per-persona framing rework validated on the *existing*
+profile/emotional M0 blocks first** (de-risks the twice-failed homogenization
+before any fact-store investment; a new `_render_injected_context_in_voice(card,
+blocks)` reusing each persona's `voice_signature`, rendering facts as third-person
+diegetic narration + a non-imitation instruction, memory block repositioned earlier
+with the voice-anchor kept last per position-bias research; nyx needs
+`voice_signature.exemplars` added) → **M2** fact-store data layer → **M3** async
+extraction write path → **M4** fact retrieval + framed injection → **M5** full
+7-persona gate + flip decision. Three settled choices: (1) **single coordinated
+flip** — hold `MEMORY_CONTEXT_INJECT` *and* `MEMORY_FACTS_ENABLED` OFF until all of
+M1–M5 pass, even though M1 alone could flip the existing blocks early; (2)
+**two-table `entities` + `facts`** schema (not string-subject single-table) — the
+MemPalace/Graphiti converging design, cleaner for later multi-hop; (3) **fully-async
+/ background extraction** — off the interactive response path entirely (thread/queue),
+not inline on the summarization turn. Canary (eeva+nyx) is *dev-iteration only*; the
+gate is always full-7.
 
 **Gate 1:** factual-recall eval match-or-beat baseline; **no contradictory
 retrieval** (dedup correctness test); generation-latency budget unbroken;
@@ -343,6 +440,29 @@ arXiv:2502.14975); crisis-routing red-team; audit that **no engagement-dark-patt
 - **Full agent-memory framework (MemGPT/Letta/Mem0 service)** — rejected: overkill
   for a controlled-schema companion; the simpler SQLite+FAISS pattern benchmarks
   *better*.
+- **Knowledge-graph memory (Neo4j / Graphiti-Zep / Mem0-graph)** — rejected on
+  evidence (research pass 2026-07-04). The only independent, statistically-tested
+  graph-vs-vector comparison found the graph layer's accuracy gain **not
+  significant** (~2–3.6%, p>0.05) at 32–40% more tokens and up to 86% higher
+  latency (arXiv:2601.07978); Mem0's own ablation shows its graph variant *worse*
+  on single- and multi-hop recall (+1.6% overall at 1.8–3.3× latency); ConvoMem
+  (arXiv:2511.10523) shows that below ~150–300 conversations — exactly the
+  single-user companion regime — simple retrieval **beats** graph-RAG on accuracy,
+  not just cost. Vendor benchmarks in this space are demonstrably non-reproducible
+  (the public Zep↔Mem0 LOCOMO dispute). Operationally, Graphiti-style ingestion is
+  ~1 LLM call per message — brutal on an 18.5 tok/s local 24B — and Neo4j is a new
+  always-on service on the trading Mac Mini, the same rejection logic as
+  [ADR-001](001-lore-as-typed-markdown-wiki-not-a-graph-db.md). Whether a 24B local
+  model extracts KG triples reliably is untested either way; the closest analog (a
+  Mem0 production audit) found extraction junk persisted even after upgrading to a
+  frontier model, implicating prompt/schema design over model size. **The good
+  ideas are kept without the graph DB:** temporal validity, provenance/confidence,
+  and a controlled predicate vocabulary fold into Phase 1's SQLite fact store as
+  *ontology-lite* (above). **Escalation trigger** (mirroring ADR-001): revisit a
+  graph layer only if continuity evals show failures concentrated in multi-hop
+  *relational* queries — path networkx-over-SQLite-facts → embedded graph → Neo4j
+  read-only projection. (Kùzu, the usual embedded-graph answer, was archived Oct
+  2025 after an Apple acqui-hire — adoption risk.)
 - **Cloud memory / managed vector service** — rejected: violates the local-first,
   privacy-first stance (emotional logs must never leave the box).
 - **Do nothing** — rejected: leaves the P1 companion vision architecturally
