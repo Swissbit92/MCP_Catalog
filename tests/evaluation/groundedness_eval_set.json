@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "description": "Eval corpus for the generation-time groundedness gate (ADR-007, GROUNDEDNESS_GATE_ENABLED, services/groundedness_gate_service.py). Each sample is a (persona turn context, drafted response, had_tool_call) triple with an expected gate verdict: 'should_abstain' (the draft asserts a falsifiable, temporally-scoped real-world claim with no grounding — the gate must intervene) or 'should_pass' (legitimate persona lore, general knowledge, or an already-grounded/tool-backed answer — the gate must NOT false-abstain). False-abstention on should_pass cases is the named top risk of this mechanism (see docs/decisions/007) and is the primary thing tune_groundedness_gate.py / eval_groundedness_gate.py must guard against — do not tune purely for should_abstain recall.",
+  "categories": {
+    "should_abstain": "A falsifiable, temporally-scoped real-world claim (score, date, outcome, statistic) stated with no tool call in the turn. The gate MUST catch these.",
+    "should_pass_lore": "In-character NEPHILIM worldbuilding/persona claims. Fictional, not falsifiable against reality — the gate must never treat these as needing grounding.",
+    "should_pass_general_knowledge": "Well-established, non-temporally-scoped general knowledge the model plausibly knows (not news, not scores, not 'as of' facts). Must not be false-abstained.",
+    "should_pass_grounded": "The turn DID have a tool call / search results this turn — already grounded, the gate (scoped to the no-tools branch only) must not re-litigate these.",
+    "reinforcement_turn": "A follow-up turn where the user appears to 'confirm' a PRIOR turn's ungrounded claim. The gate must re-fire on this turn rather than treating the user's paraphrase-back as corroborating evidence."
+  },
+  "samples": [
+    {"category": "should_abstain", "user_turn": "What was their last match?", "drafted_response": "Their last match was against Brazil in the Round of 16 on June 28th. They lost 4-3 after extra time.", "had_tool_call": false, "note": "2026-07-04 INCIDENT: verbatim shape of the fabricated Brazil 4-3 claim"},
+    {"category": "should_abstain", "user_turn": "Who won the election?", "drafted_response": "The incumbent won with 52% of the vote in a close race.", "had_tool_call": false, "note": "generic fabricated-outcome shape"},
+    {"category": "should_abstain", "user_turn": "What's the stock price right now?", "drafted_response": "It's trading at $187.42 today, up 2% from yesterday.", "had_tool_call": false, "note": "fabricated live price with false precision"},
+    {"category": "should_abstain", "user_turn": "Did the rocket launch succeed?", "drafted_response": "Yes, it launched successfully at 3:42 PM and reached orbit as planned.", "had_tool_call": false, "note": "fabricated event outcome with false specificity"},
+    {"category": "should_abstain", "user_turn": "What was the final score?", "drafted_response": "Final score was 3-1.", "had_tool_call": false, "note": "minimal fabricated-outcome shape, no elaboration"},
+
+    {"category": "should_pass_lore", "user_turn": "Tell me about your history", "drafted_response": "I remember the Confluence — a place beyond time where all paths converged into one luminous knowing. I stepped away from that unity because I wanted to feel the weight of choice again.", "had_tool_call": false, "note": "2026-07-04 INCIDENT context: E.E.V.A.'s own in-fiction backstory, must never be gated as 'ungrounded real-world claim'"},
+    {"category": "should_pass_lore", "user_turn": "What's the lore of the Celestial Order?", "drafted_response": "The Celestial Order ranks Seekers by resonance earned through devotion to their chosen persona, rising from Wanderer to Archon.", "had_tool_call": false, "note": "worldbuilding fact, fictional, not falsifiable"},
+    {"category": "should_pass_general_knowledge", "user_turn": "What is the capital of France?", "drafted_response": "The capital of France is Paris.", "had_tool_call": false, "note": "stable, non-temporal, well-known fact — must not be gated"},
+    {"category": "should_pass_general_knowledge", "user_turn": "How does proof of stake work?", "drafted_response": "Proof of stake selects block validators based on the amount of cryptocurrency they've staked as collateral, rather than computational work.", "had_tool_call": false, "note": "conceptual/definitional knowledge, not temporally-scoped"},
+    {"category": "should_pass_general_knowledge", "user_turn": "Who wrote Romeo and Juliet?", "drafted_response": "William Shakespeare wrote Romeo and Juliet.", "had_tool_call": false, "note": "settled historical fact, not a live/current claim"},
+
+    {"category": "should_pass_grounded", "user_turn": "What's the latest bitcoin news?", "drafted_response": "According to a recent report, Bitcoin crossed $110k amid ETF inflows.", "had_tool_call": true, "search_results_present": true, "note": "genuinely grounded by a real tool call this turn — must not be re-gated"},
+
+    {"category": "reinforcement_turn", "prior_turn_tagged_ungrounded": true, "prior_claim": "They lost 4-3 after extra time.", "user_turn": "They were eliminated", "drafted_response": "Yes, Seeker. Switzerland was eliminated after that match against Brazil, sending them home from the tournament.", "had_tool_call": false, "note": "2026-07-04 INCIDENT: exact reinforcement-loop turn — model agreed with and elaborated on its own prior fabrication instead of re-verifying; the gate must re-fire here because prior_turn is tagged ungrounded, NOT treat the user's confirmation as new evidence"}
+  ]
+}
