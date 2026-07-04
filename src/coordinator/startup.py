@@ -67,6 +67,10 @@ _conversation_summarizer: Optional[ConversationSummarizer] = None
 _episodic_memory_rag: Optional[EpisodicMemoryRAG] = None
 _fact_extractor: Optional[FactExtractor] = None
 
+# ADR-006 Phase 1 (M3/M4): ontology-lite fact store + async extraction worker
+_memory_fact_repo = None        # Optional[MemoryFactRepository] (shared read/write)
+_fact_extraction_worker = None  # Optional[FactExtractionWorker]
+
 
 # ----------------- Getters -----------------
 
@@ -166,6 +170,16 @@ def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
 def get_fact_extractor() -> Optional[FactExtractor]:
     """Get the fact extractor."""
     return _fact_extractor
+
+
+def get_fact_extraction_worker():
+    """Get the async ontology-lite fact-extraction worker (None when facts disabled)."""
+    return _fact_extraction_worker
+
+
+def get_memory_fact_repo():
+    """Get the shared ontology-lite fact store (None until initialised)."""
+    return _memory_fact_repo
 
 
 # HERMES-Agents Phase 3: deterministic tool-call interceptor (stateless singleton)
@@ -335,7 +349,7 @@ def prewarm_session_indexes(rag, session_repo, message_repo, limit: int) -> int:
 
 def init_phase3_memory():
     """Initialize Phase 3 advanced memory systems (RAG + Fact Extraction)."""
-    global _episodic_memory_rag, _fact_extractor
+    global _episodic_memory_rag, _fact_extractor, _fact_extraction_worker, _memory_fact_repo
 
     try:
         # Initialize RAG memory with embeddings (uses config default)
@@ -390,6 +404,35 @@ def init_phase3_memory():
         # For now, mark as ready for lazy init
         _fact_extractor = None  # Will be initialized with LLM client on first use
         logger.info("Fact Extractor ready for initialization (Phase 3)")
+
+        # ADR-006 Phase 1 (M3): start the async ontology-lite fact-extraction worker
+        # ONLY when MEMORY_FACTS_ENABLED. Off (default) → no worker thread, no fact
+        # store writes. The extractor's LLM client is built lazily on first job (off
+        # the request path), so startup stays cheap.
+        try:
+            from .config import get_settings
+            if get_settings().memory.facts_enabled:
+                from .fact_extraction_worker import FactExtractionWorker
+                from .repositories.memory_fact_repository import MemoryFactRepository
+
+                _memory_fact_repo = MemoryFactRepository()  # shared read (M4) + write (M3)
+
+                def _make_extractor():
+                    from .llm_client import create_llm_client
+                    from .triplet_extractor import TripletExtractor
+                    llm = create_llm_client(
+                        {}, temperature=get_settings().ollama.temp_fact_extraction
+                    )
+                    return TripletExtractor(llm)
+
+                _fact_extraction_worker = FactExtractionWorker(
+                    _make_extractor, _memory_fact_repo
+                )
+                _fact_extraction_worker.start()
+                logger.info("[FactWorker] ontology-lite fact store ENABLED (ADR-006 M3/M4)")
+        except Exception as e:
+            logger.warning(f"[FactWorker] init skipped (non-fatal): {e}")
+            _fact_extraction_worker = None
 
     except Exception as e:
         logger.error(f"Failed to initialize Phase 3 memory systems: {e}")
