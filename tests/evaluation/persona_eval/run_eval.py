@@ -64,6 +64,28 @@ def compute_report(results: List[dict], embed_fn: Callable[[str], List[float]]) 
     return report
 
 
+def resolve_personas(requested: List[str], available: List[str]) -> List[str]:
+    """Map a canary request (``eeva,nyx``) onto the probe persona keys.
+
+    Each token matches a persona that equals it, or whose key ends with
+    ``_<token>`` (so ``eeva`` → ``nephilim_eeva``). Preserves the probe order and
+    de-dupes. Raises ValueError on an unmatched token so a typo fails loud rather
+    than silently shrinking the run.
+    """
+    keep: List[str] = []
+    for tok in requested:
+        tok = tok.strip()
+        if not tok:
+            continue
+        matches = [p for p in available if p == tok or p.endswith(f"_{tok}")]
+        if not matches:
+            raise ValueError(f"--personas token {tok!r} matched none of {available}")
+        for m in matches:
+            if m not in keep:
+                keep.append(m)
+    return keep
+
+
 def collect_live(base_url: str, probes: dict) -> List[dict]:  # pragma: no cover - live
     """Drive the backend over every persona × probe. Requires Ollama + backend."""
     import sys
@@ -116,9 +138,16 @@ def main() -> int:  # pragma: no cover - live entry point
     ap = argparse.ArgumentParser(description="Persona-eval baseline runner (ADR-005 Phase A)")
     ap.add_argument("--label", required=True, help="baseline label, e.g. 'legacy' or 'lean-candidate'")
     ap.add_argument("--base-url", default="http://localhost:8000")
+    ap.add_argument("--personas", default=None,
+                    help="comma-separated canary subset (e.g. 'eeva,nyx'); default = all probe personas. "
+                         "Dev-iteration only — the acceptance gate always runs the full set.")
     args = ap.parse_args()
 
     probes = pm.load_probes()
+    if args.personas:
+        subset = resolve_personas(args.personas.split(","), probes["personas"])
+        probes = {**probes, "personas": subset}
+        print(f"[canary] restricted to {len(subset)} personas: {subset}")
     print(f"Collecting {args.label} over {len(probes['personas'])} personas...")
     results = collect_live(args.base_url, probes)
     report = compute_report(results, pm.default_embed_fn())

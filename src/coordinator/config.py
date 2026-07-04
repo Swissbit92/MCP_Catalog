@@ -220,10 +220,13 @@ class MemorySettings(BaseSettings):
                     "the current code path) still homogenizes — 0.768→0.679/0.696 "
                     "across two independent runs, eeva 0.625→0.25/0.375. Identically-"
                     "formatted blocks pull every persona toward the same injected "
-                    "text; block CHOICE is not the fix. DO NOT enable without "
-                    "per-persona framing of the injected content (render facts in "
-                    "the persona's voice, or tag as non-echoable metadata) AND a "
-                    "re-gate. Seam + plumbing remain correct. See ADR-006.",
+                    "text; block CHOICE is not the fix. ADR-006 M1 (2026-07-04) now "
+                    "PROVIDES that per-persona framing: prose narrative variants "
+                    "wrapped in a non-echoable <remembered> frame (context_framing.py). "
+                    "STILL default OFF pending the M1 acceptance gate — the full "
+                    "7-persona attribution eval must match-or-beat the frozen OFF "
+                    "baseline before this flips. Seam + plumbing remain correct. "
+                    "See ADR-006 Phase 1.",
         alias="MEMORY_CONTEXT_INJECT"
     )
     context_max_tokens: int = Field(

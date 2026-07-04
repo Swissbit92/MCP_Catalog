@@ -26,6 +26,7 @@ from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
 from ..persona_memory import build_system_prompt, get_persona_card
+from ..context_framing import frame_injected_context
 
 logger = logging.getLogger(__name__)
 
@@ -473,20 +474,29 @@ def handle_session_chat(
     # need separate per-persona framing before they can be injected without
     # regression (future work). user-profile + emotional are persona-neutral
     # relationship state, not shared lore vocabulary.
+    # ADR-006 Phase 1 (M1): inject the PROSE narrative variants of the profile +
+    # emotional blocks — not the `**Header**\n- field: value` skeletons, whose
+    # uniform shape Gate 0.1 isolated as the homogenizing signal. Cap by priority,
+    # then wrap once in a per-persona non-echoable frame (context_framing) so the
+    # memory reads as background knowledge, not text to recite. Still gated behind
+    # MEMORY_CONTEXT_INJECT (default OFF) pending the full 7-persona attribution gate.
     _mem_settings = get_settings().memory
     extra_system_context = None
     if _mem_settings.context_inject_enabled:
-        extra_system_context = _assemble_capped_context(
-            [
-                user_profile_context,
-                emotional_context,
-            ],
+        profile_narrative = (
+            user_profile.get_narrative_context(max_facts=10, max_topics=5)
+            if user_profile else ""
+        )
+        emotional_narrative = emotional_state.to_narrative_context()
+        capped = _assemble_capped_context(
+            [profile_narrative, emotional_narrative],
             _mem_settings.context_max_tokens,
         )
+        extra_system_context = frame_injected_context(persona_key, card, capped)
         if extra_system_context:
             logger.info(
                 f"[SessionContext] injecting {estimate_tokens(extra_system_context)} "
-                f"tokens of session context into the LLM prompt (M0.1 selective)"
+                f"tokens of framed session context into the LLM prompt (M1 per-persona)"
             )
 
     # Build summary context
