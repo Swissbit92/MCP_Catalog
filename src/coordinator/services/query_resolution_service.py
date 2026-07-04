@@ -67,6 +67,19 @@ _LABEL_PREFIX_RE = re.compile(
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
 
+# Content-free tokens that, together with an EXPLICIT_SEARCH_COMMAND phrase, make
+# a turn a "bare" search command (no topic of its own): "search the web (for it)",
+# "look it up online". If only these remain after stripping the command phrases,
+# there is nothing for the model to search but the command itself.
+_COMMAND_FILLER_TOKENS = frozenset(
+    {
+        "the", "a", "an", "web", "internet", "online", "for", "it", "this",
+        "that", "these", "those", "them", "please", "can", "could", "would",
+        "you", "to", "and", "up", "me", "us", "now", "about", "on", "of",
+        "real", "some", "more", "info", "information", "quick", "just",
+    }
+)
+
 
 class QueryResolutionService:
     """Resolve a (possibly deictic) latest user turn into a standalone search query.
@@ -106,8 +119,25 @@ class QueryResolutionService:
             if not self._looks_like_followup(latest):
                 return latest
 
+            # A "bare" search command ("search the web", "look it up") carries no
+            # topic of its own, so the LLM must infer it with no explicit referent
+            # — the least reliable rewrite. Change the fallback from the useless
+            # bare command to the most recent substantive prior user turn, which
+            # already carries the topic. Worst case then becomes the prior real
+            # question hitting Brave (real results) instead of "search the web"
+            # (junk meta-pages).
+            fallback = latest
+            if self._is_bare_search_command(latest):
+                prior = self._prior_substantive_user_turn(user_prompt, latest)
+                if prior:
+                    fallback = prior
+
             rewritten = self._llm_rewrite(user_prompt, latest)
-            resolved = self._sanitize(rewritten, fallback=latest)
+            resolved = self._sanitize(rewritten, fallback=fallback)
+            # Guard: a rewrite that is ITSELF still a bare command (the model
+            # echoed "search the web") must not reach Brave — use the fallback.
+            if self._is_bare_search_command(resolved):
+                resolved = fallback
             if resolved != latest:
                 logger.info(
                     f"[QueryResolution] Resolved follow-up '{latest[:60]}' -> "
@@ -158,6 +188,45 @@ class QueryResolutionService:
             return True
 
         return False
+
+    @staticmethod
+    def _is_bare_search_command(text: str) -> bool:
+        """True if `text` is only a search command + filler (no topic).
+
+        e.g. "search the web", "search the web for it", "look it up online",
+        "google it" — after removing the command phrase(s) and content-free
+        filler, nothing substantive remains.
+        """
+        if not text or not text.strip():
+            return False
+        low = text.lower()
+        # Remove every explicit-command phrase (longest first, so multiword
+        # phrases are consumed before their sub-phrases).
+        for cmd in sorted(EXPLICIT_SEARCH_COMMANDS, key=len, reverse=True):
+            low = low.replace(cmd, " ")
+        remaining = [w for w in _WORD_RE.findall(low) if w not in _COMMAND_FILLER_TOKENS]
+        # If no command phrase was present at all, it's not a *command* — only
+        # treat as bare when at least one command phrase was actually stripped.
+        had_command = any(cmd in text.lower() for cmd in EXPLICIT_SEARCH_COMMANDS)
+        return had_command and not remaining
+
+    @classmethod
+    def _prior_substantive_user_turn(cls, user_prompt: str, latest: str) -> Optional[str]:
+        """Most recent prior user turn that carries a topic (not a bare command)."""
+        user_turns = [
+            line.strip()[6:].strip()
+            for line in user_prompt.split("\n")
+            if line.strip().startswith("User: ")
+        ]
+        # Drop the trailing latest turn, then walk backward for the first turn
+        # that has real content and isn't itself a bare search command.
+        if user_turns and user_turns[-1] == latest:
+            user_turns = user_turns[:-1]
+        for turn in reversed(user_turns):
+            if turn and not cls._is_bare_search_command(turn):
+                if _WORD_RE.findall(turn.lower()):
+                    return turn
+        return None
 
     def _llm_rewrite(self, user_prompt: str, latest: str) -> str:
         """Ask the LLM to rewrite `latest` into a standalone query using context."""

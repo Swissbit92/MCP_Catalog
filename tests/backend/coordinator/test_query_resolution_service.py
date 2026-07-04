@@ -97,9 +97,9 @@ def test_rewrite_garbage_falls_back_to_latest(enable_resolution):
     prompt = _prompt(
         "User: tell me about the webb telescope finding",
         "Assistant: ...",
-        "User: look it up",
+        "User: what about it",  # deictic, but NOT a bare search command
     )
-    assert svc.resolve(prompt) == "look it up"
+    assert svc.resolve(prompt) == "what about it"
 
 
 def test_llm_exception_falls_back_to_latest(enable_resolution):
@@ -121,6 +121,78 @@ def test_empty_rewrite_falls_back_to_latest(enable_resolution):
         "User: and ethereum?",
     )
     assert svc.resolve(prompt) == "and ethereum?"
+
+
+# --------------------------------------------------- bare-command hardening (turn-2)
+
+def test_bare_command_garbage_rewrite_falls_back_to_prior_turn(enable_resolution):
+    """Bare 'search the web' + a whiffed rewrite must fall back to the prior
+    substantive turn (the topic), NOT the useless bare command."""
+    svc, llm = _svc(complete_return="word " * 40)  # garbage rewrite, rejected
+    prompt = _prompt(
+        "User: how is the world cup 2026 going and is switzerland performing",
+        "Assistant: I do not follow current events.",
+        "User: search the web",
+    )
+    out = svc.resolve(prompt)
+    assert out == "how is the world cup 2026 going and is switzerland performing"
+    assert out != "search the web"
+
+
+def test_bare_command_rewrite_echoing_command_uses_fallback(enable_resolution):
+    """If the model echoes the command ('search the web') the guard rejects it."""
+    svc, llm = _svc(complete_return="search the web")
+    prompt = _prompt(
+        "User: latest ethereum price and news",
+        "Assistant: ...",
+        "User: search the web for it",
+    )
+    out = svc.resolve(prompt)
+    assert out == "latest ethereum price and news"
+
+
+def test_bare_command_good_rewrite_is_used(enable_resolution):
+    """A good rewrite of a bare command is still used (fallback only on failure)."""
+    svc, llm = _svc(complete_return="Switzerland World Cup 2026 performance")
+    prompt = _prompt(
+        "User: how is switzerland doing at the world cup",
+        "Assistant: ...",
+        "User: search the web",
+    )
+    assert svc.resolve(prompt) == "Switzerland World Cup 2026 performance"
+
+
+@pytest.mark.parametrize(
+    "turn",
+    ["search the web", "search the web for it", "look it up online", "google it", "web search"],
+)
+def test_is_bare_search_command_true(turn):
+    assert QueryResolutionService._is_bare_search_command(turn) is True
+
+
+@pytest.mark.parametrize(
+    "turn",
+    [
+        "search the web for switzerland world cup",  # command + real topic
+        "and Geneva?",                                # not a command
+        "how is the world cup going",                 # no command phrase
+        "",                                           # empty
+    ],
+)
+def test_is_bare_search_command_false(turn):
+    assert QueryResolutionService._is_bare_search_command(turn) is False
+
+
+def test_prior_substantive_user_turn_skips_bare_commands():
+    prompt = _prompt(
+        "User: tell me about the webb telescope exoplanet finding",
+        "Assistant: ...",
+        "User: search the web",
+        "Assistant: what do you seek?",
+        "User: look it up",
+    )
+    got = QueryResolutionService._prior_substantive_user_turn(prompt, "look it up")
+    assert got == "tell me about the webb telescope exoplanet finding"
 
 
 # ------------------------------------------------------------- follow-up detector
