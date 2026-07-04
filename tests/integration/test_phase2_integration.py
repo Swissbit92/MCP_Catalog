@@ -168,13 +168,10 @@ def test_kpi4_psychological_context_in_system_prompt():
         resolve_persona_to_card,
         _load_all_cards_cached
     )
-    # Pinned to the LEGACY builder: this asserts the legacy "Psychological Depth"
-    # block text. The lean prompt (ADR-005 Phase B, now the live default) carries
-    # psych context in compressed form and is covered in test_lean_prompt.py.
-    # Flag-independent regardless of the ambient PERSONA_LEAN_PROMPT.
-    from src.coordinator.prompt_builder import _build_system_prompt_legacy
-
-    _build_system_prompt_legacy.cache_clear()
+    # Validate the psychological block builder directly. (The legacy full-prompt
+    # builder was retired 2026-07-04; the lean prompt — now the only builder —
+    # carries psych context in compressed form and is covered in
+    # test_lean_prompt.py.)
 
     # Test Eeva (should have psychological profile)
     card = resolve_persona_to_card("Eeva")
@@ -184,11 +181,6 @@ def test_kpi4_psychological_context_in_system_prompt():
     assert "Psychological Depth" in psych_block, "Missing psychological depth header"
     assert "Core vulnerability" in psych_block, "Missing core vulnerability"
     print(f"  [OK] Eeva has psychological block ({len(psych_block)} chars)")
-
-    # Test that system prompt includes psychological block
-    system_prompt = _build_system_prompt_legacy("Eeva")
-    assert "Psychological Depth" in system_prompt, "System prompt missing psychological context"
-    print(f"  [OK] System prompt includes psychological context")
 
     # Test all personas
     cards = _load_all_cards_cached()

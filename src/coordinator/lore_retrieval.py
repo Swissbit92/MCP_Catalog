@@ -4,8 +4,6 @@
 seeker rank + affinity. They are NEVER surfaced as user-invokable commands —
 they are injected internally to shape the persona's behaviour, and a brief
 diegetic "unlock" notification (persona voice) is emitted at the milestone.
-
-Flag-gated by ``settings.lore.ondemand_enabled``.
 """
 from __future__ import annotations
 
@@ -50,14 +48,11 @@ def _capability_passes_gate(fm: Dict[str, Any], persona_key: str, rank_name: str
     return True
 
 
-def build_capability_context(persona_key: str, rank_name: str, affinity_level: int,
-                             settings) -> str:
+def build_capability_context(persona_key: str, rank_name: str, affinity_level: int) -> str:
     """Internal <capabilities> block for capabilities this seeker has unlocked.
 
-    Flag-OFF → empty string. The block shapes behaviour; it is not a user-facing menu.
+    The block shapes behaviour; it is not a user-facing menu.
     """
-    if not getattr(settings.lore, "ondemand_enabled", False):
-        return ""
     if not persona_key.startswith("nephilim_"):
         return ""
 
@@ -82,14 +77,13 @@ def build_capability_context(persona_key: str, rank_name: str, affinity_level: i
 
 
 def detect_new_capability_unlocks(seeker_repo, user_id: str, persona_key: str,
-                                  rank_name: str, affinity_level: int,
-                                  settings) -> List[Dict[str, Any]]:
+                                  rank_name: str, affinity_level: int) -> List[Dict[str, Any]]:
     """Record + return capabilities newly crossing their gate this turn.
 
     Reuses the unlocked_lore table (fragment_id = capability entity_id) so an
     unlock fires exactly once. Returns [{id, display_name, persona_voice_line}].
     """
-    if not getattr(settings.lore, "ondemand_enabled", False) or seeker_repo is None:
+    if seeker_repo is None:
         return []
     if not persona_key.startswith("nephilim_"):
         return []

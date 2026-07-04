@@ -434,6 +434,44 @@ class QueryHandlerService:
             search_results_count=search_count,
         )
 
+    def _wallet_slot_preflight(self, user_id, persona_name, metadata, *, log_context):
+        """Pre-flight the 3-wallet active cap before starting a creation flow.
+
+        Returns ``(slots_used, slots_max, blocked_response)``: if the user is at
+        the active-wallet limit, ``blocked_response`` is a finalized "reached the
+        maximum" reply (and the caller should return it immediately); otherwise
+        it is None. Any registry error is non-fatal — returns defaults + None so
+        creation proceeds without the cap check.
+        """
+        slots_used, slots_max = 0, 3
+        try:
+            from ..startup import get_wallet_registry_repo
+            from ..repositories.wallet_registry_repository import MAX_ACTIVE_WALLETS
+            registry_repo = get_wallet_registry_repo()
+            if registry_repo:
+                allowed, count, _ = registry_repo.can_create_wallet(user_id or "default_user")
+                slots_used, slots_max = count, MAX_ACTIVE_WALLETS
+                if not allowed:
+                    metadata.source_type = "wallet_mcp"
+                    metadata.tools_used = []
+                    logger.info(
+                        f"{log_context} creation blocked — user={user_id} "
+                        f"at limit ({count}/{MAX_ACTIVE_WALLETS})"
+                    )
+                    blocked = self._finalize_response(
+                        answer=(
+                            f"You've reached the maximum of {MAX_ACTIVE_WALLETS} active wallets. "
+                            "To create a new one, please delete an existing wallet first."
+                        ),
+                        persona_name=persona_name,
+                        metadata=metadata,
+                        used_search=False,
+                    )
+                    return slots_used, slots_max, blocked
+        except Exception as e:
+            logger.warning(f"{log_context} wallet slot pre-flight check failed (non-fatal): {e}")
+        return slots_used, slots_max, None
+
     def handle_wallet_query(
         self,
         message: str,
@@ -538,32 +576,11 @@ class QueryHandlerService:
             "solana wallet", "create solana", "i want to create a",
         ]
         if any(t in msg_lower for t in _CREATION_TRIGGERS):
-            # Pre-flight: check wallet count against 3-wallet limit
-            slots_used = 0
-            slots_max = 3
-            try:
-                from ..startup import get_wallet_registry_repo
-                from ..repositories.wallet_registry_repository import MAX_ACTIVE_WALLETS
-                registry_repo = get_wallet_registry_repo()
-                if registry_repo:
-                    allowed, count, next_slot = registry_repo.can_create_wallet(user_id or "default_user")
-                    slots_used = count
-                    slots_max = MAX_ACTIVE_WALLETS
-                    if not allowed:
-                        metadata.source_type = "wallet_mcp"
-                        metadata.tools_used = []
-                        logger.info(f"[WalletQuery] Creation blocked — user={user_id} at limit ({count}/{MAX_ACTIVE_WALLETS})")
-                        return self._finalize_response(
-                            answer=(
-                                f"You've reached the maximum of {MAX_ACTIVE_WALLETS} active wallets. "
-                                "To create a new one, please delete an existing wallet first."
-                            ),
-                            persona_name=persona_name,
-                            metadata=metadata,
-                            used_search=False,
-                        )
-            except Exception as e:
-                logger.warning(f"[WalletQuery] Pre-flight wallet count check failed (non-fatal): {e}")
+            slots_used, slots_max, blocked = self._wallet_slot_preflight(
+                user_id, persona_name, metadata, log_context="[WalletQuery]"
+            )
+            if blocked is not None:
+                return blocked
 
             from ..services.wallet_proposal_service import build_wallet_creation_step
             session_key = session_id or ""
@@ -602,28 +619,11 @@ class QueryHandlerService:
 
         # If LLM called wallet_create_guided → start wallet creation flow
         if tool_call and tool_call.name == "wallet_create_guided":
-            # Count-based pre-flight check
-            slots_used = 0
-            slots_max = 3
-            try:
-                from ..startup import get_wallet_registry_repo
-                from ..repositories.wallet_registry_repository import MAX_ACTIVE_WALLETS
-                registry_repo = get_wallet_registry_repo()
-                if registry_repo:
-                    allowed, count, _ = registry_repo.can_create_wallet(user_id or "default_user")
-                    slots_used = count
-                    slots_max = MAX_ACTIVE_WALLETS
-                    if not allowed:
-                        metadata.source_type = "wallet_mcp"
-                        metadata.tools_used = []
-                        return self._finalize_response(
-                            answer=f"You've reached the maximum of {MAX_ACTIVE_WALLETS} active wallets. Delete one first.",
-                            persona_name=persona_name,
-                            metadata=metadata,
-                            used_search=False,
-                        )
-            except Exception as e:
-                logger.warning(f"[WalletCreate] Slot validation failed, proceeding without cap check: {e}")
+            slots_used, slots_max, blocked = self._wallet_slot_preflight(
+                user_id, persona_name, metadata, log_context="[WalletCreate]"
+            )
+            if blocked is not None:
+                return blocked
 
             from ..services.wallet_proposal_service import build_wallet_creation_step
             session_key = session_id or ""

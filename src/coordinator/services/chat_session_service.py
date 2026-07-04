@@ -209,10 +209,8 @@ def _build_ondemand_lore_context(
     messages (priority 9). Tier-2 (embedding): bge-m3 semantic search over the
     lore corpus (priority 6, canon-only). Results are deduped, the static
     3-entity core is excluded, and the block is trimmed to a token budget
-    (lowest priority dropped first). Flag-OFF → empty string (byte-identical).
+    (lowest priority dropped first).
     """
-    if not getattr(settings.lore, "ondemand_enabled", False):
-        return ""
     if episodic_memory_rag is None or getattr(episodic_memory_rag, "lore_store", None) is None:
         return ""
 
@@ -235,7 +233,7 @@ def _build_ondemand_lore_context(
                 if meta and meta.get("body"):
                     candidates[entity_id] = {"body": meta["body"], "priority": 9, "score": 1.0}
     except Exception as e:
-        logger.debug(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
+        logger.warning(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
 
     # --- Tier 2: embedding (semantic, canon-only) ---
     try:
@@ -249,7 +247,7 @@ def _build_ondemand_lore_context(
                 continue
             candidates[eid] = {"body": meta.get("body", ""), "priority": 6, "score": float(score)}
     except Exception as e:
-        logger.debug(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
+        logger.warning(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
 
     if not candidates:
         return ""
@@ -439,23 +437,23 @@ def handle_session_chat(
             if rank_ctx:
                 system_prompt = f"{system_prompt}\n\n{rank_ctx}"
         except Exception as e:
-            logger.debug(f"[RankContext] skipped (non-fatal): {e}")
+            logger.warning(f"[RankContext] skipped (non-fatal): {e}")
 
-    # PHASE 2 (HERMES): internal capability context (flag-gated; NEPHILIM personas)
+    # PHASE 2 (HERMES): internal capability context (NEPHILIM personas)
     cap_ctx = ""
-    if get_settings().lore.ondemand_enabled and persona_key.startswith("nephilim_") and seeker_progression_repo:
+    if persona_key.startswith("nephilim_") and seeker_progression_repo:
         try:
             from ..lore_retrieval import build_capability_context
             _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
             _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
             cap_ctx = build_capability_context(
                 persona_key, _prof.get("rank_name", "Initiate"),
-                _aff.get("affinity_level", 0), get_settings(),
+                _aff.get("affinity_level", 0),
             )
             if cap_ctx:
                 system_prompt = f"{system_prompt}\n\n{cap_ctx}"
         except Exception as e:
-            logger.debug(f"[Capability] context skipped (non-fatal): {e}")
+            logger.warning(f"[Capability] context skipped (non-fatal): {e}")
 
     system_tokens = estimate_tokens(system_prompt)
 
@@ -858,19 +856,18 @@ def _track_nephilim_progression(
         # Phase-2: detect newly-unlocked internal capabilities → diegetic unlock beat
         capability_unlocks = []
         try:
-            _settings = get_settings()
-            if _settings.lore.ondemand_enabled:
+            if seeker_progression_repo:
                 from ..lore_retrieval import detect_new_capability_unlocks
                 _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
                 _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
                 capability_unlocks = detect_new_capability_unlocks(
                     seeker_progression_repo, effective_user_id, persona_key,
-                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0), _settings,
+                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0),
                 )
                 for cap in capability_unlocks:
                     logger.info(f"[NEPHILIM] Capability awakened for {effective_user_id}: {cap['id']}")
         except Exception as e:
-            logger.debug(f"[Capability] unlock detection failed (non-fatal): {e}")
+            logger.warning(f"[Capability] unlock detection failed (non-fatal): {e}")
 
         return {"ceremony": ceremony_data, "capability_unlocks": capability_unlocks}
 

@@ -364,8 +364,8 @@ def warm_centroids(include_primary: bool = False) -> bool:
 
     Args:
         include_primary: Also warm the primary-mode centroid set (no llm_only).
-            Pass True when routing.semantic_primary=True so the first real request
-            does not pay the centroid-build cost inline.
+            Pass True so the first real request does not pay the centroid-build
+            cost inline. (The semantic router is always primary.)
 
     Returns:
         True if the legacy centroids were successfully built, False otherwise.

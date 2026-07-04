@@ -331,21 +331,19 @@ def init_phase3_memory():
         _episodic_memory_rag = EpisodicMemoryRAG()
         logger.info("Episodic Memory RAG initialized (Phase 3)")
 
-        # Phase-2 (HERMES): pre-warm the global lore corpus in a background thread
-        # when on-demand lore retrieval is enabled. Reuses the RAG embedder; daemon
-        # so it never blocks startup. No-op (store stays None) when the flag is off.
+        # Phase-2 (HERMES): pre-warm the global lore corpus in a background thread.
+        # On-demand lore retrieval is always on (LORE_ONDEMAND_ENABLED retired
+        # 2026-07-04). Reuses the RAG embedder; daemon so it never blocks startup.
         try:
-            from .config import get_settings
-            if get_settings().lore.ondemand_enabled:
-                import threading as _threading
+            import threading as _threading
 
-                def _prewarm_lore():
-                    try:
-                        _episodic_memory_rag.index_lore_corpus()
-                        logger.info("[LoreRAG] Lore corpus pre-warm complete")
-                    except Exception as exc:
-                        logger.debug(f"[LoreRAG] Lore corpus pre-warm failed (non-fatal): {exc}")
-                _threading.Thread(target=_prewarm_lore, daemon=True, name="prewarm-lore").start()
+            def _prewarm_lore():
+                try:
+                    _episodic_memory_rag.index_lore_corpus()
+                    logger.info("[LoreRAG] Lore corpus pre-warm complete")
+                except Exception as exc:
+                    logger.debug(f"[LoreRAG] Lore corpus pre-warm failed (non-fatal): {exc}")
+            _threading.Thread(target=_prewarm_lore, daemon=True, name="prewarm-lore").start()
         except Exception as e:
             logger.debug(f"[LoreRAG] Lore pre-warm thread start failed (non-fatal): {e}")
 
@@ -587,12 +585,12 @@ def initialize_all():
         def _prewarm_semantic():
             try:
                 from .tools.semantic_router import warm_centroids
-                from .config import get_settings
-                primary = get_settings().routing.semantic_primary
-                ok = warm_centroids(include_primary=primary)
+                # Semantic router is always primary (ROUTING_SEMANTIC_PRIMARY
+                # retired 2026-07-04) → always warm the primary centroid set.
+                ok = warm_centroids(include_primary=True)
                 logger.info(
                     f"[SemanticRouter] Centroid pre-warm {'succeeded' if ok else 'skipped (no embedding model)'}"
-                    f"{' (incl. primary set)' if primary else ''}"
+                    " (incl. primary set)"
                 )
             except Exception as exc:
                 logger.debug(f"[SemanticRouter] Centroid pre-warm failed (non-fatal): {exc}")
