@@ -1,0 +1,31 @@
+# This subsystem manages its own venv/build artifacts — not covered by
+# nephilim's root .gitignore (which targets the FastAPI/React core).
+
+# Secrets — NEVER commit
+.env
+.env.local
+
+# Python build/test artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local bot state (chat_id -> session_id mapping) + lock file
+data/*
+!data/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# IDE / macOS
+.DS_Store
+._*

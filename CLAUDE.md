@@ -44,6 +44,8 @@ docker-compose --env-file .env.docker up -d
 
 **Always-on (launchd):** `com.nephilim.backend` (uvicorn :8000) + `com.nephilim.frontend` (static `scripts/serve_frontend.py` :3001) run under launchd with RunAtLoad+KeepAlive. Reinstall after changes: `scripts/launchd/install.sh` (rebuild frontend first: `cd react-ui && npm run build`). Migration cleanup punch list: `docs/MAC_MIGRATION_CLEANUP.md`.
 
+**Subsystem — Telegram gateway** (`services/telegram-gateway/`, own venv/tests/launchd daemon `com.eeva.telegram`): allowlisted Telegram bot client of the session API above (zero coordinator changes). See its own [CLAUDE.md](services/telegram-gateway/CLAUDE.md).
+
 ## Project Structure
 
 ### Backend (`src/coordinator/`)
