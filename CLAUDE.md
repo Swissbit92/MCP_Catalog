@@ -50,12 +50,12 @@ docker-compose --env-file .env.docker up -d
 
 ```
 server.py, startup.py          # App entry, lifecycle
-config.py, schemas.py          # Settings, API schemas
+config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent; __init__ = composition root + get_settings), API schemas
 routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py
 services/                      # Business logic (llm_completion, tool_calling, citation, chat_session, query_handler, wallet_*, strategy, etc.)
 repositories/                  # SQLite data access — ALL extend BaseRepository via db_adapter (connection pooling)
                                #   session, message, summary, emotional_state, seeker_progression,
-                               #   user_profile, user (OAuth), trade_proposal, wallet
+                               #   user_profile, user (OAuth), trade_proposal, wallet, wallet_flow (guided-creation state)
 models/                        # persona_schema.py, sampling_presets.py, mcp_models.py
 tools/                         # intent_classifier.py, synthesis_prompts.py, keywords.py, tool_generators.py, tool_utils.py
 ```
@@ -191,8 +191,8 @@ MCP access is controlled per-persona via the `mcp_access` field in persona JSONs
 - Foreign key cascade deletes for cleanup
 
 ### Backend Configuration
-- All config access via `get_settings()` returning a typed `AppSettings` Pydantic model
-- Legacy `get_*()` getter functions have been removed — use `get_settings().subsystem.field` instead
+- All config access via `get_settings()` (in the `config/` package) returning a typed `CoordinatorSettings` Pydantic model
+- Legacy `get_*()` getter functions have been removed — use `get_settings().subsystem.field` instead. Per-subsystem settings classes live in `config/<subsystem>.py`; import them (and `get_settings`) from `..config` — never from the submodules directly (patch-path + re-export contract)
 - All repositories extend `BaseRepository` in `db_adapter.py` — never open raw `sqlite3.connect()` calls
 
 ### React Performance
