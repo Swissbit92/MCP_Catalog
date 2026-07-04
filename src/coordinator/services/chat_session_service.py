@@ -233,7 +233,7 @@ def _build_ondemand_lore_context(
                 if meta and meta.get("body"):
                     candidates[entity_id] = {"body": meta["body"], "priority": 9, "score": 1.0}
     except Exception as e:
-        logger.debug(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
+        logger.warning(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
 
     # --- Tier 2: embedding (semantic, canon-only) ---
     try:
@@ -247,7 +247,7 @@ def _build_ondemand_lore_context(
                 continue
             candidates[eid] = {"body": meta.get("body", ""), "priority": 6, "score": float(score)}
     except Exception as e:
-        logger.debug(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
+        logger.warning(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
 
     if not candidates:
         return ""
@@ -437,7 +437,7 @@ def handle_session_chat(
             if rank_ctx:
                 system_prompt = f"{system_prompt}\n\n{rank_ctx}"
         except Exception as e:
-            logger.debug(f"[RankContext] skipped (non-fatal): {e}")
+            logger.warning(f"[RankContext] skipped (non-fatal): {e}")
 
     # PHASE 2 (HERMES): internal capability context (NEPHILIM personas)
     cap_ctx = ""
@@ -453,7 +453,7 @@ def handle_session_chat(
             if cap_ctx:
                 system_prompt = f"{system_prompt}\n\n{cap_ctx}"
         except Exception as e:
-            logger.debug(f"[Capability] context skipped (non-fatal): {e}")
+            logger.warning(f"[Capability] context skipped (non-fatal): {e}")
 
     system_tokens = estimate_tokens(system_prompt)
 
@@ -867,7 +867,7 @@ def _track_nephilim_progression(
                 for cap in capability_unlocks:
                     logger.info(f"[NEPHILIM] Capability awakened for {effective_user_id}: {cap['id']}")
         except Exception as e:
-            logger.debug(f"[Capability] unlock detection failed (non-fatal): {e}")
+            logger.warning(f"[Capability] unlock detection failed (non-fatal): {e}")
 
         return {"ceremony": ceremony_data, "capability_unlocks": capability_unlocks}
 
