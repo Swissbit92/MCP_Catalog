@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-07-04) — Wallet-creation flow extracted + typed (audit follow-up #4)
+
+Completes the deferred half of step 7 (see [docs/audits/2026-07-04-nephilim_followup.md](docs/audits/2026-07-04-nephilim_followup.md) matrix #4). Behavior-preserving; suite 1667 → 1679, 0 regressions.
+
+- **New `services/wallet_creation_flow_service.py`.** The guided wallet-creation state machine — previously two ~186-line methods on the `QueryHandlerService` god-class, dispatching on a bare untyped `step: int` — becomes its own collaborator: a `WalletFlowStep` **IntEnum** (keeps the SQLite integer column byte-compatible), a `WalletFlowState` **dataclass** (which structurally cannot hold a mnemonic), and `match`-based dispatch with each step in its own method. `_finalize_response` is injected (bound method), so the Brave / agentic / deletion query paths are untouched and every branch keeps the exact response contract.
+- **`query_handler_service.py` 852 → 597 lines** — delegates via `advance()`/`start()`, dedups the two former creation-start blocks, and drops `_wallet_slot_preflight` + `_handle_wallet_creation_step`.
+- **Mnemonic invariant now structurally enforced** — there is no field for it on `WalletFlowState` and no column on `wallet_flow_state`. Displayed once, request-local, never persisted.
+- **Tests:** 9 characterization tests written *first* (green before AND after the move = behavior-preserving) + 3 typed-layer tests (`test_wallet_creation_flow.py`). The flow had effectively zero prior direct coverage.
+- **Hygiene:** `/data/` added to `.gitignore` — the `data/chats.db.backup_*` snapshots don't match the `*.db` rule, so the runtime data dir showed as untracked (a stray `git add -A` could commit live conversation data).
+- **Docs:** populated the `docs/ARCHITECTURE.md` skeleton (Components / Data / Key-invariants tables) to reflect the current layered architecture after the step-7 + this cleanup.
+
 ### Added (2026-07-04) — Telegram gateway subsystem (`services/telegram-gateway/`)
 
 A thin, single-user Telegram bot letting the user chat with the NEPHILIM personas from the Telegram app — built as a standalone repo first, then folded in as a subsystem (own venv/tests/launchd, zero changes to the coordinator API) once it became clear the client and the session-API contract it depends on belong in the same repo/PR.
