@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-07-04) — Telegram gateway subsystem (`services/telegram-gateway/`)
+
+A thin, single-user Telegram bot letting the user chat with the NEPHILIM personas from the Telegram app — built as a standalone repo first, then folded in as a subsystem (own venv/tests/launchd, zero changes to the coordinator API) once it became clear the client and the session-API contract it depends on belong in the same repo/PR.
+
+- python-telegram-bot 22.8 long-polling relay to the existing `POST /sessions`, `/sessions/{id}/greet`, `/sessions/{id}/chat`, `DELETE /sessions/{id}/messages` endpoints. One nephilim session per `(chat_id, persona_key)` in a local sqlite map; stale-session (404) recreate-and-retry.
+- `/start` (greet once) and `/reset` (true history deletion, progression preserved). Reuses the existing shared `eeva-dca`/`eeva-exec` notification bot token (send-only there, so no long-poll conflict).
+- Security: hard `chat_id` allowlist (silent drop, no log/backend-call for rejects), forwarded-message refusal (injection guard), link previews disabled on every send (exfil guard), fixed user-facing error strings only (no exception/URL/session-id leakage, incl. an unexpected-error catch-all), token-redacting log filter, global `asyncio.Lock` serializing LLM calls (nephilim's `OLLAMA_NUM_PARALLEL=1`), `flock` single-poller guard, no exec/file/trading credentials in the process.
+- 73 tests, ruff clean, live-verified end-to-end against the running backend (greet/chat/reset). See [docs/THREAT_LEVEL.md](docs/THREAT_LEVEL.md#subsystem--telegram-gateway-servicestelegram-gateway) and `services/telegram-gateway/CLAUDE.md`.
+
 ### Changed (2026-07-04) — Repo-audit cleanup, tranche 2 (step 7: god-function decomposition)
 
 Acting on [docs/audits/2026-07-04-nephilim.md](docs/audits/2026-07-04-nephilim.md) §5 step 7, on top of the tranche-1 CI net. Four behavior-preserving seams, each QA-gated; full headless suite green throughout (1661 → 1667 with new tests, 0 regressions). Where the audit's premises had aged out (tranche-1 already shrank two of the targets), the plan was adjusted and the reasoning recorded.

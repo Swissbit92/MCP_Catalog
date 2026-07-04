@@ -77,6 +77,21 @@ Risks accepted for now, with rationale:
 - **Leaked-credential rotation unconfirmed** — the historical Atlas `Eeva_Admin` URI (and Brave/JWT) were once committed and pushed ([ADR-002](decisions/002-remove-mongodb-mcp.md)); rotation is an **outstanding action item** tracked in [SECURITY.md](../SECURITY.md). MongoDB is no longer used by nephilim, but the pushed credential must still be treated as compromised.
 - **LLM prompt injection** — inherent to any LLM app; bounded (not eliminated) by the ADR-004 trust hierarchy.
 
+## Subsystem — Telegram gateway (`services/telegram-gateway/`)
+
+A second client of the coordinator (see [ARCHITECTURE.md](ARCHITECTURE.md)): a single-user, allowlisted Telegram bot relaying to the existing session API. It introduces one new secret (a Telegram bot token) and one new untrusted-input channel (Telegram messages); it does not change nephilim's own trust boundary (still localhost-only, `AUTH_REQUIRED=false`).
+
+| Threat | Applies? | Control / mitigation | Status |
+|--------|----------|----------------------|--------|
+| **S**poofing | Yes | Hard numeric `chat_id` allowlist; non-allowlisted updates silently dropped, no reply. Bot token is the only impersonation vector — chmod-600 `.env`, never in the launchd plist or logs. | Mitigated |
+| **T**ampering | Low | Outbound long-poll only (no inbound listener); local sqlite holds only ids + opaque session UUIDs. | Mitigated |
+| **R**epudiation | Low | Local logs record chat_id + outcome, not message content by default. | Accepted |
+| **I**nformation disclosure | Yes | Fixed user-facing error strings only (no exception/URL/session-id leakage); Telegram link previews disabled (server-side fetch is an exfil channel); token-redaction log filter. | Mitigated |
+| **D**enial of service | Low | Single/dual user; a global `asyncio.Lock` + single-poller `flock` bound concurrency to nephilim's own `OLLAMA_NUM_PARALLEL=1` limit. No rate limiter (accepted at this scale). | Accepted |
+| **E**levation of privilege | Yes | The gateway process has no exec/file/trading access and no trading credentials in its environment — a compromised chat can reach nothing beyond nephilim's existing chat API. | Mitigated |
+
+Residual risks specific to this subsystem: typed (non-forwarded) prompt injection is accepted the same way as nephilim's own LLM surface (bounded by the read-oriented backend + agentic path OFF); the bot token is shared with `eeva-dca`/`eeva-exec`'s notification bot (send-only, no polling conflict) — rotating it now touches three `.env` files.
+
 ## Escalation
 
 If the threat level would rise to **Critical** (e.g. the service is exposed to the public

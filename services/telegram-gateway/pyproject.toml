@@ -1,0 +1,68 @@
+[project]
+name = "eeva-telegram"
+version = "0.1.0"
+description = "Telegram gateway to the NEPHILIM companion personas (E.E.V.A.) — E.E.V.A. ecosystem"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Ramon Zehnder", email = "r.zehnder92@gmail.com" },
+]
+keywords = ["telegram", "bot", "llm", "companion", "nephilim", "eeva"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    # PTB async framework. Pin below the next minor: PTB renames/moves API
+    # surface across minors (e.g. forward_from -> forward_origin at 20.8).
+    "python-telegram-bot>=22.8,<23.0",
+    # httpx is already a PTB transitive dep; pin it directly since we use
+    # AsyncClient for the nephilim calls.
+    "httpx>=0.27,<0.29",
+    "python-dotenv==1.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Swissbit92/eeva-telegram"
+Repository = "https://github.com/Swissbit92/eeva-telegram"
+Changelog = "https://github.com/Swissbit92/eeva-telegram/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "pytest-asyncio==0.25.3",
+    "pytest-mock==3.14.0",
+    "pytest-cov==6.0.0",
+    "respx==0.22.0",
+    "ruff==0.9.10",
+    "pre-commit==4.0.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["eeva_telegram*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
