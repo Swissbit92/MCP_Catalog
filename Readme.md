@@ -153,7 +153,7 @@
 ### AI/ML
 - **Ollama** local LLM server (native macOS — Metal GPU acceleration automatic via Apple Silicon)
 - **Magidonia-24B-v4.3 GGUF Q4_K_M** (daily-driver persona model — Mistral-Small-3.2-based uncensored roleplay finetune by TheDrummer, ~17 tok/s on Metal)
-- **gemma2:9b-instruct-q5_K_M** (lightweight fallback / smoke-test model; also the `config.py` default)
+- **gemma2:9b-instruct-q5_K_M** (lightweight fallback / smoke-test model; also the `config/` package default)
 - **nomic-embed-text:latest** for embeddings
 - **FAISS CPU** for vector search and semantic retrieval
 - **LangChain** for LLM orchestration
