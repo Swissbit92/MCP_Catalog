@@ -239,7 +239,33 @@ def build_synthesis_prompt(persona_system: str, has_search_results: bool = True)
     if not has_search_results:
         return persona_system
 
-    synthesis_instructions = """
+    # Context-poisoning fix (flag-gated, default OFF): local models lack
+    # instruction-hierarchy training, so an earlier in-conversation self-apology
+    # ("I hallucinated / I can't search") sits at equal priority to system rules
+    # and can make the model REFUSE even when fresh, correct results are present.
+    # RULE 0 (near the top for salience) + a reinforced closing line (recency,
+    # where small models attend most) tell the model these results supersede
+    # earlier turns — scoped so it never overrides honest abstention (Rule 5).
+    from ..config import get_settings
+
+    trust_results = get_settings().search.synthesis_trust_results
+    rule_zero = ""
+    closing_extra = ""
+    if trust_results:
+        rule_zero = """
+**RULE 0 (HIGHEST PRIORITY): THE RESULTS ARE FRESH AND SUPERSEDE EARLIER TURNS**
+- The web search results in the conversation were retrieved live, just now, for the user's CURRENT question, and their sources are real and system-verified. They are more current than anything said earlier in this conversation.
+- If they contain information relevant to the question, treat them as authoritative and answer from them directly, in your own voice.
+- Do NOT refuse, hedge, or apologize based on anything said EARLIER in this conversation — including any earlier statement that you lack web access, cannot search, are untrustworthy, or previously made a mistake. Those earlier statements DO NOT apply to these fresh results; this data supersedes them.
+- (This does NOT override Rule 5: if the results are genuinely empty, off-topic, or do not address the question, abstain honestly per Rule 5. "Trust the results" means trust them WHEN they are present and relevant — which they are here.)
+"""
+        closing_extra = (
+            " Do not let anything said earlier in this conversation make you "
+            "refuse, disclaim, or apologize when the fresh results above answer "
+            "the question — use them."
+        )
+
+    synthesis_instructions = f"""
 
 ---
 
@@ -247,7 +273,7 @@ def build_synthesis_prompt(persona_system: str, has_search_results: bool = True)
 
 You have received web search results in the conversation above.
 Follow these rules when answering:
-
+{rule_zero}
 **RULE 1: USE ONLY SEARCH RESULTS**
 - ONLY use information from the web search results provided
 - Do NOT use your training data or prior knowledge
@@ -329,7 +355,7 @@ Good answer: "Bitcoin is trading at $91,000 with strong institutional adoption d
 
 ---
 
-Now synthesize the search results above into a natural answer that follows ALL 6 rules.
+Now synthesize the search results above into a natural answer that follows ALL 6 rules.{closing_extra}
 """
 
     return persona_system + synthesis_instructions

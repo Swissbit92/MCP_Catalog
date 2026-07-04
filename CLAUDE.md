@@ -170,6 +170,7 @@ Queries flow through a two-layer classification system:
 - If keyword filter says search is needed but search returns no results → honest "I don't know" response
 - If LLM somehow bypasses force-search and doesn't call the tool → honest "I don't know" response
 - If the **relevance gate** (flag-gated `SEARCH_RELEVANCE_GATE_ENABLED`, default OFF) is on and the best result's bge-m3 cosine to the query falls below `SEARCH_RELEVANCE_MIN_COSINE` (default 0.40) → treated as no-result (honest abstention) instead of synthesizing over off-topic junk (`services/search_relevance_service.py`; fail-open on embedder error). Catches non-empty-but-irrelevant results that the "no results" guard misses.
+- **Context-poisoning guard** (flag-gated `SEARCH_SYNTHESIS_TRUST_RESULTS`, default OFF): local models lack instruction-hierarchy training, so an earlier in-conversation self-apology ("I hallucinated / I can't search") sits at equal priority to system rules and can make the model REFUSE even when fresh correct results are present. When on, `build_synthesis_prompt` (`tools/synthesis_prompts.py`) adds a **RULE 0** telling the model the results were retrieved just now and supersede earlier turns — scoped so it never overrides RULE 5 honest abstention on genuinely empty/off-topic results. Off (default) = byte-identical synthesis prompt.
 - LLM-generated citations are stripped and replaced with verified citations from actual search results
 
 ## Important Implementation Details

@@ -710,6 +710,19 @@ class SearchSettings(BaseSettings):
         ),
         alias="SEARCH_RELEVANCE_MIN_COSINE",
     )
+    synthesis_trust_results: bool = Field(
+        default=False,
+        description=(
+            "Add a synthesis-prompt directive telling the model the search "
+            "results below are fresh/just-retrieved/verified and must be used to "
+            "answer, overriding any earlier in-conversation self-doubt/refusal "
+            "about searching (context-poisoning fix). Scoped: does NOT override "
+            "honest abstention when results are genuinely empty. False (default) "
+            "= byte-identical synthesis prompt. Set "
+            "SEARCH_SYNTHESIS_TRUST_RESULTS=true to enable."
+        ),
+        alias="SEARCH_SYNTHESIS_TRUST_RESULTS",
+    )
 
     model_config = {
         "env_file": ".env",
