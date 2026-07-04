@@ -23,7 +23,7 @@ from fastapi import HTTPException
 
 from ..repositories.base_repository import utc_now_iso
 
-from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS
+from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS, SourceType
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
@@ -639,12 +639,12 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
     response = state.response
     now = utc_now_iso()
 
-    user_msg_body = AppendMessageBody(role="user", content=state.message, ts=now, source_type="llm")
+    user_msg_body = AppendMessageBody(role="user", content=state.message, ts=now, source_type=SourceType.LLM)
     add_message_function(state.session_id, user_msg_body)
 
-    source_type = "llm"
+    source_type = SourceType.LLM
     if "metadata" in response and response["metadata"]:
-        source_type = response["metadata"].get("source_type", "llm")
+        source_type = response["metadata"].get("source_type", SourceType.LLM)
 
     answer_for_db = response["answer"]
     if isinstance(answer_for_db, list) and len(answer_for_db) > 1:

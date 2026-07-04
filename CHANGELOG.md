@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-07-04) — `SourceType` StrEnum (audit follow-up #7)
+
+Promoted the `source_type` string pseudo-enum to a shared `enum.StrEnum` in `schemas.py` (8 values), used as named constants at the ~22 assignment/comparison sites across routes + services. `enum.StrEnum` (not the older `(str, Enum)` idiom) so members render as their value in f-strings/logs. Fields stay typed `str` (the vocabulary evolves — strict validation could reject a future/stored value); members are `str`, so `==`/JSON/SQLite all keep the string value. Behavior-preserving; suite 1705, 0 regressions. Deferred: `role` (broad LLM-message surface, modest gain) and `proposal_type` (semantically overloaded across card-level vs metadata-level vocabularies — needs untangling first).
+
 ### Changed (2026-07-04) — Wallet-creation flow extracted + typed (audit follow-up #4)
 
 Completes the deferred half of step 7 (see [docs/audits/2026-07-04-nephilim_followup.md](docs/audits/2026-07-04-nephilim_followup.md) matrix #4). Behavior-preserving; suite 1667 → 1679, 0 regressions.
