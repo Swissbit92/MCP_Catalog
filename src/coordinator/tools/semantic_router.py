@@ -108,7 +108,14 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "my portfolio status",
         "wallet balance",
         "my current holdings",
-        "my trade history",
+        # 2026-07-04 incident (session dcc3693d): "my trade history" shared the
+        # bare lexeme "history" with a pure lore/backstory question ("tell me
+        # about your history"), and primary mode has no llm_only centroid to
+        # compete against (see the design note below) — so a single close
+        # nearest-example match was enough to clear threshold with nothing to
+        # gate it. Rephrased to preserve the same wallet intent (past trades)
+        # without the collision-prone standalone word.
+        "show my past trades",
         # Implied
         "thinking of moving some funds around",
         "I might buy some more",
