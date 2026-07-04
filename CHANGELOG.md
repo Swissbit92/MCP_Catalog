@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed (2026-07-04) — synthesis context-poisoning: refusing correct results (default-OFF, live A/B verified)
+### Fixed (2026-07-04) — synthesis context-poisoning: refusing correct results (default-OFF, live n=10 verified)
 
 - **E.E.V.A. no longer refuses correct search results after apologizing for an earlier hallucination.** Observed on prod: once the assistant said "that was false / I can't search" earlier in a conversation, a LATER turn whose fresh web search returned CORRECT results (real UEFA/Guardian sources, `used_search=True`, 5 results) was REFUSED — "I cannot and will not perform web searches" — with the real citations stapled onto the refusal. Root cause: local models (Ollama GGUF) lack instruction-hierarchy training (OpenAI arXiv:2404.13208), so the stale in-context self-apology sits at equal priority to system rules and geometrically traps the model (arXiv:2603.03308); worsened by the synthesis path placing fresh results *before* the poisoned history (recency favors the apology).
 - **`SEARCH_SYNTHESIS_TRUST_RESULTS`** (default OFF) — two layers, both gated by the flag:
