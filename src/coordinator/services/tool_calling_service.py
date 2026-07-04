@@ -22,8 +22,10 @@ from ..tool_definitions import (
 from .llm_completion_service import LLMCompletionService
 from .citation_service import CitationService
 from .query_extraction_service import QueryExtractionService
+from .query_resolution_service import QueryResolutionService
 from .force_search_service import ForceSearchService
 from .search_execution_service import SearchExecutionService
+from .search_relevance_service import SearchRelevanceService
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,9 @@ class ToolCallingService:
         citation_service: Optional[CitationService] = None,
         query_extractor: Optional[QueryExtractionService] = None,
         force_search: Optional[ForceSearchService] = None,
-        search_executor: Optional[SearchExecutionService] = None
+        search_executor: Optional[SearchExecutionService] = None,
+        query_resolver: Optional[QueryResolutionService] = None,
+        relevance_service: Optional[SearchRelevanceService] = None
     ):
         """Initialize tool calling service.
 
@@ -65,12 +69,33 @@ class ToolCallingService:
         self.llm_service = llm_service
         self.citation_service = citation_service or CitationService()
         self.query_extractor = query_extractor or QueryExtractionService()
+        self.query_resolver = query_resolver or QueryResolutionService(
+            llm_service, query_extractor=self.query_extractor
+        )
+        self.relevance_service = relevance_service or SearchRelevanceService()
         self.force_search = force_search or ForceSearchService()
         self.search_executor = search_executor
 
         logger.info(
             f"Initialized ToolCallingService: "
             f"tools_enabled={search_executor is not None and search_executor.mcp_client is not None}"
+        )
+
+    def _relevance_gate_rejects(self, query: str, results: Optional[List[Any]]) -> bool:
+        """True if the relevance gate is on AND the results are off-topic.
+
+        No-op (returns False) when SEARCH_RELEVANCE_GATE_ENABLED is off, so the
+        legacy path is byte-identical. Fail-open lives in the service itself.
+        """
+        if not results:
+            return False
+        from ..config import get_settings
+
+        search_cfg = get_settings().search
+        if not search_cfg.relevance_gate_enabled:
+            return False
+        return not self.relevance_service.is_relevant(
+            query, results, search_cfg.relevance_min_cosine
         )
 
     def complete_with_tools(
@@ -115,15 +140,23 @@ class ToolCallingService:
             # Check if brave_web_search tool is available
             brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
             if brave_tool and self.search_executor and self.search_executor.mcp_client:
-                # Extract just the latest user message for search query
-                search_query = self.query_extractor.extract_latest_user_message(user_prompt)
-                logger.info(f"[Force Search] Extracted search query: '{search_query[:100]}'")
+                # Resolve the search query (deictic follow-ups resolved against
+                # prior context when SEARCH_QUERY_RESOLUTION_ENABLED; otherwise
+                # the raw latest user message, as before).
+                search_query = self.query_resolver.resolve(user_prompt)
+                logger.info(f"[Force Search] Resolved search query: '{search_query[:100]}'")
 
                 # Force execute search
                 search_results = self.search_executor.execute_search(ToolCall(
                     name="brave_web_search",
                     arguments={"query": search_query, "reason": "Forced search for price/current data query"}
                 ))
+
+                # Relevance gate: non-empty-but-off-topic results are treated as
+                # no-result (honest abstention) instead of synthesized over.
+                if self._relevance_gate_rejects(search_query, search_results):
+                    logger.warning("[Relevance Gate] Forced-search results off-topic - abstaining")
+                    search_results = None
 
                 if search_results:
                     # Format results and synthesize
@@ -179,13 +212,17 @@ class ToolCallingService:
         if search_expected:
             brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
             if brave_tool and self.search_executor and self.search_executor.mcp_client:
-                search_query = self.query_extractor.extract_latest_user_message(user_prompt)
+                search_query = self.query_resolver.resolve(user_prompt)
                 logger.info(f"[Keyword Force Search] Executing search directly: '{search_query[:100]}'")
 
                 search_results = self.search_executor.execute_search(ToolCall(
                     name="brave_web_search",
                     arguments={"query": search_query, "reason": "Keyword filter determined search is needed"}
                 ))
+
+                if self._relevance_gate_rejects(search_query, search_results):
+                    logger.warning("[Relevance Gate] Keyword-forced-search results off-topic - abstaining")
+                    search_results = None
 
                 if search_results:
                     formatted_results = format_search_results_for_llm(search_results)
@@ -262,6 +299,10 @@ class ToolCallingService:
                     return (honest_response, None, None)
 
                 search_results = self.search_executor.execute_search(tool_call)
+
+                if self._relevance_gate_rejects(tool_call.arguments.get("query", ""), search_results):
+                    logger.warning("[Relevance Gate] LLM-tool-call search results off-topic - abstaining")
+                    search_results = None
 
                 if not search_results:
                     logger.warning("[Anti-Hallucination] Web search returned no results - admitting ignorance")
