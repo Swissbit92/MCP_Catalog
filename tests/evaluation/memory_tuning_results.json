@@ -1,5 +1,5 @@
 {
-  "tuning_date": "2026-06-27T16:16:55.709302Z",
+  "tuning_date": "2026-07-04T21:17:44.421596Z",
   "total_configurations_tested": 100,
   "results": [
     {
@@ -17,7 +17,7 @@
         "f1_score": 0.61
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.701970Z"
+      "timestamp": "2026-07-04T21:17:44.416520Z"
     },
     {
       "config": {
@@ -34,7 +34,7 @@
         "f1_score": 0.61
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702076Z"
+      "timestamp": "2026-07-04T21:17:44.416604Z"
     },
     {
       "config": {
@@ -51,7 +51,7 @@
         "f1_score": 0.6755
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702151Z"
+      "timestamp": "2026-07-04T21:17:44.416661Z"
     },
     {
       "config": {
@@ -68,7 +68,7 @@
         "f1_score": 0.61
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702251Z"
+      "timestamp": "2026-07-04T21:17:44.416723Z"
     },
     {
       "config": {
@@ -85,7 +85,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702329Z"
+      "timestamp": "2026-07-04T21:17:44.416775Z"
     },
     {
       "config": {
@@ -102,7 +102,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702407Z"
+      "timestamp": "2026-07-04T21:17:44.416826Z"
     },
     {
       "config": {
@@ -119,7 +119,7 @@
         "f1_score": 0.7052
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702476Z"
+      "timestamp": "2026-07-04T21:17:44.416874Z"
     },
     {
       "config": {
@@ -136,7 +136,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702562Z"
+      "timestamp": "2026-07-04T21:17:44.416935Z"
     },
     {
       "config": {
@@ -153,7 +153,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702630Z"
+      "timestamp": "2026-07-04T21:17:44.416983Z"
     },
     {
       "config": {
@@ -170,7 +170,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702698Z"
+      "timestamp": "2026-07-04T21:17:44.417033Z"
     },
     {
       "config": {
@@ -187,7 +187,7 @@
         "f1_score": 0.7052
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702765Z"
+      "timestamp": "2026-07-04T21:17:44.417082Z"
     },
     {
       "config": {
@@ -204,7 +204,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702832Z"
+      "timestamp": "2026-07-04T21:17:44.417130Z"
     },
     {
       "config": {
@@ -221,7 +221,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702902Z"
+      "timestamp": "2026-07-04T21:17:44.417179Z"
     },
     {
       "config": {
@@ -238,7 +238,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.702974Z"
+      "timestamp": "2026-07-04T21:17:44.417229Z"
     },
     {
       "config": {
@@ -255,7 +255,7 @@
         "f1_score": 0.7052
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703040Z"
+      "timestamp": "2026-07-04T21:17:44.417277Z"
     },
     {
       "config": {
@@ -272,7 +272,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703115Z"
+      "timestamp": "2026-07-04T21:17:44.417324Z"
     },
     {
       "config": {
@@ -289,7 +289,7 @@
         "f1_score": 0.6708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703198Z"
+      "timestamp": "2026-07-04T21:17:44.417373Z"
     },
     {
       "config": {
@@ -306,7 +306,7 @@
         "f1_score": 0.6708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703273Z"
+      "timestamp": "2026-07-04T21:17:44.417421Z"
     },
     {
       "config": {
@@ -323,7 +323,7 @@
         "f1_score": 0.7356
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703349Z"
+      "timestamp": "2026-07-04T21:17:44.417469Z"
     },
     {
       "config": {
@@ -340,7 +340,7 @@
         "f1_score": 0.6708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703439Z"
+      "timestamp": "2026-07-04T21:17:44.417525Z"
     },
     {
       "config": {
@@ -357,7 +357,7 @@
         "f1_score": 0.61
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703509Z"
+      "timestamp": "2026-07-04T21:17:44.417574Z"
     },
     {
       "config": {
@@ -374,7 +374,7 @@
         "f1_score": 0.61
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703577Z"
+      "timestamp": "2026-07-04T21:17:44.417621Z"
     },
     {
       "config": {
@@ -391,7 +391,7 @@
         "f1_score": 0.6755
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703643Z"
+      "timestamp": "2026-07-04T21:17:44.417669Z"
     },
     {
       "config": {
@@ -408,7 +408,7 @@
         "f1_score": 0.61
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703709Z"
+      "timestamp": "2026-07-04T21:17:44.417716Z"
     },
     {
       "config": {
@@ -425,7 +425,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703776Z"
+      "timestamp": "2026-07-04T21:17:44.417764Z"
     },
     {
       "config": {
@@ -442,7 +442,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703845Z"
+      "timestamp": "2026-07-04T21:17:44.417816Z"
     },
     {
       "config": {
@@ -459,7 +459,7 @@
         "f1_score": 0.7052
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703922Z"
+      "timestamp": "2026-07-04T21:17:44.417868Z"
     },
     {
       "config": {
@@ -476,7 +476,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.703988Z"
+      "timestamp": "2026-07-04T21:17:44.417915Z"
     },
     {
       "config": {
@@ -493,7 +493,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704057Z"
+      "timestamp": "2026-07-04T21:17:44.417962Z"
     },
     {
       "config": {
@@ -510,7 +510,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704122Z"
+      "timestamp": "2026-07-04T21:17:44.418009Z"
     },
     {
       "config": {
@@ -527,7 +527,7 @@
         "f1_score": 0.7052
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704195Z"
+      "timestamp": "2026-07-04T21:17:44.418056Z"
     },
     {
       "config": {
@@ -544,7 +544,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704268Z"
+      "timestamp": "2026-07-04T21:17:44.418103Z"
     },
     {
       "config": {
@@ -561,7 +561,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704340Z"
+      "timestamp": "2026-07-04T21:17:44.418150Z"
     },
     {
       "config": {
@@ -578,7 +578,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704418Z"
+      "timestamp": "2026-07-04T21:17:44.418198Z"
     },
     {
       "config": {
@@ -595,7 +595,7 @@
         "f1_score": 0.7052
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704483Z"
+      "timestamp": "2026-07-04T21:17:44.418244Z"
     },
     {
       "config": {
@@ -612,7 +612,7 @@
         "f1_score": 0.6404
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704549Z"
+      "timestamp": "2026-07-04T21:17:44.418293Z"
     },
     {
       "config": {
@@ -629,7 +629,7 @@
         "f1_score": 0.6708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704616Z"
+      "timestamp": "2026-07-04T21:17:44.418339Z"
     },
     {
       "config": {
@@ -646,7 +646,7 @@
         "f1_score": 0.6708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704681Z"
+      "timestamp": "2026-07-04T21:17:44.418384Z"
     },
     {
       "config": {
@@ -663,7 +663,7 @@
         "f1_score": 0.7356
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704747Z"
+      "timestamp": "2026-07-04T21:17:44.418430Z"
     },
     {
       "config": {
@@ -680,7 +680,7 @@
         "f1_score": 0.6708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704815Z"
+      "timestamp": "2026-07-04T21:17:44.418478Z"
     },
     {
       "config": {
@@ -697,7 +697,7 @@
         "f1_score": 0.6264
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704880Z"
+      "timestamp": "2026-07-04T21:17:44.418524Z"
     },
     {
       "config": {
@@ -714,7 +714,7 @@
         "f1_score": 0.6264
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.704946Z"
+      "timestamp": "2026-07-04T21:17:44.418570Z"
     },
     {
       "config": {
@@ -731,7 +731,7 @@
         "f1_score": 0.6916
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705019Z"
+      "timestamp": "2026-07-04T21:17:44.418626Z"
     },
     {
       "config": {
@@ -748,7 +748,7 @@
         "f1_score": 0.6264
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705092Z"
+      "timestamp": "2026-07-04T21:17:44.418672Z"
     },
     {
       "config": {
@@ -765,7 +765,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705166Z"
+      "timestamp": "2026-07-04T21:17:44.418719Z"
     },
     {
       "config": {
@@ -782,7 +782,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705240Z"
+      "timestamp": "2026-07-04T21:17:44.418767Z"
     },
     {
       "config": {
@@ -799,7 +799,7 @@
         "f1_score": 0.7216
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705314Z"
+      "timestamp": "2026-07-04T21:17:44.418814Z"
     },
     {
       "config": {
@@ -816,7 +816,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705387Z"
+      "timestamp": "2026-07-04T21:17:44.418867Z"
     },
     {
       "config": {
@@ -833,7 +833,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705455Z"
+      "timestamp": "2026-07-04T21:17:44.418914Z"
     },
     {
       "config": {
@@ -850,7 +850,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705520Z"
+      "timestamp": "2026-07-04T21:17:44.418961Z"
     },
     {
       "config": {
@@ -867,7 +867,7 @@
         "f1_score": 0.7216
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705587Z"
+      "timestamp": "2026-07-04T21:17:44.419008Z"
     },
     {
       "config": {
@@ -884,7 +884,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705652Z"
+      "timestamp": "2026-07-04T21:17:44.419055Z"
     },
     {
       "config": {
@@ -901,7 +901,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705718Z"
+      "timestamp": "2026-07-04T21:17:44.419101Z"
     },
     {
       "config": {
@@ -918,7 +918,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705800Z"
+      "timestamp": "2026-07-04T21:17:44.419164Z"
     },
     {
       "config": {
@@ -935,7 +935,7 @@
         "f1_score": 0.7216
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705865Z"
+      "timestamp": "2026-07-04T21:17:44.419210Z"
     },
     {
       "config": {
@@ -952,7 +952,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.705934Z"
+      "timestamp": "2026-07-04T21:17:44.419255Z"
     },
     {
       "config": {
@@ -969,7 +969,7 @@
         "f1_score": 0.6872
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706004Z"
+      "timestamp": "2026-07-04T21:17:44.419301Z"
     },
     {
       "config": {
@@ -986,7 +986,7 @@
         "f1_score": 0.6872
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706074Z"
+      "timestamp": "2026-07-04T21:17:44.419348Z"
     },
     {
       "config": {
@@ -1003,7 +1003,7 @@
         "f1_score": 0.752
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706151Z"
+      "timestamp": "2026-07-04T21:17:44.419396Z"
     },
     {
       "config": {
@@ -1020,7 +1020,7 @@
         "f1_score": 0.6872
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706243Z"
+      "timestamp": "2026-07-04T21:17:44.419452Z"
     },
     {
       "config": {
@@ -1037,7 +1037,7 @@
         "f1_score": 0.6264
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706317Z"
+      "timestamp": "2026-07-04T21:17:44.419497Z"
     },
     {
       "config": {
@@ -1054,7 +1054,7 @@
         "f1_score": 0.6264
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706391Z"
+      "timestamp": "2026-07-04T21:17:44.419544Z"
     },
     {
       "config": {
@@ -1071,7 +1071,7 @@
         "f1_score": 0.6916
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706459Z"
+      "timestamp": "2026-07-04T21:17:44.419590Z"
     },
     {
       "config": {
@@ -1088,7 +1088,7 @@
         "f1_score": 0.6264
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706524Z"
+      "timestamp": "2026-07-04T21:17:44.419641Z"
     },
     {
       "config": {
@@ -1105,7 +1105,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706589Z"
+      "timestamp": "2026-07-04T21:17:44.419693Z"
     },
     {
       "config": {
@@ -1122,7 +1122,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706683Z"
+      "timestamp": "2026-07-04T21:17:44.419750Z"
     },
     {
       "config": {
@@ -1139,7 +1139,7 @@
         "f1_score": 0.7216
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706756Z"
+      "timestamp": "2026-07-04T21:17:44.419805Z"
     },
     {
       "config": {
@@ -1156,7 +1156,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706822Z"
+      "timestamp": "2026-07-04T21:17:44.419857Z"
     },
     {
       "config": {
@@ -1173,7 +1173,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706889Z"
+      "timestamp": "2026-07-04T21:17:44.419910Z"
     },
     {
       "config": {
@@ -1190,7 +1190,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.706958Z"
+      "timestamp": "2026-07-04T21:17:44.419963Z"
     },
     {
       "config": {
@@ -1207,7 +1207,7 @@
         "f1_score": 0.7216
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707024Z"
+      "timestamp": "2026-07-04T21:17:44.420015Z"
     },
     {
       "config": {
@@ -1224,7 +1224,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707098Z"
+      "timestamp": "2026-07-04T21:17:44.420068Z"
     },
     {
       "config": {
@@ -1241,7 +1241,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707171Z"
+      "timestamp": "2026-07-04T21:17:44.420121Z"
     },
     {
       "config": {
@@ -1258,7 +1258,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707244Z"
+      "timestamp": "2026-07-04T21:17:44.420173Z"
     },
     {
       "config": {
@@ -1275,7 +1275,7 @@
         "f1_score": 0.7216
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707316Z"
+      "timestamp": "2026-07-04T21:17:44.420226Z"
     },
     {
       "config": {
@@ -1292,7 +1292,7 @@
         "f1_score": 0.6568
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707388Z"
+      "timestamp": "2026-07-04T21:17:44.420278Z"
     },
     {
       "config": {
@@ -1309,7 +1309,7 @@
         "f1_score": 0.6872
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707455Z"
+      "timestamp": "2026-07-04T21:17:44.420326Z"
     },
     {
       "config": {
@@ -1326,7 +1326,7 @@
         "f1_score": 0.6872
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707521Z"
+      "timestamp": "2026-07-04T21:17:44.420373Z"
     },
     {
       "config": {
@@ -1343,7 +1343,7 @@
         "f1_score": 0.752
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707586Z"
+      "timestamp": "2026-07-04T21:17:44.420420Z"
     },
     {
       "config": {
@@ -1360,7 +1360,7 @@
         "f1_score": 0.6872
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707651Z"
+      "timestamp": "2026-07-04T21:17:44.420469Z"
     },
     {
       "config": {
@@ -1377,7 +1377,7 @@
         "f1_score": 0.6428
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707720Z"
+      "timestamp": "2026-07-04T21:17:44.420519Z"
     },
     {
       "config": {
@@ -1394,7 +1394,7 @@
         "f1_score": 0.6428
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707787Z"
+      "timestamp": "2026-07-04T21:17:44.420565Z"
     },
     {
       "config": {
@@ -1411,7 +1411,7 @@
         "f1_score": 0.708
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707852Z"
+      "timestamp": "2026-07-04T21:17:44.420613Z"
     },
     {
       "config": {
@@ -1428,7 +1428,7 @@
         "f1_score": 0.6428
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707925Z"
+      "timestamp": "2026-07-04T21:17:44.420665Z"
     },
     {
       "config": {
@@ -1445,7 +1445,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.707990Z"
+      "timestamp": "2026-07-04T21:17:44.420713Z"
     },
     {
       "config": {
@@ -1462,7 +1462,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708057Z"
+      "timestamp": "2026-07-04T21:17:44.420761Z"
     },
     {
       "config": {
@@ -1479,7 +1479,7 @@
         "f1_score": 0.738
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708129Z"
+      "timestamp": "2026-07-04T21:17:44.420808Z"
     },
     {
       "config": {
@@ -1496,7 +1496,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708205Z"
+      "timestamp": "2026-07-04T21:17:44.420855Z"
     },
     {
       "config": {
@@ -1513,7 +1513,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708279Z"
+      "timestamp": "2026-07-04T21:17:44.420903Z"
     },
     {
       "config": {
@@ -1530,7 +1530,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708353Z"
+      "timestamp": "2026-07-04T21:17:44.420951Z"
     },
     {
       "config": {
@@ -1547,7 +1547,7 @@
         "f1_score": 0.738
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708425Z"
+      "timestamp": "2026-07-04T21:17:44.420998Z"
     },
     {
       "config": {
@@ -1564,7 +1564,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708490Z"
+      "timestamp": "2026-07-04T21:17:44.421044Z"
     },
     {
       "config": {
@@ -1581,7 +1581,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708555Z"
+      "timestamp": "2026-07-04T21:17:44.421101Z"
     },
     {
       "config": {
@@ -1598,7 +1598,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708623Z"
+      "timestamp": "2026-07-04T21:17:44.421148Z"
     },
     {
       "config": {
@@ -1615,7 +1615,7 @@
         "f1_score": 0.738
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708689Z"
+      "timestamp": "2026-07-04T21:17:44.421196Z"
     },
     {
       "config": {
@@ -1632,7 +1632,7 @@
         "f1_score": 0.6732
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708756Z"
+      "timestamp": "2026-07-04T21:17:44.421242Z"
     },
     {
       "config": {
@@ -1649,7 +1649,7 @@
         "f1_score": 0.7036
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708822Z"
+      "timestamp": "2026-07-04T21:17:44.421288Z"
     },
     {
       "config": {
@@ -1666,7 +1666,7 @@
         "f1_score": 0.7036
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708890Z"
+      "timestamp": "2026-07-04T21:17:44.421337Z"
     },
     {
       "config": {
@@ -1683,7 +1683,7 @@
         "f1_score": 0.7684
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.708956Z"
+      "timestamp": "2026-07-04T21:17:44.421394Z"
     },
     {
       "config": {
@@ -1700,7 +1700,7 @@
         "f1_score": 0.7036
       },
       "test_queries": 5,
-      "timestamp": "2026-06-27T16:16:55.709038Z"
+      "timestamp": "2026-07-04T21:17:44.421447Z"
     }
   ],
   "best_config": {
@@ -1718,6 +1718,6 @@
       "f1_score": 0.7684
     },
     "test_queries": 5,
-    "timestamp": "2026-06-27T16:16:55.708956Z"
+    "timestamp": "2026-07-04T21:17:44.421394Z"
   }
 }
