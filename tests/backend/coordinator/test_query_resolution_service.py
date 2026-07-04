@@ -162,31 +162,17 @@ def test_bare_command_good_rewrite_is_used(enable_resolution):
     assert svc.resolve(prompt) == "Switzerland World Cup 2026 performance"
 
 
-# --------------------------------------------- 2026-07-04 incident regressions (M3 pending)
+# --------------------------------------------- 2026-07-04 incident regressions (M3)
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "M3 pending: _is_bare_search_command's echo-guard (resolve():139-140) only "
-        "rejects a rewrite that is ENTIRELY filler after stripping the command phrase. "
-        "'search the web for the next match' retains non-filler words ('next', 'match'), "
-        "so it is NOT classified as bare and the near-verbatim echo passes straight "
-        "through to Brave — reproduces the 2026-07-04 incident's 'how to search a "
-        "webpage' junk-result turn exactly. Fix: recognize context-dependent-but-"
-        "non-pronoun phrases ('next match', 'last match', 'the game') as carrying no "
-        "topic on their own, same as the existing deictic-token handling."
-    ),
-)
 def test_near_verbatim_echo_of_contextual_phrase_is_rejected(enable_resolution):
     """A rewrite that echoes the input almost unchanged, using words that only make
     sense with prior context ('the next match'), must not reach Brave verbatim.
 
-    NOTE: the literal incident phrasing ("no, I meant search the web for the next
-    match", 10 words) is actually caught BEFORE this ever fires — it exceeds
-    _COMMAND_TURN_MAX_WORDS=9, so _looks_like_followup returns False and the raw
-    turn passes through untouched (a separate, milder edge case: word-count gate
-    too tight for a natural correction phrasing). This test uses the underlying
-    7-word phrasing to isolate and lock in the echo-guard gap specifically.
+    Fixed by extending _COMMAND_FILLER_TOKENS to include context-dependent-but-
+    non-pronoun placeholder phrases ("next", "match", "last", "game", "fixture")
+    — these now correctly count as "bare" filler, same as the existing deictic-
+    token handling, so both the prior-substantive-turn fallback trigger AND the
+    post-rewrite echo-guard now catch this case.
     """
     svc, llm = _svc(complete_return="search the web for the next match")
     prompt = _prompt(
@@ -202,25 +188,15 @@ def test_near_verbatim_echo_of_contextual_phrase_is_rejected(enable_resolution):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "M3 pending: _looks_like_followup's _COMMAND_TURN_MAX_WORDS=9 word-count "
-        "gate is too tight for a natural correction phrasing. 'no, I meant search "
-        "the web for the next match' is 10 words (one over), contains an explicit "
-        "search command, but does NOT trigger follow-up detection at all — the raw "
-        "turn (with the 'no, I meant' correction prefix still attached) passes "
-        "straight through to Brave untouched, worse than even the echo case since "
-        "it never reaches the LLM rewrite step at all. This is the literal "
-        "2026-07-04 incident phrasing, discovered while building this regression "
-        "suite — the initial synthetic reproduction of the echo bug accidentally "
-        "used this exact phrasing and silently passed for the wrong reason."
-    ),
-)
 def test_natural_correction_phrasing_still_triggers_resolution(enable_resolution):
     """A natural 'no, I meant X' correction, even when it pushes word count over
     the short-turn/command-turn thresholds, must still be recognized as a
-    follow-up needing resolution — not passed through raw."""
+    follow-up needing resolution — not passed through raw.
+
+    Fixed by stripping a leading correction preamble ("no, I meant...") before
+    the word-count check in _looks_like_followup — the preamble carries no
+    topic content and was inflating the count past _COMMAND_TURN_MAX_WORDS.
+    """
     svc, llm = _svc(complete_return="Switzerland World Cup 2026 next match")
     prompt = _prompt(
         "User: against whom is switzerland playing in the next match in the fifa world cup 2026",
