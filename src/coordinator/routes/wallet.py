@@ -85,7 +85,7 @@ async def confirm_trade(proposal_id: str):
         raise
     except Exception as e:
         logger.error(f"[WalletRoute] Confirm trade failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Trade execution failed: {type(e).__name__}")
 
 
 @router.post("/cancel/{proposal_id}")
@@ -203,7 +203,7 @@ async def get_wallet_balance(user_id: str):
         return {"public_address": wallet["public_address"], **balance}
     except Exception as e:
         logger.error(f"[WalletRoute] Balance check failed: {e}")
-        raise HTTPException(status_code=503, detail=f"Balance check failed: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Balance check failed: {type(e).__name__}")
 
 
 class WalletCreateBody(BaseModel):
