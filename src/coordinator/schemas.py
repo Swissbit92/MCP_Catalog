@@ -28,6 +28,38 @@ class SourceType(StrEnum):
     AGENTIC_BLOCKED = "agentic_blocked"
     AGENTIC_HITL = "agentic_hitl"
     GROUNDEDNESS_ABSTAIN = "groundedness_abstain"
+    WALLET_PROPOSAL = "wallet_proposal"
+
+
+class MessageRole(StrEnum):
+    """Conversation message role (the `role` on ChatTurn / messages).
+
+    Fields stay typed `str`; these are named constants at the persistence-layer
+    construction sites (members ARE `str`, so stored/compared values are unchanged).
+    """
+
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+class ProposalType(StrEnum):
+    """The on-chain ACTION a proposal card represents (the `proposal_type` inside
+    a proposal object, and the `trade_proposals.proposal_type` column)."""
+
+    SWAP = "swap"
+    STRATEGY = "strategy"
+    WALLET_DELETION = "wallet_deletion"
+
+
+class ProposalCategory(StrEnum):
+    """The response-metadata proposal CATEGORY (`ResponseMetadata.proposal_type`,
+    consumed by the frontend to route/render the card). Distinct vocabulary from
+    :class:`ProposalType` — do not conflate the two."""
+
+    TRADE_PROPOSAL = "trade_proposal"
+    STRATEGY_PROPOSAL = "strategy_proposal"
+    WALLET_DELETION = "wallet_deletion"
 
 
 # ----------------- Chat Schemas -----------------
