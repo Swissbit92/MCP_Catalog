@@ -81,6 +81,28 @@ class ToolCallingService:
             f"tools_enabled={search_executor is not None and search_executor.mcp_client is not None}"
         )
 
+    def _synthesis_user_turn(self, user_prompt: str, query: str) -> str:
+        """Build the 'User:' turn shown to the synthesis LLM.
+
+        Default (legacy): the full compiled conversation. That carries the poison
+        — an earlier in-conversation self-apology/refusal ("I can't search / I
+        hallucinated") that a local model (no instruction-hierarchy training)
+        weights equally to system rules and echoes, refusing even when fresh
+        correct results are present.
+
+        With SEARCH_SYNTHESIS_TRUST_RESULTS on, the synthesis LLM sees only the
+        fresh results (already prepended by the caller) + the RESOLVED QUERY as
+        the question — not the chat log. The topic was already folded into the
+        query by resolution, so no context is lost; the poison is deterministically
+        gone (it isn't in the input at all). This is the reliable lever; the
+        RULE 0 prompt directive is belt-and-suspenders reinforcement.
+        """
+        from ..config import get_settings
+
+        if get_settings().search.synthesis_trust_results and query and query.strip():
+            return f"User: {query.strip()}"
+        return f"User: {user_prompt}"
+
     def _relevance_gate_rejects(self, query: str, results: Optional[List[Any]]) -> bool:
         """True if the relevance gate is on AND the results are off-topic.
 
@@ -161,7 +183,7 @@ class ToolCallingService:
                 if search_results:
                     # Format results and synthesize
                     formatted_results = format_search_results_for_llm(search_results)
-                    conversation_history = [formatted_results, f"User: {user_prompt}"]
+                    conversation_history = [formatted_results, self._synthesis_user_turn(user_prompt, search_query)]
 
                     # Build synthesis prompt
                     synthesis_system = build_synthesis_prompt(persona_system, has_search_results=True)
@@ -226,7 +248,7 @@ class ToolCallingService:
 
                 if search_results:
                     formatted_results = format_search_results_for_llm(search_results)
-                    conversation_history = [formatted_results, f"User: {user_prompt}"]
+                    conversation_history = [formatted_results, self._synthesis_user_turn(user_prompt, search_query)]
 
                     synthesis_system = build_synthesis_prompt(persona_system, has_search_results=True)
                     logger.info(f"[Synthesis] Using synthesis prompt (length: {len(synthesis_system)} chars, search_results: {len(search_results)})")
@@ -315,7 +337,9 @@ class ToolCallingService:
 
                 # Add results to conversation and ask LLM to synthesize
                 conversation_history.append(formatted_results)
-                conversation_history.append(f"User: {user_prompt}")
+                conversation_history.append(
+                    self._synthesis_user_turn(user_prompt, tool_call.arguments.get("query", ""))
+                )
 
                 # Build synthesis prompt (includes search result usage instructions)
                 synthesis_system = build_synthesis_prompt(

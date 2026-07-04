@@ -90,13 +90,40 @@ def _classify(label: str, d: dict) -> None:
     print(f"    body: {body[:220]}\n")
 
 
+def _verdict(d: dict) -> str:
+    body = _answer_text(d).lower()
+    has_fact = any(m in body for m in FACT_MARKERS)
+    has_refusal = any(m in body for m in REFUSAL_MARKERS)
+    if has_fact and not has_refusal:
+        return "ANSWERED"
+    if has_refusal and not has_fact:
+        return "REFUSED"
+    return "MIXED"
+
+
+def _run_case(base_url: str, label: str, payload: dict, n: int) -> None:
+    tally = {"ANSWERED": 0, "REFUSED": 0, "MIXED": 0}
+    first_body = ""
+    for i in range(n):
+        d = _post(base_url, payload)
+        v = _verdict(d)
+        tally[v] += 1
+        if i == 0:
+            first_body = _answer_text(d)[:200]
+        print(f"  [{label} {i+1}/{n}] {v}")
+    print(f"==> {label}: {tally['ANSWERED']}/{n} ANSWERED, "
+          f"{tally['REFUSED']}/{n} REFUSED, {tally['MIXED']}/{n} MIXED")
+    print(f"    sample: {first_body}\n")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", default="http://127.0.0.1:8010")
+    ap.add_argument("--n", type=int, default=10)
     args = ap.parse_args()
-    print(f"Eval against {args.base_url}\n")
-    _classify("POISONED", _post(args.base_url, POISONED))
-    _classify("CLEAN", _post(args.base_url, CLEAN))
+    print(f"Eval against {args.base_url} (n={args.n} per case)\n")
+    _run_case(args.base_url, "POISONED", POISONED, args.n)
+    _run_case(args.base_url, "CLEAN", CLEAN, args.n)
     return 0
 
 
