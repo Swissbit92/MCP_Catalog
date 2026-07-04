@@ -23,11 +23,13 @@ def test_relevance_min_cosine_default_is_the_2026_07_04_tuned_value():
     settings instance (which could be overridden by the ambient .env).
 
     Tuned value from tests/evaluation/tune_relevance_threshold.py against
-    relevance_gate_eval_set.json (ADR-007) — 0.28 catches the 2026-07-04
-    incident's exact junk shape with zero measured false-abstention on the
-    (small, n=8) eval set. Was 0.40 (an untuned, guessed placeholder).
+    relevance_gate_eval_set.json (ADR-007), extended same-day to n=25 with 17
+    real Brave query/result pairs — 0.36 catches 100% of junk with only a 5%
+    false-abstention rate (the one false-abstention being the original n=8
+    pass's own synthetic adversarial sample, not real data). Was 0.28 (n=8,
+    mostly hand-written), before that 0.40 (untuned placeholder).
     """
-    assert SearchSettings.model_fields["relevance_min_cosine"].default == 0.28
+    assert SearchSettings.model_fields["relevance_min_cosine"].default == 0.36
 
 
 class _StubEmbedder:
