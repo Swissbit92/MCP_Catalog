@@ -15,8 +15,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.coordinator.services.query_handler_service import QueryHandlerService
 from src.coordinator.schemas import ResponseMetadata
+from src.coordinator.services.query_handler_service import QueryHandlerService
+from src.coordinator.services.wallet_creation_flow_service import (
+    WalletFlowState,
+    WalletFlowStep,
+)
 
 WM = "src.coordinator.jupiter.wallet_manager"
 SU = "src.coordinator.startup"
@@ -52,7 +56,9 @@ def repos():
 
 
 def _run(svc, message, flow_state):
-    return svc._handle_wallet_creation_step(
+    # Drives the extracted WalletCreationFlowService (same behavior the
+    # QueryHandlerService method had before the refactor).
+    return svc._wallet_flow.advance(
         message=message,
         flow_state=dict(flow_state),
         session_id="s1",
@@ -63,8 +69,8 @@ def _run(svc, message, flow_state):
 
 
 def _assert_response_contract(resp):
-    assert set(["answer", "message_flow", "message_count", "used_search",
-                "metadata", "rewritten"]).issubset(resp.keys())
+    assert {"answer", "message_flow", "message_count", "used_search",
+            "metadata", "rewritten"}.issubset(resp.keys())
 
 
 # ---- Step 1: name → advance to step 2 ----
@@ -144,3 +150,34 @@ def test_step3_unconfirmed_does_not_delete(svc, repos):
 def test_unknown_step_resets(svc, repos):
     _run(svc, "whatever", {"step": 9, "user_id": "u1"})
     repos["flow"].delete.assert_called_once_with("s1")
+
+
+# ---- Typed layer: WalletFlowStep / WalletFlowState ----
+
+def test_step_enum_is_int_compatible_with_stored_values():
+    # The SQLite column stores plain ints — the enum must round-trip through them.
+    assert int(WalletFlowStep.NAME) == 1
+    assert int(WalletFlowStep.PASSWORD) == 2
+    assert int(WalletFlowStep.CONFIRM) == 3
+    assert WalletFlowStep(2) is WalletFlowStep.PASSWORD
+
+
+def test_state_to_repo_dict_has_no_mnemonic_field():
+    state = WalletFlowState(
+        session_id="s", step=WalletFlowStep.CONFIRM, user_id="u",
+        wallet_name="W", public_address="ADDR", slots_used=0, slots_max=3,
+    )
+    row = state.to_repo_dict()
+    assert "mnemonic" not in row
+    assert row["step"] == 3 and isinstance(row["step"], int)
+    assert row["public_address"] == "ADDR"
+    # dataclass has no mnemonic attribute at all (structurally impossible to persist)
+    assert not hasattr(state, "mnemonic")
+
+
+def test_state_from_row_roundtrip():
+    row = {"step": 2, "user_id": "u", "wallet_name": "W",
+           "public_address": None, "slots_used": 1, "slots_max": 3}
+    state = WalletFlowState.from_row("s", row, WalletFlowStep.PASSWORD)
+    assert state.session_id == "s" and state.wallet_name == "W" and state.slots_used == 1
+    assert state.to_repo_dict()["step"] == 2

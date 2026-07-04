@@ -12,6 +12,7 @@ from ..schemas import ResponseMetadata
 # LC_OllamaClient imported lazily inside methods to break circular import with llm_client.py
 from .citation_service import validate_citations
 from .first_person_service import post_process_first_person
+from .wallet_creation_flow_service import WalletCreationFlowService
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,9 @@ class QueryHandlerService:
             mongodb_service: Unused (MongoDB MCP removed). Kept for call-site compat.
         """
         self.brave_client = brave_client
+        # Guided wallet-creation flow lives in its own collaborator; it reuses this
+        # service's shared response-contract builder.
+        self._wallet_flow = WalletCreationFlowService(self._finalize_response)
 
     @staticmethod
     def _build_wallet_state_context(user_id: str) -> str:
@@ -438,44 +442,6 @@ class QueryHandlerService:
             search_results_count=search_count,
         )
 
-    def _wallet_slot_preflight(self, user_id, persona_name, metadata, *, log_context):
-        """Pre-flight the 3-wallet active cap before starting a creation flow.
-
-        Returns ``(slots_used, slots_max, blocked_response)``: if the user is at
-        the active-wallet limit, ``blocked_response`` is a finalized "reached the
-        maximum" reply (and the caller should return it immediately); otherwise
-        it is None. Any registry error is non-fatal — returns defaults + None so
-        creation proceeds without the cap check.
-        """
-        slots_used, slots_max = 0, 3
-        try:
-            from ..startup import get_wallet_registry_repo
-            from ..repositories.wallet_registry_repository import MAX_ACTIVE_WALLETS
-            registry_repo = get_wallet_registry_repo()
-            if registry_repo:
-                allowed, count, _ = registry_repo.can_create_wallet(user_id or "default_user")
-                slots_used, slots_max = count, MAX_ACTIVE_WALLETS
-                if not allowed:
-                    metadata.source_type = "wallet_mcp"
-                    metadata.tools_used = []
-                    logger.info(
-                        f"{log_context} creation blocked — user={user_id} "
-                        f"at limit ({count}/{MAX_ACTIVE_WALLETS})"
-                    )
-                    blocked = self._finalize_response(
-                        answer=(
-                            f"You've reached the maximum of {MAX_ACTIVE_WALLETS} active wallets. "
-                            "To create a new one, please delete an existing wallet first."
-                        ),
-                        persona_name=persona_name,
-                        metadata=metadata,
-                        used_search=False,
-                    )
-                    return slots_used, slots_max, blocked
-        except Exception as e:
-            logger.warning(f"{log_context} wallet slot pre-flight check failed (non-fatal): {e}")
-        return slots_used, slots_max, None
-
     def handle_wallet_query(
         self,
         message: str,
@@ -508,7 +474,7 @@ class QueryHandlerService:
         flow_repo = get_wallet_flow_repo()
         flow_state = flow_repo.get(session_id or "") if flow_repo else None
         if flow_state:
-            return self._handle_wallet_creation_step(
+            return self._wallet_flow.advance(
                 message=message,
                 flow_state=flow_state,
                 session_id=session_id or "",
@@ -583,31 +549,14 @@ class QueryHandlerService:
             "solana wallet", "create solana", "i want to create a",
         ]
         if any(t in msg_lower for t in _CREATION_TRIGGERS):
-            slots_used, slots_max, blocked = self._wallet_slot_preflight(
-                user_id, persona_name, metadata, log_context="[WalletQuery]"
-            )
-            if blocked is not None:
-                return blocked
-
-            from ..services.wallet_proposal_service import build_wallet_creation_step
-            session_key = session_id or ""
-            if flow_repo:
-                flow_repo.upsert(session_key, {
-                    "step": 1,
-                    "user_id": user_id or "default_user",
-                    "wallet_name": "My Wallet",
-                    "slots_used": slots_used,
-                    "slots_max": slots_max,
-                })
-            step_msg = build_wallet_creation_step(step=1, slots_used=slots_used, slots_max=slots_max)
-            metadata.source_type = "wallet_flow"
-            metadata.tools_used = ["wallet_create_guided"]
-            logger.info(f"[WalletQuery] Wallet creation flow started for user={user_id} (slot {slots_used + 1}/{slots_max})")
-            return self._finalize_response(
-                answer=step_msg["content"],
+            return self._wallet_flow.start(
+                session_id=session_id,
+                user_id=user_id,
+                wallet_name="My Wallet",
                 persona_name=persona_name,
                 metadata=metadata,
-                used_search=True,
+                source_type="wallet_flow",
+                log_context="[WalletQuery]",
             )
 
         # Inject wallet ground-truth state into system prompt to prevent hallucination
@@ -627,30 +576,14 @@ class QueryHandlerService:
 
         # If LLM called wallet_create_guided → start wallet creation flow
         if tool_call and tool_call.name == "wallet_create_guided":
-            slots_used, slots_max, blocked = self._wallet_slot_preflight(
-                user_id, persona_name, metadata, log_context="[WalletCreate]"
-            )
-            if blocked is not None:
-                return blocked
-
-            from ..services.wallet_proposal_service import build_wallet_creation_step
-            session_key = session_id or ""
-            if flow_repo:
-                flow_repo.upsert(session_key, {
-                    "step": 1,
-                    "user_id": user_id,
-                    "wallet_name": tool_call.arguments.get("wallet_name", "My Wallet"),
-                    "slots_used": slots_used,
-                    "slots_max": slots_max,
-                })
-            step_msg = build_wallet_creation_step(step=1, slots_used=slots_used, slots_max=slots_max)
-            metadata.source_type = "wallet_mcp"
-            metadata.tools_used = ["wallet_create_guided"]
-            return self._finalize_response(
-                answer=step_msg["content"],
+            return self._wallet_flow.start(
+                session_id=session_id,
+                user_id=user_id,
+                wallet_name=tool_call.arguments.get("wallet_name", "My Wallet"),
                 persona_name=persona_name,
                 metadata=metadata,
-                used_search=True,
+                source_type="wallet_mcp",
+                log_context="[WalletCreate]",
             )
 
         metadata.source_type = "wallet_mcp"
@@ -661,192 +594,4 @@ class QueryHandlerService:
             persona_name=persona_name,
             metadata=metadata,
             used_search=tool_call is not None,
-        )
-
-    def _handle_wallet_creation_step(
-        self,
-        message: str,
-        flow_state: dict,
-        session_id: str,
-        user_id: str,
-        persona_name: str,
-        metadata: ResponseMetadata,
-    ) -> dict:
-        """Handle multi-turn guided wallet creation (steps 1→2→3→4).
-
-        Step 1: User provides wallet name
-        Step 2: User provides password — generate keypair from BIP39 mnemonic, encrypt, save
-        Step 3: Display 12-word mnemonic — user must confirm they saved it
-        Step 4: User confirms — permanently wipe mnemonic from memory, show success
-        """
-        from ..services.wallet_proposal_service import build_wallet_creation_step
-        from ..jupiter.wallet_manager import (
-            encrypt_private_key, generate_mnemonic, generate_keypair_from_mnemonic,
-            cache_session_key,
-        )
-        from ..startup import get_wallet_repo, get_wallet_flow_repo
-
-        flow_repo = get_wallet_flow_repo()
-        step = flow_state.get("step", 1)
-
-        if step == 1:
-            # User provided wallet name
-            flow_state["wallet_name"] = message.strip() or "My Wallet"
-            flow_state["step"] = 2
-            if flow_repo:
-                flow_repo.upsert(session_id, flow_state)
-            step_msg = build_wallet_creation_step(step=2, wallet_name=flow_state["wallet_name"])
-            metadata.source_type = "wallet_mcp"
-            return self._finalize_response(
-                answer=step_msg["content"],
-                persona_name=persona_name,
-                metadata=metadata,
-                used_search=True,
-            )
-
-        elif step == 2:
-            # User provided password — generate BIP39 mnemonic, derive keypair, encrypt
-            password = message.strip()
-            if len(password) < 8:
-                metadata.source_type = "wallet_mcp"
-                return self._finalize_response(
-                    answer="That password is too short — please choose at least 8 characters.",
-                    persona_name=persona_name,
-                    metadata=metadata,
-                    used_search=False,
-                )
-
-            # Generate BIP39 mnemonic and derive keypair
-            mnemonic_phrase = generate_mnemonic()
-            keypair = generate_keypair_from_mnemonic(mnemonic_phrase)
-            public_address = keypair["public_address"]
-            private_key = keypair["private_key_b58"]
-
-            enc = encrypt_private_key(private_key, password)
-
-            # Save encrypted wallet to SQLite
-            try:
-                wallet_repo = get_wallet_repo()
-                wallet_repo.create_wallet(
-                    user_id=user_id,
-                    wallet_name=flow_state.get("wallet_name", "My Wallet"),
-                    public_address=public_address,
-                    encrypted_private_key=enc.encrypted,
-                    key_salt=enc.salt,
-                    key_nonce=enc.nonce,
-                )
-                # Cache in session (wallet is unlocked immediately after creation)
-                cache_session_key(user_id, private_key)
-            except Exception as e:
-                logger.error(f"[WalletCreation] Failed to save wallet: {e}")
-                # Zero out sensitive data before clearing
-                mnemonic_phrase = "\x00" * len(mnemonic_phrase)
-                del mnemonic_phrase
-                if flow_repo:
-                    flow_repo.delete(session_id)
-                metadata.source_type = "wallet_mcp"
-                return self._finalize_response(
-                    answer="I encountered an error saving your wallet. Please try again.",
-                    persona_name=persona_name,
-                    metadata=metadata,
-                    used_search=False,
-                )
-
-            # Register in wallet registry (multi-wallet tracking)
-            try:
-                from ..startup import get_wallet_registry_repo
-                registry_repo = get_wallet_registry_repo()
-                if registry_repo:
-                    registry_repo.register_wallet(
-                        user_id=user_id,
-                        wallet_name=flow_state.get("wallet_name", "My Wallet"),
-                        public_address=public_address,
-                    )
-            except Exception as e:
-                logger.warning(f"[WalletCreation] Registry write failed (non-fatal): {e}")
-
-            # Update activity summary
-            try:
-                from ..startup import get_wallet_summary_repo
-                summary_repo = get_wallet_summary_repo()
-                if summary_repo:
-                    from ..startup import get_wallet_registry_repo
-                    reg = get_wallet_registry_repo()
-                    active_count = reg.get_active_count(user_id) if reg else 1
-                    summary_repo.upsert_summary(
-                        user_id=user_id,
-                        active_wallet_count=active_count,
-                        total_wallets_ever=(summary_repo.get_summary(user_id) or {}).get("total_wallets_ever", 0) + 1,
-                    )
-            except Exception as e:
-                logger.warning(f"[WalletCreation] Summary update failed (non-fatal): {e}")
-
-            # Advance to step 3. The mnemonic is displayed in THIS response only and
-            # is never persisted (it is only ever wiped at step 3, never re-read), so
-            # it stays a request-local variable and no seed phrase touches disk.
-            flow_state["step"] = 3
-            flow_state["public_address"] = public_address
-            if flow_repo:
-                flow_repo.upsert(session_id, flow_state)
-
-            step_msg = build_wallet_creation_step(
-                step=3,
-                mnemonic=mnemonic_phrase,
-                public_address=public_address,
-            )
-            metadata.source_type = "wallet_mcp"
-            metadata.tools_used = ["wallet_create_guided"]
-            return self._finalize_response(
-                answer=step_msg["content"],
-                persona_name=persona_name,
-                metadata=metadata,
-                used_search=True,
-            )
-
-        elif step == 3:
-            # User should confirm they saved the recovery phrase
-            msg_lower = message.strip().lower()
-            _CONFIRM_PHRASES = [
-                "i saved it", "saved it", "i've saved it", "confirm", "confirmed",
-                "yes", "done", "i wrote it down", "saved", "got it", "ok", "okay",
-            ]
-            if not any(p in msg_lower for p in _CONFIRM_PHRASES):
-                metadata.source_type = "wallet_mcp"
-                return self._finalize_response(
-                    answer=(
-                        "Please confirm you've saved your 12-word recovery phrase before continuing. "
-                        "Type **'I saved it'** or **'confirm'** to proceed. "
-                        "This phrase will be permanently deleted and cannot be shown again."
-                    ),
-                    persona_name=persona_name,
-                    metadata=metadata,
-                    used_search=False,
-                )
-
-            # User confirmed — complete the flow. The mnemonic was never persisted
-            # (shown once at step 2, request-local), so there is nothing to wipe here.
-            public_address = flow_state.get("public_address", "N/A")
-            if flow_repo:
-                flow_repo.delete(session_id)
-
-            logger.info(f"[WalletCreation] Flow complete for user={user_id}, wallet creation done")
-
-            step_msg = build_wallet_creation_step(step=4, public_address=public_address)
-            metadata.source_type = "wallet_mcp"
-            metadata.tools_used = ["wallet_create_guided"]
-            return self._finalize_response(
-                answer=step_msg["content"],
-                persona_name=persona_name,
-                metadata=metadata,
-                used_search=True,
-            )
-
-        # Unknown step — clear and restart (no persisted secrets to wipe)
-        if flow_repo:
-            flow_repo.delete(session_id)
-        return self._finalize_response(
-            answer="Something went wrong with the wallet setup. Let's start over — say 'create wallet' when ready.",
-            persona_name=persona_name,
-            metadata=metadata,
-            used_search=False,
         )
