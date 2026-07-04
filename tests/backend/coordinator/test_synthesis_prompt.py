@@ -148,6 +148,63 @@ def test_synthesis_prompt_specific_hallucination_warnings():
     print("[PASS] test_synthesis_prompt_specific_hallucination_warnings")
 
 
+# --------------------------------------------------------------------------
+# SEARCH_SYNTHESIS_TRUST_RESULTS flag (context-poisoning fix, default OFF)
+# --------------------------------------------------------------------------
+
+import pytest  # noqa: E402
+from coordinator.config import get_settings  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _clean_settings_cache():
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+def _prompt(monkeypatch, *, enabled):
+    monkeypatch.setenv("SEARCH_SYNTHESIS_TRUST_RESULTS", "true" if enabled else "false")
+    get_settings.cache_clear()
+    return build_synthesis_prompt("You are Eeva, a sarcastic AI assistant.", has_search_results=True)
+
+
+def test_trust_flag_off_is_byte_identical_to_legacy(monkeypatch):
+    """Default OFF must not add the RULE 0 / supersede directive at all."""
+    off = _prompt(monkeypatch, enabled=False)
+    assert "RULE 0" not in off
+    assert "supersede" not in off.lower()
+    # Legacy rules still present.
+    assert "RULE 1: USE ONLY SEARCH RESULTS" in off
+
+
+def test_trust_flag_on_adds_supersede_directive(monkeypatch):
+    on = _prompt(monkeypatch, enabled=True)
+    assert "RULE 0" in on
+    assert "supersede" in on.lower()
+    # Anti-refusal language present.
+    assert "Do NOT refuse" in on
+    # Reinforced closing (recency).
+    assert "use them." in on
+
+
+def test_trust_flag_on_preserves_honest_abstention(monkeypatch):
+    """RULE 0 must NOT delete/override Rule 5 honest abstention."""
+    on = _prompt(monkeypatch, enabled=True)
+    assert "RULE 5" in on
+    # RULE 0 explicitly defers to Rule 5.
+    assert "does NOT override Rule 5" in on or "abstain honestly per Rule 5" in on
+
+
+def test_trust_flag_on_keeps_persona_and_no_results_passthrough(monkeypatch):
+    on = _prompt(monkeypatch, enabled=True)
+    assert "You are Eeva" in on
+    # No-results path is unaffected by the flag.
+    monkeypatch.setenv("SEARCH_SYNTHESIS_TRUST_RESULTS", "true")
+    get_settings.cache_clear()
+    assert build_synthesis_prompt("PERSONA", has_search_results=False) == "PERSONA"
+
+
 if __name__ == "__main__":
     print("Running Synthesis Prompt Unit Tests")
     print("=" * 80)

@@ -22,8 +22,10 @@ from ..tool_definitions import (
 from .llm_completion_service import LLMCompletionService
 from .citation_service import CitationService
 from .query_extraction_service import QueryExtractionService
+from .query_resolution_service import QueryResolutionService
 from .force_search_service import ForceSearchService
 from .search_execution_service import SearchExecutionService
+from .search_relevance_service import SearchRelevanceService
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,9 @@ class ToolCallingService:
         citation_service: Optional[CitationService] = None,
         query_extractor: Optional[QueryExtractionService] = None,
         force_search: Optional[ForceSearchService] = None,
-        search_executor: Optional[SearchExecutionService] = None
+        search_executor: Optional[SearchExecutionService] = None,
+        query_resolver: Optional[QueryResolutionService] = None,
+        relevance_service: Optional[SearchRelevanceService] = None
     ):
         """Initialize tool calling service.
 
@@ -65,12 +69,55 @@ class ToolCallingService:
         self.llm_service = llm_service
         self.citation_service = citation_service or CitationService()
         self.query_extractor = query_extractor or QueryExtractionService()
+        self.query_resolver = query_resolver or QueryResolutionService(
+            llm_service, query_extractor=self.query_extractor
+        )
+        self.relevance_service = relevance_service or SearchRelevanceService()
         self.force_search = force_search or ForceSearchService()
         self.search_executor = search_executor
 
         logger.info(
             f"Initialized ToolCallingService: "
             f"tools_enabled={search_executor is not None and search_executor.mcp_client is not None}"
+        )
+
+    def _synthesis_user_turn(self, user_prompt: str, query: str) -> str:
+        """Build the 'User:' turn shown to the synthesis LLM.
+
+        Default (legacy): the full compiled conversation. That carries the poison
+        — an earlier in-conversation self-apology/refusal ("I can't search / I
+        hallucinated") that a local model (no instruction-hierarchy training)
+        weights equally to system rules and echoes, refusing even when fresh
+        correct results are present.
+
+        With SEARCH_SYNTHESIS_TRUST_RESULTS on, the synthesis LLM sees only the
+        fresh results (already prepended by the caller) + the RESOLVED QUERY as
+        the question — not the chat log. The topic was already folded into the
+        query by resolution, so no context is lost; the poison is deterministically
+        gone (it isn't in the input at all). This is the reliable lever; the
+        RULE 0 prompt directive is belt-and-suspenders reinforcement.
+        """
+        from ..config import get_settings
+
+        if get_settings().search.synthesis_trust_results and query and query.strip():
+            return f"User: {query.strip()}"
+        return f"User: {user_prompt}"
+
+    def _relevance_gate_rejects(self, query: str, results: Optional[List[Any]]) -> bool:
+        """True if the relevance gate is on AND the results are off-topic.
+
+        No-op (returns False) when SEARCH_RELEVANCE_GATE_ENABLED is off, so the
+        legacy path is byte-identical. Fail-open lives in the service itself.
+        """
+        if not results:
+            return False
+        from ..config import get_settings
+
+        search_cfg = get_settings().search
+        if not search_cfg.relevance_gate_enabled:
+            return False
+        return not self.relevance_service.is_relevant(
+            query, results, search_cfg.relevance_min_cosine
         )
 
     def complete_with_tools(
@@ -115,9 +162,11 @@ class ToolCallingService:
             # Check if brave_web_search tool is available
             brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
             if brave_tool and self.search_executor and self.search_executor.mcp_client:
-                # Extract just the latest user message for search query
-                search_query = self.query_extractor.extract_latest_user_message(user_prompt)
-                logger.info(f"[Force Search] Extracted search query: '{search_query[:100]}'")
+                # Resolve the search query (deictic follow-ups resolved against
+                # prior context when SEARCH_QUERY_RESOLUTION_ENABLED; otherwise
+                # the raw latest user message, as before).
+                search_query = self.query_resolver.resolve(user_prompt)
+                logger.info(f"[Force Search] Resolved search query: '{search_query[:100]}'")
 
                 # Force execute search
                 search_results = self.search_executor.execute_search(ToolCall(
@@ -125,10 +174,16 @@ class ToolCallingService:
                     arguments={"query": search_query, "reason": "Forced search for price/current data query"}
                 ))
 
+                # Relevance gate: non-empty-but-off-topic results are treated as
+                # no-result (honest abstention) instead of synthesized over.
+                if self._relevance_gate_rejects(search_query, search_results):
+                    logger.warning("[Relevance Gate] Forced-search results off-topic - abstaining")
+                    search_results = None
+
                 if search_results:
                     # Format results and synthesize
                     formatted_results = format_search_results_for_llm(search_results)
-                    conversation_history = [formatted_results, f"User: {user_prompt}"]
+                    conversation_history = [formatted_results, self._synthesis_user_turn(user_prompt, search_query)]
 
                     # Build synthesis prompt
                     synthesis_system = build_synthesis_prompt(persona_system, has_search_results=True)
@@ -179,7 +234,7 @@ class ToolCallingService:
         if search_expected:
             brave_tool = next((t for t in tools if t.get("function", {}).get("name") == "brave_web_search"), None)
             if brave_tool and self.search_executor and self.search_executor.mcp_client:
-                search_query = self.query_extractor.extract_latest_user_message(user_prompt)
+                search_query = self.query_resolver.resolve(user_prompt)
                 logger.info(f"[Keyword Force Search] Executing search directly: '{search_query[:100]}'")
 
                 search_results = self.search_executor.execute_search(ToolCall(
@@ -187,9 +242,13 @@ class ToolCallingService:
                     arguments={"query": search_query, "reason": "Keyword filter determined search is needed"}
                 ))
 
+                if self._relevance_gate_rejects(search_query, search_results):
+                    logger.warning("[Relevance Gate] Keyword-forced-search results off-topic - abstaining")
+                    search_results = None
+
                 if search_results:
                     formatted_results = format_search_results_for_llm(search_results)
-                    conversation_history = [formatted_results, f"User: {user_prompt}"]
+                    conversation_history = [formatted_results, self._synthesis_user_turn(user_prompt, search_query)]
 
                     synthesis_system = build_synthesis_prompt(persona_system, has_search_results=True)
                     logger.info(f"[Synthesis] Using synthesis prompt (length: {len(synthesis_system)} chars, search_results: {len(search_results)})")
@@ -263,6 +322,10 @@ class ToolCallingService:
 
                 search_results = self.search_executor.execute_search(tool_call)
 
+                if self._relevance_gate_rejects(tool_call.arguments.get("query", ""), search_results):
+                    logger.warning("[Relevance Gate] LLM-tool-call search results off-topic - abstaining")
+                    search_results = None
+
                 if not search_results:
                     logger.warning("[Anti-Hallucination] Web search returned no results - admitting ignorance")
                     honest_response = "I attempted to search for current information on this topic, but the search didn't return any results. I don't have up-to-date information to answer this question accurately. I'd rather admit I don't know than guess or use potentially outdated information."
@@ -274,7 +337,9 @@ class ToolCallingService:
 
                 # Add results to conversation and ask LLM to synthesize
                 conversation_history.append(formatted_results)
-                conversation_history.append(f"User: {user_prompt}")
+                conversation_history.append(
+                    self._synthesis_user_turn(user_prompt, tool_call.arguments.get("query", ""))
+                )
 
                 # Build synthesis prompt (includes search result usage instructions)
                 synthesis_system = build_synthesis_prompt(
