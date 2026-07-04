@@ -38,6 +38,13 @@ CASES = [
         "User: search the web for it",
         "search the web for it",
     ),
+    # Bare command with NO 'it' referent (the turn-2 hardening case).
+    (
+        "User: how is the football world cup 2026 in the US going? is switzerland performing?\n\n"
+        "Assistant: I do not follow current events as they unfold, Seeker.\n\n"
+        "User: search the web",
+        "search the web",
+    ),
     # Topic-switch follow-up.
     (
         "User: what's the weather forecast for Zurich this week\n\n"
