@@ -71,13 +71,35 @@ _WORD_RE = re.compile(r"[a-z0-9']+")
 # a turn a "bare" search command (no topic of its own): "search the web (for it)",
 # "look it up online". If only these remain after stripping the command phrases,
 # there is nothing for the model to search but the command itself.
+#
+# 2026-07-04 incident (session dcc3693d): includes context-dependent-but-non-
+# pronoun placeholder phrases ("next match", "last match", "the game") — these
+# don't specify WHICH match/game without prior context, so on their own they
+# carry no more topic than a bare "search the web" does. Without this, "search
+# the web for the next match" was NOT classified as bare (the words "next"/
+# "match" survived as "non-filler"), so it skipped the prior-substantive-turn
+# fallback and a near-verbatim LLM echo of the same phrase reached Brave
+# unchanged, reproducing the incident's "how to search a webpage" junk result.
 _COMMAND_FILLER_TOKENS = frozenset(
     {
         "the", "a", "an", "web", "internet", "online", "for", "it", "this",
         "that", "these", "those", "them", "please", "can", "could", "would",
         "you", "to", "and", "up", "me", "us", "now", "about", "on", "of",
         "real", "some", "more", "info", "information", "quick", "just",
+        "next", "last", "match", "game", "fixture",
     }
+)
+
+# A leading correction preamble ("no, I meant...") carries no topic content of
+# its own but inflates the word count used by _looks_like_followup's trigger
+# heuristic. 2026-07-04 incident: "no, I meant search the web for the next
+# match" is 10 words — one over _COMMAND_TURN_MAX_WORDS — so it never
+# triggered resolution at all and the raw turn (correction prefix and all)
+# passed straight through to Brave untouched. Stripped ONLY for the trigger
+# word-count check below, not from what's sent to the LLM rewrite step.
+_CORRECTION_PREFIX_RE = re.compile(
+    r"^\s*(no,?\s+)?(i\s+meant|sorry,?\s+i\s+meant|actually,?\s+i\s+meant|wait,?\s+i\s+meant)\s*[,:]?\s*",
+    re.IGNORECASE,
 )
 
 
@@ -169,7 +191,12 @@ class QueryResolutionService:
     @staticmethod
     def _looks_like_followup(latest: str) -> bool:
         """Cheap heuristic: does this turn likely depend on prior context?"""
-        text = latest.lower()
+        # Strip a leading correction preamble ("no, I meant...") before counting
+        # words — it carries no topic content and would otherwise inflate the
+        # word count past the short/command-turn thresholds below (see
+        # _CORRECTION_PREFIX_RE docstring for the incident this fixes).
+        stripped = _CORRECTION_PREFIX_RE.sub("", latest).strip()
+        text = (stripped or latest).lower()
         words = _WORD_RE.findall(text)
         n = len(words)
         if n == 0:

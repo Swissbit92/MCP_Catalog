@@ -1,0 +1,30 @@
+# pyproject.toml — tooling config (audit 2026-07-04, step 4).
+# The project is run from source (not pip-installed); this file exists to give
+# ruff and coverage a canonical config home. Runtime deps stay in
+# requirements.txt / requirements-test.txt (pinned).
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [
+    "archive",
+    "alembic/versions",
+    "react-ui",
+    ".venv",
+]
+
+[tool.ruff.lint]
+# Conservative starter set: real-bug lints (pyflakes F, pycodestyle E/W,
+# bugbear B, comprehensions C4, pyupgrade UP, isort I). Not a style crusade —
+# widen over time. Existing code should already be close.
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = [
+    "E501",  # line length is enforced by the formatter, not the linter
+    "B008",  # FastAPI Depends() in defaults is idiomatic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+
+[tool.ruff.format]
+quote-style = "double"

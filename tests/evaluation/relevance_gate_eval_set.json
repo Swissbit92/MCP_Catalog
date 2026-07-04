@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "description": "Eval corpus for tune_relevance_threshold.py (Milestone 4). Each sample is a (query, results[]) pair with an expected verdict: 'relevant' (the gate must NOT abstain) or 'off_topic' (the gate should abstain — best result score should fall below relevance_min_cosine). Modeled on tune_routing_threshold.py's sweep-and-pin-precision-first shape, but here the costly class is false-abstention on genuinely-relevant results (SEARCH_RELEVANCE_GATE_ENABLED must never make real answers worse), so the sweep should pin false-abstention-rate low FIRST, then maximize junk-catch recall — the inverse priority order from the routing sweep, where wallet false-positives were the costly class. Extended 2026-07-04 with 17 real Brave query/result pairs (14 relevant across sports/crypto/weather/knowledge/product domains, 3 off-topic junk-mismatch pairs) to move beyond the original n=8 synthetic-description first-pass calibration.",
+  "samples": [
+    {
+      "query": "Switzerland next match FIFA World Cup 2026",
+      "results": [
+        {
+          "title": "How to search the contents of the current page for text or links",
+          "description": "Firefox Help — use Ctrl+F to search within a page for specific text."
+        },
+        {
+          "title": "Refine Google searches",
+          "description": "Google Search Help — use quotes for exact matches and keyboard shortcuts to refine results."
+        }
+      ],
+      "expected_verdict": "off_topic",
+      "note": "2026-07-04 INCIDENT: exact junk shape from the deictic-follow-up mis-resolution — generic 'how to search' help pages, zero topical overlap with a sports-fixture query"
+    },
+    {
+      "query": "Switzerland next match FIFA World Cup 2026",
+      "results": [
+        {
+          "title": "Switzerland vs Algeria set for Round of 32 - FIFA.com",
+          "description": "Switzerland will face Algeria in the Round of 32 on July 2 in Vancouver."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "genuinely on-topic result for the same query — control case"
+    },
+    {
+      "query": "history of voice assistants",
+      "results": [
+        {
+          "title": "Voice Assistant Timeline: A Short History of the Voice Revolution",
+          "description": "Siri launched in 2010, followed by Google Assistant and Amazon Alexa."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "2026-07-04 INCIDENT: this WAS the correct grounded answer for the (wrongly-resolved) query it was given — the gate is not responsible for query resolution being wrong, only for judging result-to-query fit, which was actually fine here"
+    },
+    {
+      "query": "current price of bitcoin",
+      "results": [
+        {
+          "title": "Bitcoin (BTC) Price, Charts, and News",
+          "description": "Live BTC price, market cap, and 24h trading volume."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "control: clearly on-topic crypto result"
+    },
+    {
+      "query": "what's the weather in zurich today",
+      "results": [
+        {
+          "title": "Zurich Weather Forecast - 10 Day",
+          "description": "Current conditions and 10-day forecast for Zurich, Switzerland."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "non-crypto domain control case, must not be penalized by a crypto-tuned floor"
+    },
+    {
+      "query": "who won the last election in a small paraphrase-distant way",
+      "results": [
+        {
+          "title": "2026 General Election Results",
+          "description": "Incumbent party secures majority; full results and county-by-county breakdown."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "FALSE-ABSTENTION RISK CASE: correct/relevant result but lexically distant paraphrase from the query — this is the case a too-high relevance_min_cosine would wrongly reject; weight this heavily when picking the threshold"
+    },
+    {
+      "query": "explain proof of stake",
+      "results": [
+        {
+          "title": "What Is Proof of Stake? A Beginner's Guide",
+          "description": "Proof of stake (PoS) is a consensus mechanism where validators are chosen based on staked coins."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "conceptual query with a conceptual (not news) result — must not be penalized as off-topic just because it isn't a 'current event'"
+    },
+    {
+      "query": "latest ethereum news",
+      "results": [
+        {
+          "title": "Privacy Policy - Example News Aggregator",
+          "description": "This site uses cookies to improve your experience. Learn more about our data practices."
+        }
+      ],
+      "expected_verdict": "off_topic",
+      "note": "generic boilerplate/legal-page junk unrelated to the query — same failure shape as the incident, different domain"
+    },
+    {
+      "query": "switzerland next match fifa world cup 2026",
+      "results": [
+        {
+          "title": "Who Is Switzerland's Next World Cup Opponent? | FOX Sports",
+          "description": "Switzerland&#x27;s semifinal match would take place at Atlanta Stadium on Wednesday, July 15, at 3 p.m. ET on FOX and FOX One. ... Get more from the FIFA Men&#x27;s World Cup Follow your favorites to get information about games, news and more ..."
+        },
+        {
+          "title": "Switzerland at the World Cup 2026: Squad, fixtures, group and history | European Qualifiers | UEFA.com",
+          "description": "Everything you need to know about Switzerland at the 2026 World Cup: their fixtures, squad, qualifying record, key players, coach and tournament history."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, sports fixture"
+    },
+    {
+      "query": "argentina last match result world cup 2026",
+      "results": [
+        {
+          "title": "Cape Verde threaten shock for the ages before Argentina break hearts in World Cup classic | World Cup 2026 | The Guardian",
+          "description": "A 3-2 victory means Argentina will now play Egypt in Atlanta. But it was the Cape Verde players who held the attention in that moment, walking a little disconsolately about at one end, still ready to run, ready to play, but eliminated from this ..."
+        },
+        {
+          "title": "World Cup 2026: Argentina 3-2 Cape Verde - Reigning champions avoid biggest upset in tournament history after extra-time winner | Football News | Sky Sports",
+          "description": "Argentina avoided the biggest upset in World Cup history after Diney Borges&#x27; own-goal in extra-time rescued a 3-2 win over Cape Verde to book their place in the last 16 of the tournament."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, sports outcome"
+    },
+    {
+      "query": "who won the last us presidential election",
+      "results": [
+        {
+          "title": "Historical U.S. Presidential Election Results | Britannica",
+          "description": "This table provides all U.S. presidential election results since 1789. The Editors of Encyclopaedia Britannica This article was most recently revised and updated by J.E. Luebering. Discover how ordinary objects work, and expand your understanding of the familiar. ... By clicking &quot;Sign Up&quot;, you consent to the Britannica Privacy Policy and Terms of Use."
+        },
+        {
+          "title": "2020 United States presidential election - Wikipedia",
+          "description": "Blue denotes states or congressional ... those won by Republican Donald Trump. Counties with highest percentage of Democratic vote: ... A discontinuous cartogram of the 2020 United States presidential election, scaled by their Electoral College contribution · A discretized cartogram of the 2020 United States presidential election using ..."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, political outcome"
+    },
+    {
+      "query": "current price of bitcoin",
+      "results": [
+        {
+          "title": "Bitcoin price today, BTC to USD live price, marketcap and chart | CoinMarketCap",
+          "description": "The live Bitcoin price today is $63,203.89 USD with a 24-hour trading volume of $20,030,437,031 USD. We update our BTC to USD price in real-time. Bitcoin is up 1.77% in the last 24 hours. The current CoinMarketCap ranking is #1, with a live market cap of $1,267,371,184,019 USD."
+        },
+        {
+          "title": "Bitcoin price today, BTC to USD live price, marketcap and chart | CoinDesk",
+          "description": "The price of Bitcoin (BTC) is $63,121.02 today as of Jul 4, 2026, 2:30 pm EDT, with a 24-hour trading volume of $8.30B."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, crypto price"
+    },
+    {
+      "query": "latest ethereum news",
+      "results": [
+        {
+          "title": "CoinDesk: Bitcoin, Ethereum, XRP, Crypto News and Price Data",
+          "description": "Leader in cryptocurrency, Bitcoin, Ethereum, XRP, blockchain, DeFi, digital finance and Web 3.0 news with analysis, video and live price updates."
+        },
+        {
+          "title": "Ethereum (ETH) News | CoinDesk",
+          "description": "The Ethereum Foundation said policymakers should distinguish between decentralized public blockchains and networks that remain controlled by corporations or foundations, arguing that governance structures will play a critical role in determining which platforms are suitable for long-term public sector use. ... In this week&#x27;s edition of The Protocol Newsletter, we’re diving into the creation of EthLabs, and why it was launched during a period of transition for the ecosystem."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, crypto news"
+    },
+    {
+      "query": "what's the weather in zurich today",
+      "results": [
+        {
+          "title": "Zurich, Zurich, Switzerland Weather Forecast | AccuWeather",
+          "description": "Very warm with plenty of sun; possible danger of dehydration and heatstroke while doing strenuous activities Hi: 86° ... Thank you for your patience as we work to get everything up and running again."
+        },
+        {
+          "title": "Zurich - BBC Weather",
+          "description": "Weather warnings issued · Last updated today at 12:59 · 14:00 · , Sunny · Sunny · 27° 81°, 0%chance of precipitation, Wind speed4 mph6 km/h WSW4 mph6 km/hwest-south-westerly, More details · Sunny and light winds · Humidity · 31% Pressure · 1026 mb · Visibility · Very Good · Temperature feels like 28°82° · Precipitation is not expected · Light winds from the west-south-west ·"
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, weather"
+    },
+    {
+      "query": "explain proof of stake consensus",
+      "results": [
+        {
+          "title": "Understanding Proof-of-Stake: How PoS Transforms Cryptocurrency",
+          "description": "Proof-of-Stake (PoS) is a consensus mechanism that reduces the need for computational power by using randomly selected validators to confirm transactions and create new blocks, significantly lowering energy consumption compared to Proof-of-Work ..."
+        },
+        {
+          "title": "Proof of stake - Wikipedia",
+          "description": "Proof-of-stake (PoS) protocols are a class of consensus mechanisms for blockchains that work by selecting validators in proportion to their quantity of holdings in the associated cryptocurrency. This is done to avoid the computational cost of proof-of-work (PoW) schemes."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, concept/knowledge"
+    },
+    {
+      "query": "capital of france",
+      "results": [
+        {
+          "title": "Paris - Wikipedia",
+          "description": "Clovis the Frank, the first king of the Merovingian dynasty, made the city his capital from 508. As the Frankish domination of Gaul began, there was a gradual immigration by the Franks to Paris, and the Parisian Francien dialects were born. Fortification of the Île de la Cité failed to avert ..."
+        },
+        {
+          "title": "Paris facts: the capital of France in history",
+          "description": "Paris is the capital of France, the largest country of Europe with 550 000 km2 (65 millions inhabitants)."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, general knowledge"
+    },
+    {
+      "query": "who is the ceo of openai",
+      "results": [
+        {
+          "title": "Sam Altman - Wikipedia",
+          "description": "In 2011, Altman joined Y Combinator, ... and was the company&#x27;s president from 2014 to 2019. He is a billionaire with many investments including Reddit, Worldcoin, Helion Energy and Instacart. Altman co-founded OpenAI in 2015 and became its CEO in 2019, a role that made him a prominent figure of the AI ..."
+        },
+        {
+          "title": "Sam Altman | Biography, OpenAI, ChatGPT, & Microsoft | Britannica Money",
+          "description": "Sam Altman was president of the start-up accelerator Y Combinator from 2014 to 2019 and became CEO of OpenAI in 2019. Sam Altman and Elon Musk were cochairs of OpenAI when it was founded in 2015."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, factual/current-events-adjacent"
+    },
+    {
+      "query": "what time zone is switzerland in",
+      "results": [
+        {
+          "title": "Time Zones in Switzerland",
+          "description": "The above time zone is used during other parts of the year."
+        },
+        {
+          "title": "Time in Switzerland - Wikipedia",
+          "description": "The zone Europe/Busingen was created in the 2013a release of the tz database, because since the Unix time epoch in 1970, Büsingen has shared clocks with Zurich. Since 1981 the shifts to DST occur on the date as specified for European Summer Time. The difference of longitude between the western and easternmost points of Switzerland is ..."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, factual"
+    },
+    {
+      "query": "latest iphone release date",
+      "results": [
+        {
+          "title": "iPhone 18: Everything We Know About Apple's Upcoming Handsets - CNET",
+          "description": "Bloomberg has reported that Apple plans to release the more expensive iPhone 18 Pro, the iPhone 18 Pro Max and its new foldable in fall 2026, while the more affordable iPhone 18 and the iPhone 18E (and maybe a potential iPhone Air 2) could debut ..."
+        },
+        {
+          "title": "iPhone - Wikipedia",
+          "description": "All iPhones include a rear-facing ... camera dates back to the iPhone 4. The iPhone 7 Plus introduced multiple lenses to the rear-facing camera. The device also includes a range of sensors, such as a proximity sensor, ambient light sensor, accelerometer, gyroscopic sensor, magnetometer, facial recognition sensor or fingerprint sensor (depending on the model), and barometer. In 2022, Apple added satellite communications to the iPhone, with the release of the iPhone ..."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, product/news"
+    },
+    {
+      "query": "nba finals 2026 winner",
+      "results": [
+        {
+          "title": "2026 NBA Finals - Wikipedia",
+          "description": "Maloney, Jack (June 4, 2026). &quot;NBA Finals Game 1 winners and losers: Jalen Brunson clutch for Knicks, Victor Wembanyama &#x27;bad&#x27; for Spurs&quot;."
+        },
+        {
+          "title": "2026 NBA Playoffs | Official Site",
+          "description": "Luke Kornet’s huge block in Game 7 of the Western Conference Finals will live on in Spurs lore. San Antonio leans on its gifted big man and impressive depth to oust Shai Gilgeous-Alexander and the defending champions. Victor Wembanyama provides standout two-way production to seal San Antonio&#x27;s ..."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, sports outcome"
+    },
+    {
+      "query": "how does blockchain work",
+      "results": [
+        {
+          "title": "How does blockchain work? | Stanford Online",
+          "description": "When it comes to verifying a blockchain transaction and creating the block, the two most popular forms are called proof of work and proof of stake. These are the consensus processes that are made by nodes in a particular blockchain network."
+        },
+        {
+          "title": "What Is Blockchain? | IBM",
+          "description": "Blockchain is a shared, immutable digital ledger, enabling the recording of transactions and the tracking of assets within a business network and providing a single source of truth."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, concept/knowledge"
+    },
+    {
+      "query": "when was the eiffel tower built",
+      "results": [
+        {
+          "title": "The birth of the Eiffel Tower - Official Eiffel Tower Website",
+          "description": "The plan to build a tower 300 metres high was conceived as part of preparations for the World&#x27;s Fair of 1889. Bolting the joint of two crossbowmen.(c): Collection Tour Eiffel"
+        },
+        {
+          "title": "Eiffel Tower - Wikipedia",
+          "description": "On this top, third level, is a private apartment built for Gustave Eiffel, who decorated it with furniture made by Jean Lachaise and invited friends such as Thomas Edison. The design of the Eiffel Tower is attributed to Maurice Koechlin and Émile Nouguier, two senior engineers working for ..."
+        }
+      ],
+      "expected_verdict": "relevant",
+      "note": "real Brave data, historical fact"
+    },
+    {
+      "query": "argentina last match result world cup 2026",
+      "results": [
+        {
+          "title": "Search the web in Chrome - Computer - Google Chrome Help",
+          "description": "On your computer, open Chrome. At the top, in the address bar, enter your search. Select a result or press Enter. Tip: As you enter your search, you may get suggestions based on your web and app activity. You can delete suggestions from your search history or hide sections of suggestions based ..."
+        },
+        {
+          "title": "Search the web in Chrome - Android - Google Chrome Help",
+          "description": "To find all the matches on a page, use the markers on the scrollbar. Search for words · You can find more info about a specific word or phrase on a page with Touch to Search. Important: To use Touch to Search, Google must be set as your default search engine. On your Android device, open Chrome ."
+        }
+      ],
+      "expected_verdict": "off_topic",
+      "note": "real Brave junk data (from query 'how to search the web in chrome') mismatched against a real topic query — reproduces the actual query-resolution-mismatch failure mode with genuine data on both sides"
+    },
+    {
+      "query": "current price of bitcoin",
+      "results": [
+        {
+          "title": "Web Browser Tip: Effective Web Searching | U.S. Geological Survey",
+          "description": "Most websites have a built-in search feature, but they’re not all equally effective. If you are confident or suspect the information is on a specific site but unsure where to look to find it, you can use SITE: for a search query within a website domain and still use Google&#x27;s filtering capabilities."
+        },
+        {
+          "title": "Top Ten Smart Web Search Techniques for Students & Researchers - AOFIRS",
+          "description": "Instead of scrolling endlessly, use CTRL + F (Windows) or Command + F (Mac) to search within any page. Example: Press CTRL + F, type “data privacy,” and instantly jump to that section."
+        }
+      ],
+      "expected_verdict": "off_topic",
+      "note": "real Brave junk data (from query 'browser search tips and tricks') mismatched against a real topic query — reproduces the actual query-resolution-mismatch failure mode with genuine data on both sides"
+    },
+    {
+      "query": "nba finals 2026 winner",
+      "results": [
+        {
+          "title": "In-Depth Guide to How Google Search Works | Google Search Central | Documentation | Google for Developers",
+          "description": "In fact, the vast majority of pages listed in our results aren&#x27;t manually submitted for inclusion, but are found and added automatically when our web crawlers explore the web. This document explains the stages of how Search works in the context of your website. Having this base knowledge can help you fix crawling issues, get your pages indexed, and learn how to optimize how your site appears in Google Search."
+        },
+        {
+          "title": "Google Search Help",
+          "description": "Official Google Search Help Center where you can find tips and tutorials on using Google Search and other answers to frequently asked questions."
+        }
+      ],
+      "expected_verdict": "off_topic",
+      "note": "real Brave junk data (from query 'web search help documentation') mismatched against a real topic query — reproduces the actual query-resolution-mismatch failure mode with genuine data on both sides"
+    }
+  ]
+}

@@ -11,11 +11,25 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.coordinator.config import get_settings
+from src.coordinator.config import SearchSettings, get_settings
 from src.coordinator.models.mcp_models import SearchResult
 from src.coordinator.services.search_execution_service import SearchExecutionService
 from src.coordinator.services.search_relevance_service import SearchRelevanceService
 from src.coordinator.services.tool_calling_service import ToolCallingService
+
+
+def test_relevance_min_cosine_default_is_the_2026_07_04_tuned_value():
+    """Env-independent: assert the model_fields default directly, not a live
+    settings instance (which could be overridden by the ambient .env).
+
+    Tuned value from tests/evaluation/tune_relevance_threshold.py against
+    relevance_gate_eval_set.json (ADR-007), extended same-day to n=25 with 17
+    real Brave query/result pairs — 0.36 catches 100% of junk with only a 5%
+    false-abstention rate (the one false-abstention being the original n=8
+    pass's own synthetic adversarial sample, not real data). Was 0.28 (n=8,
+    mostly hand-written), before that 0.40 (untuned placeholder).
+    """
+    assert SearchSettings.model_fields["relevance_min_cosine"].default == 0.36
 
 
 class _StubEmbedder:

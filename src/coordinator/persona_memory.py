@@ -16,14 +16,11 @@ from .persona_loader import (
 )
 
 # Re-export prompt building functions and constants
+# (legacy section-builders + rule constants were deleted in the audit step-7
+# dead-code sweep; only the still-live helpers/builders are re-exported)
 from .prompt_builder import (
-    FIRST_PERSON_RULES,
-    MEMORY_AWARENESS_RULES,
-    BASE_ROUTING_RULES,
     _summarize,
     _join_list,
-    _fmt_slider_block,
-    _build_behavior_block,
     _build_psychological_block,
     build_system_prompt,
     build_greeting_user_prompt,
@@ -62,13 +59,8 @@ __all__ = [
     "resolve_persona_to_card",
     "get_persona_card",
     # Prompt building
-    "FIRST_PERSON_RULES",
-    "MEMORY_AWARENESS_RULES",
-    "BASE_ROUTING_RULES",
     "_summarize",
     "_join_list",
-    "_fmt_slider_block",
-    "_build_behavior_block",
     "_build_psychological_block",
     "build_system_prompt",
     "build_greeting_user_prompt",

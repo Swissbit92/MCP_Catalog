@@ -1,9 +1,11 @@
-"""Tests for the lean persona system prompt (ADR-005 Phase B, flag-gated).
+"""Tests for the lean persona system prompt (ADR-005 Phase B).
+
+The lean builder is now the only builder — PERSONA_LEAN_PROMPT was retired
+2026-07-04 (audit cleanup step 5) after graduating to default-on for every
+persona. The flag-logic / legacy-dispatch tests were removed with it.
 
 Hermetic: the full-prompt tests monkeypatch the persona loader + CV summarizer
-so nothing hits Ollama or the on-disk persona cache. The flag-logic tests
-construct PersonaPromptSettings directly so they are env-independent (the local
-.env may flip the flag on).
+so nothing hits Ollama or the on-disk persona cache.
 """
 
 from __future__ import annotations
@@ -14,55 +16,14 @@ from pathlib import Path
 import pytest
 
 from src.coordinator import prompt_builder as pb
-from src.coordinator.config import PersonaPromptSettings
 from src.coordinator.models.persona_schema import PersonaCard
 
 
 # --------------------------------------------------------------------------
-# Flag logic (env-independent — assert defaults + the use_lean_for matrix)
+# Public dispatcher — always builds the lean prompt
 # --------------------------------------------------------------------------
 
-def test_lean_flag_defaults():
-    """Committed default aligns with validated prod (ADR-006 M3): lean ON.
-
-    Asserts model_fields default (env-independent) so it can't be masked by the
-    ambient .env. lean_personas stays "" (the global flag covers all personas).
-    """
-    assert PersonaPromptSettings.model_fields["lean_enabled"].default is True
-    assert PersonaPromptSettings.model_fields["lean_personas"].default == ""
-
-
-def test_use_lean_for_global_flag():
-    s = PersonaPromptSettings(lean_enabled=True, lean_personas="")
-    assert s.use_lean_for("nephilim_eeva") is True
-    assert s.use_lean_for("anything") is True
-    assert s.use_lean_for(None) is True  # global flag wins even for empty key
-
-
-def test_use_lean_for_allowlist_only():
-    s = PersonaPromptSettings(lean_enabled=False, lean_personas="nephilim_eeva, nephilim_solace")
-    assert s.use_lean_for("nephilim_eeva") is True
-    assert s.use_lean_for("nephilim_solace") is True
-    assert s.use_lean_for("nephilim_aegis") is False
-    assert s.use_lean_for(None) is False
-
-
-def test_lean_persona_set_parsing():
-    s = PersonaPromptSettings(lean_personas="  a , b ,, c ,")
-    assert s.lean_persona_set() == frozenset({"a", "b", "c"})
-    assert PersonaPromptSettings(lean_personas="").lean_persona_set() == frozenset()
-
-
-def test_default_settings_dispatch_to_legacy(monkeypatch):
-    """With lean OFF, the public dispatcher returns the legacy prompt verbatim."""
-    monkeypatch.setattr(pb, "get_settings", lambda: _settings(lean=False))
-    pb.build_system_prompt.cache_clear()
-    out = pb.build_system_prompt("Gojo")
-    assert out == pb._build_system_prompt_legacy("Gojo")
-
-
-def test_dispatch_to_lean_when_enabled(monkeypatch):
-    monkeypatch.setattr(pb, "get_settings", lambda: _settings(lean=True))
+def test_build_system_prompt_is_lean(monkeypatch):
     _patch_persona(monkeypatch, _ADVISORY_CARD)
     pb.build_system_prompt.cache_clear()
     out = pb.build_system_prompt("nephilim_test")
@@ -70,9 +31,9 @@ def test_dispatch_to_lean_when_enabled(monkeypatch):
     assert "<voice_examples>" in out
 
 
-def test_cache_clear_present_and_clears_both():
+def test_cache_clear_present():
     assert hasattr(pb.build_system_prompt, "cache_clear")
-    # Should not raise; clears both underlying lru_caches.
+    # Should not raise; clears the lean lru_cache.
     pb.build_system_prompt.cache_clear()
 
 
@@ -161,15 +122,10 @@ def test_wallet_lean_block_keeps_hard_guards():
 # Full lean prompt (hermetic via monkeypatch)
 # --------------------------------------------------------------------------
 
-def test_lean_prompt_is_smaller_and_keeps_guards(monkeypatch):
+def test_lean_prompt_keeps_guards_and_is_voice_last(monkeypatch):
     _patch_persona(monkeypatch, _ADVISORY_CARD)
     pb._build_system_prompt_lean.cache_clear()
-    pb._build_system_prompt_legacy.cache_clear()
     lean = pb._build_system_prompt_lean("nephilim_test")
-    legacy = pb._build_system_prompt_legacy("nephilim_test")
-
-    # Structurally leaner.
-    assert len(lean.split()) < len(legacy.split())
 
     # Guards preserved.
     assert "first person" in lean.lower()
@@ -228,27 +184,6 @@ def _patch_persona(monkeypatch, card):
     )
 
 
-class _Prompt:
-    def __init__(self, lean):
-        self.lean_enabled = lean
-        self.lean_personas = ""
-
-    def lean_persona_set(self):
-        return frozenset()
-
-    def use_lean_for(self, key):
-        return self.lean_enabled
-
-
-class _Settings:
-    def __init__(self, lean):
-        self.prompt = _Prompt(lean)
-
-
-def _settings(lean):
-    return _Settings(lean)
-
-
 # --------------------------------------------------------------------------
 # Milestone 2 — authored voice_signature data for the advisory cluster
 # --------------------------------------------------------------------------
@@ -274,8 +209,8 @@ def test_advisory_persona_has_valid_voice_signature(key):
 def test_voice_signature_excluded_from_cv_fingerprint():
     """Adding/removing voice_signature must NOT change the CV-summary hash.
 
-    Otherwise every cached summary goes stale and the legacy <identity> text
-    drifts on rebuild — invalidating the frozen baseline.
+    Otherwise every cached summary goes stale and the <identity> text drifts on
+    rebuild.
     """
     from src.coordinator.cv_summarizer import _fingerprint
 

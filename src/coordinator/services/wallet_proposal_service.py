@@ -6,10 +6,12 @@ renders as interactive confirmation cards (not plain text).
 """
 from __future__ import annotations
 
-import uuid
 import logging
-from datetime import datetime, timezone, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from ..schemas import ProposalCategory, ProposalType, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ def build_trade_proposal(
 
     proposal_data = {
         "proposal_id": proposal_id,
-        "proposal_type": "swap",
+        "proposal_type": ProposalType.SWAP,
         "user_id": user_id,
         "from_token": from_token,
         "to_token": to_token,
@@ -77,8 +79,8 @@ def build_trade_proposal(
     return {
         "content": narrative,
         "metadata": {
-            "source_type": "wallet_proposal",
-            "proposal_type": "trade_proposal",
+            "source_type": SourceType.WALLET_PROPOSAL,
+            "proposal_type": ProposalCategory.TRADE_PROPOSAL,
             "proposal": proposal_data,
         },
     }
@@ -151,7 +153,7 @@ def build_strategy_proposal(
 
     proposal_data = {
         "proposal_id": proposal_id,
-        "proposal_type": "strategy",
+        "proposal_type": ProposalType.STRATEGY,
         "user_id": user_id,
         "strategy_config": strategy_config,
         "status": "pending",
@@ -173,8 +175,8 @@ def build_strategy_proposal(
     return {
         "content": narrative,
         "metadata": {
-            "source_type": "wallet_proposal",
-            "proposal_type": "strategy_proposal",
+            "source_type": SourceType.WALLET_PROPOSAL,
+            "proposal_type": ProposalCategory.STRATEGY_PROPOSAL,
             "proposal": proposal_data,
         },
     }
@@ -206,7 +208,7 @@ def build_wallet_deletion_proposal(
 
     proposal_data = {
         "proposal_id": proposal_id,
-        "proposal_type": "wallet_deletion",
+        "proposal_type": ProposalType.WALLET_DELETION,
         "user_id": user_id,
         "wallet_name": wallet_name,
         "public_address": public_address,
@@ -224,8 +226,8 @@ def build_wallet_deletion_proposal(
     return {
         "content": narrative,
         "metadata": {
-            "source_type": "wallet_proposal",
-            "proposal_type": "wallet_deletion",
+            "source_type": SourceType.WALLET_PROPOSAL,
+            "proposal_type": ProposalType.WALLET_DELETION,
             "proposal": proposal_data,
         },
     }
@@ -252,7 +254,7 @@ def build_wallet_creation_step(step: int, total_steps: int = 4, **kwargs) -> dic
                 f"**Step 1 of {total_steps}**: What would you like to name your wallet? (e.g. 'My Trading Wallet')"
             ),
             "metadata": {
-                "source_type": "wallet_flow",
+                "source_type": SourceType.WALLET_FLOW,
                 "wallet_step": 1,
                 "total_steps": total_steps,
             },
@@ -264,7 +266,7 @@ def build_wallet_creation_step(step: int, total_steps: int = 4, **kwargs) -> dic
                 "Please type your password in the next message."
             ),
             "metadata": {
-                "source_type": "wallet_flow",
+                "source_type": SourceType.WALLET_FLOW,
                 "wallet_step": 2,
                 "total_steps": total_steps,
                 "wallet_name": kwargs.get("wallet_name", "My Wallet"),
@@ -281,7 +283,7 @@ def build_wallet_creation_step(step: int, total_steps: int = 4, **kwargs) -> dic
                 "**When you've saved it, type 'I saved it' or 'confirm' to continue.**"
             ),
             "metadata": {
-                "source_type": "wallet_flow",
+                "source_type": SourceType.WALLET_FLOW,
                 "wallet_step": 3,
                 "total_steps": total_steps,
                 "public_address": kwargs.get("public_address"),
@@ -299,7 +301,7 @@ def build_wallet_creation_step(step: int, total_steps: int = 4, **kwargs) -> dic
                 "Say 'what's my balance' anytime to check your holdings."
             ),
             "metadata": {
-                "source_type": "wallet_flow",
+                "source_type": SourceType.WALLET_FLOW,
                 "wallet_step": 4,
                 "total_steps": total_steps,
                 "public_address": kwargs.get("public_address"),

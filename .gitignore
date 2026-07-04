@@ -24,6 +24,9 @@ pyvenv.cfg
 *.db
 chat.db
 chats.db
+# Runtime data dir (live SQLite + timestamped backups like chats.db.backup_*,
+# which don't match *.db). Prevents committing live conversation data.
+/data/
 
 # Node.js
 node_modules/
@@ -43,6 +46,7 @@ react-ui/build/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.backup*
 
 # IDE
 .vscode/
@@ -88,3 +92,13 @@ personas/_summaries/Gwen_alt.json
 .coverage.*
 htmlcov/
 .pytest_cache/
+.ruff_cache/
+
+# live runtime data (user chats — never commit)
+data/
+
+# in-repo git worktrees (managed by git worktree, never commit)
+.claude/worktrees/
+
+# repo-audit raw per-lens dumps (only the synthesized report is versioned)
+docs/audits/.raw/

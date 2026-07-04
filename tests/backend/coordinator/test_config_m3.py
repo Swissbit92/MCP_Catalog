@@ -9,24 +9,19 @@ from __future__ import annotations
 import pytest
 
 from src.coordinator.config import (
-    PersonaPromptSettings,
-    RoutingSettings,
     LoreSettings,
     AuthSettings,
 )
 
 
 class TestAlignedDefaults:
-    """Committed defaults must match the validated prod config (all ON)."""
+    """Committed defaults must match the validated prod config.
 
-    def test_lean_enabled_default_true(self):
-        assert PersonaPromptSettings.model_fields["lean_enabled"].default is True
-
-    def test_semantic_primary_default_true(self):
-        assert RoutingSettings.model_fields["semantic_primary"].default is True
-
-    def test_ondemand_lore_default_true(self):
-        assert LoreSettings.model_fields["ondemand_enabled"].default is True
+    The lean-prompt / semantic-routing / on-demand-lore flags were retired
+    2026-07-04 (audit cleanup step 5) — their behavior is now unconditional, so
+    there is no longer a default to assert. LORE_RANK_CONTEXT_ENABLED remains a
+    live flag.
+    """
 
     def test_rank_context_default_true(self):
         assert LoreSettings.model_fields["rank_context_enabled"].default is True

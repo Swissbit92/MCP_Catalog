@@ -7,16 +7,16 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from ..repositories.base_repository import utc_now_iso
-
-from ..schemas import (
-    CreateSessionBody,
-    UpdateSessionBody,
-    AppendMessageBody,
-    ImportBody,
-    GreetBody,
-)
 from ..persona_memory import get_persona_card
+from ..repositories.base_repository import utc_now_iso
+from ..schemas import (
+    AppendMessageBody,
+    CreateSessionBody,
+    GreetBody,
+    ImportBody,
+    SourceType,
+    UpdateSessionBody,
+)
 
 router = APIRouter(tags=["sessions"])
 logger = logging.getLogger(__name__)
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 def _get_repos():
     """Get repository instances from startup module."""
     from ..startup import (
-        get_session_repo,
-        get_message_repo,
         get_emotional_state_repo,
+        get_message_repo,
+        get_session_repo,
     )
     return get_session_repo(), get_message_repo(), get_emotional_state_repo()
 
@@ -221,7 +221,7 @@ def import_session(body: ImportBody):
             content=msg.get("content") if isinstance(msg, dict) else getattr(msg, 'content', ''),
             timestamp=msg.get("timestamp") if isinstance(msg, dict) else getattr(msg, 'timestamp', now),
             latency_ms=msg.get("latency_ms") if isinstance(msg, dict) else getattr(msg, 'latency_ms', None),
-            source_type=msg.get("source_type") if isinstance(msg, dict) else getattr(msg, 'source_type', 'llm')
+            source_type=msg.get("source_type") if isinstance(msg, dict) else getattr(msg, 'source_type', SourceType.LLM)
         )
 
     return {"ok": True, "session_id": created_session_id}

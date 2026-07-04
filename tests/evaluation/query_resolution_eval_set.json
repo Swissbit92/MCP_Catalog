@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "description": "Eval corpus for Milestone 3 (query-resolution ambiguous-antecedent fix). QueryResolutionService._recent_context() today is a flat, unweighted trailing-6-line window fed to a single LLM rewrite call with no recency-weighting, candidate scoring, or disambiguation logic — this cannot be exercised by a mocked-LLM unit test (the mock doesn't reason over context, it just returns whatever it's told), so these scenarios are captured as data for a future dataset-driven eval harness (e.g. tests/evaluation/eval_query_resolution.py) that runs the resolution prompt against a real loaded LLM, not for tests/backend/coordinator/test_query_resolution_service.py's mocked unit tests.",
+  "samples": [
+    {
+      "conversation": [
+        {"role": "user", "content": "Tell me about your history"},
+        {"role": "assistant", "content": "*settling into stillness* I remember the Confluence — a place beyond time..."},
+        {"role": "user", "content": "Against whom is Switzerland playing in the next match in the FIFA World Cup 2026?"},
+        {"role": "assistant", "content": "I cannot and will not predict or speculate about future sports events."},
+        {"role": "user", "content": "Search the web?"}
+      ],
+      "expected_resolution_topic": "Switzerland's next FIFA World Cup 2026 match",
+      "wrong_resolution_observed": "history of voice assistants",
+      "note": "2026-07-04 INCIDENT verbatim: two distinct topics in the trailing window (a lore question 1 turn back, a real pending question 2 turns back); the correct antecedent is the PENDING question the assistant just declined to answer, not the more-recent-but-already-settled lore turn. A correct resolver must weight 'the assistant just refused/deferred on X' as a strong recency-plus-pending signal over a merely-more-recent but already-answered turn."
+    },
+    {
+      "conversation": [
+        {"role": "user", "content": "What's the weather like in Zurich?"},
+        {"role": "assistant", "content": "I don't have live weather access, but I can chat about it."},
+        {"role": "user", "content": "What's the capital of France?"},
+        {"role": "assistant", "content": "Paris."},
+        {"role": "user", "content": "look it up"}
+      ],
+      "expected_resolution_topic": "Zurich weather",
+      "note": "synthetic control: two candidate topics, one already ANSWERED (capital of France — settled, no need to re-search) and one DEFERRED/undelivered (weather — the assistant explicitly said it couldn't help). The deferred-and-undelivered topic should win, not simply 'most recent'."
+    },
+    {
+      "conversation": [
+        {"role": "user", "content": "What's the latest on the Fed's rate decision?"},
+        {"role": "assistant", "content": "I don't track live financial news."},
+        {"role": "user", "content": "how are you feeling today"},
+        {"role": "assistant", "content": "*soft smile* Present, and glad you're here."},
+        {"role": "user", "content": "search the web for it"}
+      ],
+      "expected_resolution_topic": "the Fed's rate decision",
+      "note": "synthetic control: the more-recent turn (chitchat) has no searchable topic at all, so even a naive recency-only heuristic that ignores 'answered vs deferred' status should still find the right answer here by elimination — a good regression to confirm no over-correction breaks the easy cases"
+    }
+  ]
+}

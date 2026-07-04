@@ -17,11 +17,13 @@ from __future__ import annotations
 import time
 import uuid
 import logging
+from dataclasses import dataclass, field
+from typing import Any
 from fastapi import HTTPException
 
 from ..repositories.base_repository import utc_now_iso
 
-from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS
+from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS, MessageRole, SourceType
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
@@ -211,10 +213,8 @@ def _build_ondemand_lore_context(
     messages (priority 9). Tier-2 (embedding): bge-m3 semantic search over the
     lore corpus (priority 6, canon-only). Results are deduped, the static
     3-entity core is excluded, and the block is trimmed to a token budget
-    (lowest priority dropped first). Flag-OFF → empty string (byte-identical).
+    (lowest priority dropped first).
     """
-    if not getattr(settings.lore, "ondemand_enabled", False):
-        return ""
     if episodic_memory_rag is None or getattr(episodic_memory_rag, "lore_store", None) is None:
         return ""
 
@@ -237,7 +237,7 @@ def _build_ondemand_lore_context(
                 if meta and meta.get("body"):
                     candidates[entity_id] = {"body": meta["body"], "priority": 9, "score": 1.0}
     except Exception as e:
-        logger.debug(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
+        logger.warning(f"[LoreInjection] keyword tier failed (non-fatal): {e}")
 
     # --- Tier 2: embedding (semantic, canon-only) ---
     try:
@@ -251,7 +251,7 @@ def _build_ondemand_lore_context(
                 continue
             candidates[eid] = {"body": meta.get("body", ""), "priority": 6, "score": float(score)}
     except Exception as e:
-        logger.debug(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
+        logger.warning(f"[LoreInjection] embedding tier failed (non-fatal): {e}")
 
     if not candidates:
         return ""
@@ -321,14 +321,123 @@ def _assemble_capped_context(blocks_in_priority, max_tokens: int):
     return "\n\n".join(kept) if kept else None
 
 
-def _build_facts_narrative(deps: dict, user_id: str, query: str, mem_settings) -> str:
-    """ADR-006 M4: read the ontology-lite fact store and render a prose narrative.
+# ─────────────────────────────────────────────────────────────
+# Chat-turn state + typed dependency bag (audit step 7 — god-function decomposition)
+# ─────────────────────────────────────────────────────────────
+
+_UNSET = object()  # sentinel: "seeker profile not yet fetched this turn"
+
+
+@dataclass(frozen=True, slots=True)
+class ChatDeps:
+    """Typed, read-only bag of injected collaborators for one chat turn.
+
+    Assembled once from the route's dependency dict
+    (``routes/chat.py:_get_dependencies``) so the phase pipeline below passes a
+    single typed object instead of an untyped ``deps`` dict. Frozen because these
+    are shared handles (repositories / services), never per-turn mutable state —
+    that lives in :class:`ChatTurnState`.
+
+    ``conversation_summarizer`` is intentionally NOT a field: it is consumed only
+    by ``_check_and_summarize``, which still takes the raw dict, so its access
+    stays byte-identical to the pre-refactor code.
+    """
+
+    session_repo: Any
+    message_repo: Any
+    summary_repo: Any
+    emotional_state_repo: Any
+    memory_manager: Any
+    user_profile_repo: Any
+    episodic_memory_rag: Any
+    fact_extractor: Any
+    seeker_progression_repo: Any = None
+    # ADR-006 Phase 1 (M3/M4): async fact worker + shared fact store (both None
+    # unless MEMORY_FACTS_ENABLED started them in startup).
+    fact_extraction_worker: Any = None
+    memory_fact_repo: Any = None
+
+    @classmethod
+    def from_dict(cls, deps: dict) -> ChatDeps:
+        """Build from the route dependency dict.
+
+        The eight required keys are accessed with ``[]`` (matching the original
+        top-of-function extraction, so a missing key still raises ``KeyError`` at
+        the same point); ``seeker_progression_repo`` is optional (``.get``).
+        """
+        return cls(
+            session_repo=deps["session_repo"],
+            message_repo=deps["message_repo"],
+            summary_repo=deps["summary_repo"],
+            emotional_state_repo=deps["emotional_state_repo"],
+            memory_manager=deps["memory_manager"],
+            user_profile_repo=deps["user_profile_repo"],
+            episodic_memory_rag=deps["episodic_memory_rag"],
+            fact_extractor=deps["fact_extractor"],
+            seeker_progression_repo=deps.get("seeker_progression_repo"),
+            fact_extraction_worker=deps.get("fact_extraction_worker"),
+            memory_fact_repo=deps.get("memory_fact_repo"),
+        )
+
+
+@dataclass(slots=True)
+class ChatTurnState:
+    """Mutable per-turn state threaded through the chat phase functions.
+
+    Replaces the ad-hoc locals of the old 426-line ``handle_session_chat``. Each
+    phase populates the fields it owns; later phases read them. Optional fields
+    are ``None``/empty until the phase that sets them runs.
+    """
+
+    session_id: str
+    message: str
+    persona_key: str
+    # identity / cross-session memory
+    user_id: str | None = None
+    user_profile: Any = None
+    user_profile_context: str = ""
+    effective_user_id: str = ""
+    # emotional state
+    emotional_state: Any = None
+    emotional_context: str = ""
+    # prompt assembly
+    system_prompt: str = ""
+    system_tokens: int = 0
+    extra_system_context: str | None = None
+    summary_context: str = ""
+    # conversation history
+    db_messages: list = field(default_factory=list)
+    summaries: list = field(default_factory=list)
+    history_turns: list = field(default_factory=list)
+    # generation result + post-processing
+    response: dict = field(default_factory=dict)
+    answer_for_emotional_state: Any = None
+    # deduped seeker-progression profile (fetch-once-per-turn cache)
+    _seeker_profile: Any = _UNSET
+
+
+def _fetch_seeker_profile_cached(state: ChatTurnState, repo) -> Any:
+    """Fetch the seeker-progression profile at most once per turn.
+
+    The rank-context and capability-context blocks both need the same profile.
+    Caching only on success preserves the original behaviour: when both blocks
+    run and the fetch succeeds, the DB is hit once; if a fetch raises (caught by
+    the caller's own ``try``), the cache stays unset and the next block re-fetches
+    exactly as the pre-refactor code did.
+    """
+    if state._seeker_profile is _UNSET:
+        state._seeker_profile = repo.get_seeker_profile(state.effective_user_id)
+    return state._seeker_profile
+
+
+def _build_facts_narrative(deps: ChatDeps, user_id: str, query: str, mem_settings) -> str:
+    """ADR-006 M4: read the ontology-lite fact store → prose narrative for framing.
 
     Inject-all below the threshold (skip vector search); above it, cosine-rank via
     the bge-m3 embedder (reused from the episodic RAG) and keep top-k. Returns ""
     when there is no fact store, no user, or no active facts. Never raises.
     """
-    repo = deps.get("memory_fact_repo")
+    repo = deps.memory_fact_repo
     if repo is None or not user_id:
         return ""
     try:
@@ -341,7 +450,7 @@ def _build_facts_narrative(deps: dict, user_id: str, query: str, mem_settings) -
             subject_names[sid] = (ent or {}).get("name", "self")
         embed_fn = None
         if len(facts) > mem_settings.facts_inject_all_threshold:
-            rag = deps.get("episodic_memory_rag")
+            rag = deps.episodic_memory_rag
             embed_fn = getattr(getattr(rag, "embeddings", None), "embed_query", None)
         selected = select_facts_for_injection(
             facts, query,
@@ -356,99 +465,59 @@ def _build_facts_narrative(deps: dict, user_id: str, query: str, mem_settings) -
         return ""
 
 
-def handle_session_chat(
-    session_id: str,
-    message: str,
-    deps: dict,
-    chat_function,
-    add_message_function
-):
+def _load_session_identity(state: ChatTurnState, deps: ChatDeps) -> None:
+    """Phase 1 — load cross-session user profile (Phase 3) + emotional state (Phase 2.2)."""
+    user_profile_repo = deps.user_profile_repo
+
+    state.user_id = user_profile_repo.get_session_user(state.session_id)
+    if state.user_id:
+        state.user_profile = user_profile_repo.get_profile(state.user_id)
+        if state.user_profile:
+            state.user_profile_context = state.user_profile.get_context_summary(max_facts=10, max_topics=5)
+            if state.user_profile_context:
+                logger.info(f"[Phase3] Loaded user profile for {state.user_id} (cross-session memory)")
+
+    # effective_user_id is a pure expression consumed by the lore/rank/capability
+    # blocks below; computing it here (rather than mid-prompt) has no side effect.
+    state.effective_user_id = state.user_id or f"session_{state.session_id[:16]}"
+
+    state.emotional_state = deps.emotional_state_repo.get_or_create(state.session_id)
+    state.emotional_context = state.emotional_state.to_prompt_context()
+    logger.debug(
+        f"[EmotionalState] Session {state.session_id[:8]}: "
+        f"trust={state.emotional_state.trust_level:.2f}, mood={state.emotional_state.current_mood}"
+    )
+
+
+def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
+    """Phase 2 — load history/summaries and assemble the system prompt + token budget.
+
+    NOTE: the assembled ``system_prompt`` is used only for token budgeting and to
+    derive ``extra_system_context``; ``ChatBody`` carries ``persona`` +
+    ``extra_system_context``, not this string (documented M0 behaviour).
     """
-    Handle chat with persona using database-backed conversation history.
+    from ..llm_client import estimate_tokens  # noqa: PLC0415
 
-    This function orchestrates the complete chat flow including:
-    1. Loading session, persona, and user profile
-    2. Loading emotional state
-    3. Intelligent message selection with memory manager
-    4. RAG-based semantic search for relevant context
-    5. Building chat context and calling main chat endpoint
-    6. Saving messages (handles multi-message responses)
-    7. Updating emotional state
-    8. Updating RAG index
-    9. Extracting facts and updating user profiles
-    10. Triggering summarization when needed
+    state.db_messages = deps.message_repo.get_messages_by_session(state.session_id)
+    state.summaries = deps.summary_repo.get_summaries_by_session(state.session_id)
 
-    Args:
-        session_id: Session identifier
-        message: User's message content
-        deps: Dictionary of injected dependencies (repositories, services)
-        chat_function: Main chat endpoint function to call
-        add_message_function: Function to add messages to the session
+    card = get_persona_card(state.persona_key)  # card drives per-persona fact framing (M1)
+    system_prompt = build_system_prompt(state.persona_key)
 
-    Returns:
-        dict: Chat response with answer, latency, and emotional state
+    # PHASE 3: inject user profile context (cross-session memory)
+    if state.user_profile_context:
+        system_prompt = f"{system_prompt}\n\n{state.user_profile_context}"
+        logger.debug(f"[Phase3] Injected user profile context ({len(state.user_profile_context)} chars)")
 
-    Raises:
-        HTTPException: If session not found (404)
-    """
-    # Lazy imports to break circular dependency at module load time
-    from ..llm_client import estimate_tokens, create_llm_client  # noqa: PLC0415
+    # inject emotional context
+    if state.emotional_context:
+        system_prompt = f"{system_prompt}\n\n{state.emotional_context}"
 
-    # Extract dependencies
-    session_repo = deps["session_repo"]
-    message_repo = deps["message_repo"]
-    summary_repo = deps["summary_repo"]
-    emotional_state_repo = deps["emotional_state_repo"]
-    memory_manager = deps["memory_manager"]
-    user_profile_repo = deps["user_profile_repo"]
-    episodic_memory_rag = deps["episodic_memory_rag"]
-    fact_extractor = deps["fact_extractor"]
-    seeker_progression_repo = deps.get("seeker_progression_repo")
-
-    # Get session info
-    persona_key = session_repo.get_persona_key(session_id)
-    if not persona_key:
-        raise HTTPException(status_code=404, detail="Session not found.")
-
-    # PHASE 3: Get or create user profile for cross-session memory
-    user_id = user_profile_repo.get_session_user(session_id)
-    user_profile = None
-    user_profile_context = ""
-
-    if user_id:
-        user_profile = user_profile_repo.get_profile(user_id)
-        if user_profile:
-            user_profile_context = user_profile.get_context_summary(max_facts=10, max_topics=5)
-            if user_profile_context:
-                logger.info(f"[Phase3] Loaded user profile for {user_id} (cross-session memory)")
-
-    # PHASE 2.2: Get emotional state
-    emotional_state = emotional_state_repo.get_or_create(session_id)
-    emotional_context = emotional_state.to_prompt_context()
-    logger.debug(f"[EmotionalState] Session {session_id[:8]}: trust={emotional_state.trust_level:.2f}, mood={emotional_state.current_mood}")
-
-    # PHASE 2: Intelligent memory selection
-    db_messages = message_repo.get_messages_by_session(session_id)
-    summaries = summary_repo.get_summaries_by_session(session_id)
-
-    card = get_persona_card(persona_key)
-    system_prompt = build_system_prompt(persona_key)
-
-    # PHASE 3: Inject user profile context (cross-session memory)
-    if user_profile_context:
-        system_prompt = f"{system_prompt}\n\n{user_profile_context}"
-        logger.debug(f"[Phase3] Injected user profile context ({len(user_profile_context)} chars)")
-
-    # Inject emotional context
-    if emotional_context:
-        system_prompt = f"{system_prompt}\n\n{emotional_context}"
-
-    # LORE DEEP-DIVE: Inject unlocked lore fragments into system prompt
-    effective_user_id = user_id or f"session_{session_id[:16]}"
+    # LORE DEEP-DIVE: inject unlocked lore fragments
     unlocked_lore_context = _build_unlocked_lore_context(
-        user_id=effective_user_id,
-        persona_key=persona_key,
-        seeker_progression_repo=seeker_progression_repo,
+        user_id=state.effective_user_id,
+        persona_key=state.persona_key,
+        seeker_progression_repo=deps.seeker_progression_repo,
     )
     if unlocked_lore_context:
         system_prompt = f"{system_prompt}\n\n{unlocked_lore_context}"
@@ -456,10 +525,10 @@ def handle_session_chat(
 
     # PHASE 2 (HERMES): on-demand hybrid lore retrieval (flag-gated; empty when off)
     ondemand_lore_context = _build_ondemand_lore_context(
-        query=message,
-        recent_messages=db_messages,
-        persona_key=persona_key,
-        episodic_memory_rag=episodic_memory_rag,
+        query=state.message,
+        recent_messages=state.db_messages,
+        persona_key=state.persona_key,
+        episodic_memory_rag=deps.episodic_memory_rag,
         settings=get_settings(),
     )
     if ondemand_lore_context:
@@ -467,126 +536,103 @@ def handle_session_chat(
         logger.debug(f"[LoreInjection] Injected on-demand lore ({len(ondemand_lore_context)} chars)")
 
     # PHASE 2 (HERMES): seeker-rank narrative context (flag-gated; NEPHILIM personas)
-    rank_ctx = ""
-    if (get_settings().lore.rank_context_enabled and persona_key.startswith("nephilim_")
-            and seeker_progression_repo):
+    if (get_settings().lore.rank_context_enabled and state.persona_key.startswith("nephilim_")
+            and deps.seeker_progression_repo):
         try:
-            _profile = seeker_progression_repo.get_seeker_profile(effective_user_id)
+            _profile = _fetch_seeker_profile_cached(state, deps.seeker_progression_repo)
             rank_ctx = _build_seeker_rank_context((_profile or {}).get("rank_name", "Initiate"))
             if rank_ctx:
                 system_prompt = f"{system_prompt}\n\n{rank_ctx}"
         except Exception as e:
-            logger.debug(f"[RankContext] skipped (non-fatal): {e}")
+            logger.warning(f"[RankContext] skipped (non-fatal): {e}")
 
-    # PHASE 2 (HERMES): internal capability context (flag-gated; NEPHILIM personas)
-    cap_ctx = ""
-    if get_settings().lore.ondemand_enabled and persona_key.startswith("nephilim_") and seeker_progression_repo:
+    # PHASE 2 (HERMES): internal capability context (NEPHILIM personas)
+    if state.persona_key.startswith("nephilim_") and deps.seeker_progression_repo:
         try:
-            from ..lore_retrieval import build_capability_context
-            _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
-            _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
+            from ..lore_retrieval import build_capability_context  # noqa: PLC0415
+            _prof = _fetch_seeker_profile_cached(state, deps.seeker_progression_repo) or {}
+            _aff = deps.seeker_progression_repo.get_or_create_affinity(state.effective_user_id, state.persona_key)
             cap_ctx = build_capability_context(
-                persona_key, _prof.get("rank_name", "Initiate"),
-                _aff.get("affinity_level", 0), get_settings(),
+                state.persona_key, _prof.get("rank_name", "Initiate"),
+                _aff.get("affinity_level", 0),
             )
             if cap_ctx:
                 system_prompt = f"{system_prompt}\n\n{cap_ctx}"
         except Exception as e:
-            logger.debug(f"[Capability] context skipped (non-fatal): {e}")
+            logger.warning(f"[Capability] context skipped (non-fatal): {e}")
 
-    system_tokens = estimate_tokens(system_prompt)
+    state.system_prompt = system_prompt
+    state.system_tokens = estimate_tokens(system_prompt)
 
-    # ADR-006 M0/M0.1: assemble the session-context blocks (highest priority first)
-    # so they can be carried to chat() and actually reach the LLM. Historically all
-    # six were appended to `system_prompt` above but only used for token budgeting
-    # and then dropped (ChatBody carried no system prompt). Token-capped to protect
-    # the context window; gated behind MEMORY_CONTEXT_INJECT (default OFF).
-    #
-    # M0.1 SELECTIVE INJECTION: only cross-session user-profile facts + emotional
-    # state are injected. The NEPHILIM lore/rank/capability blocks are deliberately
-    # EXCLUDED here: Gate 0 (2026-06-28) showed injecting that shared vocabulary into
-    # every NEPHILIM persona homogenizes voice (distinctiveness 0.768→0.643; the
-    # non-NEPHILIM gojo control, which gets none of it, was unaffected). Those blocks
-    # need separate per-persona framing before they can be injected without
-    # regression (future work). user-profile + emotional are persona-neutral
-    # relationship state, not shared lore vocabulary.
-    # ADR-006 Phase 1 (M1): inject the PROSE narrative variants of the profile +
-    # emotional blocks — not the `**Header**\n- field: value` skeletons, whose
-    # uniform shape Gate 0.1 isolated as the homogenizing signal. Cap by priority,
-    # then wrap once in a per-persona non-echoable frame (context_framing) so the
-    # memory reads as background knowledge, not text to recite. Still gated behind
-    # MEMORY_CONTEXT_INJECT (default OFF) pending the full 7-persona attribution gate.
-    # Two independent flags feed the ONE framed injection (single coordinated flip
-    # at the M5 gate): MEMORY_CONTEXT_INJECT carries the profile+emotional narrative
-    # (M1); MEMORY_FACTS_ENABLED carries the ontology-lite fact-store narrative (M4).
-    # When facts are enabled they supersede the legacy user_profile blob narrative
-    # (the fact store is the richer, deduped source). All blocks are capped by
-    # priority and wrapped once in the per-persona non-echoable frame.
+    # ADR-006 M1/M4: per-persona-FRAMED session-context injection. Two independent
+    # flags feed ONE framed <remembered> block (M5 gate PASSED 2026-07-05, 0.786→
+    # 0.839): MEMORY_CONTEXT_INJECT carries the profile+emotional PROSE narrative
+    # (M1 — not the old `**Header**\n- field:value` skeleton that Gate 0.1 tied to
+    # homogenization); MEMORY_FACTS_ENABLED carries the ontology-lite fact-store
+    # narrative (M4, supersedes the legacy profile blob). Capped by priority, wrapped
+    # once in the non-echoable per-persona frame. Both default OFF pending live soak.
     _mem_settings = get_settings().memory
-    extra_system_context = None
     memory_blocks = []
-    if _mem_settings.facts_enabled and user_id:
-        memory_blocks.append(_build_facts_narrative(deps, user_id, message, _mem_settings))
-    elif _mem_settings.context_inject_enabled and user_profile:
-        memory_blocks.append(user_profile.get_narrative_context(max_facts=10, max_topics=5))
+    if _mem_settings.facts_enabled and state.user_id:
+        memory_blocks.append(_build_facts_narrative(deps, state.user_id, state.message, _mem_settings))
+    elif _mem_settings.context_inject_enabled and state.user_profile:
+        memory_blocks.append(state.user_profile.get_narrative_context(max_facts=10, max_topics=5))
     if _mem_settings.context_inject_enabled:
-        memory_blocks.append(emotional_state.to_narrative_context())
+        memory_blocks.append(state.emotional_state.to_narrative_context())
     if any(memory_blocks):
         capped = _assemble_capped_context(memory_blocks, _mem_settings.context_max_tokens)
-        extra_system_context = frame_injected_context(persona_key, card, capped)
-        if extra_system_context:
+        state.extra_system_context = frame_injected_context(state.persona_key, card, capped)
+        if state.extra_system_context:
             logger.info(
-                f"[SessionContext] injecting {estimate_tokens(extra_system_context)} "
+                f"[SessionContext] injecting {estimate_tokens(state.extra_system_context)} "
                 f"tokens of framed session context (M1 profile/emotional + M4 facts)"
             )
 
     # Build summary context
-    summary_context = ""
-    if summaries:
-        logger.info(f"[Memory] Found {len(summaries)} conversation summaries for session {session_id}")
+    if state.summaries:
+        logger.info(f"[Memory] Found {len(state.summaries)} conversation summaries for session {state.session_id}")
 
         summary_parts = []
-        for summary in summaries:
+        for summary in state.summaries:
             summary_parts.append(f"[Summary of messages {summary['message_range']}]")
             summary_parts.append(summary['summary_text'])
             if summary.get('topics_discussed'):
                 summary_parts.append(f"Topics: {summary['topics_discussed']}")
 
-        summary_context = "\n\n".join(summary_parts)
-        summary_tokens = estimate_tokens(summary_context)
+        state.summary_context = "\n\n".join(summary_parts)
+        summary_tokens = estimate_tokens(state.summary_context)
 
         logger.info(
-            f"[Memory] Summaries cover {len(summaries) * 30} messages "
+            f"[Memory] Summaries cover {len(state.summaries) * 30} messages "
             f"compressed to {summary_tokens} tokens"
         )
-        system_tokens += summary_tokens
+        state.system_tokens += summary_tokens
 
-    # Use MemoryManager to select messages
-    selected_messages = memory_manager.select_messages(
-        messages=db_messages,
+
+def _select_turn_history(state: ChatTurnState, deps: ChatDeps) -> None:
+    """Phase 3 — token-budget message selection + RAG merge → capped history turns."""
+    selected_messages = deps.memory_manager.select_messages(
+        messages=state.db_messages,
         token_budget=get_settings().ollama.context_window,
-        system_prompt_tokens=system_tokens
+        system_prompt_tokens=state.system_tokens,
     )
 
-    # PHASE 3: Use RAG for semantic memory search
+    # PHASE 3: RAG semantic memory search
     rag_relevant_messages = []
-    if episodic_memory_rag and db_messages:
+    if deps.episodic_memory_rag and state.db_messages:
         try:
-            # Index session if not already indexed
-            if session_id not in episodic_memory_rag.vectorstores:
-                episodic_memory_rag.index_session(session_id, db_messages)
+            if state.session_id not in deps.episodic_memory_rag.vectorstores:
+                deps.episodic_memory_rag.index_session(state.session_id, state.db_messages)
 
-            # Get semantically relevant messages for current query
             rag_start = time.time()
-            rag_relevant = episodic_memory_rag.get_relevant_context(
-                session_id=session_id,
-                query=message,
-                max_messages=5  # Top 5 most relevant
+            rag_relevant = deps.episodic_memory_rag.get_relevant_context(
+                session_id=state.session_id,
+                query=state.message,
+                max_messages=5,
             )
             rag_latency = (time.time() - rag_start) * 1000
 
             if rag_relevant:
-                # Merge RAG results with selected messages (avoid duplicates)
                 selected_indices = {msg.get("index", -1) for msg in selected_messages}
                 for rag_msg in rag_relevant:
                     if rag_msg.get("index", -2) not in selected_indices:
@@ -599,194 +645,184 @@ def handle_session_chat(
         except Exception as e:
             logger.warning(f"[Phase3 RAG] Semantic search failed: {e}")
 
-    # Combine selected messages with RAG-enhanced messages
     all_context_messages = selected_messages.copy()
     if rag_relevant_messages:
         all_context_messages.extend(rag_relevant_messages)
-        # Sort by index to maintain chronological order
         all_context_messages.sort(key=lambda x: x.get("index", 0))
 
-    # Convert to ChatTurn format
     raw_turns = [
         ChatTurn(role=msg["role"], content=msg["content"])
         for msg in all_context_messages
     ]
 
-    # Assemble the final history, capping to MAX_HISTORY_TURNS (summary + most-recent
-    # raw turns). select_messages bounds by TOKEN budget, which on a large context
-    # window can exceed the ChatBody count guard — without this cap, long sessions
-    # 500 at the ChatBody construction below.
     summary_turn = None
-    if summary_context:
+    if state.summary_context:
         summary_turn = ChatTurn(
-            role="assistant",
-            content=f"[Context from earlier in our conversation]\n\n{summary_context}"
+            role=MessageRole.ASSISTANT,
+            content=f"[Context from earlier in our conversation]\n\n{state.summary_context}",
         )
-    history_turns = _assemble_capped_history(raw_turns, summary_turn)
+    state.history_turns = _assemble_capped_history(raw_turns, summary_turn)
 
     logger.info(
-        f"[Memory] Selected {len(history_turns)}/{len(db_messages)} messages "
-        f"(+{len(summaries)} summaries) for session {session_id} "
-        f"(system: {system_tokens} tokens)"
+        f"[Memory] Selected {len(state.history_turns)}/{len(state.db_messages)} messages "
+        f"(+{len(state.summaries)} summaries) for session {state.session_id} "
+        f"(system: {state.system_tokens} tokens)"
     )
 
-    # Perform chat
+
+def _generate_turn_response(state: ChatTurnState, chat_function) -> None:
+    """Phase 4 — build ChatBody and call the main chat endpoint."""
     chat_body = ChatBody(
-        persona=persona_key,
-        history=history_turns,
-        message=message,
-        session_id=session_id,
-        extra_system_context=extra_system_context,
+        persona=state.persona_key,
+        history=state.history_turns,
+        message=state.message,
+        session_id=state.session_id,
+        extra_system_context=state.extra_system_context,
     )
-    response = chat_function(chat_body)
+    state.response = chat_function(chat_body)
 
-    # Save messages
+
+def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
+    """Phase 5 — persist the user turn and assistant turn(s) (multi-message aware)."""
+    response = state.response
     now = utc_now_iso()
 
-    user_msg_body = AppendMessageBody(role="user", content=message, ts=now, source_type="llm")
-    add_message_function(session_id, user_msg_body)
+    user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
+    add_message_function(state.session_id, user_msg_body)
 
-    # Extract source_type from response metadata
-    source_type = "llm"
+    source_type = SourceType.LLM
     if "metadata" in response and response["metadata"]:
-        source_type = response["metadata"].get("source_type", "llm")
+        source_type = response["metadata"].get("source_type", SourceType.LLM)
 
-    # Handle multi-message responses (Phase 2)
-    # Store each message as a separate database entry with multi_message_id linking
     answer_for_db = response["answer"]
     if isinstance(answer_for_db, list) and len(answer_for_db) > 1:
-        # Multi-message response - store each message separately
         multi_msg_id = str(uuid.uuid4())
         logger.debug(f"[Phase2] Storing {len(answer_for_db)} multi-messages separately with ID {multi_msg_id}")
 
         for idx, msg_content in enumerate(answer_for_db):
             assistant_msg_body = AppendMessageBody(
-                role="assistant",
+                role=MessageRole.ASSISTANT,
                 content=msg_content,
                 ts=now,
                 source_type=source_type,
-                latency_ms=response.get("latency") if idx == 0 else None,  # Only first message gets latency
+                latency_ms=response.get("latency") if idx == 0 else None,
                 multi_message_id=multi_msg_id,
-                multi_message_index=idx
+                multi_message_index=idx,
             )
-            add_message_function(session_id, assistant_msg_body)
+            add_message_function(state.session_id, assistant_msg_body)
     else:
-        # Single message (or single-item list)
         content = answer_for_db[0] if isinstance(answer_for_db, list) else answer_for_db
         assistant_msg_body = AppendMessageBody(
-            role="assistant",
+            role=MessageRole.ASSISTANT,
             content=content,
             ts=now,
             source_type=source_type,
-            latency_ms=response.get("latency")
+            latency_ms=response.get("latency"),
         )
-        add_message_function(session_id, assistant_msg_body)
+        add_message_function(state.session_id, assistant_msg_body)
 
-    # For emotional state analysis, use all messages joined
-    answer_for_emotional_state = "\\n\\n".join(answer_for_db) if isinstance(answer_for_db, list) else answer_for_db
+    # For emotional state analysis, use all messages joined (literal separator preserved).
+    state.answer_for_emotional_state = (
+        "\\n\\n".join(answer_for_db) if isinstance(answer_for_db, list) else answer_for_db
+    )
 
-    # Auto-summarization check
-    _check_and_summarize(session_id, persona_key, deps)
+
+def _apply_post_turn_updates(state: ChatTurnState, deps: ChatDeps) -> None:
+    """Phase 6 — emotional-state update, RAG index refresh, fact extraction, progression."""
+    from ..llm_client import create_llm_client  # noqa: PLC0415
+
+    response = state.response
 
     # Update emotional state
     try:
-        # Use joined version for emotional state analysis
-        updated_state = emotional_state_repo.update_from_interaction(
-            session_id=session_id,
-            user_message=message,
-            assistant_response=answer_for_emotional_state
+        updated_state = deps.emotional_state_repo.update_from_interaction(
+            session_id=state.session_id,
+            user_message=state.message,
+            assistant_response=state.answer_for_emotional_state,
         )
         response["emotional_state"] = {
             "trust_level": updated_state.trust_level,
             "rapport": updated_state.rapport,
-            "current_mood": updated_state.current_mood
+            "current_mood": updated_state.current_mood,
         }
-        logger.debug(f"[EmotionalState] Updated: trust={updated_state.trust_level:.2f}, mood={updated_state.current_mood}")
+        logger.debug(
+            f"[EmotionalState] Updated: trust={updated_state.trust_level:.2f}, "
+            f"mood={updated_state.current_mood}"
+        )
     except Exception as e:
         logger.warning(f"[EmotionalState] Failed to update emotional state: {e}")
 
-    # PHASE 3: Update RAG index and extract/update user profile
+    # PHASE 3: update RAG index and extract/update user profile
+    fact_extractor = deps.fact_extractor
     try:
-        # Update RAG index with new messages
-        if episodic_memory_rag:
-            all_messages_updated = message_repo.get_messages_by_session(session_id)
+        if deps.episodic_memory_rag:
+            all_messages_updated = deps.message_repo.get_messages_by_session(state.session_id)
             # Phase 3 trust-hierarchy: sanitize the user message before it enters
-            # long-term memory so a stored tool-call payload cannot fire on a
-            # later turn (gated by AGENTIC_INJECTION_GUARD, default ON).
-            indexed_user_content = message
+            # long-term memory so a stored tool-call payload cannot fire on a later
+            # turn (gated by AGENTIC_INJECTION_GUARD, default ON).
+            indexed_user_content = state.message
             if get_settings().agent.injection_guard:
-                from .injection_guard import get_injection_guard
-                indexed_user_content = get_injection_guard().sanitize_memory_write(message)
-            episodic_memory_rag.update_session(
-                session_id=session_id,
+                from .injection_guard import get_injection_guard  # noqa: PLC0415
+                indexed_user_content = get_injection_guard().sanitize_memory_write(state.message)
+            deps.episodic_memory_rag.update_session(
+                session_id=state.session_id,
                 new_messages=[
                     {"role": "user", "content": indexed_user_content},
-                    {"role": "assistant", "content": response["answer"]}
+                    {"role": "assistant", "content": response["answer"]},
                 ],
-                full_history=all_messages_updated
+                full_history=all_messages_updated,
             )
-            logger.debug(f"[Phase3 RAG] Updated vector index for session {session_id}")
+            logger.debug(f"[Phase3 RAG] Updated vector index for session {state.session_id}")
 
         # ADR-006 Phase 1 (M3): async ontology-lite fact extraction. Fully OFF the
         # interactive path — enqueue a job and move on; a background worker runs the
         # LLM extraction + recency-wins write. Gated MEMORY_FACTS_ENABLED (default OFF)
         # and batched at the same cadence as the legacy extractor. Requires a linked
-        # user_id (a brand-new user's facts wait until their profile is created below,
-        # same as the legacy path).
+        # user_id (a brand-new user's facts wait until their profile is created below).
         _mem = get_settings().memory
-        fact_worker = deps.get("fact_extraction_worker")
-        if (fact_worker and _mem.facts_enabled and user_id
-                and len(db_messages) % _mem.fact_extraction_interval == 0):
+        if (deps.fact_extraction_worker and _mem.facts_enabled and state.user_id
+                and len(state.db_messages) % _mem.fact_extraction_interval == 0):
             try:
-                from ..fact_extraction_worker import ExtractionJob
-                recent_for_facts = message_repo.get_messages_by_session(session_id)[-20:]
-                fact_worker.enqueue(ExtractionJob(
-                    user_id=user_id, messages=recent_for_facts, session_id=session_id
+                from ..fact_extraction_worker import ExtractionJob  # noqa: PLC0415
+                recent_for_facts = deps.message_repo.get_messages_by_session(state.session_id)[-20:]
+                deps.fact_extraction_worker.enqueue(ExtractionJob(
+                    user_id=state.user_id, messages=recent_for_facts, session_id=state.session_id
                 ))
             except Exception as e:
                 logger.debug(f"[FactWorker] enqueue skipped (non-fatal): {e}")
 
         # Extract facts and update user profile (configurable interval to save compute)
         fact_interval = get_settings().memory.fact_extraction_interval
-        if user_profile_repo and len(db_messages) % fact_interval == 0:
+        if deps.user_profile_repo and len(state.db_messages) % fact_interval == 0:
             try:
-                # Get updated message list
-                all_messages_updated = message_repo.get_messages_by_session(session_id)
-
-                # Extract facts from recent messages (last 20)
+                all_messages_updated = deps.message_repo.get_messages_by_session(state.session_id)
                 recent_messages = all_messages_updated[-20:]
 
-                # Initialize fact extractor with LLM client if needed
                 if fact_extractor is None:
                     llm_client = create_llm_client(
                         {}, temperature=get_settings().ollama.temp_fact_extraction
                     )
-                    from ..fact_extractor import FactExtractor
+                    from ..fact_extractor import FactExtractor  # noqa: PLC0415
                     fact_extractor = FactExtractor(llm_client)
 
-                # Extract facts
-                facts = fact_extractor.extract_facts(recent_messages, persona_key=persona_key)
+                facts = fact_extractor.extract_facts(recent_messages, persona_key=state.persona_key)
 
-                # Get or create user profile
-                if not user_id and facts.get("user_name"):
-                    # Try to find existing user by name
-                    user_id = user_profile_repo.get_user_by_name(facts["user_name"])
+                if not state.user_id and facts.get("user_name"):
+                    state.user_id = deps.user_profile_repo.get_user_by_name(facts["user_name"])
 
-                if not user_id:
-                    # Create new user profile
-                    user_id = f"user_{uuid.uuid4().hex[:8]}"
-                    user_profile = user_profile_repo.create_profile(user_id)
-                    user_profile_repo.link_session_to_user(user_id, session_id)
-                    logger.info(f"[Phase3] Created new user profile: {user_id}")
+                if not state.user_id:
+                    state.user_id = f"user_{uuid.uuid4().hex[:8]}"
+                    state.user_profile = deps.user_profile_repo.create_profile(state.user_id)
+                    deps.user_profile_repo.link_session_to_user(state.user_id, state.session_id)
+                    logger.info(f"[Phase3] Created new user profile: {state.user_id}")
                 else:
-                    user_profile = user_profile_repo.get_or_create_profile(user_id)
+                    state.user_profile = deps.user_profile_repo.get_or_create_profile(state.user_id)
 
-                # Update profile with extracted facts
-                user_profile.update_from_session(facts)
-                user_profile_repo.update_profile(user_profile)
+                state.user_profile.update_from_session(facts)
+                deps.user_profile_repo.update_profile(state.user_profile)
 
                 logger.info(
-                    f"[Phase3] Updated user profile {user_id}: "
+                    f"[Phase3] Updated user profile {state.user_id}: "
                     f"{fact_extractor.get_extraction_stats(facts)}"
                 )
 
@@ -796,12 +832,12 @@ def handle_session_chat(
     except Exception as e:
         logger.error(f"[Phase3] Post-conversation updates failed: {e}")
 
-    # NEPHILIM Progression System - Track conversation progress for NEPHILIM personas
+    # NEPHILIM Progression System — track conversation progress for NEPHILIM personas
     progression = _track_nephilim_progression(
-        session_id=session_id,
-        persona_key=persona_key,
-        user_id=user_id,
-        seeker_progression_repo=seeker_progression_repo
+        session_id=state.session_id,
+        persona_key=state.persona_key,
+        user_id=state.user_id,
+        seeker_progression_repo=deps.seeker_progression_repo,
     ) or {}
     ceremony_data = progression.get("ceremony")
     capability_unlocks = progression.get("capability_unlocks") or []
@@ -815,7 +851,53 @@ def handle_session_chat(
         if capability_unlocks:
             response["metadata"]["capability_unlocks"] = capability_unlocks
 
-    return response
+
+def handle_session_chat(
+    session_id: str,
+    message: str,
+    deps: dict,
+    chat_function,
+    add_message_function
+):
+    """Handle chat with persona using database-backed conversation history.
+
+    Orchestrates the chat turn as an ordered pipeline of phase functions, each
+    passed a typed :class:`ChatDeps` and a mutable :class:`ChatTurnState`:
+
+    1. ``_load_session_identity`` — user profile (Phase 3) + emotional state (Phase 2.2)
+    2. ``_build_turn_prompt`` — history/summaries + system-prompt assembly + token budget
+    3. ``_select_turn_history`` — memory selection + RAG + capped history
+    4. ``_generate_turn_response`` — build ChatBody and call the chat endpoint
+    5. ``_persist_turn_messages`` — save user + assistant message(s)
+    6. auto-summarization, then ``_apply_post_turn_updates`` — emotional/RAG/facts/progression
+
+    The public signature is unchanged (``deps`` is still the route dict); it is
+    converted to ``ChatDeps`` internally. ``_check_and_summarize`` continues to
+    take the raw dict.
+
+    Raises:
+        HTTPException: If session not found (404).
+    """
+    cdeps = ChatDeps.from_dict(deps)
+
+    persona_key = cdeps.session_repo.get_persona_key(session_id)
+    if not persona_key:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    state = ChatTurnState(session_id=session_id, message=message, persona_key=persona_key)
+
+    _load_session_identity(state, cdeps)
+    _build_turn_prompt(state, cdeps)
+    _select_turn_history(state, cdeps)
+    _generate_turn_response(state, chat_function)
+    _persist_turn_messages(state, add_message_function)
+
+    # Auto-summarization check (still takes the raw dependency dict).
+    _check_and_summarize(session_id, persona_key, deps)
+
+    _apply_post_turn_updates(state, cdeps)
+
+    return state.response
 
 
 def _track_nephilim_progression(
@@ -928,19 +1010,18 @@ def _track_nephilim_progression(
         # Phase-2: detect newly-unlocked internal capabilities → diegetic unlock beat
         capability_unlocks = []
         try:
-            _settings = get_settings()
-            if _settings.lore.ondemand_enabled:
+            if seeker_progression_repo:
                 from ..lore_retrieval import detect_new_capability_unlocks
                 _prof = seeker_progression_repo.get_seeker_profile(effective_user_id) or {}
                 _aff = seeker_progression_repo.get_or_create_affinity(effective_user_id, persona_key)
                 capability_unlocks = detect_new_capability_unlocks(
                     seeker_progression_repo, effective_user_id, persona_key,
-                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0), _settings,
+                    _prof.get("rank_name", "Initiate"), _aff.get("affinity_level", 0),
                 )
                 for cap in capability_unlocks:
                     logger.info(f"[NEPHILIM] Capability awakened for {effective_user_id}: {cap['id']}")
         except Exception as e:
-            logger.debug(f"[Capability] unlock detection failed (non-fatal): {e}")
+            logger.warning(f"[Capability] unlock detection failed (non-fatal): {e}")
 
         return {"ceremony": ceremony_data, "capability_unlocks": capability_unlocks}
 
