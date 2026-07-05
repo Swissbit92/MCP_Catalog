@@ -169,6 +169,20 @@ def _prompt(monkeypatch, *, enabled):
     return build_synthesis_prompt("You are Eeva, a sarcastic AI assistant.", has_search_results=True)
 
 
+def test_synthesis_prompt_includes_current_date(monkeypatch):
+    """Temporal grounding (2026-07-05 incident: a 5-day-old article was
+    presented as 'today's news' because the model had no way to know the date)."""
+    from datetime import datetime
+
+    prompt = _prompt(monkeypatch, enabled=False)
+    today = datetime.now()
+    assert f"Today's date is {today.strftime('%A, %Y-%m-%d')}" in prompt
+    # And the staleness rule that uses it.
+    assert "CHECK RESULT AGE" in prompt
+    # Unit-conversion rule (34°F-for-Switzerland incident).
+    assert "convert to °C" in prompt
+
+
 def test_trust_flag_off_is_byte_identical_to_legacy(monkeypatch):
     """Default OFF must not add the RULE 0 / supersede directive at all."""
     off = _prompt(monkeypatch, enabled=False)
