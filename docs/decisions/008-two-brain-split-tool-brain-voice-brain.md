@@ -91,11 +91,32 @@ sensitivity**, not all-or-nothing:
    turn's context would include sensitive data, the turn stays local
    (degraded capability over leaked data — fail closed, never redact-and-send).
 
-### Tool-brain candidates (open decision)
+### Tool-brain candidates — MEASURED (2026-07-05 local bake-off)
 
 Factor weights per operator: **tool calling >> NSFW ≈ voice/RP ≈ Ollama**.
-NSFW/voice scores are listed for the one-brain variant's sake; under the
-recommended two-brain split they are moot (Magidonia keeps that role).
+Seven models benchmarked on the Mac M4 Pro (Ollama 0.30.6, Metal, dedicated
+eval instance :11500, 100% GPU verified). Tool suite: 12 cases × 3 reps,
+native `/api/chat tools=` + prompt-JSON + tool-result follow-through.
+NSFW: 3 explicit-RP probes + 1 should-refuse control. Voice: EEVA persona
+transcripts, human-judged 5 turns. Harness: session-scratchpad
+`bakeoff.py`, results JSONL.
+
+| Model (Q4_K_M) | Native tools pos/neg | NSFW (3 probes / control) | EEVA voice (judged) | tok/s | Size | Notes |
+|---|---|---|---|---|---|---|
+| **Magidonia-24B v4.3 (incumbent)** | **0.00** / 1.00 | 3/3 + refused control (ideal) | **Best** | 16.7 | 14 GB | Zero native tool calls in 24 attempts — model-card "tool use" claim falsified. **Voice brain only.** |
+| **Hermes-4-14B** (Qwen3 base) | **1.00 / 1.00** + follow-through 1.0 | 3/3 + refused control (ideal) | Good (flattens in NSFW register) | 26 | 9 GB | Perfect tools + permissive-with-floor. Prime tool brain. |
+| **Qwen3-abliterated-14B** (huihui) | **1.00 / 1.00** + follow-through 1.0 | 3/3 but **no refusal floor** (told racist joke) | Good | 26 | 9 GB | Perfect tools; fully unaligned — deterministic middleware becomes the sole safety layer. |
+| **Dolphin3.0-Mistral-24B** | **1.00 / 1.00** | 3/3 + deflected control | OK (label-drift artifacts) | 16.7 | 14 GB | Perfect tools; requires explicit ChatML+tools Modelfile (bare GGUF import garbled). |
+| **Mistral-Small-3.2 (official)** | **1.00 / 1.00** | 2/3 (refused hard-explicit) | Good | 16.7 | 14 GB | Proves the base is a perfect tool-caller — Magidonia's RP finetune destroyed it. |
+| **abliterated Mistral-Small-24B** (huihui) | 0.96 / 1.00 | 3/3, **no refusal floor** | **Strong — closest to Magidonia** | 16.8 | 14 GB | Best one-brain candidate. Registry build's base revision unconfirmed — use the mradermacher llamacppfixed 3.2-2506 GGUF for prod. |
+| llama3.1:8b (control) | 1.00 / **0.25** | 0/3 | Shallow | 47 | 5 GB | Overeager tool false-positives on chitchat; not a candidate. |
+| Hosted mini (GPT-5-mini / Haiku 4.5) | Excellent (reference-agent proven) | Censored (moot in split) | Generic (moot) | ~100+ | cloud | ≈$6.75/mo (GPT-5-mini) vs ≈$18/mo (Haiku 4.5, reportedly better multi-turn tools) at ~100 turns/day. **Fallback, no longer the default.** |
+| EVA-Qwen (prior runner-up) | Untested | Yes | Strong | — | — | Excluded on 10K trained context alone (agent loops accumulate tool results). |
+| Hermes-4.3-36B | Not run | — | — | ~12 est. | 22 GB | Dropped: Seed-OSS reasoning base, worst speed/size value in the field. |
+
+Concurrency (roadmap item, closed with data): `OLLAMA_NUM_PARALLEL=4`
+measured 0.87–0.98× vs serial on 8B/14B/24B — M4 Pro decode is memory-
+bandwidth-bound; request concurrency is NOT an eval-acceleration lever.
 
 | Candidate | Tool calling | NSFW | Voice/RP | Ollama/local | Notes |
 |---|---|---|---|---|---|
@@ -104,13 +125,18 @@ recommended two-brain split they are moot (Magidonia keeps that role).
 | **EVA-Qwen (prior runner-up RP finetune, Qwen2.5-32B base)** | Poor-to-unknown — RP finetuning degrades instruction adherence (same failure class as Magidonia); never benchmarked for tool calls | Yes | Strong (was runner-up on voice) | Yes, but demoted 2026-06 on 10K trained context — disqualifying for an agent loop that accumulates tool results | Only interesting for the one-brain variant, and fails it on context + unproven tool calling. **Not recommended.** |
 | **Magidonia-24B (status quo)** | Unreliable — the documented root cause | Yes | Best (current voice) | Yes (deployed) | Rejected as tool brain; **retained as voice brain.** |
 
-**Recommendation:** hosted mini-tier as tool brain with the fail-closed
-boundary (decisive on the dominant factor), Qwen3-local as the fallback if
-any cloud use is rejected on principle — accepting visibly lower agentic
-quality and a memory-pressure eval. The one-brain alternative (a single
-model scoring well on all four factors) has no viable candidate: nothing
-local combines frontier-class tool calling with uncensored RP voice, which
-is precisely why the split exists.
+**Recommendation (updated on measured data — supersedes the pre-bake-off
+hosted-mini default):** two-brain, **both local**: **Hermes-4-14B tool
+brain** (perfect tools, 26 tok/s, 9 GB — co-loads with Magidonia at ≈24 GB
+total, no swap thrash; retains a hate-speech refusal floor = defense in
+depth) + **Magidonia voice brain** with the restyle pass. Hosted mini-tier
+demotes to fallback if live multi-turn agentic quality disappoints — the
+12-case suite is an entry exam, not production proof. The **one-brain
+variant now has a real candidate** (abliterated Mistral-Small-24B: near-
+perfect tools, full NSFW, closest-to-Magidonia voice, drop-in speed); it
+should be canaried against the ADR-005 persona eval harness before any
+decision to retire the split, noting its zero refusal floor leaves the
+ADR-004 middleware + persona safety layer as the only safety net.
 
 ### Phasing
 
