@@ -659,6 +659,16 @@ def initialize_all():
     except Exception as e:
         logger.warning(f"Brave MCP initialization warning: {e}")
 
+    # Bind web-toolset executors onto the tool registry (ADR-008 TB2). Attaches
+    # the runtime search/fetch executors + the per-persona safesearch clamp;
+    # harmless when the tool brain is off (nothing calls them). Lazy client
+    # resolution inside the executors makes this init-order-independent.
+    try:
+        from .tools.executor_bindings import bind_web_executors
+        bind_web_executors()
+    except Exception as e:
+        logger.warning(f"Tool-executor binding warning: {e}")
+
     # Initialize Jupiter MCP
     try:
         init_jupiter()
