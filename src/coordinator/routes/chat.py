@@ -176,6 +176,20 @@ def _try_tool_brain(
         # Web-toolset ONLY (respects a persona's granted subset, e.g. Gwen's
         # image/video). Wallet specs are never placed in the native surface.
         web_specs = [s for s in registry.specs_for_persona(card) if s.toolset == "web"]
+
+        # Media forcing: a colloquial "find me a video / find me images" query
+        # deterministically NARROWS the surface to the single matching media
+        # tool. Native calling is unreliable at picking video_search among four
+        # web tools (choice paralysis) but reliably calls the one tool it's
+        # given — the regex already knows the type, so don't leave it to chance.
+        from ..tools.intent_classifier import media_search_type
+        forced = media_search_type(body.message)
+        if forced:
+            want = f"{forced}_search"
+            narrowed = [s for s in web_specs if s.name == want]
+            if narrowed:  # only if the persona actually has that media tool
+                web_specs = narrowed
+
         tools = [s.definition() for s in web_specs]
         if not tools:
             return None  # persona has no web tools -> legacy handles it

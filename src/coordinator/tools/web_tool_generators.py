@@ -108,14 +108,17 @@ def _category_search_tool(name: str, category: str, desc: str) -> Dict[str, Any]
 def get_image_search_tool() -> Dict[str, Any]:
     return _category_search_tool(
         "image_search", "images",
-        "Search the web for images. Returns image page URLs and titles.",
+        "Search for IMAGES or pictures. Use this whenever the user asks for "
+        "images, pics, pictures, or photos. Returns image page URLs and titles.",
     )
 
 
 def get_video_search_tool() -> Dict[str, Any]:
     return _category_search_tool(
         "video_search", "videos",
-        "Search the web for videos. Returns video page URLs and titles.",
+        "Search for VIDEOS or clips to watch. Use this whenever the user asks "
+        "for a video, clip, footage, or something to watch. Returns video page "
+        "URLs and titles.",
     )
 
 
