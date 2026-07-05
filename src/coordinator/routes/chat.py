@@ -146,13 +146,19 @@ def _try_tool_brain(
     *, card, system: str, body: ChatBody, history, intent,
     metadata: ResponseMetadata, persona_name: str, deps,
 ):
-    """ADR-008 TB4: run the single-model native tool-brain loop, orchestrating
-    the deterministic fallback the TB0 spike proved necessary.
+    """ADR-008 TB4/TB5: run the single-model native tool-brain loop within the
+    WEB lane only, orchestrating the deterministic fallback.
 
-    Returns a response dict when the tool brain produced a final answer (or a
-    wallet handoff); returns **None** to fall through to the legacy branches
-    (which are the deterministic floor for the colloquial phrasings native
-    calling misses). Never raises — any failure returns None so legacy backs it.
+    TB5 hardening (after the live test showed EEVA's full 14-tool surface caused
+    wallet fixation + mis-selection + fabrication): the deterministic bge-m3
+    router scopes the surface; the model decides only WITHIN it. This function
+    engages ONLY on ``NEEDS_WEB_SEARCH`` and offers only the persona's WEB tools
+    (never wallet). ``NEEDS_WALLET`` / ``NEEDS_NEITHER`` return None immediately
+    so the legacy deterministic wallet flow and the ADR-007 groundedness gate
+    (on the no-tools completion) stay in charge — exactly where they belong.
+
+    Returns a response dict on a final answer; **None** to fall through to the
+    legacy branches. Never raises — any failure returns None so legacy backs it.
     """
     from ..services.tool_brain_service import (
         ToolBrainService, ST_ANSWERED, ST_SILENT, ST_DELEGATE_WALLET, ST_HITL,
@@ -162,10 +168,17 @@ def _try_tool_brain(
     from ..tools.registry import registry
     from ..tools import registrations  # noqa: F401 - ensure specs registered
 
+    # TB5.1: only the web lane. Wallet + no-tool turns stay on the legacy path.
+    if intent != QueryIntent.NEEDS_WEB_SEARCH:
+        return None
+
     try:
-        tools = registry.definitions_for_persona(card)
+        # Web-toolset ONLY (respects a persona's granted subset, e.g. Gwen's
+        # image/video). Wallet specs are never placed in the native surface.
+        web_specs = [s for s in registry.specs_for_persona(card) if s.toolset == "web"]
+        tools = [s.definition() for s in web_specs]
         if not tools:
-            return None  # persona has no tools -> nothing for the loop to do
+            return None  # persona has no web tools -> legacy handles it
         svc = ToolBrainService(interceptor=ToolCallInterceptor())
         hist = [{"role": t.role, "content": t.content} for t in history]
         result = svc.run(persona_card=card, system_prompt=system,
@@ -182,23 +195,33 @@ def _try_tool_brain(
                 persona_card=card, session_id=body.session_id, user_id="default_user",
             )
 
-        if result.status == ST_ANSWERED and result.answer:
-            answer = result.answer
+        # TB5.2: on web-intent, ONLY return an answer that was actually grounded
+        # in a search. If the model answered WITHOUT searching (used_search=False)
+        # — the live-test fabrication case ("switzerland today" from training
+        # data) — fall through to the legacy force-search, which WILL search.
+        # This closes the groundedness hole: every web-intent answer is either
+        # tool-grounded here or force-searched by legacy; none comes from memory.
+        if result.status == ST_ANSWERED and result.answer and result.used_search \
+                and result.search_results:
             metadata.source_type = SourceType.TOOL_BRAIN
-            if result.used_search and result.search_results:
-                metadata.tools_used = ["web_search"]
-                answer = CitationService.strip_hallucinated_citations(answer)
-                answer = answer + CitationService.auto_generate_citations(result.search_results)
-            return _build_llm_response(answer, body.message, persona_name, metadata)
+            metadata.tools_used = ["web_search"]
+            answer = CitationService.strip_hallucinated_citations(result.answer)
+            # Strip the model's own inline [REF]n[/REF] citation markers (it
+            # sometimes invents that format; the verified 🔍 Sources block below
+            # is the real citation) — TB5.3 live-test cleanup.
+            import re as _re
+            answer = _re.sub(r"\[/?REF[^\]]*\]", "", answer).strip()
+            answer = answer + CitationService.auto_generate_citations(result.search_results)
+            resp = _build_llm_response(answer, body.message, persona_name, metadata)
+            resp["used_search"] = True  # telemetry: the tool brain did search
+            return resp
 
-        if result.status == ST_SILENT and result.answer and intent == QueryIntent.NEEDS_NEITHER:
-            # Model answered directly AND the router agrees no tool was needed.
-            metadata.source_type = SourceType.TOOL_BRAIN
-            answer = _apply_groundedness_gate(card, body.message, result.answer, metadata)
-            return _build_llm_response(answer, body.message, persona_name, metadata)
-
-        # Silent + a tool WAS likely needed (or loop errored) -> deterministic floor.
-        logger.info(f"[ToolBrain] status={result.status}, falling through to legacy path")
+        # Silent, answered-without-searching, or loop error -> deterministic
+        # floor (legacy force-search on this web-intent turn).
+        logger.info(
+            f"[ToolBrain] status={result.status} used_search={result.used_search} "
+            f"-> falling through to legacy force-search"
+        )
         return None
     except Exception as e:  # noqa: BLE001 - never break chat; legacy backs it up
         logger.warning(f"[ToolBrain] integration error ({e}); falling through to legacy")
