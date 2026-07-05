@@ -51,7 +51,8 @@ docker-compose --env-file .env.docker up -d
 ### Backend (`src/coordinator/`)
 
 ```
-server.py, startup.py          # App entry, lifecycle
+server.py, startup.py          # App entry, lifecycle (startup = init sequencer; publishes AppState on app.state.container)
+app_state.py, dependencies.py  # DI composition root: AppState (typed snapshot of every startup singleton) + FastAPI Depends providers (require_*→503 when uninit, optional_*→None). Providers resolve startup.get_X() at CALL TIME (module-attr, not `from ..startup import`), so tests patching src.coordinator.startup.get_X still intercept
 config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent/groundedness; __init__ = composition root + get_settings), API schemas
 routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py
 services/                      # Business logic (llm_completion, tool_calling, citation, chat_session, query_handler, wallet_*, strategy, etc.)
