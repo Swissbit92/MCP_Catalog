@@ -14,6 +14,7 @@ Repo root: [../../CLAUDE.md](../../CLAUDE.md) · Ecosystem: [../../../CLAUDE.md]
 - **Forwarded messages never reach the LLM** (injection guard, `handlers.is_forwarded`). Link previews are disabled on every outbound send (exfil guard, `eeva_telegram/messaging.py`).
 - **One LLM call at a time.** The coordinator runs `OLLAMA_NUM_PARALLEL=1`; a global `asyncio.Lock` (`Gateway.llm_lock`) serialises chat/greet calls across this whole process.
 - **One poller per bot token.** The `flock` singleton guard in `bin/run_telegram_bot.py` prevents a launchd `KeepAlive` restart from colliding with a shutting-down poller (Telegram 409).
+- **Multi-instance (one process per persona/bot-token).** `EEVA_TG_INSTANCE=<name>` selects `.env.<name>` + a per-instance lock `data/bot.<name>.lock`; unset = the original single-bot path (`.env`, `data/bot.lock`), byte-identical. Each instance needs its OWN bot token in its own `.env.<name>` (chmod 600, gitignored via `.env.*`) and its own launchd plist (`com.eeva.telegram-<name>.plist`) carrying only `EEVA_TG_INSTANCE` (not the token). Live: `com.eeva.telegram` (EEVA) + `com.eeva.telegram-gwen` (Gwen NSFW, persona=gwen). The `bin/` entrypoint is version-controlled (do not let the root `.gitignore`'s venv patterns re-swallow it).
 - **Independent dependency set.** This subfolder has its own `venv`/`pyproject.toml` (python-telegram-bot, httpx, python-dotenv) — do not add these to the coordinator's own dependencies, and do not import coordinator Python modules directly (HTTP only).
 
 ## Where things live

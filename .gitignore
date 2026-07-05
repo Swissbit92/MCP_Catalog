@@ -5,7 +5,14 @@ __pycache__/
 *.log
 
 # Virtual environments
-bin/
+# NOTE: narrowed from a bare `bin/` (2026-07-05) — that pattern matched ANY
+# directory literally named `bin` anywhere in the tree, which silently
+# swallowed services/telegram-gateway/bin/run_telegram_bot.py (a REAL,
+# never-versioned launchd entrypoint containing the Telegram single-poller
+# flock guard) for its entire history. Scope to actual venv bin dirs only.
+.venv/bin/
+venv/bin/
+env/bin/
 include/
 Include/
 lib/

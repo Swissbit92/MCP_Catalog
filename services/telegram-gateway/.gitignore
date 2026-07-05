@@ -1,9 +1,18 @@
 # This subsystem manages its own venv/build artifacts — not covered by
 # nephilim's root .gitignore (which targets the FastAPI/React core).
 
-# Secrets — NEVER commit
+# Secrets — NEVER commit. Covers per-instance env files too (.env.gwen etc.),
+# each holding its own bot token. .env.example is the only committed variant.
 .env
-.env.local
+.env.*
+!.env.example
+
+# Virtual environment (this subsystem's own venv — ignore it explicitly rather
+# than leaning on the root .gitignore's generic venv patterns, which was
+# fragile: the root's bare `bin/` was silently doing half this job until it was
+# narrowed 2026-07-05).
+venv/
+.venv/
 
 # Python build/test artifacts
 __pycache__/
