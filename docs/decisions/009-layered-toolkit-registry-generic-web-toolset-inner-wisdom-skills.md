@@ -108,6 +108,34 @@ agentic pipeline's `tool_executors`, and (c) the future ADR-008 tool
 brain. Existing brave + wallet tools migrate into it; `get_tools_for_query`
 becomes a registry lookup. This dissolves the 4-file-per-tool tax.
 
+**Per-persona toolkit subsets (operator decision 2026-07-05).** Each
+persona declares its own toolset grants — a first-class generalization of
+the existing `mcp_access` mechanism, gated at the **toolset** level (not
+per-tool: per-tool grants across 7 personas is unmaintainable config
+sprawl). Persona JSON grows a `toolsets` field (e.g. E.E.V.A.:
+`["web", "memory", "wallet"]`; Aegis: `["web", "memory"]`; Nyx:
+`["memory"]`; Gojo: `[]`), with `mcp_access` kept as a deprecated alias
+during migration. The interceptor re-checks grants independently
+(defence-in-depth, unchanged from ADR-004).
+
+**NSFW as a cross-cutting persona capability flag — not a separate
+toolset.** A per-persona `nsfw: true|false` modulates granted toolsets
+rather than duplicating them:
+
+- **Web**: sets the persona's safesearch *floor* — an `nsfw: true`
+  persona defaults to `off`; an `nsfw: false` persona is clamped to
+  `moderate`+ regardless of the model's per-call argument (the clamp is
+  enforced in the executor, not the prompt).
+- **Inner wisdom**: gates access to the **intimate memory partition**
+  (below).
+
+Honest scoping note: on a single-operator machine where every persona runs
+the same uncensored model, per-persona NSFW gating is **character
+integrity and data hygiene, not a security boundary** — it keeps a
+productivity persona from surfacing bedroom content mid-worksession and
+keeps intimate data out of contexts where it homogenizes voice; it does
+not (and need not) stop the operator from anything.
+
 ### 2. Generic web toolset (Phase W — first user-visible payoff)
 
 Backend: **SearXNG in Docker as primary** (JSON format enabled, limiter
@@ -150,9 +178,26 @@ Follow the Letta hybrid, not a wholesale tools conversion:
   affect-as-a-queryable-tool), the persona identity itself.
 - **Reflection**: harness-scheduled (Generative-Agents pattern), never a
   model-invoked "reflect_now" tool a small model would simply not call.
+- **Intimate memory partition (operator decision 2026-07-05 — NSFW inner
+  wisdom).** Adult-relationship continuity is inner-wisdom data: intimate
+  RP history, expressed preferences, boundaries/limits, relationship-arc
+  facts. It lives in the SAME stores (memory rows / `memory_facts`) with a
+  **`sensitivity` tag written at ingestion** (`standard | intimate`;
+  tagged by the existing async extraction worker, with the write-time
+  classifier erring toward `intimate` on uncertainty) and is **filtered at
+  the data layer** — the retrieval queries behind `memory_search` /
+  `conversation_search` and the prefill assemblers exclude `intimate` rows
+  for personas without the `nsfw` flag. Enforcement lives in the
+  repository/query layer, never as a prompt instruction (a prompt-level
+  "don't mention" is theater a small model will eventually violate).
+  Boundaries/limits facts are the priority content class: a companion
+  that forgets stated limits is a safety bug, not a memory bug.
 - **Gate**: the voice-homogenization benefit is an unbenchmarked
   hypothesis — ship behind a flag with the ADR-005/006 attribution eval
-  (pre/post, full 7 personas) before any default-ON.
+  (pre/post, full 7 personas) before any default-ON. The sensitivity
+  partition additionally gets characterization tests pinning that
+  `intimate` rows never appear in a non-nsfw persona's retrieval or
+  prefill.
 
 ### 4. Terminal/code-exec tool (Phase T — later, structurally gated)
 
