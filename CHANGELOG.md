@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-07-05) — ADR-008 P1: single-model native tool brain (TB1–TB4, flag OFF)
+
+Eval-first (a decision-critical spike overturned the design mid-flight), isolated worktree, QA-gated per milestone (independent qa-gatekeeper PASS on TB1–TB3, both safety properties verified). Backend suite 1779 → 1815 passing, 0 regressions. **`TOOL_BRAIN_ENABLED` default OFF — byte-identical legacy until the operator flips it after their own live test.**
+
+- **Re-scoped to SINGLE-MODEL.** Tonight's global switch to the tool-capable abliterated-Mistral daily driver collapsed the two-brain split into one model (ADR-008). The tool brain is now native tool calling on the daily driver, not a Hermes-4-14B(tool)+voice split.
+- **TB0 spike (decision-critical):** native tool calling is **phrasing-sensitive, NOT prompt-suppressed** — identical under a 4.7K-char persona prompt vs a 118-char minimal one; explicit phrasings ("images of X", "wallet balance") call, colloquial ones ("what's in my wallet", "search for a video") miss ~40%. This overturned the "pure native loop" plan → **native-first + deterministic fallback** (the legacy force-search is the reliability floor).
+- **TB1** — `ToolBrainSettings` (`TOOL_BRAIN_ENABLED`, `TOOL_BRAIN_MAX_ITERATIONS`, `TOOL_BRAIN_DETERMINISTIC_FALLBACK`).
+- **TB2** — `tools/executor_bindings.py` wires the two dead-code gaps: `registry.bind_executor` (never called) + `clamp_safesearch` (wired nowhere). Search-family executors apply the per-persona nsfw safesearch floor on the live path; bound at startup.
+- **TB3** — `services/tool_brain_service.py`: native `/api/chat tools=` loop, ADR-004 interceptor before every execution, web tools execute + same model synthesizes in-voice; rich status contract (answered / silent / delegate_wallet / hitl); wallet never executes in-loop; never raises.
+- **TB4** — `routes/chat.py:_try_tool_brain` behind the flag; falls through to the legacy floor on silent-but-tool-needed. **Bug fix (surfaced by the live smoke):** `SearchExecutionService` bailed before trying SearXNG when Brave was unconfigured — a SearXNG-primary deployment failed entirely; SearXNG now runs first. Live-validated end-to-end on abliterated + real SearXNG: EEVA news + Gwen `image_search` both execute + synthesize in-voice with real results.
+- **Reused as-is** (ADR-004/009): interceptor, injection_guard, registry, `SearchExecutionService`, `fetch_url`, `_build_llm_response`, citation service. `argument_extractor.py` + the ADR-004 Stage1/Stage2 split are now superseded (kept for rollback). See [ADR-008](docs/decisions/008-two-brain-split-tool-brain-voice-brain.md).
+
+
 ### Added (2026-07-05) — ADR-009 layered toolkit: registry + generic uncensored web toolset (Phases R+W)
 
 Eval-first, isolated worktree, QA-gated. Backend suite 1689 → 1752 passing (0 regressions); gateway 25 → 30. Independent qa-gatekeeper pass on Phase R (behavior-identical migration): CONDITIONAL PASS, one dead-import follow-up (fixed).

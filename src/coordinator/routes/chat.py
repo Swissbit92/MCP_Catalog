@@ -142,6 +142,69 @@ def _apply_groundedness_gate(
         return answer
 
 
+def _try_tool_brain(
+    *, card, system: str, body: ChatBody, history, intent,
+    metadata: ResponseMetadata, persona_name: str, deps,
+):
+    """ADR-008 TB4: run the single-model native tool-brain loop, orchestrating
+    the deterministic fallback the TB0 spike proved necessary.
+
+    Returns a response dict when the tool brain produced a final answer (or a
+    wallet handoff); returns **None** to fall through to the legacy branches
+    (which are the deterministic floor for the colloquial phrasings native
+    calling misses). Never raises — any failure returns None so legacy backs it.
+    """
+    from ..services.tool_brain_service import (
+        ToolBrainService, ST_ANSWERED, ST_SILENT, ST_DELEGATE_WALLET, ST_HITL,
+    )
+    from ..services.tool_interceptor import ToolCallInterceptor
+    from ..services.citation_service import CitationService
+    from ..tools.registry import registry
+    from ..tools import registrations  # noqa: F401 - ensure specs registered
+
+    try:
+        tools = registry.definitions_for_persona(card)
+        if not tools:
+            return None  # persona has no tools -> nothing for the loop to do
+        svc = ToolBrainService(interceptor=ToolCallInterceptor())
+        hist = [{"role": t.role, "content": t.content} for t in history]
+        result = svc.run(persona_card=card, system_prompt=system,
+                         user_message=body.message, history=hist, tools=tools)
+
+        if result.status in (ST_HITL, ST_DELEGATE_WALLET):
+            # Wallet stays entirely on the existing propose->confirm / read flow.
+            handler = QueryHandlerService(brave_client=deps.get("brave_client"))
+            return handler.handle_wallet_query(
+                message=body.message, system_prompt=system,
+                user_compiled="\n\n".join(f"{t.role}: {t.content}" for t in history)
+                + f"\n\nUser: {body.message}",
+                wallet_tools=tools, metadata=metadata, persona_name=persona_name,
+                persona_card=card, session_id=body.session_id, user_id="default_user",
+            )
+
+        if result.status == ST_ANSWERED and result.answer:
+            answer = result.answer
+            metadata.source_type = SourceType.TOOL_BRAIN
+            if result.used_search and result.search_results:
+                metadata.tools_used = ["web_search"]
+                answer = CitationService.strip_hallucinated_citations(answer)
+                answer = answer + CitationService.auto_generate_citations(result.search_results)
+            return _build_llm_response(answer, body.message, persona_name, metadata)
+
+        if result.status == ST_SILENT and result.answer and intent == QueryIntent.NEEDS_NEITHER:
+            # Model answered directly AND the router agrees no tool was needed.
+            metadata.source_type = SourceType.TOOL_BRAIN
+            answer = _apply_groundedness_gate(card, body.message, result.answer, metadata)
+            return _build_llm_response(answer, body.message, persona_name, metadata)
+
+        # Silent + a tool WAS likely needed (or loop errored) -> deterministic floor.
+        logger.info(f"[ToolBrain] status={result.status}, falling through to legacy path")
+        return None
+    except Exception as e:  # noqa: BLE001 - never break chat; legacy backs it up
+        logger.warning(f"[ToolBrain] integration error ({e}); falling through to legacy")
+        return None
+
+
 @router.post("/persona/chat")
 def chat(body: ChatBody):
     """Chat with a persona, with autonomous tool support (web search, Solana wallet) for MCP-capable personas."""
@@ -254,6 +317,19 @@ def chat(body: ChatBody):
     tools = get_tools_for_query(body.message, persona_key, persona_rarity, mcp_access=mcp_access, precomputed_intent=intent)
     tool_names = [t["function"]["name"] for t in tools] if tools else []
     logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
+
+    # ADR-008 (TB4): single-model native tool-brain loop. Flag-gated (default
+    # OFF = byte-identical legacy). Runs the model-decided tool loop over the
+    # persona's FULL registry toolset; returns None (falls through to the legacy
+    # deterministic branches below) whenever native calling was silent on a
+    # tool-needing query — so legacy is always the reliability floor.
+    if get_settings().tool_brain.enabled:
+        tb_response = _try_tool_brain(
+            card=card, system=system, body=body, history=history, intent=intent,
+            metadata=metadata, persona_name=persona_name, deps=deps,
+        )
+        if tb_response is not None:
+            return tb_response
 
     # Route wallet intent before MongoDB/Brave checks
     if intent == QueryIntent.NEEDS_WALLET:

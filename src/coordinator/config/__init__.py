@@ -17,7 +17,7 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-from .agent import AgentSettings
+from .agent import AgentSettings, ToolBrainSettings
 from .auth import AuthSettings
 from .groundedness import GroundednessSettings
 from .llm import OllamaSettings
@@ -71,6 +71,7 @@ class CoordinatorSettings(BaseSettings):
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     lore: LoreSettings = Field(default_factory=LoreSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
+    tool_brain: ToolBrainSettings = Field(default_factory=ToolBrainSettings)
     search: SearchSettings = Field(default_factory=SearchSettings)
     web_search: WebSearchSettings = Field(default_factory=WebSearchSettings)
     groundedness: GroundednessSettings = Field(default_factory=GroundednessSettings)
@@ -164,6 +165,7 @@ def get_persona_sampling_overrides(persona_card: dict) -> dict:
 
 __all__ = [
     "AgentSettings",
+    "ToolBrainSettings",
     "AuthSettings",
     "BraveSettings",
     "EmailSettings",

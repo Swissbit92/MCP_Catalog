@@ -29,6 +29,9 @@ class SourceType(StrEnum):
     AGENTIC_HITL = "agentic_hitl"
     GROUNDEDNESS_ABSTAIN = "groundedness_abstain"
     WALLET_PROPOSAL = "wallet_proposal"
+    # ADR-008: single-model native tool-brain loop (distinct from the ADR-004
+    # AGENTIC two-stage pipeline so the two are A/B-distinguishable in telemetry).
+    TOOL_BRAIN = "tool_brain"
 
 
 class MessageRole(StrEnum):

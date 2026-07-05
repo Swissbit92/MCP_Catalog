@@ -11,6 +11,8 @@ applies_to: nephilim
 
 ## Status
 
+**P1 BUILT (2026-07-05 night, flag OFF).** The single-model native tool brain is implemented + QA-gated + live-smoke-validated behind `TOOL_BRAIN_ENABLED` (default OFF, byte-identical legacy). TB0 spike overturned the pure-native design → **native-first + deterministic fallback** (native calling is phrasing-sensitive, misses ~40% of colloquial phrasings; the legacy force-search is the floor). TB1 config, TB2 executor bindings + safesearch clamp (both were dead code), TB3 loop service (`tool_brain_service.py`, ADR-004 interceptor reused before every execution, wallet stays on the HITL flow), TB4 route wiring (`_try_tool_brain`) + a SearXNG-no-Brave bug fix the smoke surfaced. Live-validated on abliterated + SearXNG: EEVA news + Gwen `image_search` execute + synthesize in-voice. `argument_extractor.py` + the ADR-004 Stage1/Stage2 split are superseded (kept for rollback). **Owed before prod enablement:** operator live test on Telegram, then flip the flag; a fuller multi-turn agentic red-team once exercised live.
+
 **Direction resolved toward SINGLE-MODEL (2026-07-05 evening).** The two-brain
 split was scar tissue around Magidonia's inability to native-tool-call. Rather
 than build a Hermes-4-14B(tool) + Magidonia(voice) split, the operator directed
