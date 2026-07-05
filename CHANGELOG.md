@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-07-05) — ADR-009 layered toolkit: registry + generic uncensored web toolset (Phases R+W)
+
+Eval-first, isolated worktree, QA-gated. Backend suite 1689 → 1752 passing (0 regressions); gateway 25 → 30. Independent qa-gatekeeper pass on Phase R (behavior-identical migration): CONDITIONAL PASS, one dead-import follow-up (fixed).
+
+- **Tool registry (`tools/registry.py`, R1).** `ToolSpec` (definition + policy + executor/formatter) grouped into **toolsets**; per-persona resolution (`toolsets` field > `mcp_access` alias > rarity fallback) + `nsfw` flag + `describe_for_persona` introspection. Declared in `tools/registrations.py`. Characterization tests (`test_toolkit_characterization.py`) pin pre-migration behavior first.
+- **Migration to the registry (R2), behavior-identical.** `get_tools_for_query`/`get_tools_for_persona` and the ADR-004 `tool_interceptor` now source definitions + safety policy from the registry (private `_TOOL_POLICY` dict → `_lookup_policy`). `ALWAYS_BLOCKED_FROM_AGENT` hard-block + argument allowlist unchanged; wallet tool order preserved.
+- **SearXNG backend + safesearch config (W1).** `WebSearchSettings` (`WEB_SEARCH_BACKEND` auto|searxng|brave, `SEARXNG_BASE_URL`, `WEB_SAFESEARCH_DEFAULT`=**off**); `searxng_client.py` (stdlib JSON API, categories/safesearch/time_range); `SearchExecutionService` gains a SearXNG-primary→Brave-fallback chain (query stays local). Unset `SEARXNG_BASE_URL` = exact legacy Brave path. The hardwired `safesearch=moderate` (a filter bug for an uncensored companion) is now configurable.
+- **Extensive generic web toolset (W2).** `web_search`/`fetch_url`/`image_search`/`video_search`/`news_search`/`extract` registered in the `web` toolset (grantable per-persona, listable). `fetch_url` = httpx + trafilatura (stdlib fallback), caps + error sentinels. Per-persona `nsfw` **safesearch clamp** (`web_safesearch.clamp_safesearch`: non-nsfw floored at `moderate`, executor-enforced, only tightens). New optional dep: `trafilatura`.
+- **Toolkit introspection + Telegram `/tools` (W3).** `GET /personas/{key}/toolkit` (registry-driven); telegram-gateway `/tools` command (generic across personas) + `format_toolkit` + `NephilimClient.get_toolkit`.
+- **Deferred to later ADR-009 phases:** inner-wisdom memory-as-tools (Phase I, eval-gated), hardened terminal tool (Phase T), SKILL.md skills (Phase S). See [ADR-009](docs/decisions/009-layered-toolkit-registry-generic-web-toolset-inner-wisdom-skills.md).
+
 ### Changed (2026-07-05) — Dissolve the `startup.py` DI hub (audit follow-up step 8)
 
 Behavior-preserving; suite 1757 passing (unchanged), 0 regressions. Isolated in a worktree, QA-gated per milestone, reviewed by an independent qa-gatekeeper pass (PASS, no findings).
