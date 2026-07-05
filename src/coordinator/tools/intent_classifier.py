@@ -23,6 +23,20 @@ _NEGATED_ACTION = re.compile(
     re.IGNORECASE,
 )
 
+# Media-search fast-path (2026-07-05): colloquial "find me images / find me a
+# video / show me pics" must route to web search so the tool brain's
+# image_search/video_search fire. REQUIRES a media noun near a fetch verb — so
+# it catches those but NOT bare "find me" RP ("come find me when you're ready",
+# "I hope you find me pretty") which has no media noun. More precise than a
+# semantic example (which over-routes "find me" RP; measured 2026-07-05).
+_MEDIA_SEARCH = re.compile(
+    r"\b(?:find|show|get|give|pull\s+up|search(?:\s+for)?|look\s+(?:up|for))\b"
+    r"[^.?!]{0,25}?\b"
+    r"(?:image|images|pic|pics|picture|pictures|photo|photos|"
+    r"video|videos|vid|vids|clip|clips|gif|gifs)\b",
+    re.IGNORECASE,
+)
+
 
 class QueryIntent(Enum):
     """Query intent classification for MCP routing."""
@@ -59,6 +73,10 @@ def _classify_semantic_primary(
         if not _NEGATED_ACTION.search(query_lower):
             return QueryIntent.NEEDS_WALLET
     if can_use_brave and any(kw in query_lower for kw in EXPLICIT_SEARCH_COMMANDS):
+        return QueryIntent.NEEDS_WEB_SEARCH
+    # Colloquial media-find ("find me images", "show me a video") — precise
+    # verb+media-noun rule, so bare "find me" RP never matches (see _MEDIA_SEARCH).
+    if can_use_brave and _MEDIA_SEARCH.search(query_lower):
         return QueryIntent.NEEDS_WEB_SEARCH
 
     # 2. Semantic router — the primary decision.
