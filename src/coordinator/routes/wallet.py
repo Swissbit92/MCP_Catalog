@@ -5,8 +5,16 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from ..dependencies import (
+    optional_jupiter_ops,
+    optional_strategy_service,
+    optional_wallet_execution_service,
+    require_trade_proposal_repo,
+    require_wallet_repo,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/wallet", tags=["wallet"])
@@ -27,11 +35,12 @@ class StrategyActionBody(BaseModel):
 # ============================================================
 
 @router.post("/confirm/{proposal_id}")
-async def confirm_trade(proposal_id: str):
+async def confirm_trade(
+    proposal_id: str,
+    proposal_repo=Depends(require_trade_proposal_repo),
+    execution_service=Depends(optional_wallet_execution_service),
+):
     """Confirm an ad-hoc trade proposal. Executes the swap via Jupiter MCP."""
-    from ..startup import get_trade_proposal_repo, get_wallet_execution_service
-
-    proposal_repo = get_trade_proposal_repo()
     proposal_record = proposal_repo.get_proposal(proposal_id)
 
     if not proposal_record:
@@ -50,7 +59,6 @@ async def confirm_trade(proposal_id: str):
     try:
         import json
         proposal_data = json.loads(proposal_record["proposal_json"])
-        execution_service = get_wallet_execution_service()
 
         if execution_service is None:
             raise HTTPException(status_code=503, detail="Jupiter MCP not initialized — wallet not unlocked")
@@ -89,11 +97,8 @@ async def confirm_trade(proposal_id: str):
 
 
 @router.post("/cancel/{proposal_id}")
-def cancel_trade(proposal_id: str):
+def cancel_trade(proposal_id: str, proposal_repo=Depends(require_trade_proposal_repo)):
     """Cancel a pending trade proposal."""
-    from ..startup import get_trade_proposal_repo
-
-    proposal_repo = get_trade_proposal_repo()
     if not proposal_repo.get_proposal(proposal_id):
         raise HTTPException(status_code=404, detail="Proposal not found or expired")
 
@@ -106,11 +111,8 @@ def cancel_trade(proposal_id: str):
 # ============================================================
 
 @router.post("/strategy/approve")
-def approve_strategy(body: StrategyApprovalBody):
+def approve_strategy(body: StrategyApprovalBody, service=Depends(optional_strategy_service)):
     """Approve a strategy proposal. Activates autonomous execution."""
-    from ..startup import get_strategy_service
-
-    service = get_strategy_service()
     if service is None:
         raise HTTPException(status_code=503, detail="Strategy service not initialized")
 
@@ -135,40 +137,44 @@ def reject_strategy(proposal_id: str):
 
 
 @router.post("/strategy/{strategy_id}/pause")
-def pause_strategy(strategy_id: str, body: StrategyActionBody = StrategyActionBody()):
+def pause_strategy(
+    strategy_id: str,
+    body: StrategyActionBody = StrategyActionBody(),
+    service=Depends(optional_strategy_service),
+):
     """Pause an active strategy."""
-    from ..startup import get_strategy_service
-    service = get_strategy_service()
     if not service or not service.pause_strategy(strategy_id, body.user_id or "default_user"):
         raise HTTPException(status_code=404, detail=f"Strategy not found: {strategy_id}")
     return {"strategy_id": strategy_id, "status": "paused", "message": "Strategy paused."}
 
 
 @router.post("/strategy/{strategy_id}/resume")
-def resume_strategy(strategy_id: str, body: StrategyActionBody = StrategyActionBody()):
+def resume_strategy(
+    strategy_id: str,
+    body: StrategyActionBody = StrategyActionBody(),
+    service=Depends(optional_strategy_service),
+):
     """Resume a paused strategy."""
-    from ..startup import get_strategy_service
-    service = get_strategy_service()
     if not service or not service.resume_strategy(strategy_id, body.user_id or "default_user"):
         raise HTTPException(status_code=404, detail=f"Strategy not found: {strategy_id}")
     return {"strategy_id": strategy_id, "status": "active", "message": "Strategy resumed."}
 
 
 @router.post("/strategy/{strategy_id}/cancel")
-def cancel_strategy_endpoint(strategy_id: str, body: StrategyActionBody = StrategyActionBody()):
+def cancel_strategy_endpoint(
+    strategy_id: str,
+    body: StrategyActionBody = StrategyActionBody(),
+    service=Depends(optional_strategy_service),
+):
     """Permanently cancel a strategy."""
-    from ..startup import get_strategy_service
-    service = get_strategy_service()
     if not service or not service.cancel_strategy(strategy_id, body.user_id or "default_user"):
         raise HTTPException(status_code=404, detail=f"Strategy not found: {strategy_id}")
     return {"strategy_id": strategy_id, "status": "cancelled", "message": "Strategy cancelled."}
 
 
 @router.get("/strategies")
-def list_strategies(user_id: str = "default_user"):
+def list_strategies(user_id: str = "default_user", service=Depends(optional_strategy_service)):
     """List all strategies for a user."""
-    from ..startup import get_strategy_service
-    service = get_strategy_service()
     if service is None:
         return {"strategies": []}
     return {"strategies": service.list_strategies(user_id=user_id)}
@@ -179,16 +185,16 @@ def list_strategies(user_id: str = "default_user"):
 # ============================================================
 
 @router.get("/balance/{user_id}")
-async def get_wallet_balance(user_id: str):
+async def get_wallet_balance(
+    user_id: str,
+    wallet_repo=Depends(require_wallet_repo),
+    jupiter_ops=Depends(optional_jupiter_ops),
+):
     """Get SOL + token balances for the user's wallet."""
-    from ..startup import get_wallet_repo, get_jupiter_ops
-
-    wallet_repo = get_wallet_repo()
     wallet = wallet_repo.get_active_wallet(user_id)
     if not wallet:
         raise HTTPException(status_code=404, detail="No wallet found for user")
 
-    jupiter_ops = get_jupiter_ops()
     if jupiter_ops is None:
         # Return stored address without live balance
         return {
@@ -219,13 +225,15 @@ def create_wallet(body: WalletCreateBody):
     Used for testing and direct API integrations. In production, wallet creation
     should go through E.E.V.A.'s guided conversational flow for the full ritual.
     """
-    from ..startup import get_wallet_repo
     from ..jupiter.wallet_manager import generate_new_keypair, encrypt_private_key, cache_session_key
 
+    # Validate password before touching the wallet subsystem — a short password
+    # must 422 regardless of whether the repo is initialized. (Resolved here, not
+    # via Depends, so this cheap check precedes the require_wallet_repo() 503.)
     if len(body.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
-    wallet_repo = get_wallet_repo()
+    wallet_repo = require_wallet_repo()
 
     # Check if user already has an active wallet
     existing = wallet_repo.get_active_wallet(body.user_id)
@@ -259,11 +267,8 @@ def create_wallet(body: WalletCreateBody):
 
 
 @router.get("/info/{user_id}")
-def get_wallet_info(user_id: str):
+def get_wallet_info(user_id: str, wallet_repo=Depends(require_wallet_repo)):
     """Get wallet metadata (address, name, creation date) without needing MCP."""
-    from ..startup import get_wallet_repo
-
-    wallet_repo = get_wallet_repo()
     wallet = wallet_repo.get_active_wallet(user_id)
     if not wallet:
         raise HTTPException(status_code=404, detail="No wallet found for user")
@@ -278,17 +283,15 @@ def get_wallet_info(user_id: str):
 
 
 @router.delete("/delete/{user_id}")
-def delete_wallet(user_id: str):
+def delete_wallet(user_id: str, wallet_repo=Depends(require_wallet_repo)):
     """Deactivate (soft-delete) the user's active wallet.
 
     Marks the wallet as inactive in SQLite. The encrypted keypair is retained
     for audit purposes but the wallet is no longer returned by get_active_wallet().
     Also clears any cached session key for this user.
     """
-    from ..startup import get_wallet_repo
     from ..jupiter.wallet_manager import clear_session_key
 
-    wallet_repo = get_wallet_repo()
     wallet = wallet_repo.get_active_wallet(user_id)
     if not wallet:
         raise HTTPException(status_code=404, detail="No active wallet found for user")

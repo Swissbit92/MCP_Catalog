@@ -25,6 +25,7 @@ from .repositories.trade_history_repository import TradeHistoryRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .memory_rag import EpisodicMemoryRAG
 from .fact_extractor import FactExtractor
+from .app_state import AppState
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,10 @@ _fact_extractor: Optional[FactExtractor] = None
 # ADR-006 Phase 1 (M3/M4): ontology-lite fact store + async extraction worker
 _memory_fact_repo = None        # Optional[MemoryFactRepository] (shared read/write)
 _fact_extraction_worker = None  # Optional[FactExtractionWorker]
+
+# Composition root: an AppState snapshot of the globals above, built at the tail
+# of initialize_all() and mirrored onto app.state.container (see server.py).
+_app_state: Optional[AppState] = None
 
 
 # ----------------- Getters -----------------
@@ -503,6 +508,7 @@ def init_jupiter():
             jupiter_ops=_jupiter_ops,
             trade_history_repo=_trade_history_repo,
             wallet_summary_repo=_wallet_summary_repo,
+            wallet_registry_repo=_wallet_registry_repo,
         )
         _strategy_service = StrategyService(
             strategies_dir=jupiter_cfg.strategies_dir,
@@ -563,6 +569,48 @@ def cleanup_orphaned_sessions():
 
     except Exception as e:
         logger.warning(f"Failed to cleanup orphaned sessions: {e}")
+
+
+def build_app_state() -> AppState:
+    """Snapshot the initialized module globals into an :class:`AppState`.
+
+    Read-only view of what ``initialize_all`` has wired up so far — the request
+    path reaches these through ``dependencies.py``/``app.state.container`` while
+    the ``get_X()`` getters stay the patchable seam. Safe to call at any time;
+    fields not yet initialized are simply ``None``.
+    """
+    return AppState(
+        session_repo=_session_repo,
+        message_repo=_message_repo,
+        summary_repo=_summary_repo,
+        emotional_state_repo=_emotional_state_repo,
+        user_profile_repo=_user_profile_repo,
+        seeker_progression_repo=_seeker_progression_repo,
+        user_repo=_user_repo,
+        memory_manager=_memory_manager,
+        conversation_summarizer=_conversation_summarizer,
+        episodic_memory_rag=_episodic_memory_rag,
+        fact_extractor=_fact_extractor,
+        fact_extraction_worker=_fact_extraction_worker,
+        memory_fact_repo=_memory_fact_repo,
+        wallet_registry_repo=_wallet_registry_repo,
+        wallet_summary_repo=_wallet_summary_repo,
+        wallet_flow_repo=_wallet_flow_repo,
+        trade_history_repo=_trade_history_repo,
+        brave_client=_brave_client,
+        jupiter_client=_jupiter_client,
+        jupiter_ops=_jupiter_ops,
+        wallet_execution_service=_wallet_execution_service,
+        strategy_service=_strategy_service,
+        wallet_repo=_wallet_repo,
+        trade_proposal_repo=_trade_proposal_repo,
+        strategy_scheduler=_strategy_scheduler,
+    )
+
+
+def get_app_state() -> Optional[AppState]:
+    """Return the composition-root snapshot built at the end of startup."""
+    return _app_state
 
 
 def initialize_all():
@@ -675,5 +723,10 @@ def initialize_all():
         logger.info("[Prewarm] System prompt pre-warming started in background")
     except Exception as e:
         logger.warning(f"[Prewarm] Pre-warm thread failed to start: {e}")
+
+    # Composition root: snapshot the now-initialized globals so the request path
+    # can reach them via app.state.container / dependencies.py.
+    global _app_state
+    _app_state = build_app_state()
 
     logger.info("FastAPI server initialization complete.")

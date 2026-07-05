@@ -8,6 +8,10 @@ import time
 import logging
 from typing import Optional, Any
 
+from .. import startup  # module ref (not `from ..startup import get_X`): resolves
+                        # getters at call time so tests patching startup.get_X still
+                        # intercept. No import cycle — startup imports no route/service
+                        # at module load (only lazily inside init_jupiter).
 from ..schemas import ResponseMetadata, SourceType
 # LC_OllamaClient imported lazily inside methods to break circular import with llm_client.py
 from .citation_service import validate_citations
@@ -50,8 +54,7 @@ def has_active_wallet_flow(session_id: Optional[str]) -> bool:
     """Check whether *session_id* has an in-progress guided wallet creation flow."""
     if not session_id:
         return False
-    from ..startup import get_wallet_flow_repo  # lazy: avoid import cycle
-    repo = get_wallet_flow_repo()
+    repo = startup.get_wallet_flow_repo()
     return bool(repo and repo.get(session_id))
 
 
@@ -87,8 +90,7 @@ class QueryHandlerService:
         registry_wallets = []
         all_wallets = []
         try:
-            from ..startup import get_wallet_registry_repo
-            registry_repo = get_wallet_registry_repo()
+            registry_repo = startup.get_wallet_registry_repo()
             if registry_repo:
                 registry_wallets = registry_repo.get_active_wallets(user_id)
                 all_wallets = registry_repo.get_all_wallets(user_id)
@@ -98,8 +100,7 @@ class QueryHandlerService:
         # Fallback: if registry is empty, try legacy single-wallet repo
         if not registry_wallets and not all_wallets:
             try:
-                from ..startup import get_wallet_repo
-                wallet_repo = get_wallet_repo()
+                wallet_repo = startup.get_wallet_repo()
                 if wallet_repo:
                     legacy = wallet_repo.get_active_wallet(user_id)
                     if legacy:
@@ -115,8 +116,7 @@ class QueryHandlerService:
         balance_map: dict = {}
         summary = None
         try:
-            from ..startup import get_wallet_summary_repo
-            summary_repo = get_wallet_summary_repo()
+            summary_repo = startup.get_wallet_summary_repo()
             if summary_repo:
                 for bc in summary_repo.get_user_balances(user_id):
                     balance_map[bc.get("wallet_id", "")] = bc
@@ -470,8 +470,7 @@ class QueryHandlerService:
         logger.info(f"[WalletQuery] Handling wallet intent for user={user_id}")
 
         # Check if this is part of a guided wallet creation flow
-        from ..startup import get_wallet_flow_repo  # lazy: avoid import cycle
-        flow_repo = get_wallet_flow_repo()
+        flow_repo = startup.get_wallet_flow_repo()
         flow_state = flow_repo.get(session_id or "") if flow_repo else None
         if flow_state:
             return self._wallet_flow.advance(
@@ -496,15 +495,13 @@ class QueryHandlerService:
             logger.info(f"[WalletQuery] Wallet deletion intent detected for user={user_id}")
             wallets = []
             try:
-                from ..startup import get_wallet_registry_repo
-                registry_repo = get_wallet_registry_repo()
+                registry_repo = startup.get_wallet_registry_repo()
                 wallets = registry_repo.get_active_wallets(user_id or "default_user") if registry_repo else []
             except Exception as e:
                 logger.warning(f"[WalletQuery] Registry wallet lookup failed during deletion: {e}")
             if not wallets:
                 try:
-                    from ..startup import get_wallet_repo
-                    wallet_repo = get_wallet_repo()
+                    wallet_repo = startup.get_wallet_repo()
                     legacy = wallet_repo.get_active_wallet(user_id or "default_user") if wallet_repo else None
                     if legacy:
                         wallets = [legacy]
