@@ -140,7 +140,22 @@ class TestBuiltinRegistrations:
     def test_eeva_full_toolkit(self):
         card = {"key": "nephilim_eeva", "mcp_access": ["brave_search", "solana_wallet"]}
         names = {s.name for s in global_registry.specs_for_persona(card)}
-        assert names == {"brave_web_search"} | WALLET_TOOLS
+        # Full catalog for the granted toolsets (introspection + tool brain).
+        # After W2 the web toolset holds the generic tools too. The LEGACY
+        # get_tools_for_persona still returns only brave+wallet (pinned in
+        # test_toolkit_characterization).
+        web_tools = {"brave_web_search", "web_search", "fetch_url",
+                     "image_search", "video_search", "news_search", "extract"}
+        assert names == web_tools | WALLET_TOOLS
+
+    def test_web_toolset_has_generic_tools(self):
+        web_names = {s.name for s in global_registry.specs_for_toolsets(["web"])}
+        assert {"web_search", "fetch_url", "image_search"} <= web_names
+
+    def test_nsfw_modulated_flags(self):
+        assert global_registry.get("web_search").nsfw_modulated is True
+        assert global_registry.get("image_search").nsfw_modulated is True
+        assert global_registry.get("fetch_url").nsfw_modulated is False
 
     def test_describe_for_persona_shape(self):
         card = {"key": "nephilim_eeva", "mcp_access": ["brave_search"], "nsfw": True}

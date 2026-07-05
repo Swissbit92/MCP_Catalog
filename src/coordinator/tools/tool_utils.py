@@ -149,16 +149,26 @@ def get_tools_for_persona(
     Returns:
         List of tool definitions
     """
-    # ADR-009 R2: sourced from the tool registry (definitions + toolset grants),
-    # behavior-identical to the pre-registry mcp_access/rarity logic. A minimal
-    # persona card is synthesized from the legacy positional args.
+    # ADR-009 R2/W2: sourced from the tool registry, behavior-identical to the
+    # pre-registry mcp_access/rarity logic. This LEGACY path offers only the
+    # legacy-executable tools (brave_web_search + the wallet toolset) — the new
+    # generic web tools (web_search/fetch_url/...) are catalog-only until the
+    # ADR-008 tool brain can execute them, and are exposed via the registry's
+    # persona-grant methods (introspection / tool brain), not here.
     from .registry import registry
     from . import registrations  # noqa: F401 - ensure builtins registered
 
     card = {"key": persona_key, "rarity": persona_rarity}
     if mcp_access is not None:
         card["mcp_access"] = mcp_access
-    return registry.definitions_for_persona(card)
+    granted = registry.toolsets_for_persona(card)
+
+    tools: List[Dict[str, Any]] = []
+    if "web" in granted:
+        tools.append(registry.get("brave_web_search").definition())
+    if "wallet" in granted:
+        tools.extend(registry.definitions_for_toolsets(["wallet"]))
+    return tools
 
 
 def get_tools_for_query(
@@ -195,13 +205,15 @@ def get_tools_for_query(
     else:
         intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
 
-    # ADR-009 R2: intent -> toolset mapping, definitions from the registry.
-    # (Intent gating is unchanged; only the source of the tool dicts moved.)
+    # ADR-009 R2/W2: legacy intent-gated offer. NEEDS_WEB_SEARCH offers only the
+    # legacy-executable brave_web_search (the force-search path can't execute the
+    # new generic web tools yet — those arrive with the ADR-008 tool brain).
+    # NEEDS_WALLET offers the full wallet toolset (byte-identical to legacy).
     from .registry import registry
     from . import registrations  # noqa: F401 - ensure builtins registered
 
     if intent == QueryIntent.NEEDS_WEB_SEARCH:
-        return registry.definitions_for_toolsets(["web"])
+        return [registry.get("brave_web_search").definition()]
     if intent == QueryIntent.NEEDS_WALLET:
         return registry.definitions_for_toolsets(["wallet"])
     # QueryIntent.NEEDS_NEITHER → empty tools list

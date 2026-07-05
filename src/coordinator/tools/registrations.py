@@ -17,6 +17,14 @@ from __future__ import annotations
 
 from .registry import register_tool
 from .tool_generators import get_brave_search_tool
+from .web_tool_generators import (
+    get_extract_tool,
+    get_fetch_url_tool,
+    get_image_search_tool,
+    get_news_search_tool,
+    get_video_search_tool,
+    get_web_search_tool,
+)
 from .wallet_tool_generators import (
     get_solana_get_quote_tool,
     get_solana_propose_strategy_tool,
@@ -31,8 +39,36 @@ from .wallet_tool_generators import (
 def register_builtin_tools() -> None:
     """Register the 8 pre-ADR-009 tools. Idempotent."""
     # --- web toolset --------------------------------------------------
+    # Legacy intent-gated search tool (still used by the force-search path;
+    # now SearXNG-backed via W1). Kept for byte-identical legacy behavior.
     register_tool(
         "brave_web_search", "web", get_brave_search_tool,
+        blast_radius="low", requires_hitl=False,
+    )
+    # ADR-009 W2: generic web toolset. All read-only, low blast radius, no HITL.
+    # search-family tools are nsfw_modulated (safesearch clamp in the executor).
+    register_tool(
+        "web_search", "web", get_web_search_tool,
+        blast_radius="low", requires_hitl=False, nsfw_modulated=True,
+    )
+    register_tool(
+        "fetch_url", "web", get_fetch_url_tool,
+        blast_radius="low", requires_hitl=False,
+    )
+    register_tool(
+        "image_search", "web", get_image_search_tool,
+        blast_radius="low", requires_hitl=False, nsfw_modulated=True,
+    )
+    register_tool(
+        "video_search", "web", get_video_search_tool,
+        blast_radius="low", requires_hitl=False, nsfw_modulated=True,
+    )
+    register_tool(
+        "news_search", "web", get_news_search_tool,
+        blast_radius="low", requires_hitl=False,
+    )
+    register_tool(
+        "extract", "web", get_extract_tool,
         blast_radius="low", requires_hitl=False,
     )
 
