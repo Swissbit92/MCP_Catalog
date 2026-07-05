@@ -142,3 +142,48 @@ class TestPersonaSummary:
             resp = client.post("/persona/summary", json={})
         assert resp.status_code == 200
         mock_fn.assert_called_once_with(None)
+
+
+class TestPersonaToolkit:
+    """GET /personas/{key}/toolkit — ADR-009 W3 introspection."""
+
+    _CARDS = [
+        {"key": "nephilim_eeva", "display_name": "E.E.V.A.",
+         "mcp_access": ["brave_search", "solana_wallet"], "nsfw": True},
+        {"key": "nephilim_nyx", "display_name": "Nyx", "toolsets": [], "nsfw": False},
+    ]
+
+    def test_toolkit_for_web_wallet_persona(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/nephilim_eeva/toolkit")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["persona_key"] == "nephilim_eeva"
+        assert body["nsfw"] is True
+        assert set(body["toolsets"]) == {"web", "wallet"}
+        # generic web tools listed (W2)
+        web_names = {t["name"] for t in body["tools"]["web"]}
+        assert {"web_search", "fetch_url"} <= web_names
+        assert "wallet" in body["tools"]
+
+    def test_toolkit_empty_for_no_tools_persona(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/nephilim_nyx/toolkit")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["toolsets"] == []
+        assert body["tools"] == {}
+
+    def test_toolkit_case_insensitive(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/NEPHILIM_EEVA/toolkit")
+        assert resp.status_code == 200
+
+    def test_unknown_persona_404(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/does_not_exist/toolkit")
+        assert resp.status_code == 404

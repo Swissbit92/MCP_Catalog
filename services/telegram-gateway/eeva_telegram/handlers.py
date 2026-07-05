@@ -35,6 +35,66 @@ MSG_START_ACK = (
     "We're already mid-conversation. Say anything to continue, or /reset to wipe our history and start fresh."
 )
 MSG_RESET_DONE = "Done — our conversation history is wiped. We're starting fresh."
+MSG_TOOLKIT_EMPTY = "I don't have any tools available right now — just conversation."
+
+# Human-friendly toolset labels for the /tools listing.
+_TOOLSET_LABELS = {
+    "web": "🔎 Web",
+    "wallet": "💰 Wallet",
+    "memory": "🧠 Memory",
+    "terminal": "⌨️ Terminal",
+}
+
+
+def format_toolkit(toolkit: dict) -> str:
+    """Render a persona toolkit dict (from GET /personas/{key}/toolkit) into a
+    Telegram message. Only structured fields from our OWN backend are used —
+    tool names/descriptions are developer-authored, not user/LLM content."""
+    name = toolkit.get("display_name") or toolkit.get("persona_key") or "This persona"
+    tools_by_set = toolkit.get("tools") or {}
+    if not tools_by_set:
+        return MSG_TOOLKIT_EMPTY
+
+    lines = [f"🧰 {name} — available tools:"]
+    if toolkit.get("nsfw"):
+        lines.append("🔞 Unrestricted (adult) mode is on.")
+    for toolset, tools in tools_by_set.items():
+        label = _TOOLSET_LABELS.get(toolset, toolset.capitalize())
+        lines.append(f"\n{label}")
+        for t in tools:
+            desc = t.get("description") or ""
+            hitl = " (asks first)" if t.get("requires_hitl") else ""
+            lines.append(f"• {t.get('name')} — {desc}{hitl}")
+    return "\n".join(lines)
+
+
+async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """List the tools/skills available to the persona for this chat (ADR-009 W3).
+
+    Generic: uses the chat's configured persona, so it works for any persona,
+    not just E.E.V.A.
+    """
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    persona = gateway.config.persona_for_chat(chat_id)
+    bot = context.bot
+    limit = gateway.config.message_char_limit
+    try:
+        toolkit = await gateway.client.get_toolkit(persona)
+    except NephilimUnavailableError:
+        await messaging.send_text(bot, chat_id, MSG_UNAVAILABLE, limit)
+        return
+    except NephilimError:
+        logger.exception("get_toolkit failed for chat_id=%s persona=%s", chat_id, persona)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    except Exception:
+        logger.exception("Unexpected error in /tools for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    await messaging.send_text(bot, chat_id, format_toolkit(toolkit), limit)
 
 
 @dataclass

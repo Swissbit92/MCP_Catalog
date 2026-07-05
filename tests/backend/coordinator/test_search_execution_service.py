@@ -26,6 +26,12 @@ def _clear_locale_env(monkeypatch):
     """
     monkeypatch.setenv("BRAVE_COUNTRY", "")
     monkeypatch.setenv("BRAVE_SEARCH_LANG", "")
+    # ADR-009 Phase W: force the Brave backend path (no SearXNG) + a known
+    # safesearch default, so these Brave-focused tests stay hermetic vs a dev
+    # .env that might configure SearXNG.
+    monkeypatch.setenv("WEB_SEARCH_BACKEND", "brave")
+    monkeypatch.setenv("SEARXNG_BASE_URL", "")
+    monkeypatch.setenv("WEB_SAFESEARCH_DEFAULT", "off")
     get_settings.cache_clear()
 
 
@@ -92,7 +98,8 @@ class TestExecuteSearch:
         result = svc.execute_search(_tool_call("bitcoin"))
         assert result == fake_results
         client.search_web.assert_called_once_with(
-            "bitcoin", country=None, search_lang=None, freshness=None
+            "bitcoin", country=None, search_lang=None, freshness=None,
+            safesearch="off",
         )
 
     def test_empty_results_list_returned(self):
@@ -165,6 +172,7 @@ class TestLocaleParams:
     """BRAVE_COUNTRY / BRAVE_SEARCH_LANG flow through to search_web."""
 
     def test_country_and_lang_passed_when_configured(self, monkeypatch):
+        _clear_locale_env(monkeypatch)  # force Brave backend, safesearch=off
         monkeypatch.setenv("BRAVE_COUNTRY", "CH")
         monkeypatch.setenv("BRAVE_SEARCH_LANG", "en")
         get_settings.cache_clear()
@@ -177,6 +185,7 @@ class TestLocaleParams:
             country="CH",
             search_lang="en",
             freshness="pw",
+            safesearch="off",
         )
 
     def test_country_normalized_to_upper(self, monkeypatch):

@@ -99,3 +99,7 @@ class NephilimClient:
     async def clear_messages(self, session_id: str) -> None:
         """Delete all messages + emotional state for the session (true reset)."""
         await self._request("DELETE", f"/sessions/{session_id}/messages")
+
+    async def get_toolkit(self, persona_key: str) -> dict[str, Any]:
+        """Fetch the registry-driven toolkit summary for a persona (ADR-009 W3)."""
+        return await self._request("GET", f"/personas/{persona_key}/toolkit")

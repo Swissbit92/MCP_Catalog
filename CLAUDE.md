@@ -119,7 +119,8 @@ PERSONA_DIR=personas
 ```
 
 Optional (see `.env.docker` for full list):
-- `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access` in persona JSON)
+- `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access`/`toolsets` in persona JSON)
+- **Web toolset (ADR-009 W1):** `WEB_SEARCH_BACKEND` (`auto`|`searxng`|`brave`, default `auto` = SearXNG-if-configured-else-Brave), `SEARXNG_BASE_URL` (empty = Brave-only, byte-identical legacy), `SEARXNG_TIMEOUT` (10), `WEB_SAFESEARCH_DEFAULT` (`off`|`moderate`|`strict`, default **`off`** — uncensored companion; per-persona `nsfw:false` clamps UP to `moderate`, the model may tighten per-call). Self-host SearXNG: `docker run -d -p 8888:8080 searxng/searxng` with `search.formats: [html, json]` enabled, then `SEARXNG_BASE_URL=http://127.0.0.1:8888`
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings (default `bge-m3:latest`, 8192-token ctx; `ollama pull bge-m3`). `MEMORY_EMBEDDING_MAX_TOKENS` (8192) caps input before chunking
 - `MEMORY_CONTEXT_INJECT` (default OFF) - inject the M1-framed profile+emotional narrative. `MEMORY_FACTS_ENABLED` (default OFF) - the ADR-006 M2–M4 ontology-lite fact store (async extraction + framed retrieval); `MEMORY_FACTS_RETRIEVAL_K` (5), `MEMORY_FACTS_INJECT_ALL_THRESHOLD` (15). All stay OFF pending the ADR-006 Phase 1 (M5) acceptance gate
 
@@ -167,6 +168,12 @@ Optional (see `.env.docker` for full list):
 - **Ephemeral (Brave):** `docker run -i --rm` per request, dies after 2-3s
 - **Long-Running (Jupiter/Solana):** Container stays alive for wallet operations
 - Feature access controlled per-persona via `mcp_access` field in persona JSON (fallback: rarity-based `.env` vars)
+
+### Tool registry & generic web toolset (ADR-009)
+- **Registry** (`tools/registry.py`): the single source of truth for tools. A `ToolSpec` bundles definition (OpenAI-function dict) + safety policy (toolset, `blast_radius`, `requires_hitl`) + optional executor/formatter. Declared at import in `tools/registrations.py`; the ADR-004 interceptor reads its policy from here (no more private `_TOOL_POLICY`). Tools group into **toolsets** (`web`, `wallet`, later `memory`/`terminal`).
+- **Per-persona toolset grants**: persona JSON `toolsets` field (`mcp_access` kept as a back-compat alias → `brave_search`=web, `solana_wallet`=wallet; rarity fallback preserved). Per-persona `nsfw:true|false` flag modulates the web safesearch floor + (later) the intimate memory partition. `registry.describe_for_persona(card)` powers the introspection API.
+- **Generic web toolset** (`tools/web_tool_generators.py`, all read-only): `web_search` (category+safesearch+time_range), `fetch_url` (`services/web_fetch_service.py`: httpx + trafilatura extraction w/ stdlib fallback), `image_search`/`video_search`/`news_search`, `extract`. These are catalog-only until the ADR-008 tool brain can execute them — the **legacy** `get_tools_for_query`/`get_tools_for_persona` still offer only `brave_web_search`+wallet (byte-identical; force-search path). Backend chain (`SearchExecutionService`): SearXNG-primary (query stays local) → Brave fallback; `WEB_SEARCH_BACKEND`/`SEARXNG_BASE_URL` config.
+- **Toolkit introspection**: `GET /personas/{key}/toolkit` (registry-driven) + the Telegram **`/tools`** command (`services/telegram-gateway/`, generic across personas).
 
 ### MCP Query Routing Pipeline
 Queries flow through a two-layer classification system:

@@ -177,7 +177,8 @@ class BraveMCPClientStdio:
         count: Optional[int] = None,
         country: Optional[str] = None,
         search_lang: Optional[str] = None,
-        freshness: Optional[str] = None
+        freshness: Optional[str] = None,
+        safesearch: Optional[str] = None
     ) -> List[SearchResult]:
         """
         Search the web using Brave Search.
@@ -188,6 +189,9 @@ class BraveMCPClientStdio:
             country: Country code (e.g., 'US', 'GB')
             search_lang: Language code (e.g., 'en', 'de')
             freshness: Time filter ('pd'=day, 'pw'=week, 'pm'=month, 'py'=year)
+            safesearch: Per-call override (off|moderate|strict); None uses the
+                client default (ADR-009: the WEB_SAFESEARCH_DEFAULT-driven value
+                is passed here so an uncensored persona actually gets off).
 
         Returns:
             List of SearchResult objects
@@ -209,7 +213,7 @@ class BraveMCPClientStdio:
         arguments = {
             "query": query,
             "count": count or self.max_results,
-            "safesearch": self.safesearch
+            "safesearch": (safesearch or self.safesearch)
         }
 
         # Add optional parameters

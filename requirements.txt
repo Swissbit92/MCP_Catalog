@@ -42,6 +42,11 @@ cryptography>=42.0.0        # AES-GCM encryption for private key storage
 google-auth>=2.40.0
 PyJWT>=2.8.0
 
+# ADR-009 Phase W: fetch_url readable-content extraction. Optional at runtime
+# (web_fetch_service falls back to a stdlib HTML strip when absent) but strongly
+# preferred — trafilatura gives boilerplate-free article/main-content extraction.
+trafilatura>=2.1.0
+
 # Note: This project requires Node.js + npm for the React UI (Node 20 LTS recommended).
 # react-scripts breaks on Node 17+ unless NODE_OPTIONS=--openssl-legacy-provider is set —
 # that flag is already baked into the react-ui/package.json scripts.

@@ -206,3 +206,56 @@ async def test_persona_override_routes_to_nyx(gateway):
     # session created under the nyx persona key
     assert gateway.store.get(222, "nephilim_nyx") is not None
     assert gateway.store.get(222, "nephilim_eeva") is None
+
+
+# ─── /tools command (ADR-009 W3) ─────────────────────────────────────────────
+
+_TOOLKIT = {
+    "persona_key": "nephilim_eeva",
+    "display_name": "E.E.V.A.",
+    "nsfw": True,
+    "toolsets": ["web", "wallet"],
+    "tools": {
+        "web": [{"name": "web_search", "description": "Search the web", "requires_hitl": False}],
+        "wallet": [{"name": "solana_propose_swap", "description": "Propose a swap", "requires_hitl": True}],
+    },
+}
+
+
+def test_format_toolkit_lists_tools_and_nsfw():
+    out = handlers.format_toolkit(_TOOLKIT)
+    assert "E.E.V.A." in out
+    assert "web_search" in out and "solana_propose_swap" in out
+    assert "🔞" in out  # nsfw banner
+    assert "(asks first)" in out  # requires_hitl surfaced
+
+
+def test_format_toolkit_empty():
+    assert handlers.format_toolkit({"tools": {}}) == handlers.MSG_TOOLKIT_EMPTY
+
+
+async def test_tools_command_happy_path(gateway):
+    async def _toolkit(persona_key):
+        return _TOOLKIT
+    gateway.client.get_toolkit = _toolkit
+    bot = FakeBot()
+    await handlers.tools_command(make_update(111), make_context(gateway, bot))
+    assert any("web_search" in t for t in bot.texts)
+
+
+async def test_tools_command_non_allowlisted_silent(gateway):
+    async def _toolkit(persona_key):
+        raise AssertionError("must not be called for non-allowlisted chat")
+    gateway.client.get_toolkit = _toolkit
+    bot = FakeBot()
+    await handlers.tools_command(make_update(999), make_context(gateway, bot))
+    assert bot.sent == []
+
+
+async def test_tools_command_unavailable_maps_to_fixed_string(gateway):
+    async def _toolkit(persona_key):
+        raise NephilimUnavailableError("down")
+    gateway.client.get_toolkit = _toolkit
+    bot = FakeBot()
+    await handlers.tools_command(make_update(111), make_context(gateway, bot))
+    assert bot.texts == [handlers.MSG_UNAVAILABLE]

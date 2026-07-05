@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 from .keywords import NO_SEARCH_KEYWORDS, SEARCH_KEYWORDS
 from .intent_classifier import QueryIntent, classify_query_intent
-from .tool_generators import get_brave_search_tool
 
 
 @dataclass
@@ -150,20 +149,25 @@ def get_tools_for_persona(
     Returns:
         List of tool definitions
     """
-    tools = []
+    # ADR-009 R2/W2: sourced from the tool registry, behavior-identical to the
+    # pre-registry mcp_access/rarity logic. This LEGACY path offers only the
+    # legacy-executable tools (brave_web_search + the wallet toolset) — the new
+    # generic web tools (web_search/fetch_url/...) are catalog-only until the
+    # ADR-008 tool brain can execute them, and are exposed via the registry's
+    # persona-grant methods (introspection / tool brain), not here.
+    from .registry import registry
+    from . import registrations  # noqa: F401 - ensure builtins registered
 
+    card = {"key": persona_key, "rarity": persona_rarity}
     if mcp_access is not None:
-        # Per-persona MCP access (from persona JSON mcp_access field)
-        if "brave_search" in mcp_access:
-            tools.append(get_brave_search_tool())
-        if "solana_wallet" in mcp_access:
-            from .wallet_tool_generators import get_wallet_tools
-            tools.extend(get_wallet_tools())
-    else:
-        # Fallback: rarity-based access for personas that have no mcp_access field.
-        if persona_rarity.lower() in {"rare", "epic", "legendary"}:
-            tools.append(get_brave_search_tool())
+        card["mcp_access"] = mcp_access
+    granted = registry.toolsets_for_persona(card)
 
+    tools: List[Dict[str, Any]] = []
+    if "web" in granted:
+        tools.append(registry.get("brave_web_search").definition())
+    if "wallet" in granted:
+        tools.extend(registry.definitions_for_toolsets(["wallet"]))
     return tools
 
 
@@ -201,15 +205,16 @@ def get_tools_for_query(
     else:
         intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
 
-    tools = []
+    # ADR-009 R2/W2: legacy intent-gated offer. NEEDS_WEB_SEARCH offers only the
+    # legacy-executable brave_web_search (the force-search path can't execute the
+    # new generic web tools yet — those arrive with the ADR-008 tool brain).
+    # NEEDS_WALLET offers the full wallet toolset (byte-identical to legacy).
+    from .registry import registry
+    from . import registrations  # noqa: F401 - ensure builtins registered
 
     if intent == QueryIntent.NEEDS_WEB_SEARCH:
-        tools.append(get_brave_search_tool())
-
-    elif intent == QueryIntent.NEEDS_WALLET:
-        from .wallet_tool_generators import get_wallet_tools
-        tools.extend(get_wallet_tools())
-
+        return [registry.get("brave_web_search").definition()]
+    if intent == QueryIntent.NEEDS_WALLET:
+        return registry.definitions_for_toolsets(["wallet"])
     # QueryIntent.NEEDS_NEITHER → empty tools list
-
-    return tools
+    return []
