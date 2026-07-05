@@ -162,8 +162,30 @@ class ToolRegistry:
         rarity = str(persona_card.get("rarity", "common")).lower()
         return {"web"} if rarity in _RARITY_FALLBACK_TOOLSETS else set()
 
+    def tool_allowlist_for_persona(self, persona_card: Dict[str, Any]) -> Optional[Set[str]]:
+        """Optional persona-card `tools` field: a subset restriction WITHIN the
+        granted toolsets (not a grant by itself — a tool must still belong to a
+        granted toolset). None = no restriction (all tools in granted toolsets,
+        the pre-existing behavior). Lets a persona be scoped to e.g. only
+        image_search/video_search within the broader `web` toolset, without
+        inventing a new toolset per subset combination."""
+        allow = persona_card.get("tools")
+        if allow is None:
+            return None
+        return set(allow)
+
     def specs_for_persona(self, persona_card: Dict[str, Any]) -> List[ToolSpec]:
-        return self.specs_for_toolsets(sorted(self.toolsets_for_persona(persona_card)))
+        specs = self.specs_for_toolsets(sorted(self.toolsets_for_persona(persona_card)))
+        allow = self.tool_allowlist_for_persona(persona_card)
+        if allow is None:
+            return specs
+        unknown = allow - {s.name for s in specs}
+        if unknown:
+            logger.warning(
+                f"persona '{persona_card.get('key')}' tools allowlist references "
+                f"{sorted(unknown)}, not in its granted toolsets — ignored"
+            )
+        return [s for s in specs if s.name in allow]
 
     def definitions_for_persona(self, persona_card: Dict[str, Any]) -> List[Dict[str, Any]]:
         return [s.definition() for s in self.specs_for_persona(persona_card)]
@@ -174,7 +196,7 @@ class ToolRegistry:
         """Human-readable toolkit summary for a persona (introspection API)."""
         granted = sorted(self.toolsets_for_persona(persona_card))
         by_toolset: Dict[str, List[Dict[str, str]]] = {}
-        for spec in self.specs_for_toolsets(granted):
+        for spec in self.specs_for_persona(persona_card):
             d = spec.definition()["function"]
             by_toolset.setdefault(spec.toolset, []).append(
                 {
