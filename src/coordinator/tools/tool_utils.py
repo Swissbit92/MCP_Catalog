@@ -150,21 +150,16 @@ def get_tools_for_persona(
     Returns:
         List of tool definitions
     """
-    tools = []
+    # ADR-009 R2: sourced from the tool registry (definitions + toolset grants),
+    # behavior-identical to the pre-registry mcp_access/rarity logic. A minimal
+    # persona card is synthesized from the legacy positional args.
+    from .registry import registry
+    from . import registrations  # noqa: F401 - ensure builtins registered
 
+    card = {"key": persona_key, "rarity": persona_rarity}
     if mcp_access is not None:
-        # Per-persona MCP access (from persona JSON mcp_access field)
-        if "brave_search" in mcp_access:
-            tools.append(get_brave_search_tool())
-        if "solana_wallet" in mcp_access:
-            from .wallet_tool_generators import get_wallet_tools
-            tools.extend(get_wallet_tools())
-    else:
-        # Fallback: rarity-based access for personas that have no mcp_access field.
-        if persona_rarity.lower() in {"rare", "epic", "legendary"}:
-            tools.append(get_brave_search_tool())
-
-    return tools
+        card["mcp_access"] = mcp_access
+    return registry.definitions_for_persona(card)
 
 
 def get_tools_for_query(
@@ -201,15 +196,14 @@ def get_tools_for_query(
     else:
         intent = classify_query_intent(query, persona_rarity, mcp_access=mcp_access)
 
-    tools = []
+    # ADR-009 R2: intent -> toolset mapping, definitions from the registry.
+    # (Intent gating is unchanged; only the source of the tool dicts moved.)
+    from .registry import registry
+    from . import registrations  # noqa: F401 - ensure builtins registered
 
     if intent == QueryIntent.NEEDS_WEB_SEARCH:
-        tools.append(get_brave_search_tool())
-
-    elif intent == QueryIntent.NEEDS_WALLET:
-        from .wallet_tool_generators import get_wallet_tools
-        tools.extend(get_wallet_tools())
-
+        return registry.definitions_for_toolsets(["web"])
+    if intent == QueryIntent.NEEDS_WALLET:
+        return registry.definitions_for_toolsets(["wallet"])
     # QueryIntent.NEEDS_NEITHER → empty tools list
-
-    return tools
+    return []

@@ -74,17 +74,22 @@ class _ToolPolicy:
     requires_hitl: bool
 
 
-# Per-tool policy registry. Anything not listed is denied as unknown_tool.
-_TOOL_POLICY: Dict[str, _ToolPolicy] = {
-    "brave_web_search": _ToolPolicy(_MCP_BRAVE, "low", False),
-    "wallet_get_balances": _ToolPolicy(_MCP_WALLET, "none", False),
-    "solana_get_quote": _ToolPolicy(_MCP_WALLET, "none", False),
-    "solana_rsi_check": _ToolPolicy(_MCP_WALLET, "none", False),
-    "solana_trade_history": _ToolPolicy(_MCP_WALLET, "none", False),
-    "solana_propose_swap": _ToolPolicy(_MCP_WALLET, "high", True),
-    "solana_propose_strategy": _ToolPolicy(_MCP_WALLET, "high", True),
-    "wallet_create_guided": _ToolPolicy(_MCP_WALLET, "high", True),
-}
+def _lookup_policy(tool_name: str) -> Optional[_ToolPolicy]:
+    """Resolve a tool's safety policy from the ADR-009 registry.
+
+    The registry is the single source of truth (R2); this adapts a ToolSpec to
+    the interceptor's `_ToolPolicy` shape, mapping the spec's toolset to the
+    legacy `mcp_access` string the persona gate speaks. Returns None for any
+    unregistered tool -> caller denies as unknown_tool (unchanged semantics).
+    """
+    # Lazy import (registry lives in tools/, ensure builtins are registered).
+    from ..tools.registry import registry
+    from ..tools import registrations  # noqa: F401
+
+    spec = registry.get(tool_name)
+    if spec is None:
+        return None
+    return _ToolPolicy(spec.mcp_alias, spec.blast_radius, spec.requires_hitl)
 
 
 def _validate_arguments(tool_name: str, args: Dict[str, Any]) -> Optional[str]:
@@ -177,7 +182,7 @@ class ToolCallInterceptor:
             )
 
         # 2. Unknown tool: deny by default.
-        policy = _TOOL_POLICY.get(tool_name)
+        policy = _lookup_policy(tool_name)
         if policy is None:
             return InterceptResult(
                 allowed=False,

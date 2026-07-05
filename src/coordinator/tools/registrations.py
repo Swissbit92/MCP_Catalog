@@ -37,10 +37,16 @@ def register_builtin_tools() -> None:
     )
 
     # --- wallet toolset ----------------------------------------------
-    # Read ops: no blast radius, no HITL.
+    # Registration order matches get_wallet_tools() exactly so the tool list
+    # presented to the model is byte-order-identical to the legacy path.
+    # (blast_radius/requires_hitl mirror the interceptor _TOOL_POLICY.)
     register_tool(
         "wallet_get_balances", "wallet", get_wallet_get_balances_tool,
         blast_radius="none", requires_hitl=False,
+    )
+    register_tool(
+        "wallet_create_guided", "wallet", get_wallet_create_guided_tool,
+        blast_radius="high", requires_hitl=True,
     )
     register_tool(
         "solana_get_quote", "wallet", get_solana_get_quote_tool,
@@ -51,11 +57,6 @@ def register_builtin_tools() -> None:
         blast_radius="none", requires_hitl=False,
     )
     register_tool(
-        "solana_trade_history", "wallet", get_solana_trade_history_tool,
-        blast_radius="none", requires_hitl=False,
-    )
-    # Write/irreversible ops: high blast radius, HITL-gated.
-    register_tool(
         "solana_propose_swap", "wallet", get_solana_propose_swap_tool,
         blast_radius="high", requires_hitl=True,
     )
@@ -64,8 +65,8 @@ def register_builtin_tools() -> None:
         blast_radius="high", requires_hitl=True,
     )
     register_tool(
-        "wallet_create_guided", "wallet", get_wallet_create_guided_tool,
-        blast_radius="high", requires_hitl=True,
+        "solana_trade_history", "wallet", get_solana_trade_history_tool,
+        blast_radius="none", requires_hitl=False,
     )
 
 
