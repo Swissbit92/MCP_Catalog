@@ -102,3 +102,4 @@ data/
 
 # repo-audit raw per-lens dumps (only the synthesized report is versioned)
 docs/audits/.raw/
+docker/searxng/settings.yml

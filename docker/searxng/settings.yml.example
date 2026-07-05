@@ -1,0 +1,15 @@
+# SearXNG settings for the nephilim web toolset (ADR-009 W1).
+# Minimal single-user config: JSON API enabled (required by searxng_client),
+# limiter kept on with relaxed thresholds handled by defaults.
+use_default_settings: true
+
+server:
+  secret_key: "GENERATE_YOUR_OWN — python3 -c \"import secrets;print(secrets.token_hex(32))\""
+  limiter: false            # single local user; inbound throttling unnecessary
+  bind_address: "0.0.0.0"
+
+search:
+  formats:
+    - html
+    - json                  # REQUIRED: searxng_client speaks ?format=json
+  safe_search: 0            # engine-level default; per-request param overrides
