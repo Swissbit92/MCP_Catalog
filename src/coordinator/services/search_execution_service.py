@@ -75,10 +75,6 @@ class SearchExecutionService:
         Returns:
             List of SearchResult objects, or None if search failed
         """
-        if not self.mcp_client:
-            logger.error("[SearchExecution] Brave MCP client not available, cannot execute search")
-            return None
-
         try:
             query = tool_call.arguments.get("query", "")
             if not query:
@@ -89,8 +85,7 @@ class SearchExecutionService:
             # stays local, most-permissive safesearch) when configured; fall back
             # to Brave. safesearch comes from the tool_call args when the model/
             # executor set it (per-persona nsfw clamp, W2), else the global
-            # WEB_SAFESEARCH_DEFAULT. When SearXNG is unconfigured this degrades
-            # to the exact pre-ADR-009 Brave path.
+            # WEB_SAFESEARCH_DEFAULT.
             from ..config import get_settings
 
             settings = get_settings()
@@ -99,6 +94,10 @@ class SearchExecutionService:
             safesearch = args.get("safesearch") or web.safesearch_default
             category = args.get("category") or "general"
 
+            # SearXNG needs no Brave client — try it FIRST so a SearXNG-primary
+            # deployment works even with Brave unconfigured (bug surfaced by the
+            # ADR-008 live smoke: the old `if not self.mcp_client: return None`
+            # guard bailed before SearXNG ever ran).
             searxng_results = self._try_searxng(
                 query, category, safesearch, web
             )
@@ -109,6 +108,12 @@ class SearchExecutionService:
                 return searxng_results
 
             # --- Brave fallback (or backend='brave') --------------------------
+            if not self.mcp_client:
+                logger.warning(
+                    "[SearchExecution] SearXNG gave no results and no Brave client "
+                    "is available — returning no results."
+                )
+                return None
             brave = settings.brave
             country = brave.country or None
             search_lang = brave.search_lang or None

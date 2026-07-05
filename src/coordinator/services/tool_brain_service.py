@@ -187,8 +187,7 @@ class ToolBrainService:
 
             # Iteration budget exhausted — force a final synthesis without tools.
             resp = client.chat(model=model, messages=messages, stream=False, options=opts)
-            fmsg = resp.get("message", {}) if hasattr(resp, "get") else resp["message"]
-            fcontent = ((fmsg.get("content") if hasattr(fmsg, "get") else fmsg["content"]) or "").strip()
+            fcontent = (_get(_get(resp, "message", {}), "content", "") or "").strip()
             return ToolBrainResult(status=ST_ANSWERED, answer=fcontent, tool_trace=trace,
                                    used_search=used_search, search_results=search_results)
 

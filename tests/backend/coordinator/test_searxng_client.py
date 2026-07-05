@@ -130,6 +130,26 @@ class TestBackendChain:
         assert out[0].title == "BraveTitle"
         brave.search_web.assert_called_once()
 
+    def test_searxng_works_with_no_brave_client(self, monkeypatch):
+        # ADR-008 live-smoke bug fix: a SearXNG-primary deployment must work even
+        # with NO Brave client (the old `if not self.mcp_client: return None`
+        # guard bailed before SearXNG ran).
+        monkeypatch.setenv("WEB_SEARCH_BACKEND", "auto")
+        monkeypatch.setenv("SEARXNG_BASE_URL", "http://sx:8888")
+        get_settings.cache_clear()
+        svc = SearchExecutionService(mcp_client=None)  # no brave
+        payload = {"results": [{"url": "https://sx", "title": "SxOnly", "content": ""}]}
+        with patch("urllib.request.urlopen", return_value=_fake_http(payload)):
+            out = svc.execute_search(ToolCall("brave_web_search", {"query": "hi"}))
+        assert out[0].title == "SxOnly"
+
+    def test_no_client_no_searxng_returns_none(self, monkeypatch):
+        monkeypatch.setenv("WEB_SEARCH_BACKEND", "auto")
+        monkeypatch.setenv("SEARXNG_BASE_URL", "")
+        get_settings.cache_clear()
+        svc = SearchExecutionService(mcp_client=None)
+        assert svc.execute_search(ToolCall("brave_web_search", {"query": "hi"})) is None
+
     def test_auto_with_searxng_url_uses_searxng(self, monkeypatch):
         monkeypatch.setenv("WEB_SEARCH_BACKEND", "auto")
         monkeypatch.setenv("SEARXNG_BASE_URL", "http://sx:8888")
