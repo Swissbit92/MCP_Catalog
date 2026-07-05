@@ -1,5 +1,6 @@
 {
   "key": "Gojo",
+  "active": false,
   "rarity": "common",
   "celestial_order": "wanderer",
   "mcp_access": [],

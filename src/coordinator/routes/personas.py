@@ -59,6 +59,13 @@ def list_personas():
             cleanup_orphaned_sessions()
         personas = []
         for card in cards:
+            # Roster filter (2026-07-05): personas with `active: false` are HIDDEN
+            # from the UI/summoning roster but intentionally still loaded by
+            # _load_all_cards_cached() — so they remain resolvable by key (direct
+            # chat, the full-persona eval gate) and, critically, are NOT treated
+            # as orphaned by cleanup_orphaned_sessions (which keys off all cards).
+            if card.get("active", True) is False:
+                continue
             persona = {
                 "key": card.get("key"),
                 "display_name": card.get("display_name") or card.get("key"),
