@@ -112,7 +112,10 @@ def test_synthesis_prompt_length():
 
     # Should be longer than original but not excessively
     assert len(synthesis_prompt) > len(persona_system)
-    assert len(synthesis_prompt) < len(persona_system) + 5000  # Synthesis instructions ~3KB
+    # Synthesis instructions ~5.2KB since the 2026-07-05 temporal-grounding fix
+    # (current date + result-age staleness + unit-conversion rules, commit ab167c2c).
+    # Ceiling kept generous but finite to still catch a runaway prompt.
+    assert len(synthesis_prompt) < len(persona_system) + 6500
 
     print("[PASS] test_synthesis_prompt_length")
 
