@@ -15,6 +15,35 @@ from ..startup import cleanup_orphaned_sessions
 
 router = APIRouter(tags=["personas"])
 
+
+def _find_card(persona_key: str):
+    """Return the persona card whose key matches (case-insensitive), else None."""
+    key = (persona_key or "").strip().lower()
+    for card in _load_all_cards_cached():
+        if str(card.get("key", "")).lower() == key:
+            return card
+    return None
+
+
+@router.get("/personas/{persona_key}/toolkit")
+def persona_toolkit(persona_key: str):
+    """Registry-driven toolkit summary for a persona (ADR-009 W3).
+
+    Lists the toolsets and tools this persona is granted, with one-line
+    descriptions + the nsfw flag. Backs the Telegram `/tools` command and any
+    UI toolkit view. Generic — works for any persona, not just E.E.V.A.
+    """
+    card = _find_card(persona_key)
+    if card is None:
+        raise HTTPException(status_code=404, detail=f"Unknown persona '{persona_key}'")
+    # Lazy import: ensure registry is populated (registrations side-effect).
+    from ..tools.registry import registry
+    from ..tools import registrations  # noqa: F401
+
+    desc = registry.describe_for_persona(card)
+    desc["display_name"] = card.get("display_name") or card.get("key")
+    return JSONResponse(content=desc)
+
 _last_persona_keys: set = set()
 
 

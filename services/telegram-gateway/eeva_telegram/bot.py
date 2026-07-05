@@ -42,6 +42,7 @@ def build_application(config: TelegramConfig, db_path: Path | None = None) -> Ap
 
     application.add_handler(CommandHandler("start", handlers.start_command))
     application.add_handler(CommandHandler("reset", handlers.reset_command))
+    application.add_handler(CommandHandler("tools", handlers.tools_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.text_message))
     # Any non-text, non-command content (media, voice, stickers, docs).
     application.add_handler(MessageHandler((filters.ALL & ~filters.TEXT) & ~filters.COMMAND, handlers.non_text_message))
