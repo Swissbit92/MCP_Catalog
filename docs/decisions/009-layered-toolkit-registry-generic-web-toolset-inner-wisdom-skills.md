@@ -1,6 +1,6 @@
 ---
 title: "Layered toolkit: registry, generic web toolset, inner wisdom, skills"
-status: Proposed
+status: Accepted
 created: 2026-07-05
 last_reviewed_on: 2026-07-05
 review_in: 12 months
@@ -11,7 +11,7 @@ applies_to: nephilim
 
 ## Status
 
-Proposed — awaiting operator approval. Sequenced BEFORE the ADR-008 P1
+Accepted 2026-07-05 (operator approval). Sequenced BEFORE the ADR-008 P1
 tool-brain build at the operator's direction (2026-07-05): decide what the
 tool brain will call before deciding which model calls it.
 
