@@ -67,6 +67,38 @@ class EmotionalState:
 
         return "\n".join(lines)
 
+    def to_narrative_context(self) -> str:
+        """Prose variant of ``to_prompt_context`` for framed injection (ADR-006 P1).
+
+        Same trust/mood/recent-event content as flowing sentences rather than the
+        ``- field: value`` skeleton that Gate 0.1 tied to voice homogenization.
+        """
+        if self.trust_level >= 0.8:
+            trust_desc = "deeply trusted — they are open and unguarded with you"
+        elif self.trust_level >= 0.6:
+            trust_desc = "comfortable and warm"
+        elif self.trust_level >= 0.4:
+            trust_desc = "still finding its footing; rapport is only half-built"
+        elif self.trust_level >= 0.2:
+            trust_desc = "guarded — they hold something back"
+        else:
+            trust_desc = "wary; trust has not yet taken root"
+
+        if self.mood_intensity >= 0.7:
+            mood_str = f"strongly {self.current_mood}"
+        elif self.mood_intensity <= 0.3:
+            mood_str = f"faintly {self.current_mood}"
+        else:
+            mood_str = str(self.current_mood)
+
+        sentences = [
+            f"The bond between you is {trust_desc}.",
+            f"Right now they seem {mood_str}.",
+        ]
+        if self.last_emotional_event:
+            sentences.append(f"Not long ago: {str(self.last_emotional_event).strip().rstrip('.')}.")
+        return " ".join(sentences)
+
 
 class EmotionalStateRepository(BaseRepository):
     """Repository for emotional state CRUD operations."""

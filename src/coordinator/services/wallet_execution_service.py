@@ -28,10 +28,12 @@ class WalletExecutionService:
         jupiter_ops: Any,  # JupiterOperations
         trade_history_repo: Any = None,  # TradeHistoryRepository, optional
         wallet_summary_repo: Any = None,  # WalletSummaryRepository, optional
+        wallet_registry_repo: Any = None,  # WalletRegistryRepository, optional
     ):
         self.jupiter_ops = jupiter_ops
         self.trade_history_repo = trade_history_repo
         self.wallet_summary_repo = wallet_summary_repo
+        self.wallet_registry_repo = wallet_registry_repo
 
     async def execute_swap(
         self,
@@ -156,8 +158,12 @@ class WalletExecutionService:
             # Resolve wallet_id from registry by looking up the user's active wallet address
             wallet_id = ""
             try:
-                from ..startup import get_wallet_registry_repo
-                registry_repo = get_wallet_registry_repo()
+                # Prefer the injected registry; fall back to the startup seam so
+                # this remains resolvable when constructed without one.
+                registry_repo = self.wallet_registry_repo
+                if registry_repo is None:
+                    from .. import startup
+                    registry_repo = startup.get_wallet_registry_repo()
                 if registry_repo:
                     wallets = registry_repo.get_active_wallets(trade_doc.get("user_id", ""))
                     if wallets:

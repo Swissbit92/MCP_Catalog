@@ -42,6 +42,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     initialize_all()
+    # Publish the composition-root snapshot for the request path (dependencies.py).
+    from .startup import get_app_state
+    app.state.container = get_app_state()
     yield
     # Shutdown — stop strategy scheduler gracefully
     from .startup import get_strategy_scheduler

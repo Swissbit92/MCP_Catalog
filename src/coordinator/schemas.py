@@ -3,8 +3,63 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
+
+
+# ----------------- Controlled vocabularies -----------------
+
+class SourceType(StrEnum):
+    """Where a response came from — the `source_type` on ResponseMetadata / messages.
+
+    `StrEnum` (not the older `(str, Enum)` idiom used elsewhere) so members render
+    as their value in f-strings / logs, not `SourceType.LLM`. Members ARE `str`, so
+    they compare equal to the raw strings and serialize/store as the value — the
+    `source_type` fields stay typed `str` (permissive: this vocabulary evolves), and
+    these are used as named constants at the assignment/comparison sites.
+    """
+
+    LLM = "llm"
+    BRAVE_MCP = "brave_mcp"
+    WALLET_MCP = "wallet_mcp"
+    WALLET_FLOW = "wallet_flow"
+    AGENTIC = "agentic"
+    AGENTIC_BLOCKED = "agentic_blocked"
+    AGENTIC_HITL = "agentic_hitl"
+    GROUNDEDNESS_ABSTAIN = "groundedness_abstain"
+    WALLET_PROPOSAL = "wallet_proposal"
+
+
+class MessageRole(StrEnum):
+    """Conversation message role (the `role` on ChatTurn / messages).
+
+    Fields stay typed `str`; these are named constants at the persistence-layer
+    construction sites (members ARE `str`, so stored/compared values are unchanged).
+    """
+
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+class ProposalType(StrEnum):
+    """The on-chain ACTION a proposal card represents (the `proposal_type` inside
+    a proposal object, and the `trade_proposals.proposal_type` column)."""
+
+    SWAP = "swap"
+    STRATEGY = "strategy"
+    WALLET_DELETION = "wallet_deletion"
+
+
+class ProposalCategory(StrEnum):
+    """The response-metadata proposal CATEGORY (`ResponseMetadata.proposal_type`,
+    consumed by the frontend to route/render the card). Distinct vocabulary from
+    :class:`ProposalType` — do not conflate the two."""
+
+    TRADE_PROPOSAL = "trade_proposal"
+    STRATEGY_PROPOSAL = "strategy_proposal"
+    WALLET_DELETION = "wallet_deletion"
 
 
 # ----------------- Chat Schemas -----------------
@@ -65,7 +120,7 @@ class AppendMessageBody(BaseModel):
     content: str
     ts: Optional[str] = None
     latency_ms: Optional[int] = None
-    source_type: str = "llm"
+    source_type: str = SourceType.LLM
     multi_message_id: Optional[str] = None
     multi_message_index: Optional[int] = None
 
@@ -77,7 +132,7 @@ class MessageModel(BaseModel):
     content: str
     timestamp: str
     latency_ms: Optional[int] = None
-    source_type: str = "llm"
+    source_type: str = SourceType.LLM
 
 
 class SessionModel(BaseModel):
@@ -124,7 +179,7 @@ class ImportChatBody(BaseModel):
 
 class ResponseMetadata(BaseModel):
     """Metadata about the response source."""
-    source_type: str = "llm"  # "llm", "brave_mcp"
+    source_type: str = SourceType.LLM  # see SourceType (values: llm, brave_mcp, wallet_*, agentic*, …)
     tools_used: List[str] = []
     cache_status: Optional[str] = None  # "hit", "miss", None
     data_timestamp: Optional[str] = None

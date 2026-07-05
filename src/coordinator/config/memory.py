@@ -69,10 +69,13 @@ class MemorySettings(BaseSettings):
                     "the current code path) still homogenizes — 0.768→0.679/0.696 "
                     "across two independent runs, eeva 0.625→0.25/0.375. Identically-"
                     "formatted blocks pull every persona toward the same injected "
-                    "text; block CHOICE is not the fix. DO NOT enable without "
-                    "per-persona framing of the injected content (render facts in "
-                    "the persona's voice, or tag as non-echoable metadata) AND a "
-                    "re-gate. Seam + plumbing remain correct. See ADR-006.",
+                    "text; block CHOICE is not the fix. ADR-006 M1 (2026-07-04) now "
+                    "PROVIDES that per-persona framing: prose narrative variants "
+                    "wrapped in a non-echoable <remembered> frame (context_framing.py). "
+                    "M5 GATE PASSED 2026-07-05: full-7 attribution OFF 0.786 → ON 0.839 "
+                    "(+0.054), flatness 0.0 — first injection to match-or-beat (Gate 0 "
+                    "−0.125, Gate 0.1 −0.07/−0.09 both FAILed). Eligible to flip; kept "
+                    "default OFF for a live soak + instant revert. See ADR-006 Phase 1.",
         alias="MEMORY_CONTEXT_INJECT"
     )
     context_max_tokens: int = Field(
@@ -85,6 +88,34 @@ class MemorySettings(BaseSettings):
                     "are dropped when the budget is exceeded, protecting the context "
                     "window. 0 = no cap.",
         alias="MEMORY_CONTEXT_MAX_TOKENS"
+    )
+    facts_enabled: bool = Field(
+        default=False,
+        description="ADR-006 Phase 1 (M3/M4): enable the ontology-lite fact store — "
+                    "async triplet extraction on write (memory_facts) + framed fact "
+                    "retrieval on read. Extraction runs fully off the interactive path "
+                    "(background worker) at the summarization cadence; retrieval injects "
+                    "through the same per-persona <remembered> framing as M1. M5 gate "
+                    "PASSED; kept default OFF pending a live soak. Independent of "
+                    "MEMORY_CONTEXT_INJECT.",
+        alias="MEMORY_FACTS_ENABLED"
+    )
+    facts_retrieval_k: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="ADR-006 M4: top-k facts retrieved per turn once the active-fact "
+                    "count exceeds facts_inject_all_threshold; below that, inject all.",
+        alias="MEMORY_FACTS_RETRIEVAL_K"
+    )
+    facts_inject_all_threshold: int = Field(
+        default=15,
+        ge=0,
+        le=200,
+        description="ADR-006 M4: below this many active facts, inject them all and skip "
+                    "vector search (retrieval is wasted complexity at low fact counts); "
+                    "at/above it, semantically retrieve top-k.",
+        alias="MEMORY_FACTS_INJECT_ALL_THRESHOLD"
     )
 
     model_config = {

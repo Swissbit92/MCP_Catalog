@@ -23,11 +23,13 @@ from fastapi import HTTPException
 
 from ..repositories.base_repository import utc_now_iso
 
-from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS
+from ..schemas import ChatBody, ChatTurn, AppendMessageBody, MAX_HISTORY_TURNS, MessageRole, SourceType
 from ..config import get_settings
 # Lazy imports to break circular dependency: llm_client -> services -> chat_session_service -> llm_client
 # estimate_tokens and LC_OllamaClient are imported inside functions where needed
 from ..persona_memory import build_system_prompt, get_persona_card
+from ..context_framing import frame_injected_context
+from ..memory_fact_retrieval import select_facts_for_injection, render_facts_narrative
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +352,10 @@ class ChatDeps:
     episodic_memory_rag: Any
     fact_extractor: Any
     seeker_progression_repo: Any = None
+    # ADR-006 Phase 1 (M3/M4): async fact worker + shared fact store (both None
+    # unless MEMORY_FACTS_ENABLED started them in startup).
+    fact_extraction_worker: Any = None
+    memory_fact_repo: Any = None
 
     @classmethod
     def from_dict(cls, deps: dict) -> ChatDeps:
@@ -369,6 +375,8 @@ class ChatDeps:
             episodic_memory_rag=deps["episodic_memory_rag"],
             fact_extractor=deps["fact_extractor"],
             seeker_progression_repo=deps.get("seeker_progression_repo"),
+            fact_extraction_worker=deps.get("fact_extraction_worker"),
+            memory_fact_repo=deps.get("memory_fact_repo"),
         )
 
 
@@ -422,6 +430,41 @@ def _fetch_seeker_profile_cached(state: ChatTurnState, repo) -> Any:
     return state._seeker_profile
 
 
+def _build_facts_narrative(deps: ChatDeps, user_id: str, query: str, mem_settings) -> str:
+    """ADR-006 M4: read the ontology-lite fact store → prose narrative for framing.
+
+    Inject-all below the threshold (skip vector search); above it, cosine-rank via
+    the bge-m3 embedder (reused from the episodic RAG) and keep top-k. Returns ""
+    when there is no fact store, no user, or no active facts. Never raises.
+    """
+    repo = deps.memory_fact_repo
+    if repo is None or not user_id:
+        return ""
+    try:
+        facts = repo.get_active_facts(user_id)
+        if not facts:
+            return ""
+        subject_names = {}
+        for sid in {f.get("subject_id") for f in facts}:
+            ent = repo.get_entity(sid) if sid else None
+            subject_names[sid] = (ent or {}).get("name", "self")
+        embed_fn = None
+        if len(facts) > mem_settings.facts_inject_all_threshold:
+            rag = deps.episodic_memory_rag
+            embed_fn = getattr(getattr(rag, "embeddings", None), "embed_query", None)
+        selected = select_facts_for_injection(
+            facts, query,
+            k=mem_settings.facts_retrieval_k,
+            inject_all_threshold=mem_settings.facts_inject_all_threshold,
+            embed_fn=embed_fn,
+            subject_names=subject_names,
+        )
+        return render_facts_narrative(selected, subject_names=subject_names)
+    except Exception as e:
+        logger.debug(f"[FactRetrieval] narrative build skipped (non-fatal): {e}")
+        return ""
+
+
 def _load_session_identity(state: ChatTurnState, deps: ChatDeps) -> None:
     """Phase 1 — load cross-session user profile (Phase 3) + emotional state (Phase 2.2)."""
     user_profile_repo = deps.user_profile_repo
@@ -458,7 +501,7 @@ def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
     state.db_messages = deps.message_repo.get_messages_by_session(state.session_id)
     state.summaries = deps.summary_repo.get_summaries_by_session(state.session_id)
 
-    get_persona_card(state.persona_key)  # preserve original card fetch (side-effect: cache warm)
+    card = get_persona_card(state.persona_key)  # card drives per-persona fact framing (M1)
     system_prompt = build_system_prompt(state.persona_key)
 
     # PHASE 3: inject user profile context (cross-session memory)
@@ -521,23 +564,28 @@ def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
     state.system_prompt = system_prompt
     state.system_tokens = estimate_tokens(system_prompt)
 
-    # ADR-006 M0.1: selective session-context injection (user-profile facts +
-    # emotional state only; lore/rank/capability deliberately excluded — they
-    # homogenize persona voice, see Gate 0). Token-capped; gated behind
-    # MEMORY_CONTEXT_INJECT (default OFF).
+    # ADR-006 M1/M4: per-persona-FRAMED session-context injection. Two independent
+    # flags feed ONE framed <remembered> block (M5 gate PASSED 2026-07-05, 0.786→
+    # 0.839): MEMORY_CONTEXT_INJECT carries the profile+emotional PROSE narrative
+    # (M1 — not the old `**Header**\n- field:value` skeleton that Gate 0.1 tied to
+    # homogenization); MEMORY_FACTS_ENABLED carries the ontology-lite fact-store
+    # narrative (M4, supersedes the legacy profile blob). Capped by priority, wrapped
+    # once in the non-echoable per-persona frame. Both default OFF pending live soak.
     _mem_settings = get_settings().memory
+    memory_blocks = []
+    if _mem_settings.facts_enabled and state.user_id:
+        memory_blocks.append(_build_facts_narrative(deps, state.user_id, state.message, _mem_settings))
+    elif _mem_settings.context_inject_enabled and state.user_profile:
+        memory_blocks.append(state.user_profile.get_narrative_context(max_facts=10, max_topics=5))
     if _mem_settings.context_inject_enabled:
-        state.extra_system_context = _assemble_capped_context(
-            [
-                state.user_profile_context,
-                state.emotional_context,
-            ],
-            _mem_settings.context_max_tokens,
-        )
+        memory_blocks.append(state.emotional_state.to_narrative_context())
+    if any(memory_blocks):
+        capped = _assemble_capped_context(memory_blocks, _mem_settings.context_max_tokens)
+        state.extra_system_context = frame_injected_context(state.persona_key, card, capped)
         if state.extra_system_context:
             logger.info(
                 f"[SessionContext] injecting {estimate_tokens(state.extra_system_context)} "
-                f"tokens of session context into the LLM prompt (M0.1 selective)"
+                f"tokens of framed session context (M1 profile/emotional + M4 facts)"
             )
 
     # Build summary context
@@ -610,7 +658,7 @@ def _select_turn_history(state: ChatTurnState, deps: ChatDeps) -> None:
     summary_turn = None
     if state.summary_context:
         summary_turn = ChatTurn(
-            role="assistant",
+            role=MessageRole.ASSISTANT,
             content=f"[Context from earlier in our conversation]\n\n{state.summary_context}",
         )
     state.history_turns = _assemble_capped_history(raw_turns, summary_turn)
@@ -639,12 +687,12 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
     response = state.response
     now = utc_now_iso()
 
-    user_msg_body = AppendMessageBody(role="user", content=state.message, ts=now, source_type="llm")
+    user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
     add_message_function(state.session_id, user_msg_body)
 
-    source_type = "llm"
+    source_type = SourceType.LLM
     if "metadata" in response and response["metadata"]:
-        source_type = response["metadata"].get("source_type", "llm")
+        source_type = response["metadata"].get("source_type", SourceType.LLM)
 
     answer_for_db = response["answer"]
     if isinstance(answer_for_db, list) and len(answer_for_db) > 1:
@@ -653,7 +701,7 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
 
         for idx, msg_content in enumerate(answer_for_db):
             assistant_msg_body = AppendMessageBody(
-                role="assistant",
+                role=MessageRole.ASSISTANT,
                 content=msg_content,
                 ts=now,
                 source_type=source_type,
@@ -665,7 +713,7 @@ def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
     else:
         content = answer_for_db[0] if isinstance(answer_for_db, list) else answer_for_db
         assistant_msg_body = AppendMessageBody(
-            role="assistant",
+            role=MessageRole.ASSISTANT,
             content=content,
             ts=now,
             source_type=source_type,
@@ -725,6 +773,23 @@ def _apply_post_turn_updates(state: ChatTurnState, deps: ChatDeps) -> None:
                 full_history=all_messages_updated,
             )
             logger.debug(f"[Phase3 RAG] Updated vector index for session {state.session_id}")
+
+        # ADR-006 Phase 1 (M3): async ontology-lite fact extraction. Fully OFF the
+        # interactive path — enqueue a job and move on; a background worker runs the
+        # LLM extraction + recency-wins write. Gated MEMORY_FACTS_ENABLED (default OFF)
+        # and batched at the same cadence as the legacy extractor. Requires a linked
+        # user_id (a brand-new user's facts wait until their profile is created below).
+        _mem = get_settings().memory
+        if (deps.fact_extraction_worker and _mem.facts_enabled and state.user_id
+                and len(state.db_messages) % _mem.fact_extraction_interval == 0):
+            try:
+                from ..fact_extraction_worker import ExtractionJob  # noqa: PLC0415
+                recent_for_facts = deps.message_repo.get_messages_by_session(state.session_id)[-20:]
+                deps.fact_extraction_worker.enqueue(ExtractionJob(
+                    user_id=state.user_id, messages=recent_for_facts, session_id=state.session_id
+                ))
+            except Exception as e:
+                logger.debug(f"[FactWorker] enqueue skipped (non-fatal): {e}")
 
         # Extract facts and update user profile (configurable interval to save compute)
         fact_interval = get_settings().memory.fact_extraction_interval

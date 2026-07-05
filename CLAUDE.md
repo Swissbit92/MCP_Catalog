@@ -51,8 +51,9 @@ docker-compose --env-file .env.docker up -d
 ### Backend (`src/coordinator/`)
 
 ```
-server.py, startup.py          # App entry, lifecycle
-config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent; __init__ = composition root + get_settings), API schemas
+server.py, startup.py          # App entry, lifecycle (startup = init sequencer; publishes AppState on app.state.container)
+app_state.py, dependencies.py  # DI composition root: AppState (typed snapshot of every startup singleton) + FastAPI Depends providers (require_*→503 when uninit, optional_*→None). Providers resolve startup.get_X() at CALL TIME (module-attr, not `from ..startup import`), so tests patching src.coordinator.startup.get_X still intercept
+config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent/groundedness; __init__ = composition root + get_settings), API schemas
 routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py
 services/                      # Business logic (llm_completion, tool_calling, citation, chat_session, query_handler, wallet_*, strategy, etc.)
 repositories/                  # SQLite data access — ALL extend BaseRepository via db_adapter (connection pooling)
@@ -68,6 +69,8 @@ tools/                         # intent_classifier.py, synthesis_prompts.py, key
 - `mcp_client_stdio.py` - Brave Search MCP client
 - `persona_memory.py` - CV summary generation and caching
 - `memory_manager.py`, `memory_rag.py` - RAG semantic search (bge-m3 embeddings via modern `langchain_ollama` + `num_ctx`; cosine `1 − D/2` scoring, `min_relevance=0.5` recall floor)
+- `context_framing.py` - ADR-006 M1 per-persona `<remembered>` framing of injected memory (prose narratives + non-imitation preamble; the Gate-0/0.1 fix). Narrative variants live on `UserProfile.get_narrative_context` / `EmotionalState.to_narrative_context`
+- `memory_fact_repository.py`, `triplet_extractor.py`, `fact_write_policy.py`, `fact_extraction_worker.py`, `memory_fact_retrieval.py` - ADR-006 M2–M4 ontology-lite fact store: two-table temporal store + async triplet extraction (abstention few-shot + quote-span guard, off the interactive path) + recency-wins write + inject-all/top-k retrieval through the M1 frame. All gated `MEMORY_FACTS_ENABLED` (default OFF)
 - `memory_text_utils.py` - embedding-input guard (normalize, drop-empty, chunk oversized / truncate query before embedding — prevents Ollama HTTP 500 overflow)
 - `tools/intent_classifier.py` - Query intent classification (wallet, brave, llm) with follow-up detection
 - `tools/keywords.py` - Keyword dictionaries for intent classification routing
@@ -98,6 +101,10 @@ utils/                         # animations.ts, helpers, celestialOrder.ts
 - `resonance_log`: user_id, amount, reason, persona_key, session_id
 - `unlocked_lore`: user_id, persona_key, fragment_id, unlocked_at
 
+**Companion Memory Tables (ADR-006 Phase 1, alembic `4memory_facts`; gated `MEMORY_FACTS_ENABLED`, default OFF):**
+- `memory_entities`: entity_id, user_id, name, entity_type, properties (the user + people/things they mention)
+- `memory_facts`: id, user_id, subject_id→entity, predicate (controlled vocab), object, object_type, `valid_from`/`valid_to` (bi-temporal — supersede by invalidation, never delete), confidence, source_session_id/message_id, superseded_by
+
 > **Architecture details:** See `docs/architecture/SQLITE_ARCHITECTURE.md` for thread-safety pattern, migration guide, and backup procedures.
 
 ## Environment Variables
@@ -114,6 +121,7 @@ PERSONA_DIR=personas
 Optional (see `.env.docker` for full list):
 - `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access` in persona JSON)
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings (default `bge-m3:latest`, 8192-token ctx; `ollama pull bge-m3`). `MEMORY_EMBEDDING_MAX_TOKENS` (8192) caps input before chunking
+- `MEMORY_CONTEXT_INJECT` (default OFF) - inject the M1-framed profile+emotional narrative. `MEMORY_FACTS_ENABLED` (default OFF) - the ADR-006 M2–M4 ontology-lite fact store (async extraction + framed retrieval); `MEMORY_FACTS_RETRIEVAL_K` (5), `MEMORY_FACTS_INJECT_ALL_THRESHOLD` (15). All stay OFF pending the ADR-006 Phase 1 (M5) acceptance gate
 
 ## Code Style
 
@@ -217,6 +225,10 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for: backend startup, M
 **Persona-safe agentic behaviour (HERMES-Agents Phase 3, flag-gated `AGENTIC_ENABLED`, default OFF).** Single in-character tool action per turn (web-search path) where ALL enforcement is deterministic middleware, never LLM self-policing. Pipeline (`services/agentic_pipeline.py`) is two-stage: Stage 1 deterministic (grammar-constrained arg extraction `argument_extractor.py` → injection-source check `injection_guard.py` → pre-execution interceptor `tool_interceptor.py` → execute); Stage 2 the LLM renders the result in-voice via `build_scene_contract()` (Voice/Action split, diegetic tool aliases) and never sees raw function grammar. The interceptor enforces per-persona `mcp_access` + an argument-level allowlist (token-enum/amount for swaps; length/control-char for queries) + hard-blocks `execute_swap` from a non-`user_confirmed` source; the injection guard enforces the trust hierarchy (system > user > RAG: retrieved content can inform but never *trigger* a tool) and sanitizes memory writes. Tool *selection* stays on the bge-m3 router; the 24B is constrained to argument-filling only (3-retry → regex fallback). Wallet actions stay on the existing propose→confirm→execute flow. Output runs through the shared `_finalize_response` (inherits tool-name strip + private-key redaction + first-person). Separate tool-call red-team eval (`tests/evaluation/test_tool_call_safety_redteam.py` + `golden_agentic/`) — text-safety ≠ tool-call safety. See [ADR-004](docs/decisions/004-persona-safe-agentic-tool-calls.md).
 
 **Lean persona prompt (ADR-005 Phase B).** `build_system_prompt` is `_build_system_prompt_lean` (exemplar-first / voice-last, deduped, drops the static wiki dump — still available per-turn via on-demand lore retrieval). The `PERSONA_LEAN_PROMPT` flag, the per-persona allowlist, and the legacy builder (`_build_system_prompt_legacy`) were **retired 2026-07-04** after the lean builder graduated to prod default for all 7 personas. Distinctiveness comes from a per-persona `voice_signature` (diction/cadence/pattern/anchor/exemplars), excluded from the CV-summary fingerprint so it never drifts the `<identity>`. **Acceptance gate (`tests/evaluation/persona_eval/`) PASSED 7/7**: distinctiveness attribution 0.393→0.732. See [ADR-005](docs/decisions/005-persona-architecture-simplification-eval-first.md).
+
+**Generation-time groundedness gate (ADR-007, flag-gated `GROUNDEDNESS_GATE_ENABLED`, default OFF).** Closes a gap the SearchSettings guards can't reach: those guards (`query_resolution_enabled`, `relevance_gate_enabled`) live inside `tool_calling_service.py` and only run when the intent router already offered a tool — when routing decides `NEEDS_NEITHER`, `routes/chat.py`'s `if not tools:`/fallback branches are bare completions with none of those guards reachable. `GroundednessGateService` (`services/groundedness_gate_service.py`) runs a second, cheap LLM classification on the draft itself — does it assert a specific, falsifiable, temporally-scoped real-world claim (score/date/outcome) with no grounding this turn? — and replaces it with an honest offer-to-search if so. Narrowly scoped (persona lore, general knowledge, and already-grounded turns are explicitly excluded from the classifier prompt) to avoid the named top risk: false-abstention on legitimate answers. Validate against `tests/evaluation/groundedness_eval_set.json` before any production enablement — same eval-first discipline as ADR-005/006. See [ADR-007](docs/decisions/007-generation-time-groundedness-gate.md).
+
+**Companion memory & continuity (ADR-006 Phase 1, M1–M4 BUILT 2026-07-04; gated `MEMORY_CONTEXT_INJECT` + `MEMORY_FACTS_ENABLED`, both default OFF).** The frontier beyond voice (ADR-005): giving personas cross-session memory without flattening voice. Gate 0/0.1 proved that identically-formatted injected blocks homogenize personas — so **M1** injects memory as a per-persona non-echoable `<remembered>` frame over *prose* narratives (`context_framing.py`), never the old `**Header**\n- field: value` skeleton. **M2–M4** add the ontology-lite fact store: a two-table temporal store (`memory_entities`/`memory_facts`, bi-temporal validity + confidence + provenance + ~30 controlled predicates), fully-async triplet extraction off the interactive path (`fact_extraction_worker.py` — abstention few-shot + verbatim quote-span guard + recency-wins writes), and inject-all/top-k retrieval rendered through the same M1 frame. Dev-iterate on the **eeva+nyx canary** (`run_eval.py --personas eeva,nyx`); the gate is always full-7. **Nothing is flipped** — the M5 acceptance gate (full 7-persona attribution match-or-beat + factual-recall + latency + blind A/B → one coordinated flip) is still owed. Knowledge-graph/Neo4j was evaluated and **rejected** (not the right regime at single-user scale). See [ADR-006](docs/decisions/006-companion-memory-and-continuity-eval-first.md).
 
 > **Full reference:** [`docs/NEPHILIM_REFERENCE.md`](docs/NEPHILIM_REFERENCE.md) — personas, schema, progression tables, visual theme, onboarding, Phase 7 details.
 > **Lore documents:** [`docs/lore/README.md`](docs/lore/README.md) — worldbuilding, factions, ranks.

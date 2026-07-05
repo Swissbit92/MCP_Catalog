@@ -619,3 +619,25 @@ class TestModuleConstantsPrimary:
     def test_primary_examples_count(self):
         for intent, phrases in sr._INTENT_EXAMPLES_PRIMARY.items():
             assert len(phrases) >= 15, f"primary intent '{intent}' needs >=15 examples"
+
+
+class TestPrimaryExampleCoverage:
+    """2026-07-05 Telegram incident: weather and general/country news questions
+    fell through to NEEDS_NEITHER because the primary web_search example set
+    was crypto/sports-only. Lock the non-crypto coverage in (hermetic — the
+    live routing quality gate is tests/evaluation/tune_routing_threshold.py)."""
+
+    def test_web_search_examples_cover_weather(self):
+        examples = " | ".join(
+            sr._INTENT_EXAMPLES_PRIMARY["web_search"]
+        ).lower()
+        assert "weather" in examples
+        assert "forecast" in examples
+
+    def test_web_search_examples_cover_general_news(self):
+        examples = " | ".join(
+            sr._INTENT_EXAMPLES_PRIMARY["web_search"]
+        ).lower()
+        assert "headlines" in examples
+        # Non-crypto, country-scoped news phrasing.
+        assert "switzerland" in examples

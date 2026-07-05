@@ -108,7 +108,14 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "my portfolio status",
         "wallet balance",
         "my current holdings",
-        "my trade history",
+        # 2026-07-04 incident (session dcc3693d): "my trade history" shared the
+        # bare lexeme "history" with a pure lore/backstory question ("tell me
+        # about your history"), and primary mode has no llm_only centroid to
+        # compete against (see the design note below) — so a single close
+        # nearest-example match was enough to clear threshold with nothing to
+        # gate it. Rephrased to preserve the same wallet intent (past trades)
+        # without the collision-prone standalone word.
+        "show my past trades",
         # Implied
         "thinking of moving some funds around",
         "I might buy some more",
@@ -137,6 +144,37 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "what's everyone saying about eth lately",
         "did anything big happen today",
         "how are people feeling about the market",
+        # 2026-07-04 incident (session dcc3693d): this example set was 100%
+        # crypto/market-phrased, so a sports/current-events temporal follow-up
+        # ("what was their last match") scored under threshold and fell
+        # through to NEEDS_NEITHER with zero grounding. Non-crypto coverage:
+        "what was their last match",
+        "who won the game last night",
+        "what was the final score",
+        "did they make the playoffs",
+        "were they eliminated from the tournament",
+        # 2026-07-05 incident (Telegram): weather and general/country news
+        # questions ("what is the weather tomorrow in Brugg?", "what is the
+        # latest news in switzerland today?") scored under threshold against
+        # the crypto/sports-only set above and fell through to NEEDS_NEITHER
+        # — the model then produced its own trained real-time-data refusal.
+        # Weather. NOTE: keep these location-anchored and topical, NOT
+        # conversational — short day-rhythm phrasings ("will it rain today",
+        # "any big news this morning") sit within 0.66 cosine of greetings/
+        # feelings chitchat ("good morning", "i'm feeling a bit down today")
+        # and over-route it to search (measured 2026-07-05, bge-m3
+        # nearest-example probes).
+        "what's the weather tomorrow in Zurich",
+        "will it rain in Zurich today",
+        "what's the current temperature in Bern",
+        "weather forecast for this weekend",
+        "how hot will it get in Geneva tomorrow",
+        # General / country news & current events
+        "what's the latest news in Switzerland today",
+        "what are today's top headlines",
+        "any major news events this week",
+        "what happened in the world today",
+        "latest news about the election",
     ],
 }
 

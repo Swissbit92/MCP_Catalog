@@ -112,7 +112,10 @@ def test_synthesis_prompt_length():
 
     # Should be longer than original but not excessively
     assert len(synthesis_prompt) > len(persona_system)
-    assert len(synthesis_prompt) < len(persona_system) + 5000  # Synthesis instructions ~3KB
+    # Synthesis instructions ~5.2KB since the 2026-07-05 temporal-grounding fix
+    # (current date + result-age staleness + unit-conversion rules, commit ab167c2c).
+    # Ceiling kept generous but finite to still catch a runaway prompt.
+    assert len(synthesis_prompt) < len(persona_system) + 6500
 
     print("[PASS] test_synthesis_prompt_length")
 
@@ -167,6 +170,20 @@ def _prompt(monkeypatch, *, enabled):
     monkeypatch.setenv("SEARCH_SYNTHESIS_TRUST_RESULTS", "true" if enabled else "false")
     get_settings.cache_clear()
     return build_synthesis_prompt("You are Eeva, a sarcastic AI assistant.", has_search_results=True)
+
+
+def test_synthesis_prompt_includes_current_date(monkeypatch):
+    """Temporal grounding (2026-07-05 incident: a 5-day-old article was
+    presented as 'today's news' because the model had no way to know the date)."""
+    from datetime import datetime
+
+    prompt = _prompt(monkeypatch, enabled=False)
+    today = datetime.now()
+    assert f"Today's date is {today.strftime('%A, %Y-%m-%d')}" in prompt
+    # And the staleness rule that uses it.
+    assert "CHECK RESULT AGE" in prompt
+    # Unit-conversion rule (34°F-for-Switzerland incident).
+    assert "convert to °C" in prompt
 
 
 def test_trust_flag_off_is_byte_identical_to_legacy(monkeypatch):

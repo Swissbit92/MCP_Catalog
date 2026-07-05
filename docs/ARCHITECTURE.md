@@ -40,6 +40,8 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 | LLM orchestration | Ollama completion, per-persona sampling, forced tool-calling | `llm_client.py`, `services/llm_completion_service.py`, `services/tool_calling_service.py` |
 | Prompt construction | Lean exemplar-first / voice-last system prompt (XML-tagged bookend); `lru_cache`d | `prompt_builder.py`, `persona_memory.py` |
 | Memory / RAG | Token-budget message selection, bge-m3 semantic search, summaries, fact extraction | `memory_manager.py`, `memory_rag.py`, `cv_summarizer.py`, `fact_extractor.py` |
+| Companion memory — framing (ADR-006 M1) | Wrap injected memory in a per-persona non-echoable `<remembered>` frame over prose narratives (anti-homogenization, the Gate-0/0.1 fix) | `context_framing.py` |
+| Companion memory — fact store (ADR-006 M2–M4) | Two-table temporal ontology-lite store + async triplet extraction (abstention + quote-span guard, off the interactive path) + recency-wins write + inject-all/top-k retrieval through the M1 frame | `repositories/memory_fact_repository.py`, `triplet_extractor.py`, `fact_write_policy.py`, `fact_extraction_worker.py`, `memory_fact_retrieval.py` |
 | Lore | On-demand hybrid lore retrieval over the typed wiki; rank/affinity-gated capabilities | `lore_loader.py`, `lore_retrieval.py` |
 | Persona-safe agentic middleware | Deterministic pre-execution gating: interceptor + injection guard + grammar-constrained arg extraction | `services/agentic_pipeline.py`, `tool_interceptor.py`, `injection_guard.py`, `argument_extractor.py` |
 | Persistence | SQLite repositories — ALL extend `BaseRepository` via `db_adapter` (connection pooling, thread-safe) | `repositories/` |
@@ -54,6 +56,7 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 | `emotional_state` | SQLite | `emotional_state_repository` | `chat_session_service` (trust/rapport/mood) |
 | `seeker_profiles`, `persona_affinity`, `resonance_log`, `unlocked_lore` | SQLite | `seeker_progression_repository` | `chat_session_service`, nephilim routes |
 | `user_profiles` | SQLite | `user_profile_repository` | cross-session memory injection |
+| `memory_entities`, `memory_facts` (ADR-006) | SQLite S-P-O triples, bi-temporal `valid_from`/`valid_to`, confidence, provenance | fact worker (M3) | fact retrieval (M4) |
 | wallet registry / summary / **flow** | SQLite | `wallet_registry` / `wallet_summary` / **`wallet_flow`** repos | `query_handler_service`, `wallet_creation_flow_service` |
 | Session + lore vector indexes | FAISS | `memory_rag` | `chat_session_service` (semantic recall, on-demand lore) |
 
@@ -64,6 +67,7 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 - **Config import surface:** import `get_settings` / settings classes from `..config` (the package root), never the submodules — the `__init__` re-export + `src.coordinator.config.get_settings` patch-path is a contract.
 - **All repositories extend `BaseRepository`** via `db_adapter` — never open a raw `sqlite3.connect()`.
 - **Per-turn content must never enter the `lru_cache`d prompt builder** (`build_system_prompt`) — dynamic lore/memory is appended after the cached call.
+- **Companion memory (ADR-006) is default OFF** (`MEMORY_CONTEXT_INJECT`, `MEMORY_FACTS_ENABLED`) — M5 gate passed 2026-07-05; kept OFF for a live soak + instant revert. Injected memory always goes through the per-persona `<remembered>` frame as prose (never an identical skeleton — Gate 0/0.1); facts are invalidated not deleted (`valid_to`); extraction runs off the interactive path (enqueue-and-return, a failing job never breaks a turn).
 
 ## Cross-repo contracts
 

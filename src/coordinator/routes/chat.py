@@ -8,7 +8,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from ..schemas import ChatBody, GreetBody, ResponseMetadata
+from .. import startup  # module ref for call-time getter resolution (tests patch
+                        # src.coordinator.startup.get_* to neutralize deps); cycle-free.
+from ..schemas import ChatBody, GreetBody, ResponseMetadata, SourceType
 from ..config import get_settings
 from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
 from ..persona_memory import (
@@ -71,32 +73,25 @@ def _build_llm_response(
 
 
 def _get_dependencies():
-    """Get dependencies from startup module."""
-    from ..startup import (
-        get_brave_client,
-        get_session_repo,
-        get_message_repo,
-        get_summary_repo,
-        get_emotional_state_repo,
-        get_memory_manager,
-        get_conversation_summarizer,
-        get_user_profile_repo,
-        get_episodic_memory_rag,
-        get_fact_extractor,
-        get_seeker_progression_repo,
-    )
+    """Assemble the per-request dependency bundle from the startup singletons.
+
+    Resolves each getter through the ``startup`` module at call time so tests
+    patching ``src.coordinator.startup.get_*`` neutralize the whole bundle.
+    """
     return {
-        "brave_client": get_brave_client(),
-        "session_repo": get_session_repo(),
-        "message_repo": get_message_repo(),
-        "summary_repo": get_summary_repo(),
-        "emotional_state_repo": get_emotional_state_repo(),
-        "memory_manager": get_memory_manager(),
-        "conversation_summarizer": get_conversation_summarizer(),
-        "user_profile_repo": get_user_profile_repo(),
-        "episodic_memory_rag": get_episodic_memory_rag(),
-        "fact_extractor": get_fact_extractor(),
-        "seeker_progression_repo": get_seeker_progression_repo(),
+        "brave_client": startup.get_brave_client(),
+        "session_repo": startup.get_session_repo(),
+        "message_repo": startup.get_message_repo(),
+        "summary_repo": startup.get_summary_repo(),
+        "emotional_state_repo": startup.get_emotional_state_repo(),
+        "memory_manager": startup.get_memory_manager(),
+        "conversation_summarizer": startup.get_conversation_summarizer(),
+        "user_profile_repo": startup.get_user_profile_repo(),
+        "episodic_memory_rag": startup.get_episodic_memory_rag(),
+        "fact_extractor": startup.get_fact_extractor(),
+        "fact_extraction_worker": startup.get_fact_extraction_worker(),
+        "memory_fact_repo": startup.get_memory_fact_repo(),
+        "seeker_progression_repo": startup.get_seeker_progression_repo(),
     }
 
 
@@ -115,6 +110,36 @@ def _complete_or_503(card, system: str, user_prompt: str, *, log_context: str) -
             status_code=503,
             detail=f"LLM service temporarily unavailable: {type(e).__name__}",
         )
+
+
+def _apply_groundedness_gate(
+    card, user_message: str, answer: str, metadata: ResponseMetadata
+) -> str:
+    """Run the groundedness gate (ADR-007) on a no-tool-call draft.
+
+    Covers the routing-miss case: when the intent router decides no tool is
+    needed at all, none of the SearchSettings guards (query_resolution,
+    relevance_gate) are reachable — they live inside the tool-calling path.
+    This is a second, independent check on the DRAFT itself.
+
+    No-op (returns `answer` unchanged) when GROUNDEDNESS_GATE_ENABLED is off —
+    byte-identical to legacy in that case. Fails open on any error (including
+    LLM-client construction) so this can never make a response worse than the
+    pre-gate path.
+    """
+    from ..services.groundedness_gate_service import GroundednessGateService
+
+    try:
+        client = create_llm_client(card)
+        gate = GroundednessGateService(llm_client=client)
+        verdict = gate.check(user_message, answer)
+        if verdict.should_abstain:
+            metadata.source_type = SourceType.GROUNDEDNESS_ABSTAIN
+            return gate.abstain_message()
+        return answer
+    except Exception as e:  # noqa: BLE001 - gate must never break chat
+        logger.warning(f"[GroundednessGate] Integration error ({e}); returning original answer")
+        return answer
 
 
 @router.post("/persona/chat")
@@ -180,7 +205,7 @@ def chat(body: ChatBody):
 
     # Prepare metadata and persona_name early (needed by wallet pre-check and all downstream paths)
     metadata = ResponseMetadata(
-        source_type="llm",
+        source_type=SourceType.LLM,
         tools_used=[],
         cache_status=None,
         data_timestamp=None
@@ -252,6 +277,7 @@ def chat(body: ChatBody):
         # No tools needed - regular LLM completion
         logger.info("No tools needed, using regular completion")
         answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} no-tools:")
+        answer = _apply_groundedness_gate(card, body.message, answer, metadata)
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
@@ -291,8 +317,11 @@ def chat(body: ChatBody):
         )
 
     else:
-        # Fallback to regular completion
+        # Fallback to regular completion (tools were offered but none were
+        # brave_web_search — still no tool actually executes this turn, so the
+        # same groundedness gap applies as the no-tools branch above).
         answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} fallback:")
+        answer = _apply_groundedness_gate(card, body.message, answer, metadata)
         return _build_llm_response(answer, body.message, persona_name, metadata)
 
 

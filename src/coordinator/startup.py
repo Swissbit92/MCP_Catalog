@@ -25,6 +25,7 @@ from .repositories.trade_history_repository import TradeHistoryRepository
 from .memory_manager import MemoryManager, ConversationSummarizer
 from .memory_rag import EpisodicMemoryRAG
 from .fact_extractor import FactExtractor
+from .app_state import AppState
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,14 @@ _conversation_summarizer: Optional[ConversationSummarizer] = None
 # Phase 3: Advanced AI Memory
 _episodic_memory_rag: Optional[EpisodicMemoryRAG] = None
 _fact_extractor: Optional[FactExtractor] = None
+
+# ADR-006 Phase 1 (M3/M4): ontology-lite fact store + async extraction worker
+_memory_fact_repo = None        # Optional[MemoryFactRepository] (shared read/write)
+_fact_extraction_worker = None  # Optional[FactExtractionWorker]
+
+# Composition root: an AppState snapshot of the globals above, built at the tail
+# of initialize_all() and mirrored onto app.state.container (see server.py).
+_app_state: Optional[AppState] = None
 
 
 # ----------------- Getters -----------------
@@ -166,6 +175,16 @@ def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
 def get_fact_extractor() -> Optional[FactExtractor]:
     """Get the fact extractor."""
     return _fact_extractor
+
+
+def get_fact_extraction_worker():
+    """Get the async ontology-lite fact-extraction worker (None when facts disabled)."""
+    return _fact_extraction_worker
+
+
+def get_memory_fact_repo():
+    """Get the shared ontology-lite fact store (None until initialised)."""
+    return _memory_fact_repo
 
 
 # HERMES-Agents Phase 3: deterministic tool-call interceptor (stateless singleton)
@@ -335,7 +354,7 @@ def prewarm_session_indexes(rag, session_repo, message_repo, limit: int) -> int:
 
 def init_phase3_memory():
     """Initialize Phase 3 advanced memory systems (RAG + Fact Extraction)."""
-    global _episodic_memory_rag, _fact_extractor
+    global _episodic_memory_rag, _fact_extractor, _fact_extraction_worker, _memory_fact_repo
 
     try:
         # Initialize RAG memory with embeddings (uses config default)
@@ -390,6 +409,35 @@ def init_phase3_memory():
         # For now, mark as ready for lazy init
         _fact_extractor = None  # Will be initialized with LLM client on first use
         logger.info("Fact Extractor ready for initialization (Phase 3)")
+
+        # ADR-006 Phase 1 (M3): start the async ontology-lite fact-extraction worker
+        # ONLY when MEMORY_FACTS_ENABLED. Off (default) → no worker thread, no fact
+        # store writes. The extractor's LLM client is built lazily on first job (off
+        # the request path), so startup stays cheap.
+        try:
+            from .config import get_settings
+            if get_settings().memory.facts_enabled:
+                from .fact_extraction_worker import FactExtractionWorker
+                from .repositories.memory_fact_repository import MemoryFactRepository
+
+                _memory_fact_repo = MemoryFactRepository()  # shared read (M4) + write (M3)
+
+                def _make_extractor():
+                    from .llm_client import create_llm_client
+                    from .triplet_extractor import TripletExtractor
+                    llm = create_llm_client(
+                        {}, temperature=get_settings().ollama.temp_fact_extraction
+                    )
+                    return TripletExtractor(llm)
+
+                _fact_extraction_worker = FactExtractionWorker(
+                    _make_extractor, _memory_fact_repo
+                )
+                _fact_extraction_worker.start()
+                logger.info("[FactWorker] ontology-lite fact store ENABLED (ADR-006 M3/M4)")
+        except Exception as e:
+            logger.warning(f"[FactWorker] init skipped (non-fatal): {e}")
+            _fact_extraction_worker = None
 
     except Exception as e:
         logger.error(f"Failed to initialize Phase 3 memory systems: {e}")
@@ -460,6 +508,7 @@ def init_jupiter():
             jupiter_ops=_jupiter_ops,
             trade_history_repo=_trade_history_repo,
             wallet_summary_repo=_wallet_summary_repo,
+            wallet_registry_repo=_wallet_registry_repo,
         )
         _strategy_service = StrategyService(
             strategies_dir=jupiter_cfg.strategies_dir,
@@ -520,6 +569,48 @@ def cleanup_orphaned_sessions():
 
     except Exception as e:
         logger.warning(f"Failed to cleanup orphaned sessions: {e}")
+
+
+def build_app_state() -> AppState:
+    """Snapshot the initialized module globals into an :class:`AppState`.
+
+    Read-only view of what ``initialize_all`` has wired up so far — the request
+    path reaches these through ``dependencies.py``/``app.state.container`` while
+    the ``get_X()`` getters stay the patchable seam. Safe to call at any time;
+    fields not yet initialized are simply ``None``.
+    """
+    return AppState(
+        session_repo=_session_repo,
+        message_repo=_message_repo,
+        summary_repo=_summary_repo,
+        emotional_state_repo=_emotional_state_repo,
+        user_profile_repo=_user_profile_repo,
+        seeker_progression_repo=_seeker_progression_repo,
+        user_repo=_user_repo,
+        memory_manager=_memory_manager,
+        conversation_summarizer=_conversation_summarizer,
+        episodic_memory_rag=_episodic_memory_rag,
+        fact_extractor=_fact_extractor,
+        fact_extraction_worker=_fact_extraction_worker,
+        memory_fact_repo=_memory_fact_repo,
+        wallet_registry_repo=_wallet_registry_repo,
+        wallet_summary_repo=_wallet_summary_repo,
+        wallet_flow_repo=_wallet_flow_repo,
+        trade_history_repo=_trade_history_repo,
+        brave_client=_brave_client,
+        jupiter_client=_jupiter_client,
+        jupiter_ops=_jupiter_ops,
+        wallet_execution_service=_wallet_execution_service,
+        strategy_service=_strategy_service,
+        wallet_repo=_wallet_repo,
+        trade_proposal_repo=_trade_proposal_repo,
+        strategy_scheduler=_strategy_scheduler,
+    )
+
+
+def get_app_state() -> Optional[AppState]:
+    """Return the composition-root snapshot built at the end of startup."""
+    return _app_state
 
 
 def initialize_all():
@@ -632,5 +723,10 @@ def initialize_all():
         logger.info("[Prewarm] System prompt pre-warming started in background")
     except Exception as e:
         logger.warning(f"[Prewarm] Pre-warm thread failed to start: {e}")
+
+    # Composition root: snapshot the now-initialized globals so the request path
+    # can reach them via app.state.container / dependencies.py.
+    global _app_state
+    _app_state = build_app_state()
 
     logger.info("FastAPI server initialization complete.")

@@ -7,7 +7,7 @@ creating continuity and deeper relationships over time.
 from __future__ import annotations
 
 import json
-from typing import Dict, Optional, Any
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
 import logging
 
@@ -216,6 +216,56 @@ class UserProfile:
                 summary_parts.append(f"- {pref_key}: {pref_value}")
 
         return "\n".join(summary_parts)
+
+    def get_narrative_context(self, max_facts: int = 10, max_topics: int = 5) -> str:
+        """Prose variant of ``get_context_summary`` for framed injection (ADR-006 P1).
+
+        Same underlying facts, but rendered as flowing sentences instead of the
+        ``**Header**\\n- field: value`` skeleton that Gate 0.1 showed homogenizes
+        persona voice. The persona-neutral content is wrapped per-persona by
+        ``context_framing.frame_injected_context``; here we only drop the imitable
+        shape. Returns "" when there is nothing worth remembering.
+        """
+        if not any([self.data["name"], self.data["background"], self.data["facts"]]):
+            return ""
+
+        sentences: List[str] = []
+
+        if self.data["total_sessions"] > 0:
+            who = f" as {self.data['name']}" if self.data["name"] else ""
+            sentences.append(
+                f"You've spoken with this seeker{who} {self.data['total_sessions']} "
+                f"times before, {self.data['total_messages']} messages in all."
+            )
+        elif self.data["name"]:
+            sentences.append(f"You know this seeker as {self.data['name']}.")
+
+        if self.data["topics_discussed"]:
+            top_topics = sorted(
+                self.data["topics_discussed"].items(), key=lambda x: x[1], reverse=True
+            )[:max_topics]
+            topics_str = ", ".join(topic for topic, _ in top_topics)
+            sentences.append(f"Your conversations have kept returning to {topics_str}.")
+
+        if self.data["background"]:
+            bg = "; ".join(str(b).strip().rstrip(".") for b in self.data["background"][:5])
+            sentences.append(f"You've come to understand that {bg}.")
+
+        if self.data["facts"]:
+            recent_facts = self.data["facts"][-max_facts:]
+            facts_str = "; ".join(str(f).strip().rstrip(".") for f in recent_facts)
+            sentences.append(f"You remember, too, that {facts_str}.")
+
+        if self.data["holdings"]:
+            holdings_str = ", ".join(f"{amount} {asset}" for asset, amount in self.data["holdings"].items())
+            sentences.append(f"They hold {holdings_str}.")
+
+        if self.data["preferences"]:
+            prefs = list(self.data["preferences"].items())[:3]
+            prefs_str = "; ".join(f"{k} — {v}" for k, v in prefs)
+            sentences.append(f"They've told you their preferences: {prefs_str}.")
+
+        return " ".join(sentences)
 
     def get_stats(self) -> Dict[str, Any]:
         """Get profile statistics.

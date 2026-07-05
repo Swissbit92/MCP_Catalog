@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-07-05) — Dissolve the `startup.py` DI hub (audit follow-up step 8)
+
+Behavior-preserving; suite 1757 passing (unchanged), 0 regressions. Isolated in a worktree, QA-gated per milestone, reviewed by an independent qa-gatekeeper pass (PASS, no findings).
+
+- **New `app_state.py` + `dependencies.py` — the composition root.** `AppState` is a typed dataclass snapshot of every startup singleton (25 fields, `TYPE_CHECKING`-only imports so it stays cycle-free). `dependencies.py` holds FastAPI `Depends` providers: `require_*` map an uninitialized singleton to a clean **503** (generalizing the pre-existing `routes/nephilim.py::_require_progression_repo`), `optional_*` return `None`. `startup.build_app_state()` publishes the snapshot on `app.state.container` in the lifespan.
+- **Scattered `from ..startup import get_X` lazy imports eliminated** across `routes/wallet.py` (12 → `Depends`), `routes/chat.py` (`_get_dependencies`), `routes/sessions.py` (`_get_repos`), `services/query_handler_service.py` (7 sites), and `services/wallet_creation_flow_service.py` (7 sites). The `# lazy: avoid import cycle` comments were cargo-cult — `startup.py` imports no route/service at module load. Resolution now goes through the `startup` **module** at call time (`startup.get_X()`), which is why the ~55 tests patching `src.coordinator.startup.get_X` and the 25 patching `routes.sessions._get_repos` all still intercept — **zero test changes required**.
+- **`WalletExecutionService` constructor-injection finished** — new `wallet_registry_repo` param (startup fallback), wired from `init_jupiter`; removes its last lazy import.
+- **Deliberately NOT changed:** the `startup.get_X()` getters still read the module globals rather than `AppState`. Initialization is incremental and the prewarm daemon threads call getters *mid*-`initialize_all` before `_app_state` exists — the globals must remain the live source during startup; `AppState` is the published request-path snapshot.
+
+### Changed (2026-07-04) — `SourceType` StrEnum (audit follow-up #7)
+
+Promoted the `source_type` string pseudo-enum to a shared `enum.StrEnum` in `schemas.py` (8 values), used as named constants at the ~22 assignment/comparison sites across routes + services. `enum.StrEnum` (not the older `(str, Enum)` idiom) so members render as their value in f-strings/logs. Fields stay typed `str` (the vocabulary evolves — strict validation could reject a future/stored value); members are `str`, so `==`/JSON/SQLite all keep the string value. Behavior-preserving; suite 1705, 0 regressions. Completed in a follow-up commit: **`MessageRole`** (user/assistant/system, at the message-persistence sites) and **`proposal_type` untangled into two enums** — `ProposalType` (card/action: swap/strategy/wallet_deletion) vs `ProposalCategory` (response metadata: trade_proposal/strategy_proposal/wallet_deletion), which were a single overloaded name across two vocabularies; plus the missed `wallet_proposal_service` source_type sites (9th value `WALLET_PROPOSAL`). Proposal-card JSON contract verified unchanged.
+
 ### Changed (2026-07-04) — Wallet-creation flow extracted + typed (audit follow-up #4)
 
 Completes the deferred half of step 7 (see [docs/audits/2026-07-04-nephilim_followup.md](docs/audits/2026-07-04-nephilim_followup.md) matrix #4). Behavior-preserving; suite 1667 → 1679, 0 regressions.
@@ -17,6 +30,22 @@ Completes the deferred half of step 7 (see [docs/audits/2026-07-04-nephilim_foll
 - **Tests:** 9 characterization tests written *first* (green before AND after the move = behavior-preserving) + 3 typed-layer tests (`test_wallet_creation_flow.py`). The flow had effectively zero prior direct coverage.
 - **Hygiene:** `/data/` added to `.gitignore` — the `data/chats.db.backup_*` snapshots don't match the `*.db` rule, so the runtime data dir showed as untracked (a stray `git add -A` could commit live conversation data).
 - **Docs:** populated the `docs/ARCHITECTURE.md` skeleton (Components / Data / Key-invariants tables) to reflect the current layered architecture after the step-7 + this cleanup.
+
+### Fixed (2026-07-04) — Search-routing/anti-hallucination fix chain (ADR-007)
+
+A real Telegram conversation (session `dcc3693d`) exposed E.E.V.A. confidently fabricating a FIFA World Cup 2026 match result (score, date, opponent) with zero grounding, then agreeing with and elaborating on her own fabrication when the user "confirmed" it. Traced to five distinct root causes, all fixed:
+
+- **Generation-time groundedness gate (ADR-007, new, `GROUNDEDNESS_GATE_ENABLED`, default OFF)** — the deepest gap: once intent routing decides no tool is needed, `routes/chat.py`'s bare-completion branches call none of the existing anti-hallucination guards (all three live inside `tool_calling_service.py`, unreachable from this path). `GroundednessGateService` runs a second cheap LLM classification on the draft itself, decoupled from routing, and replaces an ungrounded real-world claim with an honest offer-to-search. Narrowly scoped (persona lore, general knowledge, and already-grounded turns explicitly excluded) to avoid false-abstention on legitimate answers. See [ADR-007](docs/decisions/007-generation-time-groundedness-gate.md).
+- **Routing coverage** — `ForceSearchService.FORCE_PATTERNS` gained a `"last"` entry (had `"latest"` but missed "what was their last match"); the semantic router's `web_search` example set (previously 100% crypto/market-phrased) gained sports/temporal/outcome examples.
+- **Wallet/lore lexeme collision** — "tell me about your history" (pure lore) was misrouted to the wallet tool via a shared "history" lexeme with the wallet example "my trade history". Replaced with "show my past trades", validated via a real bge-m3 sweep: wallet false-positives stayed at 0, wallet precision stayed 1.0, wallet/web recall both improved slightly.
+- **Query-resolution gaps** — the echo-guard now recognizes context-dependent-but-non-pronoun phrases ("next match", "last match") as carrying no topic on their own, closing a near-verbatim-echo-reaches-Brave gap; a leading correction preamble ("no, I meant...") no longer inflates the word count past the follow-up-detection trigger threshold.
+- **Relevance-gate tuning** — new `tests/evaluation/tune_relevance_threshold.py` (real bge-m3 sweep) found a candidate threshold. First pass (n=8, mostly hand-written): `SEARCH_RELEVANCE_MIN_COSINE=0.28`, zero measured false-abstention but only caught half the junk shapes. Extended same-day to n=25 with 17 real Brave query/result pairs (14 relevant across sports/crypto/weather/knowledge/product domains, 3 real junk-mismatch pairs): `0.36` catches **100% of junk** with a 5% false-abstention rate — and that one false-abstention is the n=8 pass's own synthetic adversarial sample, not real data. Replaces the prior untuned 0.40 placeholder. The gate itself (`SEARCH_RELEVANCE_GATE_ENABLED`) remains OFF pending an explicit go/no-go.
+
+Eval-first throughout (ADR-005/006 discipline): a frozen baseline, extended eval corpora for all 5 failure modes (including regressions locked in as `xfail` before each fix, then un-marked once genuinely fixed), and match-or-beat validation via real bge-m3 sweeps, not just unit mocks. 1671→1697 backend tests, 0 regressions.
+
+### Changed (2026-07-04, later) — Relevance-gate eval corpus expanded with real data
+
+`tests/evaluation/relevance_gate_eval_set.json` extended 8→25 samples with 17 real Brave query/result pairs (direct Brave Search API calls, same key the coordinator uses), at the user's request after the initial n=8 pass. Re-tuned threshold: `SEARCH_RELEVANCE_MIN_COSINE` 0.28→0.36. See the config field's docstring for the full before/after breakdown. `GROUNDEDNESS_GATE_ENABLED=true` also flipped live on prod this session for a monitored soak (user-requested); `SEARCH_RELEVANCE_GATE_ENABLED` stays OFF.
 
 ### Added (2026-07-04) — Telegram gateway subsystem (`services/telegram-gateway/`)
 

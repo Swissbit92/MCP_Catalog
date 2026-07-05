@@ -28,6 +28,24 @@ class BraveSettings(BaseSettings):
         description="Safe search level: off|moderate|strict",
         alias="BRAVE_SAFESEARCH"
     )
+    country: str = Field(
+        default="",
+        description=(
+            "2-letter country code (e.g. 'CH') passed to Brave for locale-aware "
+            "ranking. Empty (default) = not passed, Brave decides — which "
+            "US-biases results (2026-07-05 incident: a Swiss weather query "
+            "returned a US-oriented aggregator in °F). Set BRAVE_COUNTRY=CH."
+        ),
+        alias="BRAVE_COUNTRY"
+    )
+    search_lang: str = Field(
+        default="",
+        description=(
+            "Language code (e.g. 'en', 'de') passed to Brave. Empty (default) = "
+            "not passed."
+        ),
+        alias="BRAVE_SEARCH_LANG"
+    )
     timeout: int = Field(
         default=20,
         ge=1,
@@ -44,6 +62,16 @@ class BraveSettings(BaseSettings):
     def enabled(self) -> bool:
         """Check if Brave search is enabled (API key is set)."""
         return bool(self.api_key.strip())
+
+    @field_validator('country')
+    @classmethod
+    def validate_country(cls, v: str) -> str:
+        """Normalize/validate the country code; drop invalid values."""
+        v = v.strip().upper()
+        if v and (len(v) != 2 or not v.isalpha()):
+            logger.warning(f"Invalid BRAVE_COUNTRY '{v}' (need 2-letter code), ignoring")
+            return ""
+        return v
 
     @field_validator('safesearch')
     @classmethod
@@ -101,13 +129,28 @@ class SearchSettings(BaseSettings):
         alias="SEARCH_RELEVANCE_GATE_ENABLED",
     )
     relevance_min_cosine: float = Field(
-        default=0.40,
+        default=0.36,
         ge=0.0,
         le=1.0,
         description=(
             "Cosine floor (bge-m3, exact 1 - D/2) below which the best search "
             "result is treated as off-topic and the relevance gate abstains. "
-            "Conservative default to avoid false abstains; tune on real searches."
+            "Tuned 2026-07-04 (ADR-007, tests/evaluation/tune_relevance_threshold.py). "
+            "First pass used relevance_gate_eval_set.json at n=8 (mostly hand-"
+            "written descriptions) and landed on 0.28 — conservative, only "
+            "caught 1 of 2 junk samples. Extended the same day to n=25 with 17 "
+            "REAL Brave query/result pairs (14 relevant across sports/crypto/"
+            "weather/knowledge/product domains, 3 real junk-mismatch pairs "
+            "reproducing the actual incident failure mode with genuine data on "
+            "both sides). With real data the separation is clean: every real "
+            "relevant result scores >= 0.561, every junk sample (including all "
+            "3 new real ones) scores <= 0.347. 0.36 catches 100% of junk "
+            "(junk_catch_recall=1.0) with only a 5% false-abstention rate — and "
+            "that single false-abstention is the original n=8 pass's own "
+            "deliberately-adversarial SYNTHETIC sample (a hand-written "
+            "lexically-distant-but-relevant description, cosine 0.358), not a "
+            "real result. 0.40 (the original untuned placeholder) was "
+            "conservative-by-guess, not conservative-by-data."
         ),
         alias="SEARCH_RELEVANCE_MIN_COSINE",
     )
