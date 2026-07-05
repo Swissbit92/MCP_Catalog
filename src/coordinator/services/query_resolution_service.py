@@ -87,6 +87,14 @@ _COMMAND_FILLER_TOKENS = frozenset(
         "you", "to", "and", "up", "me", "us", "now", "about", "on", "of",
         "real", "some", "more", "info", "information", "quick", "just",
         "next", "last", "match", "game", "fixture",
+        # 2026-07-05 incident (Telegram): "search the web to answer my question"
+        # left `answer`/`my`/`question` as "non-filler", so the turn was NOT
+        # classified bare — it skipped the prior-substantive-turn fallback and
+        # went to an LLM rewrite of a topic-free phrase, which free-associated
+        # an unrelated wallet query. These words reference the act of asking,
+        # not a topic.
+        "answer", "my", "question", "questions", "query", "request", "asked",
+        "i",
     }
 )
 
