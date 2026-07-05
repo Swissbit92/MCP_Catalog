@@ -1373,6 +1373,149 @@
       ],
       "is_borderline": true,
       "note": "general knowledge, no temporal need"
+    },
+    {
+      "query": "find me some images",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "2026-07-05 media-find: image search"
+    },
+    {
+      "query": "find me images of a redhead",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "image search"
+    },
+    {
+      "query": "find me a video of a concert",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "video search"
+    },
+    {
+      "query": "show me some videos of cats",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "video search"
+    },
+    {
+      "query": "find me pics of the eiffel tower",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "image search"
+    },
+    {
+      "query": "look that up for me",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "general find/lookup"
+    },
+    {
+      "query": "can you find some stuff about quantum computing",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "general find"
+    },
+    {
+      "query": "you'll find a better view in person",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "RP 'find', not a search"
+    },
+    {
+      "query": "I can't wait to find out what you have planned",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "RP 'find out'"
+    },
+    {
+      "query": "come find me when you're ready",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "RP 'find me' as come-hither"
+    },
+    {
+      "query": "I hope you find me pretty",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "RP 'find me' as opinion"
+    },
+    {
+      "query": "find yourself a comfortable spot",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "conversational imperative"
+    },
+    {
+      "query": "did you find everything okay",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "chitchat"
     }
   ]
 }

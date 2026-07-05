@@ -40,6 +40,40 @@ def _patch_semantic(monkeypatch, return_value):
     return mock
 
 
+class TestMediaSearchFastPath:
+    """2026-07-05: colloquial media-find routes to web via the precise
+    verb+media-noun keyword rule (before the semantic router). The semantic
+    mock returns None here, so a web result proves the FAST-PATH caught it —
+    and RP 'find me' must NOT match (no media noun)."""
+
+    MEDIA = ["find me some images", "find me a video of a concert",
+             "show me pictures of paris", "get me some pics", "pull up a video",
+             "find me images of a redhead"]
+    RP_NEG = ["come find me when you're ready", "I hope you find me pretty",
+              "you'll find a better view in person", "did you find everything okay"]
+
+    def test_media_find_routes_web(self, monkeypatch):
+        _patch_settings(monkeypatch, _routing())
+        _patch_semantic(monkeypatch, None)  # semantic says nothing
+        for q in self.MEDIA:
+            assert classify_query_intent(q, "legendary", mcp_access=BRAVE_ACCESS) \
+                == QueryIntent.NEEDS_WEB_SEARCH, q
+
+    def test_rp_find_me_does_not_route_web(self, monkeypatch):
+        _patch_settings(monkeypatch, _routing())
+        _patch_semantic(monkeypatch, None)
+        for q in self.RP_NEG:
+            assert classify_query_intent(q, "legendary", mcp_access=BRAVE_ACCESS) \
+                == QueryIntent.NEEDS_NEITHER, q
+
+    def test_media_rule_gated_on_brave_access(self, monkeypatch):
+        # No brave access -> the media rule must not fire (nothing to route to).
+        _patch_settings(monkeypatch, _routing())
+        _patch_semantic(monkeypatch, None)
+        assert classify_query_intent("find me some images", "common", mcp_access=[]) \
+            == QueryIntent.NEEDS_NEITHER
+
+
 class TestClassifyQueryIntent:
     """Fast-path → semantic router → NEEDS_NEITHER."""
 
