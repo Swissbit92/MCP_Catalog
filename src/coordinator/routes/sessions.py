@@ -7,6 +7,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+from .. import startup  # module ref for call-time getter resolution; cycle-free.
 from ..persona_memory import get_persona_card
 from ..repositories.base_repository import utc_now_iso
 from ..schemas import (
@@ -23,13 +24,17 @@ logger = logging.getLogger(__name__)
 
 
 def _get_repos():
-    """Get repository instances from startup module."""
-    from ..startup import (
-        get_emotional_state_repo,
-        get_message_repo,
-        get_session_repo,
+    """Get (session, message, emotional-state) repos from the startup singletons.
+
+    Kept as a single wrapper (25 tests patch ``routes.sessions._get_repos``);
+    resolves via the ``startup`` module at call time so the underlying
+    ``startup.get_*`` patches also still intercept.
+    """
+    return (
+        startup.get_session_repo(),
+        startup.get_message_repo(),
+        startup.get_emotional_state_repo(),
     )
-    return get_session_repo(), get_message_repo(), get_emotional_state_repo()
 
 
 @router.get("/sessions")

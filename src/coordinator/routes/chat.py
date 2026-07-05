@@ -8,6 +8,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+from .. import startup  # module ref for call-time getter resolution (tests patch
+                        # src.coordinator.startup.get_* to neutralize deps); cycle-free.
 from ..schemas import ChatBody, GreetBody, ResponseMetadata, SourceType
 from ..config import get_settings
 from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
@@ -71,36 +73,25 @@ def _build_llm_response(
 
 
 def _get_dependencies():
-    """Get dependencies from startup module."""
-    from ..startup import (
-        get_brave_client,
-        get_session_repo,
-        get_message_repo,
-        get_summary_repo,
-        get_emotional_state_repo,
-        get_memory_manager,
-        get_conversation_summarizer,
-        get_user_profile_repo,
-        get_episodic_memory_rag,
-        get_fact_extractor,
-        get_fact_extraction_worker,
-        get_memory_fact_repo,
-        get_seeker_progression_repo,
-    )
+    """Assemble the per-request dependency bundle from the startup singletons.
+
+    Resolves each getter through the ``startup`` module at call time so tests
+    patching ``src.coordinator.startup.get_*`` neutralize the whole bundle.
+    """
     return {
-        "brave_client": get_brave_client(),
-        "session_repo": get_session_repo(),
-        "message_repo": get_message_repo(),
-        "summary_repo": get_summary_repo(),
-        "emotional_state_repo": get_emotional_state_repo(),
-        "memory_manager": get_memory_manager(),
-        "conversation_summarizer": get_conversation_summarizer(),
-        "user_profile_repo": get_user_profile_repo(),
-        "episodic_memory_rag": get_episodic_memory_rag(),
-        "fact_extractor": get_fact_extractor(),
-        "fact_extraction_worker": get_fact_extraction_worker(),
-        "memory_fact_repo": get_memory_fact_repo(),
-        "seeker_progression_repo": get_seeker_progression_repo(),
+        "brave_client": startup.get_brave_client(),
+        "session_repo": startup.get_session_repo(),
+        "message_repo": startup.get_message_repo(),
+        "summary_repo": startup.get_summary_repo(),
+        "emotional_state_repo": startup.get_emotional_state_repo(),
+        "memory_manager": startup.get_memory_manager(),
+        "conversation_summarizer": startup.get_conversation_summarizer(),
+        "user_profile_repo": startup.get_user_profile_repo(),
+        "episodic_memory_rag": startup.get_episodic_memory_rag(),
+        "fact_extractor": startup.get_fact_extractor(),
+        "fact_extraction_worker": startup.get_fact_extraction_worker(),
+        "memory_fact_repo": startup.get_memory_fact_repo(),
+        "seeker_progression_repo": startup.get_seeker_progression_repo(),
     }
 
 
