@@ -164,3 +164,47 @@ class TestBuiltinRegistrations:
         assert desc["nsfw"] is True
         assert desc["toolsets"] == ["web"]
         assert desc["tools"]["web"][0]["name"] == "brave_web_search"
+
+
+class TestToolAllowlist:
+    """Per-persona tool subset WITHIN a granted toolset (Gwen NSFW-web-subset use case)."""
+
+    def test_no_allowlist_returns_all_toolset_tools(self):
+        card = {"key": "eeva", "toolsets": ["web"]}
+        assert global_registry.tool_allowlist_for_persona(card) is None
+        names = {s.name for s in global_registry.specs_for_persona(card)}
+        assert len(names) == 7  # full web toolset, unrestricted
+
+    def test_allowlist_restricts_to_subset(self):
+        card = {"key": "gwen", "toolsets": ["web"], "tools": ["image_search", "video_search"]}
+        names = {s.name for s in global_registry.specs_for_persona(card)}
+        assert names == {"image_search", "video_search"}
+
+    def test_allowlist_cannot_grant_outside_toolsets(self):
+        # 'tools' restricts WITHIN granted toolsets; it is not itself a grant.
+        card = {"key": "x", "toolsets": [], "tools": ["wallet_get_balances"]}
+        assert global_registry.specs_for_persona(card) == []
+
+    def test_allowlist_unknown_tool_ignored_not_error(self):
+        card = {"key": "x", "toolsets": ["web"], "tools": ["image_search", "bogus_tool"]}
+        names = {s.name for s in global_registry.specs_for_persona(card)}
+        assert names == {"image_search"}
+
+    def test_empty_allowlist_grants_nothing(self):
+        card = {"key": "x", "toolsets": ["web"], "tools": []}
+        assert global_registry.specs_for_persona(card) == []
+
+    def test_describe_for_persona_respects_allowlist(self):
+        card = {"key": "gwen", "toolsets": ["web"], "tools": ["image_search"], "nsfw": True}
+        desc = global_registry.describe_for_persona(card)
+        assert [t["name"] for t in desc["tools"]["web"]] == ["image_search"]
+
+    def test_gwen_persona_toolkit_shape(self):
+        # Matches the actual shipped persona config.
+        card = {"key": "gwen", "toolsets": ["web"],
+                "tools": ["image_search", "video_search"],
+                "mcp_access": [], "nsfw": True}
+        names = {s.name for s in global_registry.specs_for_persona(card)}
+        assert names == {"image_search", "video_search"}
+        assert "wallet_get_balances" not in names
+        assert "web_search" not in names  # subset excludes general text search
