@@ -6,7 +6,7 @@
   "nsfw": true,
   "toolsets": ["web"],
   "tools": ["image_search", "video_search"],
-  "mcp_access": [],
+  "mcp_access": ["brave_search"],
   "style": "seductive, analytical, devoted",
   "coordinator_label": "Gwen (Adult / Submissive)",
   "image": "images/personas/gwen/card.png",
