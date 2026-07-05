@@ -90,6 +90,78 @@ class BraveSettings(BaseSettings):
         "populate_by_name": True,
     }
 
+class WebSearchSettings(BaseSettings):
+    """Generic web-search backend configuration (ADR-009 Phase W).
+
+    Selects the search backend and the global safesearch default. SearXNG
+    (self-hosted Docker metasearch) is preferred when configured — the query
+    never leaves the machine and its safesearch pass-through is the most
+    permissive option for an uncensored companion — with the Brave API as
+    fallback. When ``searxng_base_url`` is empty (default) the chain degrades
+    to Brave-only, i.e. byte-identical to the pre-ADR-009 behavior.
+    """
+
+    backend: str = Field(
+        default="auto",
+        description=(
+            "Search backend selection: 'auto' (SearXNG if searxng_base_url is "
+            "set, else Brave), 'searxng' (SearXNG only), or 'brave' (Brave only). "
+            "'auto' with no SearXNG URL == legacy Brave-only behavior."
+        ),
+        alias="WEB_SEARCH_BACKEND",
+    )
+    searxng_base_url: str = Field(
+        default="",
+        description=(
+            "Base URL of a self-hosted SearXNG instance with JSON format enabled "
+            "(e.g. http://127.0.0.1:8888). Empty (default) = SearXNG disabled, "
+            "chain falls back to Brave. Set SEARXNG_BASE_URL to enable."
+        ),
+        alias="SEARXNG_BASE_URL",
+    )
+    searxng_timeout: int = Field(
+        default=10, ge=1, le=60,
+        description="Per-request timeout (s) for the SearXNG HTTP call.",
+        alias="SEARXNG_TIMEOUT",
+    )
+    safesearch_default: str = Field(
+        default="off",
+        description=(
+            "Global default safesearch level (off|moderate|strict). Default 'off' "
+            "for an uncensored companion (the pre-ADR-009 hardwired 'moderate' "
+            "filtered adult content). Per-persona nsfw flag clamps this UP for "
+            "non-nsfw personas; the model may also tighten per-call. Maps to "
+            "SearXNG 0/1/2 and Brave off/moderate/strict."
+        ),
+        alias="WEB_SAFESEARCH_DEFAULT",
+    )
+
+    @field_validator("safesearch_default")
+    @classmethod
+    def _validate_safesearch(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"off", "moderate", "strict"}:
+            logger.warning(f"Invalid WEB_SAFESEARCH_DEFAULT '{v}', using 'off'")
+            return "off"
+        return v
+
+    @field_validator("backend")
+    @classmethod
+    def _validate_backend(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"auto", "searxng", "brave"}:
+            logger.warning(f"Invalid WEB_SEARCH_BACKEND '{v}', using 'auto'")
+            return "auto"
+        return v
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
 class SearchSettings(BaseSettings):
     """Web-search grounding configuration (follow-up query resolution + gate).
 

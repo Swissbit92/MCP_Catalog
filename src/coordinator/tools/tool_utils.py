@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 from .keywords import NO_SEARCH_KEYWORDS, SEARCH_KEYWORDS
 from .intent_classifier import QueryIntent, classify_query_intent
-from .tool_generators import get_brave_search_tool
 
 
 @dataclass

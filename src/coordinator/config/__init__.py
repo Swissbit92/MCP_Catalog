@@ -24,7 +24,7 @@ from .llm import OllamaSettings
 from .lore import LoreSettings
 from .memory import MemorySettings
 from .routing import RoutingSettings
-from .search import BraveSettings, SearchSettings
+from .search import BraveSettings, SearchSettings, WebSearchSettings
 from .wallet import EmailSettings, JupiterSettings
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,7 @@ class CoordinatorSettings(BaseSettings):
     lore: LoreSettings = Field(default_factory=LoreSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
     search: SearchSettings = Field(default_factory=SearchSettings)
+    web_search: WebSearchSettings = Field(default_factory=WebSearchSettings)
     groundedness: GroundednessSettings = Field(default_factory=GroundednessSettings)
 
     model_config = {
@@ -173,6 +174,7 @@ __all__ = [
     "OllamaSettings",
     "RoutingSettings",
     "SearchSettings",
+    "WebSearchSettings",
     "CoordinatorSettings",
     "get_settings",
     "settings",
