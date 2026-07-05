@@ -1,5 +1,6 @@
 {
   "key": "nephilim_solace",
+  "active": false,
   "rarity": "epic",
   "celestial_order": "warden",
   "mcp_access": [
