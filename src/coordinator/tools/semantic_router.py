@@ -153,6 +153,28 @@ _INTENT_EXAMPLES_PRIMARY: Dict[str, List[str]] = {
         "what was the final score",
         "did they make the playoffs",
         "were they eliminated from the tournament",
+        # 2026-07-05 incident (Telegram): weather and general/country news
+        # questions ("what is the weather tomorrow in Brugg?", "what is the
+        # latest news in switzerland today?") scored under threshold against
+        # the crypto/sports-only set above and fell through to NEEDS_NEITHER
+        # — the model then produced its own trained real-time-data refusal.
+        # Weather. NOTE: keep these location-anchored and topical, NOT
+        # conversational — short day-rhythm phrasings ("will it rain today",
+        # "any big news this morning") sit within 0.66 cosine of greetings/
+        # feelings chitchat ("good morning", "i'm feeling a bit down today")
+        # and over-route it to search (measured 2026-07-05, bge-m3
+        # nearest-example probes).
+        "what's the weather tomorrow in Zurich",
+        "will it rain in Zurich today",
+        "what's the current temperature in Bern",
+        "weather forecast for this weekend",
+        "how hot will it get in Geneva tomorrow",
+        # General / country news & current events
+        "what's the latest news in Switzerland today",
+        "what are today's top headlines",
+        "any major news events this week",
+        "what happened in the world today",
+        "latest news about the election",
     ],
 }
 

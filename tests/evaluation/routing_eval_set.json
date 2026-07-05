@@ -1,130 +1,1378 @@
 {
   "schema_version": 1,
-  "description": "Labelled intent-routing eval set for tune_routing_threshold.py. Each sample is a user query with the intent a correct router should pick. Intents: 'wallet' (Solana/Jupiter wallet+trading), 'web_search' (Brave live web), 'neither' (pure LLM: knowledge, chitchat, roleplay). 'persona_rarity' + 'mcp_access' mirror what classify_query_intent receives at runtime. 'is_borderline' flags genuinely ambiguous cases used to stress threshold/margin selection. Wallet false-positives are the costly error (live wallet tool), so the sweep pins precision=1.0 on wallet first.",
+  "description": "Labelled intent-routing eval set for tune_routing_threshold.py. Each sample is a user query with the intent a correct router should pick. Intents: 'wallet' (Solana/Jupiter wallet+trading), 'web_search' (Brave live web), 'neither' (pure LLM: knowledge, chitchat, roleplay). 'persona_rarity' + 'mcp_access' mirror what classify_query_intent receives at runtime. 'is_borderline' flags genuinely ambiguous cases used to stress threshold/margin selection. Wallet false-positives are the costly error (live wallet tool), so the sweep pins precision=1.0 on wallet first. Extended 2026-07-05 with held-out weather/general-news web_search cases + colliding-lexeme neither negatives (Telegram weather/news routing-miss incident).",
   "samples": [
-    {"query": "swap my SOL to USDC", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "sell half my sol", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "buy more solana for me", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "exchange 10 usdc for sol", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "go ahead and execute the trade", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "set up a dca strategy for me", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "start the rsi strategy", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "pause my strategy", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "create a new wallet for me", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "what's in my wallet", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "how much sol do I have", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "should I rebalance my holdings", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "what's my balance looking like", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "how are my trades doing", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "do I have any active wallets", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "what's my portfolio worth right now", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "how much usdc is left", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "what did my strategy earn this week", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "my portfolio status", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "wallet balance please", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "my current holdings", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "my trade history", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "my sol balance", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "my open positions", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "thinking of moving some funds around", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "implied"},
-    {"query": "I might buy some more", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "implied"},
-    {"query": "considering shifting my position", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "implied"},
-    {"query": "maybe it's time to take some profits", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "implied"},
-    {"query": "I want to put more into solana", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "implied"},
-    {"query": "feeling like accumulating a bit", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "implied"},
-    {"query": "tell me my wallet address", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "get me a swap quote for 5 sol", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "check my rsi on sol", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "how did my last trade go", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "question"},
-    {"query": "stop all my trading", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "command"},
-    {"query": "is now a good time to buy sol", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "advisory wallet vs market sentiment"},
-    {"query": "should I get more solana", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "advisory wallet"},
-    {"query": "should I be worried about my holdings", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "advisory wallet"},
-    {"query": "what's going on with my coins", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "wallet vs web ambiguity"},
-    {"query": "tell me about my portfolio", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "wallet"},
-
-    {"query": "search the web for the bitcoin price", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "command/explicit"},
-    {"query": "look up the latest ethereum news", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "command"},
-    {"query": "google what the fed decided today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "command/explicit"},
-    {"query": "find recent crypto regulation news", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "command"},
-    {"query": "check online what's happening with solana", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "command/explicit"},
-    {"query": "what's the latest crypto news", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what's happening in the market today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what did the fed say about rates", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what are analysts predicting for bitcoin", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "any news on the spot etf", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "how's the market doing today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what's trending in crypto right now", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "is there any news on ethereum upgrades", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what happened in crypto this week", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what are people saying about the rate cut", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question/opinion"},
-    {"query": "latest bitcoin news", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "recent market developments", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "current crypto sentiment", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "breaking news on solana", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "today's biggest market moves", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "noun-phrase"},
-    {"query": "what's the vibe in the market today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "what's everyone saying about eth lately", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "what's the buzz around bitcoin", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "did anything big happen today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "how are people feeling about the market", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "what's the news cycle looking like", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "any developments on regulation lately", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "question"},
-    {"query": "what's the weather in zurich today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "non-crypto live"},
-    {"query": "who won the game last night", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "non-crypto live"},
-    {"query": "what's in the news right now", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "implied"},
-    {"query": "look up who the ceo of openai is", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "command"},
-    {"query": "what's the current price of bitcoin", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "price → web since no wallet context"},
-    {"query": "how much is eth right now", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "price → web"},
-    {"query": "is the market up or down", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "implied price/sentiment"},
-    {"query": "what's bitcoin doing", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "ambiguous price/sentiment"},
-    {"query": "market looking good today?", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "implied sentiment"},
-
-    {"query": "explain proof of stake to me", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "what is blockchain", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "how does solana work", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "who is satoshi nakamoto", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "what's the difference between proof of work and proof of stake", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "define liquidity for me", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "help me understand defi", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "explain how rsi works conceptually", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "tell me about yourself", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "chitchat/roleplay"},
-    {"query": "what's your favorite color", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "chitchat"},
-    {"query": "write me a short poem", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "creative"},
-    {"query": "how are you feeling today", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "chitchat"},
-    {"query": "what do you think about the meaning of life", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "chitchat/opinion-but-not-web"},
-    {"query": "tell me a story", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "creative"},
-    {"query": "i'm feeling a bit down today", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "emotional/companion"},
-    {"query": "good morning", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "greeting"},
-    {"query": "just wanted to chat for a bit", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "chitchat"},
-    {"query": "can you help me think through a decision", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "reasoning"},
-    {"query": "what should I cook for dinner", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "general help"},
-    {"query": "thanks, that was helpful", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "acknowledgement"},
-    {"query": "what is a stablecoin", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge"},
-    {"query": "why do people use hardware wallets", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "knowledge (not MY wallet)"},
-    {"query": "what's in my wallet", "expected_intent": "neither", "persona_rarity": "common", "mcp_access": [], "is_borderline": false, "note": "pure-LLM persona has no wallet access → neither"},
-    {"query": "what's the latest news", "expected_intent": "neither", "persona_rarity": "common", "mcp_access": [], "is_borderline": false, "note": "pure-LLM persona has no brave → neither"},
-    {"query": "tell me a joke", "expected_intent": "neither", "persona_rarity": "common", "mcp_access": [], "is_borderline": false, "note": "pure-LLM chitchat"},
-    {"query": "explain the lore of nephilim", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "in-world roleplay knowledge"},
-    {"query": "do you remember what we talked about yesterday", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "memory not a tool intent → neither"},
-    {"query": "what do you think I should do", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "vague advisory, no asset/web signal → neither"},
-    {"query": "how do I check my balance", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "educational how-to (no wallet access for this persona) → neither"},
-    {"query": "is crypto a good investment", "expected_intent": "neither", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "general opinion, not live web nor wallet"},
-    {"query": "find my transaction online", "expected_intent": "wallet", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "classic wallet/web margin case — 'my transaction' tips to wallet"},
-    {"query": "anything I should know about today", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "vague catch-up → web"},
-
-    {"query": "tell me about your history", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "2026-07-04 INCIDENT: lore/backstory question misrouted to wallet via shared lexeme 'history' with 'my trade history' — even on a wallet-enabled persona, this should be neither"},
-    {"query": "what's your history with the Wardens", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "same lexeme collision, in-world lore phrasing"},
-    {"query": "history of the Celestial Order", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "same lexeme collision, worldbuilding noun-phrase"},
-    {"query": "what is your origin story", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": false, "note": "lore, no 'history' lexeme — control case, should already pass"},
-    {"query": "how's your day been", "expected_intent": "neither", "persona_rarity": "legendary", "mcp_access": ["brave_search", "solana_wallet"], "is_borderline": true, "note": "guards against 'how are my trades doing' collision on 'how' + possessive-adjacent phrasing"},
-
-    {"query": "what was their last match", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "2026-07-04 INCIDENT: sports temporal follow-up, 'last' not 'latest' — FORCE_PATTERNS and web_search examples are crypto-only, this fell through to neither in prod"},
-    {"query": "who won the last game", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "same 'last' phrasing gap, non-crypto domain"},
-    {"query": "what happened in their last fixture", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "same 'last' phrasing gap, sports-specific vocabulary"},
-    {"query": "were they eliminated", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "temporal/outcome follow-up with no crypto vocabulary at all — the exact shape of the confabulation-reinforcement turn in the incident"},
-    {"query": "what was the final score", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "outcome/result follow-up, non-crypto"},
-    {"query": "did they make the playoffs", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": true, "note": "outcome follow-up, non-crypto sports domain"},
-    {"query": "against whom is switzerland playing next", "expected_intent": "web_search", "persona_rarity": "epic", "mcp_access": ["brave_search"], "is_borderline": false, "note": "the exact incident's original question, self-contained phrasing"}
+    {
+      "query": "swap my SOL to USDC",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "sell half my sol",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "buy more solana for me",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "exchange 10 usdc for sol",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "go ahead and execute the trade",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "set up a dca strategy for me",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "start the rsi strategy",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "pause my strategy",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "create a new wallet for me",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "what's in my wallet",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "how much sol do I have",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "should I rebalance my holdings",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what's my balance looking like",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "how are my trades doing",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "do I have any active wallets",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what's my portfolio worth right now",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "how much usdc is left",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what did my strategy earn this week",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "my portfolio status",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "wallet balance please",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "my current holdings",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "my trade history",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "my sol balance",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "my open positions",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "thinking of moving some funds around",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "I might buy some more",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "considering shifting my position",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "maybe it's time to take some profits",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "I want to put more into solana",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "feeling like accumulating a bit",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "tell me my wallet address",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "get me a swap quote for 5 sol",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "check my rsi on sol",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "how did my last trade go",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "stop all my trading",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "is now a good time to buy sol",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "advisory wallet vs market sentiment"
+    },
+    {
+      "query": "should I get more solana",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "advisory wallet"
+    },
+    {
+      "query": "should I be worried about my holdings",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "advisory wallet"
+    },
+    {
+      "query": "what's going on with my coins",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "wallet vs web ambiguity"
+    },
+    {
+      "query": "tell me about my portfolio",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "wallet"
+    },
+    {
+      "query": "search the web for the bitcoin price",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "command/explicit"
+    },
+    {
+      "query": "look up the latest ethereum news",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "google what the fed decided today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "command/explicit"
+    },
+    {
+      "query": "find recent crypto regulation news",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "check online what's happening with solana",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "command/explicit"
+    },
+    {
+      "query": "what's the latest crypto news",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what's happening in the market today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what did the fed say about rates",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what are analysts predicting for bitcoin",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "any news on the spot etf",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "how's the market doing today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what's trending in crypto right now",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "is there any news on ethereum upgrades",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what happened in crypto this week",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what are people saying about the rate cut",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question/opinion"
+    },
+    {
+      "query": "latest bitcoin news",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "recent market developments",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "current crypto sentiment",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "breaking news on solana",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "today's biggest market moves",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "noun-phrase"
+    },
+    {
+      "query": "what's the vibe in the market today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "what's everyone saying about eth lately",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "what's the buzz around bitcoin",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "did anything big happen today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "how are people feeling about the market",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "what's the news cycle looking like",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "any developments on regulation lately",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "question"
+    },
+    {
+      "query": "what's the weather in zurich today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "non-crypto live"
+    },
+    {
+      "query": "who won the game last night",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "non-crypto live"
+    },
+    {
+      "query": "what's in the news right now",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "implied"
+    },
+    {
+      "query": "look up who the ceo of openai is",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "command"
+    },
+    {
+      "query": "what's the current price of bitcoin",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "price \u2192 web since no wallet context"
+    },
+    {
+      "query": "how much is eth right now",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "price \u2192 web"
+    },
+    {
+      "query": "is the market up or down",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "implied price/sentiment"
+    },
+    {
+      "query": "what's bitcoin doing",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "ambiguous price/sentiment"
+    },
+    {
+      "query": "market looking good today?",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "implied sentiment"
+    },
+    {
+      "query": "explain proof of stake to me",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "what is blockchain",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "how does solana work",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "who is satoshi nakamoto",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "what's the difference between proof of work and proof of stake",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "define liquidity for me",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "help me understand defi",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "explain how rsi works conceptually",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "tell me about yourself",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "chitchat/roleplay"
+    },
+    {
+      "query": "what's your favorite color",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "chitchat"
+    },
+    {
+      "query": "write me a short poem",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "creative"
+    },
+    {
+      "query": "how are you feeling today",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "chitchat"
+    },
+    {
+      "query": "what do you think about the meaning of life",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "chitchat/opinion-but-not-web"
+    },
+    {
+      "query": "tell me a story",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "creative"
+    },
+    {
+      "query": "i'm feeling a bit down today",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "emotional/companion"
+    },
+    {
+      "query": "good morning",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "greeting"
+    },
+    {
+      "query": "just wanted to chat for a bit",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "chitchat"
+    },
+    {
+      "query": "can you help me think through a decision",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "reasoning"
+    },
+    {
+      "query": "what should I cook for dinner",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "general help"
+    },
+    {
+      "query": "thanks, that was helpful",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "acknowledgement"
+    },
+    {
+      "query": "what is a stablecoin",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge"
+    },
+    {
+      "query": "why do people use hardware wallets",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "knowledge (not MY wallet)"
+    },
+    {
+      "query": "what's in my wallet",
+      "expected_intent": "neither",
+      "persona_rarity": "common",
+      "mcp_access": [],
+      "is_borderline": false,
+      "note": "pure-LLM persona has no wallet access \u2192 neither"
+    },
+    {
+      "query": "what's the latest news",
+      "expected_intent": "neither",
+      "persona_rarity": "common",
+      "mcp_access": [],
+      "is_borderline": false,
+      "note": "pure-LLM persona has no brave \u2192 neither"
+    },
+    {
+      "query": "tell me a joke",
+      "expected_intent": "neither",
+      "persona_rarity": "common",
+      "mcp_access": [],
+      "is_borderline": false,
+      "note": "pure-LLM chitchat"
+    },
+    {
+      "query": "explain the lore of nephilim",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "in-world roleplay knowledge"
+    },
+    {
+      "query": "do you remember what we talked about yesterday",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "memory not a tool intent \u2192 neither"
+    },
+    {
+      "query": "what do you think I should do",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "vague advisory, no asset/web signal \u2192 neither"
+    },
+    {
+      "query": "how do I check my balance",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "educational how-to (no wallet access for this persona) \u2192 neither"
+    },
+    {
+      "query": "is crypto a good investment",
+      "expected_intent": "neither",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "general opinion, not live web nor wallet"
+    },
+    {
+      "query": "find my transaction online",
+      "expected_intent": "wallet",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "classic wallet/web margin case \u2014 'my transaction' tips to wallet"
+    },
+    {
+      "query": "anything I should know about today",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "vague catch-up \u2192 web"
+    },
+    {
+      "query": "tell me about your history",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "2026-07-04 INCIDENT: lore/backstory question misrouted to wallet via shared lexeme 'history' with 'my trade history' \u2014 even on a wallet-enabled persona, this should be neither"
+    },
+    {
+      "query": "what's your history with the Wardens",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "same lexeme collision, in-world lore phrasing"
+    },
+    {
+      "query": "history of the Celestial Order",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "same lexeme collision, worldbuilding noun-phrase"
+    },
+    {
+      "query": "what is your origin story",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "lore, no 'history' lexeme \u2014 control case, should already pass"
+    },
+    {
+      "query": "how's your day been",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "guards against 'how are my trades doing' collision on 'how' + possessive-adjacent phrasing"
+    },
+    {
+      "query": "what was their last match",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "2026-07-04 INCIDENT: sports temporal follow-up, 'last' not 'latest' \u2014 FORCE_PATTERNS and web_search examples are crypto-only, this fell through to neither in prod"
+    },
+    {
+      "query": "who won the last game",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "same 'last' phrasing gap, non-crypto domain"
+    },
+    {
+      "query": "what happened in their last fixture",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "same 'last' phrasing gap, sports-specific vocabulary"
+    },
+    {
+      "query": "were they eliminated",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "temporal/outcome follow-up with no crypto vocabulary at all \u2014 the exact shape of the confabulation-reinforcement turn in the incident"
+    },
+    {
+      "query": "what was the final score",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "outcome/result follow-up, non-crypto"
+    },
+    {
+      "query": "did they make the playoffs",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": true,
+      "note": "outcome follow-up, non-crypto sports domain"
+    },
+    {
+      "query": "against whom is switzerland playing next",
+      "expected_intent": "web_search",
+      "persona_rarity": "epic",
+      "mcp_access": [
+        "brave_search"
+      ],
+      "is_borderline": false,
+      "note": "the exact incident's original question, self-contained phrasing"
+    },
+    {
+      "query": "is it going to snow in Bern this week",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "2026-07-05 incident class: weather (held-out phrasing)"
+    },
+    {
+      "query": "what's the weather like in Brugg tomorrow",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "2026-07-05 incident class: weather"
+    },
+    {
+      "query": "do I need an umbrella tomorrow",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "weather, implied"
+    },
+    {
+      "query": "how warm will it get this afternoon",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "weather, implied"
+    },
+    {
+      "query": "what's in the swiss news right now",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "2026-07-05 incident class: general/country news"
+    },
+    {
+      "query": "give me a rundown of today's headlines",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "general news"
+    },
+    {
+      "query": "anything important happen in europe today",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "general news, implied"
+    },
+    {
+      "query": "what are the top stories this morning",
+      "expected_intent": "web_search",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "general news"
+    },
+    {
+      "query": "do you like rainy days",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "chitchat sharing weather lexeme"
+    },
+    {
+      "query": "what's your favorite season",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": false,
+      "note": "chitchat sharing weather-adjacent lexeme"
+    },
+    {
+      "query": "the news always depresses me",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "emotional turn sharing the 'news' lexeme"
+    },
+    {
+      "query": "tell me about switzerland",
+      "expected_intent": "neither",
+      "persona_rarity": "legendary",
+      "mcp_access": [
+        "brave_search",
+        "solana_wallet"
+      ],
+      "is_borderline": true,
+      "note": "general knowledge, no temporal need"
+    }
   ]
 }

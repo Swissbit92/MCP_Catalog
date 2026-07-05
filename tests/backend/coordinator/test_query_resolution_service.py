@@ -213,10 +213,36 @@ def test_natural_correction_phrasing_still_triggers_resolution(enable_resolution
 
 @pytest.mark.parametrize(
     "turn",
-    ["search the web", "search the web for it", "look it up online", "google it", "web search"],
+    [
+        "search the web",
+        "search the web for it",
+        "look it up online",
+        "google it",
+        "web search",
+        # 2026-07-05 incident: references to the act of asking carry no topic.
+        "search the web to answer my question",
+        "search the web to answer the question I asked",
+    ],
 )
 def test_is_bare_search_command_true(turn):
     assert QueryResolutionService._is_bare_search_command(turn) is True
+
+
+def test_answer_my_question_bad_rewrite_recovers_topic(enable_resolution):
+    """2026-07-05 Telegram incident: 'search the web to answer my question'
+    was NOT classified bare ('answer'/'my'/'question' counted as topic words),
+    so its fallback stayed the useless command itself and a whiffed LLM rewrite
+    of a topic-free phrase reached Brave (it free-associated an unrelated
+    wallet query). Now classified bare → a failed rewrite must fall back to
+    the prior substantive turn (the weather question), not the command."""
+    svc, llm = _svc(complete_return="word " * 40)
+    prompt = _prompt(
+        "User: What is the weather tomorrow in Brugg switzerland?",
+        "Assistant: I cannot and will not provide real-time data or forecasts.",
+        "User: Search the web to answer my question",
+    )
+    out = svc.resolve(prompt)
+    assert out == "What is the weather tomorrow in Brugg switzerland?"
 
 
 @pytest.mark.parametrize(

@@ -265,11 +265,26 @@ def build_synthesis_prompt(persona_system: str, has_search_results: bool = True)
             "the question — use them."
         )
 
+    # Temporal grounding: without the actual current date the model cannot tell
+    # a 5-day-old article from "today" (2026-07-05 Telegram incident: a
+    # 2026-06-30 news roundup was presented as today's news). Computed at call
+    # time — this function is built per turn and is NOT lru_cached (unlike
+    # build_system_prompt, which must never contain per-turn content).
+    from datetime import datetime
+
+    now = datetime.now()
+    current_date_line = (
+        f"Today's date is {now.strftime('%A, %Y-%m-%d')} (local time "
+        f"{now.strftime('%H:%M')})."
+    )
+
     synthesis_instructions = f"""
 
 ---
 
 **IMPORTANT: WEB SEARCH RESULTS SYNTHESIS**
+
+{current_date_line}
 
 You have received web search results in the conversation above.
 Follow these rules when answering:
@@ -295,6 +310,8 @@ Follow these rules when answering:
 - Use exact numbers, dates, and facts from search results
 - If sources disagree, mention the discrepancy or use the most recent
 - Don't round numbers unless the source does (e.g., "$91,735.99" not "around $91K")
+- CHECK RESULT AGE against today's date (stated above): a result published days or weeks ago is NOT "today" — only describe information as "today"/"current" when its date or age actually matches today, otherwise state when it is from (e.g., "as of June 30")
+- Use the units and conventions of the user's context: if a source gives temperatures in °F but the conversation is about a location that uses metric (e.g., Switzerland/Europe), convert to °C (state the converted value)
 
 **RULE 5: HANDLE MISSING OR EMPTY DATA HONESTLY**
 - If the search returned no results, an empty result set, or an error: say "I wasn't able to retrieve that information right now" — do not guess or substitute training data

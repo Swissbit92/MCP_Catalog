@@ -28,6 +28,24 @@ class BraveSettings(BaseSettings):
         description="Safe search level: off|moderate|strict",
         alias="BRAVE_SAFESEARCH"
     )
+    country: str = Field(
+        default="",
+        description=(
+            "2-letter country code (e.g. 'CH') passed to Brave for locale-aware "
+            "ranking. Empty (default) = not passed, Brave decides — which "
+            "US-biases results (2026-07-05 incident: a Swiss weather query "
+            "returned a US-oriented aggregator in °F). Set BRAVE_COUNTRY=CH."
+        ),
+        alias="BRAVE_COUNTRY"
+    )
+    search_lang: str = Field(
+        default="",
+        description=(
+            "Language code (e.g. 'en', 'de') passed to Brave. Empty (default) = "
+            "not passed."
+        ),
+        alias="BRAVE_SEARCH_LANG"
+    )
     timeout: int = Field(
         default=20,
         ge=1,
@@ -44,6 +62,16 @@ class BraveSettings(BaseSettings):
     def enabled(self) -> bool:
         """Check if Brave search is enabled (API key is set)."""
         return bool(self.api_key.strip())
+
+    @field_validator('country')
+    @classmethod
+    def validate_country(cls, v: str) -> str:
+        """Normalize/validate the country code; drop invalid values."""
+        v = v.strip().upper()
+        if v and (len(v) != 2 or not v.isalpha()):
+            logger.warning(f"Invalid BRAVE_COUNTRY '{v}' (need 2-letter code), ignoring")
+            return ""
+        return v
 
     @field_validator('safesearch')
     @classmethod
