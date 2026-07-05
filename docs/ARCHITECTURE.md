@@ -46,7 +46,7 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 | Persona-safe agentic middleware | Deterministic pre-execution gating: interceptor + injection guard + grammar-constrained arg extraction | `services/agentic_pipeline.py`, `tool_interceptor.py`, `injection_guard.py`, `argument_extractor.py` |
 | Persistence | SQLite repositories — ALL extend `BaseRepository` via `db_adapter` (connection pooling, thread-safe) | `repositories/` |
 | Configuration | Per-subsystem settings package (llm/search/memory/wallet/auth/routing/lore/agent) + `get_settings()` | `config/` |
-| Composition root | Lifecycle + singleton wiring (hand-rolled DI hub — slated for FastAPI `Depends`) | `startup.py`, `server.py` |
+| Composition root | `startup.py` = init sequencer (builds singletons, publishes an `AppState` snapshot on `app.state.container`); `dependencies.py` = FastAPI `Depends` providers (`require_*`→503-on-uninit, `optional_*`→None) resolving `startup.get_X()` at call time | `app_state.py`, `dependencies.py`, `startup.py`, `server.py` |
 
 ## Data
 
