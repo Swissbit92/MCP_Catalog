@@ -508,6 +508,7 @@ def init_jupiter():
             jupiter_ops=_jupiter_ops,
             trade_history_repo=_trade_history_repo,
             wallet_summary_repo=_wallet_summary_repo,
+            wallet_registry_repo=_wallet_registry_repo,
         )
         _strategy_service = StrategyService(
             strategies_dir=jupiter_cfg.strategies_dir,

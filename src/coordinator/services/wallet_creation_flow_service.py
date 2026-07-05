@@ -23,6 +23,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
 
+from .. import startup  # module ref (not `from ..startup import get_X`): resolves
+                        # getters at call time so tests patching startup.get_X still
+                        # intercept. Cycle-free — startup imports no service at load.
 from ..schemas import ResponseMetadata, SourceType
 
 logger = logging.getLogger(__name__)
@@ -104,8 +107,7 @@ class WalletCreationFlowService:
         slots_used, slots_max = 0, 3
         try:
             from ..repositories.wallet_registry_repository import MAX_ACTIVE_WALLETS
-            from ..startup import get_wallet_registry_repo
-            registry_repo = get_wallet_registry_repo()
+            registry_repo = startup.get_wallet_registry_repo()
             if registry_repo:
                 allowed, count, _ = registry_repo.can_create_wallet(user_id or "default_user")
                 slots_used, slots_max = count, MAX_ACTIVE_WALLETS
@@ -142,7 +144,6 @@ class WalletCreationFlowService:
             return blocked
 
         from ..services.wallet_proposal_service import build_wallet_creation_step
-        from ..startup import get_wallet_flow_repo
 
         state = WalletFlowState(
             session_id=session_id or "",
@@ -152,7 +153,7 @@ class WalletCreationFlowService:
             slots_used=slots_used,
             slots_max=slots_max,
         )
-        flow_repo = get_wallet_flow_repo()
+        flow_repo = startup.get_wallet_flow_repo()
         if flow_repo:
             flow_repo.upsert(state.session_id, state.to_repo_dict())
 
@@ -181,9 +182,7 @@ class WalletCreationFlowService:
         Step 3: display the 12-word mnemonic — user must confirm they saved it.
         Step 4: user confirms — the (never-persisted) mnemonic is out of scope; show success.
         """
-        from ..startup import get_wallet_flow_repo
-
-        flow_repo = get_wallet_flow_repo()
+        flow_repo = startup.get_wallet_flow_repo()
         try:
             step = WalletFlowStep(flow_state.get("step", 1))
         except ValueError:
@@ -226,7 +225,6 @@ class WalletCreationFlowService:
             generate_mnemonic,
         )
         from ..services.wallet_proposal_service import build_wallet_creation_step
-        from ..startup import get_wallet_repo
 
         password = message.strip()
         if len(password) < 8:
@@ -248,7 +246,7 @@ class WalletCreationFlowService:
 
         # Save encrypted wallet to SQLite
         try:
-            wallet_repo = get_wallet_repo()
+            wallet_repo = startup.get_wallet_repo()
             wallet_repo.create_wallet(
                 user_id=user_id,
                 wallet_name=state.wallet_name,
@@ -276,8 +274,7 @@ class WalletCreationFlowService:
 
         # Register in wallet registry (multi-wallet tracking)
         try:
-            from ..startup import get_wallet_registry_repo
-            registry_repo = get_wallet_registry_repo()
+            registry_repo = startup.get_wallet_registry_repo()
             if registry_repo:
                 registry_repo.register_wallet(
                     user_id=user_id,
@@ -289,11 +286,9 @@ class WalletCreationFlowService:
 
         # Update activity summary
         try:
-            from ..startup import get_wallet_summary_repo
-            summary_repo = get_wallet_summary_repo()
+            summary_repo = startup.get_wallet_summary_repo()
             if summary_repo:
-                from ..startup import get_wallet_registry_repo
-                reg = get_wallet_registry_repo()
+                reg = startup.get_wallet_registry_repo()
                 active_count = reg.get_active_count(user_id) if reg else 1
                 summary_repo.upsert_summary(
                     user_id=user_id,
