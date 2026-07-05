@@ -206,8 +206,15 @@ def _try_tool_brain(
             metadata.source_type = SourceType.TOOL_BRAIN
             metadata.tools_used = ["web_search"]
             answer = CitationService.strip_hallucinated_citations(result.answer)
+            # Strip the model's own inline [REF]n[/REF] citation markers (it
+            # sometimes invents that format; the verified 🔍 Sources block below
+            # is the real citation) — TB5.3 live-test cleanup.
+            import re as _re
+            answer = _re.sub(r"\[/?REF[^\]]*\]", "", answer).strip()
             answer = answer + CitationService.auto_generate_citations(result.search_results)
-            return _build_llm_response(answer, body.message, persona_name, metadata)
+            resp = _build_llm_response(answer, body.message, persona_name, metadata)
+            resp["used_search"] = True  # telemetry: the tool brain did search
+            return resp
 
         # Silent, answered-without-searching, or loop error -> deterministic
         # floor (legacy force-search on this web-intent turn).

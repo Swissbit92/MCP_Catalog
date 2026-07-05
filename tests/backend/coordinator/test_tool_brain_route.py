@@ -101,6 +101,18 @@ class TestGroundednessCoverage:
             resp, meta, _ = _invoke(_grounded())
         assert resp is not None
         assert meta.source_type == SourceType.TOOL_BRAIN and meta.tools_used == ["web_search"]
+        assert resp.get("used_search") is True
+
+    def test_inline_ref_markers_stripped(self):
+        result = ToolBrainResult(
+            status=ST_ANSWERED, used_search=True,
+            answer="Bitcoin is $62k[REF]5[/REF] today[REF]2[/REF].",
+            search_results=[MagicMock(title="T", url="https://x", description="d", age=None)])
+        with patch("src.coordinator.services.citation_service.CitationService.auto_generate_citations",
+                   return_value="\n\n🔍 Sources"):
+            resp, _, _ = _invoke(result)
+        body = " ".join(resp["messages"]) if resp.get("messages") else str(resp)
+        assert "[REF]" not in body and "[/REF]" not in body
 
     def test_answered_WITHOUT_search_falls_through(self):
         # The live-test fabrication case: model answered a web-intent query from
