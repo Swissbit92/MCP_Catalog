@@ -11,10 +11,30 @@ applies_to: nephilim
 
 ## Status
 
-Proposed — **open decision: which model drives the tool brain** (candidate
-matrix below). The 2026-07-05 tactical search fixes (routing examples, date
-injection, Brave locale/freshness, bare-command hardening) shipped separately
-as a stopgap; they do not change the architecture this ADR addresses.
+**Direction resolved toward SINGLE-MODEL (2026-07-05 evening).** The two-brain
+split was scar tissue around Magidonia's inability to native-tool-call. Rather
+than build a Hermes-4-14B(tool) + Magidonia(voice) split, the operator directed
+a **global daily-driver switch to abliterated Mistral-Small-24B** (`huihui_ai/
+mistral-small-abliterated:24b`) — the bake-off's best one-brain candidate
+(0.96 native tool calls + full NSFW + voice-closest-to-Magidonia, same 24B
+speed). It is **LIVE in prod** (`PERSONA_MODEL` flipped, `.env` backed up,
+Magidonia evicted from RAM but still pulled for instant revert). Live-validated
+on the active roster (EEVA + Gwen): EEVA voice held and her grounded-**search**
+voice *improved* (kept persona register where Magidonia flattened it); Gwen
+voice/NSFW excellent; the NSFW-search-synthesis refusal Magidonia produced is
+gone (abliterated has no refusal floor). Residuals: Gwen still leaks a brief
+"I cannot and will not" prefix on crypto-key-gen before recovering in-voice
+(stubborn even abliterated); a full ADR-005 attribution / ADR-006 memory eval
+is still owed as the rigorous confirmation (live smoke was the fast gate).
+
+**Consequence for this ADR:** the tool brain becomes a **single-model** concern
+— wire native, model-decided tool calling onto the (already tool-capable)
+daily driver — NOT a Hermes-split. **Hermes-4-14B is demoted to fallback**,
+resurrected only if abliterated proves too weak in a real multi-turn agentic
+loop once tool-calling is exercised live (today's live path is still the
+legacy force-search hack, so its 0.96 bench score is not yet stressed in prod).
+The tactical search fixes (routing examples, date injection, Brave locale/
+freshness, bare-command hardening) shipped separately and stand regardless.
 
 ## Context
 

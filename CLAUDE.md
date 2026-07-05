@@ -112,7 +112,7 @@ utils/                         # animations.ts, helpers, celestialOrder.ts
 Required in `.env`:
 ```bash
 OLLAMA_BASE=http://127.0.0.1:11434
-PERSONA_MODEL=hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M   # daily driver; gemma2:9b-instruct-q5_K_M = fallback/smoke-test
+PERSONA_MODEL=huihui_ai/mistral-small-abliterated:24b   # daily driver since 2026-07-05 (single-model, ADR-008): 0.96 tool calls + no refusal floor + voice≈Magidonia. Prior: hf.co/TheDrummer/Magidonia-24B-v4.3-GGUF:Q4_K_M (revert-ready, still pulled). gemma2:9b = smoke-test
 PERSONA_TEMPERATURE=0.9
 COORD_PORT=8000
 PERSONA_DIR=personas
