@@ -39,7 +39,7 @@ GWEN = {"key": "gwen", "toolsets": ["web"], "tools": ["image_search", "video_sea
         "mcp_access": ["brave_search"], "nsfw": True}
 
 
-def _invoke(result, *, card=EEVA, intent=QueryIntent.NEEDS_WEB_SEARCH):
+def _invoke(result, *, card=EEVA, intent=QueryIntent.NEEDS_WEB_SEARCH, msg="latest news"):
     """Run _try_tool_brain with ToolBrainService.run mocked to `result`;
     capture the tools actually passed to the loop (real registry scoping)."""
     meta = ResponseMetadata(source_type=SourceType.LLM, tools_used=[])
@@ -54,7 +54,7 @@ def _invoke(result, *, card=EEVA, intent=QueryIntent.NEEDS_WEB_SEARCH):
     with patch("src.coordinator.services.tool_brain_service.ToolBrainService",
                return_value=fake_svc):
         resp = chat_mod._try_tool_brain(
-            card=card, system="sys", body=_body(), history=[], intent=intent,
+            card=card, system="sys", body=_body(msg), history=[], intent=intent,
             metadata=meta, persona_name="P", deps={"brave_client": None})
     return resp, meta, captured
 
@@ -92,6 +92,37 @@ class TestIntentScoping:
             _, _, cap = _invoke(_grounded(), card=GWEN, intent=QueryIntent.NEEDS_WEB_SEARCH)
         names = {t["function"]["name"] for t in cap["tools"]}
         assert names == {"image_search", "video_search"}
+
+
+class TestMediaToolForcing:
+    """A colloquial media query narrows the surface to the ONE matching tool,
+    so native reliably calls it instead of choice-paralysing over 4 web tools."""
+
+    def _names(self, msg, card=EEVA):
+        with patch("src.coordinator.services.citation_service.CitationService.auto_generate_citations",
+                   return_value=""):
+            _, _, cap = _invoke(_grounded(), card=card, msg=msg)
+        return {t["function"]["name"] for t in cap["tools"]}
+
+    def test_video_query_forces_video_search_only(self):
+        assert self._names("find me a video of a sunset") == {"video_search"}
+
+    def test_image_query_forces_image_search_only(self):
+        assert self._names("find me some images of a sunset") == {"image_search"}
+
+    def test_gwen_video_query_forces_video_only(self):
+        assert self._names("find me a video of a redhead", card=GWEN) == {"video_search"}
+
+    def test_non_media_query_keeps_full_web_surface(self):
+        names = self._names("what's the latest bitcoin news")
+        assert len(names) > 1 and "web_search" in names
+
+    def test_forcing_skipped_if_persona_lacks_tool(self):
+        # A web persona WITHOUT video_search must not be narrowed to nothing.
+        card = {"key": "x", "mcp_access": ["brave_search"],
+                "toolsets": ["web"], "tools": ["web_search"]}
+        names = self._names("find me a video of a sunset", card=card)
+        assert names == {"web_search"}
 
 
 class TestGroundednessCoverage:
