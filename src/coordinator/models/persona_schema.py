@@ -385,7 +385,12 @@ class PersonaCard(BaseModel):
     avatar: str = Field(default="", description="Chat avatar path")
     logo: str = Field(default="", description="Header/bio logo path")
     bg: str = Field(default="", description="Chat background path")
-    emoji: str = Field(default="", max_length=4, description="Fallback avatar emoji")
+    # max_length counts Unicode code points, not rendered emoji: a single
+    # emoji can span several code points (variation selectors like U+FE0F, skin-
+    # tone modifiers, ZWJ sequences). 8 comfortably fits a short (~1-4 glyph)
+    # fallback avatar while still bounding the field. (Was 4 — rejected legit
+    # 4-emoji avatars whenever one used a variation selector, e.g. '♠️'.)
+    emoji: str = Field(default="", max_length=8, description="Fallback avatar emoji")
 
     # Core personality
     lore: List[str] = Field(
