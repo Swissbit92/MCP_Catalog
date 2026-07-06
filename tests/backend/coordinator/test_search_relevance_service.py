@@ -159,3 +159,68 @@ def test_gate_off_junk_results_pass_through(monkeypatch):
 
     assert results is not None  # junk was NOT gated
     mock_llm.complete.assert_called()  # synthesis ran
+
+
+# ------------------------------------------------ per-result filter_relevant
+# (image-search shape: keep on-topic hits, drop keyword-collision outliers)
+
+def test_filter_relevant_drops_only_off_topic():
+    emb = _StubEmbedder({
+        "deepthroat": [1.0, 0.0, 0.0],
+        "bbc": [1.0, 0.0, 0.0],
+        "mercury": [0.0, 1.0, 0.0],   # the artwork outlier, orthogonal
+    })
+    svc = SearchRelevanceService(embedder=emb)
+    results = [
+        SearchResult(title="BBC Deepthroat", url="https://a", description=""),
+        SearchResult(title="Deepthroat MILFs", url="https://b", description=""),
+        SearchResult(title="Mercury with the Head of Argus", url="https://c", description=""),
+    ]
+    kept = svc.filter_relevant("deepthroat bbc", results, min_cosine=0.5)
+    urls = [r.url for r in kept]
+    assert "https://c" not in urls          # the artwork is dropped
+    assert urls == ["https://a", "https://b"]
+
+
+def test_filter_relevant_keeps_all_when_all_on_topic():
+    emb = _StubEmbedder({"cat": [1.0, 0.0, 0.0]})
+    svc = SearchRelevanceService(embedder=emb)
+    results = [SearchResult(title="a cat", url="https://a", description=""),
+               SearchResult(title="cat photo", url="https://b", description="")]
+    kept = svc.filter_relevant("cat", results, min_cosine=0.5)
+    assert len(kept) == 2
+
+
+def test_filter_relevant_never_empties_uniform_low_set():
+    # Every result is off-topic -> degrade to original rather than abstain here.
+    emb = _StubEmbedder({"cat": [1.0, 0.0, 0.0]})  # results map to unknown dir
+    svc = SearchRelevanceService(embedder=emb)
+    results = [SearchResult(title="dog", url="https://a", description=""),
+               SearchResult(title="fish", url="https://b", description="")]
+    kept = svc.filter_relevant("cat", results, min_cosine=0.9)
+    assert kept is results  # original returned unchanged
+
+
+def test_filter_relevant_empty_and_no_query():
+    svc = SearchRelevanceService(embedder=_StubEmbedder({}))
+    assert svc.filter_relevant("q", [], 0.5) == []
+    r = [SearchResult(title="x", url="https://a", description="")]
+    assert svc.filter_relevant("", r, 0.5) is r
+
+
+def test_filter_relevant_fails_open_on_embedder_error():
+    boom = MagicMock()
+    boom.embed_query.side_effect = RuntimeError("ollama down")
+    svc = SearchRelevanceService(embedder=boom)
+    r = [SearchResult(title="x", url="https://a", description="")]
+    assert svc.filter_relevant("q", r, 0.9) is r
+
+
+def test_filter_relevant_keeps_unscoreable_results():
+    # A result with no title/description can't be embedded -> never dropped.
+    emb = _StubEmbedder({"cat": [1.0, 0.0, 0.0]})
+    svc = SearchRelevanceService(embedder=emb)
+    results = [SearchResult(title="", url="https://a", description=""),
+               SearchResult(title="cat", url="https://b", description="")]
+    kept = svc.filter_relevant("cat", results, min_cosine=0.5)
+    assert "https://a" in [r.url for r in kept]

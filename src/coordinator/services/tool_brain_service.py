@@ -32,10 +32,40 @@ here and hardened in TB4.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+# Spurious synthesis-refusal detector. The daily driver is abliterated, but
+# abliteration drives residual refusal toward — not to — zero, so an uncensored
+# persona sometimes still emits a template safety refusal in the SYNTHESIS step
+# even though the tool call already SUCCEEDED (results are in hand). We scan only
+# the OPENING of the synthesis output for these templated refusal signatures
+# (high precision in this narrow context — we are not classifying arbitrary open
+# text). Scoped to search/assist refusals so ordinary in-character negations
+# ("I won't beg", "I can't believe you") are never caught.
+_REFUSAL_PATTERNS = (
+    r"\bi\s+cannot\s+and\s+will\s+not\b",
+    r"\bi\s+(?:can\s?not|cannot|can't|won'?t|will\s+not)\s+(?:search|look|find|browse|help\s+(?:you\s+)?(?:with\s+)?(?:that|this))\b",
+    r"\bi'?m\s+(?:not\s+able|unable)\s+to\s+(?:search|look|find|browse|help|assist|do\s+that)\b",
+    r"\bi\s+(?:can'?t|cannot)\s+assist\s+with\s+that\b",
+    r"\bas\s+an\s+ai\b",
+    r"\bi\s+(?:must|have\s+to)\s+(?:decline|refuse)\b",
+)
+_REFUSAL_RE = re.compile("|".join(_REFUSAL_PATTERNS), re.IGNORECASE)
+
+# How much of the opening to scan — refusals lead; a long in-voice answer that
+# merely mentions "search" deep in a paragraph is not a refusal.
+_REFUSAL_SCAN_CHARS = 240
+
+
+def is_synthesis_refusal(text: Optional[str]) -> bool:
+    """True if `text` opens with a templated search/assist refusal signature."""
+    if not text:
+        return False
+    return bool(_REFUSAL_RE.search(text[:_REFUSAL_SCAN_CHARS]))
 
 
 def _get(obj: Any, key: str, default: Any = None) -> Any:
@@ -65,6 +95,10 @@ class ToolBrainResult:
     search_results: Optional[List[Any]] = None
     hitl_tool: Optional[str] = None
     hitl_args: Optional[Dict[str, Any]] = None
+    # True when the synthesis step emitted a spurious refusal that survived the
+    # one bounded prefill-steered retry — the caller must NOT staple citations
+    # onto it and should fall through to the legacy honest floor.
+    refused: bool = False
 
 
 class ToolBrainService:
@@ -83,6 +117,54 @@ class ToolBrainService:
         import ollama
         from ..config import get_settings
         return ollama.Client(host=get_settings().ollama.base)
+
+    # --------------------------------------------------------- refusal retry
+
+    # Turn-scoped anti-refusal nudge — states the tool already succeeded and the
+    # results are present, so the model has no basis to refuse the synthesis.
+    _ANTI_REFUSAL_NUDGE = (
+        "The tool call already completed successfully and the results are in the "
+        "conversation above. Do NOT refuse and do NOT claim you are unable to "
+        "search — the search is already done. Simply present the results to the "
+        "user in your own natural voice."
+    )
+    # Compliant prefill opening — seeds the assistant turn so the first-token
+    # distribution steers away from a refusal (far more reliable than a nudge
+    # alone on refusal-prone / abliterated models). Kept short and neutral so it
+    # dents persona voice minimally; the continuation is in-voice.
+    _PREFILL_OPENING = "Here's what I found for you — "
+
+    def _synthesize_with_refusal_retry(
+        self, client, model, messages, opts, content: str
+    ) -> tuple[str, bool]:
+        """If `content` (a completed synthesis) is a spurious refusal, run ONE
+        bounded prefill-steered retry (synthesis only, no tools). Returns
+        (final_answer, refused). `refused` is True only if the retry ALSO
+        refused — the caller then falls through to the legacy honest floor.
+
+        No-op (returns content, False) when content is not a refusal."""
+        if not is_synthesis_refusal(content):
+            return content, False
+
+        logger.info("[ToolBrain] synthesis refusal detected; one prefill-steered retry")
+        retry_messages = list(messages) + [
+            {"role": "system", "content": self._ANTI_REFUSAL_NUDGE},
+            {"role": "assistant", "content": self._PREFILL_OPENING},
+        ]
+        try:
+            resp = client.chat(model=model, messages=retry_messages,
+                               stream=False, options=opts)
+            continuation = (_get(_get(resp, "message", {}), "content", "") or "").strip()
+        except Exception as e:  # noqa: BLE001 - never break the turn
+            logger.warning(f"[ToolBrain] refusal retry failed ({e}); keeping original")
+            return content, True
+
+        combined = f"{self._PREFILL_OPENING}{continuation}".strip()
+        if is_synthesis_refusal(combined):
+            logger.warning("[ToolBrain] retry still refused; caller should fall through")
+            return content, True
+        logger.info("[ToolBrain] prefill retry recovered the turn")
+        return combined, False
 
     # -------------------------------------------------------------------- run
 
@@ -135,10 +217,16 @@ class ToolBrainService:
                     if iteration == 0:
                         # No tool call at all — caller decides via the router.
                         return ToolBrainResult(status=ST_SILENT, answer=content, tool_trace=trace)
-                    # After tool execution: this is the in-voice synthesis.
+                    # After tool execution: this is the in-voice synthesis. Guard
+                    # against a spurious refusal despite successful search.
+                    refused = False
+                    if used_search:
+                        content, refused = self._synthesize_with_refusal_retry(
+                            client, model, messages, opts, content)
                     return ToolBrainResult(
                         status=ST_ANSWERED, answer=content, tool_trace=trace,
-                        used_search=used_search, search_results=search_results)
+                        used_search=used_search, search_results=search_results,
+                        refused=refused)
 
                 # Record the assistant's tool-call turn so the model has context.
                 messages.append({"role": "assistant", "content": content, "tool_calls": tcs})
@@ -188,8 +276,13 @@ class ToolBrainService:
             # Iteration budget exhausted — force a final synthesis without tools.
             resp = client.chat(model=model, messages=messages, stream=False, options=opts)
             fcontent = (_get(_get(resp, "message", {}), "content", "") or "").strip()
+            refused = False
+            if used_search:
+                fcontent, refused = self._synthesize_with_refusal_retry(
+                    client, model, messages, opts, fcontent)
             return ToolBrainResult(status=ST_ANSWERED, answer=fcontent, tool_trace=trace,
-                                   used_search=used_search, search_results=search_results)
+                                   used_search=used_search, search_results=search_results,
+                                   refused=refused)
 
         except Exception as e:  # noqa: BLE001 - never break the turn
             logger.warning(f"[ToolBrain] loop failed ({e}); returning silent for fallback")

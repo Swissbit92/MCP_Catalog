@@ -215,6 +215,17 @@ def _try_tool_brain(
         # data) — fall through to the legacy force-search, which WILL search.
         # This closes the groundedness hole: every web-intent answer is either
         # tool-grounded here or force-searched by legacy; none comes from memory.
+        # A synthesis that refused despite a successful search (survived the
+        # ToolBrain prefill retry) must NEVER get citations stapled on — that
+        # produces the incoherent "I cannot search for images 🔍 Sources: ..."
+        # artifact. Fall through to the legacy honest floor instead.
+        if getattr(result, "refused", False):
+            logger.info(
+                "[ToolBrain] status=answered but synthesis refused post-retry "
+                "-> falling through to legacy (no citations stapled)"
+            )
+            return None
+
         if result.status == ST_ANSWERED and result.answer and result.used_search \
                 and result.search_results:
             metadata.source_type = SourceType.TOOL_BRAIN

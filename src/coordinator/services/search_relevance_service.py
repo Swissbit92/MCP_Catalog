@@ -96,6 +96,71 @@ class SearchRelevanceService:
             )
             return True
 
+    def filter_relevant(
+        self, query: str, results: List[Any], min_cosine: float
+    ) -> List[Any]:
+        """Return only the results whose title+description clears `min_cosine`.
+
+        Unlike `is_relevant` (a binary abstain used by the legacy force-search
+        path), this filters PER RESULT — the right shape for image search, where
+        a set typically mixes on-topic hits with a keyword-collision outlier
+        (e.g. a museum artwork). The good hits survive; the outlier is dropped.
+
+        Graceful + fail-open, so it can never make search worse than no gate:
+          * empty input / empty query -> returned unchanged;
+          * any embedding error -> original list returned (never blocks search);
+          * if the floor would drop EVERY result, the ORIGINAL list is returned
+            (a set that is uniformly low-similarity — e.g. sparse NSFW titles —
+            is a false-negative risk, so we degrade to the deterministic-denylist
+            output rather than abstain here).
+        """
+        if not results or not query:
+            return results
+
+        # Build the same title+description texts is_relevant/max_similarity use,
+        # but keep them aligned 1:1 with results (results whose combined text is
+        # empty are un-scorable -> kept, never dropped on missing metadata).
+        indexed_texts: List[tuple[int, str]] = []
+        for i, r in enumerate(results):
+            title = getattr(r, "title", "") or ""
+            desc = getattr(r, "description", "") or ""
+            combined = f"{title}. {desc}".strip()
+            if combined and combined != ".":
+                indexed_texts.append((i, combined))
+
+        if not indexed_texts:
+            return results  # nothing embeddable -> don't filter
+
+        try:
+            embedder = self._get_embedder()
+            q_vec = embedder.embed_query(query)
+            d_vecs = embedder.embed_documents([t for _, t in indexed_texts])
+        except Exception as e:  # noqa: BLE001 - gate must never break search
+            logger.warning(
+                f"[RelevanceGate] filter embedding failed ({e}); failing open"
+            )
+            return results
+
+        drop: set[int] = set()
+        for (idx, _text), d_vec in zip(indexed_texts, d_vecs):
+            if self._cosine(q_vec, d_vec) < min_cosine:
+                drop.add(idx)
+
+        kept = [r for i, r in enumerate(results) if i not in drop]
+        if not kept:
+            # Uniform low-similarity set -> degrade rather than abstain here.
+            logger.info(
+                f"[RelevanceGate] filter would empty {len(results)} results "
+                f"(floor={min_cosine:.2f}); keeping original set"
+            )
+            return results
+        if drop:
+            logger.info(
+                f"[RelevanceGate] filtered {len(drop)}/{len(results)} off-topic "
+                f"results (floor={min_cosine:.2f})"
+            )
+        return kept
+
     @staticmethod
     def _cosine(a: List[float], b: List[float]) -> float:
         dot = sum(x * y for x, y in zip(a, b))

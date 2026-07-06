@@ -30,8 +30,44 @@ from typing import Any, Callable, Dict, List
 from .registry import registry
 from .web_tool_generators import WEB_TOOL_CATEGORY
 from .web_safesearch import clamp_safesearch
+from .result_filters import filter_junk_results
 
 logger = logging.getLogger(__name__)
+
+# Lazy module-level singleton so the bge-m3 embedder is built at most once across
+# all search calls (its constructor lazily resolves the RAG embedder on first
+# use). Only ever instantiated when the relevance gate is flag-enabled.
+_relevance_service = None
+
+
+def _get_relevance_service():
+    global _relevance_service
+    if _relevance_service is None:
+        from ..services.search_relevance_service import SearchRelevanceService
+        _relevance_service = SearchRelevanceService()
+    return _relevance_service
+
+
+def _apply_relevance_filter(query: str, results: Any) -> Any:
+    """Per-result bge-m3 relevance floor, flag-gated by SEARCH_RELEVANCE_GATE.
+
+    Returns `results` unchanged when the gate is off, the query is empty, the set
+    is falsy, or on any embedder error (fail-open). Never empties a non-empty set
+    on its own (graceful — the deterministic denylist is the authoritative layer)."""
+    from ..config import get_settings
+
+    if not results or not query:
+        return results
+    cfg = get_settings().search
+    if not cfg.relevance_gate_enabled:
+        return results
+    try:
+        return _get_relevance_service().filter_relevant(
+            query, results, cfg.relevance_min_cosine
+        )
+    except Exception as e:  # noqa: BLE001 - relevance must never break search
+        logger.warning(f"[executor_bindings] relevance filter failed ({e}); failing open")
+        return results
 
 
 def _make_search_executor(tool_name: str) -> Callable[[Dict[str, Any], Dict[str, Any]], Any]:
@@ -49,13 +85,28 @@ def _make_search_executor(tool_name: str) -> Callable[[Dict[str, Any], Dict[str,
         nsfw = registry.persona_nsfw(persona_card)
         default = get_settings().web_search.safesearch_default
         clamped = clamp_safesearch(arguments.get("safesearch"), nsfw, default)
+        eff_category = arguments.get("category") or category
         args = {
             **arguments,
             "safesearch": clamped,            # per-persona floor enforced here
-            "category": arguments.get("category") or category,
+            "category": eff_category,
         }
         svc = SearchExecutionService(mcp_client=get_brave_client())
-        return svc.execute_search(ToolCall(name=tool_name, arguments=args))
+        results = svc.execute_search(ToolCall(name=tool_name, arguments=args))
+
+        # Deterministic junk denylist (always-on, images only): strip icon-CDN /
+        # placeholder / favicon / badge junk that aggregated image engines surface
+        # on keyword collisions, before results reach synthesis or citations. The
+        # never-empty fallback keeps a niche all-icon result set rather than
+        # emptying it.
+        results = filter_junk_results(results, eff_category)
+
+        # Probabilistic relevance floor (flag-gated) — drop off-topic hits a
+        # static denylist can't catch (e.g. a museum artwork whose title merely
+        # contains the query word). Per-result, graceful (never empties a set on
+        # its own), fail-open on embedder error.
+        results = _apply_relevance_filter(arguments.get("query", ""), results)
+        return results
 
     return executor
 

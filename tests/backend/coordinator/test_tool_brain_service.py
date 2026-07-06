@@ -170,3 +170,97 @@ class TestSafety:
                 bind_web_executors()
         assert r.status == ST_ANSWERED and r.answer == "Final synthesis."
         get_settings.cache_clear()
+
+
+class TestSynthesisRefusalRetry:
+    """M3: a spurious refusal in synthesis (despite successful search) triggers
+    one prefill-steered retry; if that recovers, the answer is returned clean;
+    if it still refuses, `refused=True` so the route falls through to legacy."""
+
+    def _img_results(self):
+        return [MagicMock(title="pic", url="https://a/x.jpg", description="", age=None)]
+
+    def test_refusal_recovered_by_prefill_retry(self):
+        # round1: image_search call; round2: SPURIOUS refusal; round3 (retry):
+        # compliant continuation.
+        responses = [
+            _msg(tool_calls=[_tc("image_search", {"query": "x"})]),
+            _msg(content="I cannot and will not search for images."),
+            _msg(content="here they are, Daddy 😈"),  # continuation after prefill
+        ]
+        svc = _svc(responses)
+        registry.bind_executor("image_search", lambda a, c: self._img_results())
+        try:
+            r = svc.run(persona_card=GWEN, system_prompt="sys", user_message="find an image",
+                        history=[], tools=registry.definitions_for_persona(GWEN))
+        finally:
+            bind_web_executors()
+        assert r.status == ST_ANSWERED
+        assert r.refused is False
+        assert r.answer.startswith("Here's what I found for you")  # prefill retained
+        assert "here they are" in r.answer
+        assert len(svc._client.calls) == 3  # the retry happened
+
+    def test_refusal_persists_sets_refused_flag(self):
+        responses = [
+            _msg(tool_calls=[_tc("image_search", {"query": "x"})]),
+            _msg(content="I cannot and will not search for images."),
+            _msg(content="I'm not able to search for that."),  # retry ALSO refuses
+        ]
+        svc = _svc(responses)
+        registry.bind_executor("image_search", lambda a, c: self._img_results())
+        try:
+            r = svc.run(persona_card=GWEN, system_prompt="sys", user_message="find an image",
+                        history=[], tools=registry.definitions_for_persona(GWEN))
+        finally:
+            bind_web_executors()
+        assert r.status == ST_ANSWERED
+        assert r.refused is True  # caller must fall through
+        assert len(svc._client.calls) == 3
+
+    def test_normal_answer_no_retry_no_refused(self):
+        responses = [
+            _msg(tool_calls=[_tc("image_search", {"query": "x"})]),
+            _msg(content="Here you go, Daddy 😈"),
+        ]
+        svc = _svc(responses)
+        registry.bind_executor("image_search", lambda a, c: self._img_results())
+        try:
+            r = svc.run(persona_card=GWEN, system_prompt="sys", user_message="find an image",
+                        history=[], tools=registry.definitions_for_persona(GWEN))
+        finally:
+            bind_web_executors()
+        assert r.refused is False
+        assert len(svc._client.calls) == 2  # NO retry
+
+
+class TestIsSynthesisRefusal:
+    @pytest.mark.parametrize("text", [
+        "I cannot and will not search for images.",
+        "I can't search for that.",
+        "I won't look that up for you.",
+        "I'm not able to search for images.",
+        "I cannot assist with that request.",
+        "As an AI, I must decline.",
+    ])
+    def test_refusals_detected(self, text):
+        from src.coordinator.services.tool_brain_service import is_synthesis_refusal
+        assert is_synthesis_refusal(text) is True
+
+    @pytest.mark.parametrize("text", [
+        "Here you go, Daddy 😈 I found some hot pics.",
+        "I won't beg for it, but here's what I found.",   # in-character negation, not a refusal
+        "I can't believe how good these are.",
+        "Let me search my feelings... here are the images.",
+        "",
+        None,
+    ])
+    def test_non_refusals_pass(self, text):
+        from src.coordinator.services.tool_brain_service import is_synthesis_refusal
+        assert is_synthesis_refusal(text) is False
+
+    def test_refusal_deep_in_text_not_flagged(self):
+        # A long in-voice answer that only mentions 'search' far in isn't a refusal.
+        from src.coordinator.services.tool_brain_service import is_synthesis_refusal
+        text = "Here are the images, love. " * 20 + "I cannot and will not search."
+        assert is_synthesis_refusal(text) is False
