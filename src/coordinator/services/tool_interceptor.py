@@ -43,6 +43,12 @@ ALLOWED_TOKENS = {"SOL", "USDC", "USDT"}
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _MAX_QUERY_LEN = 300
 
+# Every search-family tool whose `query` argument gets the structural validation
+# above: the legacy force-search name plus the live ADR-009 registry-bound names.
+_SEARCH_QUERY_TOOLS = frozenset({
+    "brave_web_search", "web_search", "image_search", "video_search", "news_search",
+})
+
 # MCP service identifiers as they appear in persona `mcp_access`.
 _MCP_BRAVE = "brave_search"
 _MCP_WALLET = "solana_wallet"
@@ -96,7 +102,12 @@ def _validate_arguments(tool_name: str, args: Dict[str, Any]) -> Optional[str]:
     """Return an error string if arguments violate the per-tool allowlist, else None."""
     args = args or {}
 
-    if tool_name == "brave_web_search":
+    # Search-family query validation. Covers the legacy force-search name AND
+    # the live ADR-009 tool-brain names (image_search/web_search/video_search/
+    # news_search) — previously ONLY brave_web_search was checked, so the active
+    # tool-brain path had no length cap or control-char guard on the query.
+    # Structural only (non-empty, length, control chars); content is not judged.
+    if tool_name in _SEARCH_QUERY_TOOLS:
         query = args.get("query", "")
         if not isinstance(query, str) or not query.strip():
             return "query must be a non-empty string"

@@ -109,7 +109,12 @@ def get_image_search_tool() -> Dict[str, Any]:
     return _category_search_tool(
         "image_search", "images",
         "Search for IMAGES or pictures. Use this whenever the user asks for "
-        "images, pics, pictures, or photos. Returns image page URLs and titles.",
+        "images, pics, pictures, or photos. Formulate `query` as a few concrete "
+        "visual keywords naming the subject you want to SEE (e.g. 'golden "
+        "retriever puppy on a beach'). Do NOT paste sentences, story text, or "
+        "narrative prose into the query — long prose produces keyword-collision "
+        "junk (an unrelated word matching a logo, artwork, or product). Returns "
+        "image page URLs and titles.",
     )
 
 
@@ -117,8 +122,10 @@ def get_video_search_tool() -> Dict[str, Any]:
     return _category_search_tool(
         "video_search", "videos",
         "Search for VIDEOS or clips to watch. Use this whenever the user asks "
-        "for a video, clip, footage, or something to watch. Returns video page "
-        "URLs and titles.",
+        "for a video, clip, footage, or something to watch. Formulate `query` as "
+        "a few concrete keywords naming what the clip should show (e.g. 'sunset "
+        "over the ocean timelapse'). Do NOT paste sentences or narrative prose "
+        "into the query. Returns video page URLs and titles.",
     )
 
 
