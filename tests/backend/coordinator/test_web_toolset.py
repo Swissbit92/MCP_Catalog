@@ -64,6 +64,18 @@ class TestWebToolDefinitions:
         assert set(props) >= {"query", "category", "safesearch", "time_range", "max_results"}
         assert props["safesearch"]["enum"] == ["off", "moderate", "strict"]
 
+    def test_image_search_guides_keyword_query(self):
+        # Root-cause guard: the model must be told to pass concrete visual
+        # keywords, NOT narrative prose (which caused the keyword-collision junk).
+        desc = get_image_search_tool()["function"]["description"].lower()
+        assert "keyword" in desc
+        assert "prose" in desc or "sentence" in desc
+
+    def test_video_search_guides_keyword_query(self):
+        desc = get_video_search_tool()["function"]["description"].lower()
+        assert "keyword" in desc
+        assert "prose" in desc or "sentence" in desc
+
     def test_fetch_url_required(self):
         fn = get_fetch_url_tool()["function"]
         assert fn["parameters"]["required"] == ["url"]
