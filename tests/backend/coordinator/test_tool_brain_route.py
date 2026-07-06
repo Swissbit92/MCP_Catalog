@@ -156,6 +156,25 @@ class TestGroundednessCoverage:
         resp, _, _ = _invoke(ToolBrainResult(status=ST_SILENT, answer="partial"))
         assert resp is None
 
+    def test_refused_synthesis_falls_through_no_citations(self):
+        # M3: search succeeded but synthesis refused (survived the prefill retry).
+        # Must NOT staple citations onto a refusal -> fall through to legacy.
+        called = {"cited": False}
+
+        def _cite(_results):
+            called["cited"] = True
+            return "\n\n🔍 Sources"
+
+        result = ToolBrainResult(
+            status=ST_ANSWERED, used_search=True, refused=True,
+            answer="I cannot and will not search for images.",
+            search_results=[MagicMock(title="T", url="https://x", description="d", age=None)])
+        with patch("src.coordinator.services.citation_service.CitationService.auto_generate_citations",
+                   side_effect=_cite):
+            resp, _, _ = _invoke(result)
+        assert resp is None                 # fell through to legacy floor
+        assert called["cited"] is False     # citations were NEVER generated
+
 
 class TestWalletDefensive:
     def test_hitl_still_handed_off_if_it_ever_fires(self):
