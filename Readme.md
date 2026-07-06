@@ -101,7 +101,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Brave Web Search** | Autonomous web search with mandatory citation validation |
+| **Web / Image / Video Search** | SearXNG-primary (Brave fallback) web, image, video & news search with mandatory citation validation, per-persona NSFW safesearch clamp, and deterministic junk-result filtering for image search |
 | **Jupiter / Solana Wallet** | DEX swap proposals, autonomous DCA/RSI strategies, AES-encrypted key storage |
 | **Email Notifications** | Optional SMTP alerts for executed trades |
 
