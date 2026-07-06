@@ -11,6 +11,8 @@ applies_to: nephilim
 
 ## Status
 
+> **⚠️ 2026-07-06 — MEMORY INJECTION REVERTED on the abliterated model. Both flags OFF on prod.** A full ADR-005 distinctiveness eval on the new daily driver (`huihui_ai/mistral-small-abliterated:24b`, live since 2026-07-05) showed **both** memory mechanisms degrade voice: distinctiveness **0.804 (both OFF) → 0.661 (facts only) → 0.625 (both ON)**; EEVA collapses 0.75→0.25 under either injection and recovers only with both off. The abliterated model itself is a voice *win* (0.804 vs Magidonia 0.732) — the regression was the injection, not the model. **The M5 gate (0.839, "match-or-beat") does NOT hold on abliterated** — it was measured on Magidonia before the model switch, so the M1 per-persona framing was never validated on the model now in prod. `MEMORY_CONTEXT_INJECT=false` + `MEMORY_FACTS_ENABLED=false` on prod. **Re-entry requires re-running the M5 gate on abliterated with reworked per-persona framing** — the Phase-1 prerequisite this ADR always named. Eval data: `baselines/baseline_abliterated_20260706_*.json`.
+
 **Proposed — plan only, no code.** Drafted 2026-06-27 from a three-agent research
 pass (one internal architecture+vision map + two external web-research passes on
 the character-fidelity axis and the long-term-companion axis), run after
