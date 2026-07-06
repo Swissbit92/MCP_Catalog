@@ -154,6 +154,59 @@ def test_lean_prompt_wallet_section_only_for_wallet_personas(monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# tool_intent injection (PERSONA_TOOL_INTENT_IN_PROMPT, default OFF)
+# --------------------------------------------------------------------------
+
+def _ti_card():
+    return {**_ADVISORY_CARD,
+            "escalation_policy": {"tool_intent": ["use brave_search for X", "use reasoning for Y"]}}
+
+
+def test_tool_intent_absent_when_flag_off(monkeypatch):
+    # Default OFF -> the dead field stays out of the prompt (byte-identical).
+    _patch_persona(monkeypatch, _ti_card())
+    pb._build_system_prompt_lean.cache_clear()
+    out = pb._build_system_prompt_lean("nephilim_test")
+    assert "Tool guidance:" not in out
+    assert "use brave_search for X" not in out
+    assert "<tools>" not in out  # advisory card has no wallet either
+
+
+def test_tool_intent_present_when_flag_on(monkeypatch):
+    monkeypatch.setattr(pb.get_settings().agent, "tool_intent_in_prompt", True)
+    _patch_persona(monkeypatch, _ti_card())
+    pb._build_system_prompt_lean.cache_clear()
+    out = pb._build_system_prompt_lean("nephilim_test")
+    assert "<tools>" in out
+    assert "Tool guidance:" in out
+    assert "use brave_search for X" in out
+    assert "use reasoning for Y" in out
+    pb._build_system_prompt_lean.cache_clear()  # don't leak flag-on prompt to next test
+
+
+def test_tool_intent_merges_into_single_tools_block_with_wallet(monkeypatch):
+    monkeypatch.setattr(pb.get_settings().agent, "tool_intent_in_prompt", True)
+    card = {**_ti_card(), "mcp_access": ["solana_wallet"]}
+    _patch_persona(monkeypatch, card)
+    pb._build_system_prompt_lean.cache_clear()
+    out = pb._build_system_prompt_lean("nephilim_test")
+    assert out.count("<tools>") == 1  # merged, not two sections
+    assert "oracle-advisor" in out  # wallet copilot text
+    assert "use brave_search for X" in out  # tool_intent text
+    pb._build_system_prompt_lean.cache_clear()
+
+
+def test_tool_intent_empty_list_no_block(monkeypatch):
+    monkeypatch.setattr(pb.get_settings().agent, "tool_intent_in_prompt", True)
+    _patch_persona(monkeypatch, {**_ADVISORY_CARD, "escalation_policy": {"tool_intent": []}})
+    pb._build_system_prompt_lean.cache_clear()
+    out = pb._build_system_prompt_lean("nephilim_test")
+    assert "Tool guidance:" not in out
+    assert "<tools>" not in out
+    pb._build_system_prompt_lean.cache_clear()
+
+
+# --------------------------------------------------------------------------
 # Helpers / fixtures
 # --------------------------------------------------------------------------
 

@@ -73,6 +73,18 @@ class AgentSettings(BaseSettings):
         description="Max grammar-constrained extraction attempts before regex fallback.",
         alias="AGENTIC_EXTRACTION_MAX_RETRIES",
     )
+    tool_intent_in_prompt: bool = Field(
+        default=False,
+        description=(
+            "Inject each persona's escalation_policy.tool_intent lines as a "
+            "<tools> guidance block in the lean system prompt. Default OFF = "
+            "byte-identical (the field is otherwise dead data). Behavioral: adds "
+            "prompt content to every persona that has tool_intent, so it is "
+            "eval-gated (ADR-005 distinctiveness) before any flip. Set "
+            "PERSONA_TOOL_INTENT_IN_PROMPT=true to enable."
+        ),
+        alias="PERSONA_TOOL_INTENT_IN_PROMPT",
+    )
 
     model_config = {
         "env_file": ".env",

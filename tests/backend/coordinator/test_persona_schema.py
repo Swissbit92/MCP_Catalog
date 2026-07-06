@@ -139,6 +139,24 @@ def test_valid_full_persona():
     print("[PASS] Full persona validates correctly with celestial_order and mcp_access")
 
 
+def test_emoji_accepts_multi_codepoint_glyphs():
+    """A short multi-emoji avatar whose glyphs carry variation selectors / ZWJ
+    (so the string spans >4 Unicode code points) must validate. Regression for
+    the old max_length=4 that rejected Gwen's legit 4-emoji avatar '🥵💦🍆♠️'
+    (5 code points — '♠️' = U+2660 U+FE0F)."""
+    pc = PersonaCard(key="Test", emoji="🥵💦🍆♠️")
+    assert pc.emoji == "🥵💦🍆♠️"
+
+
+def test_emoji_still_bounded():
+    """The field is still bounded — an absurdly long emoji string is rejected."""
+    try:
+        PersonaCard(key="Test", emoji="🥵" * 20)
+        assert False, "Should have raised validation error"
+    except Exception as e:
+        assert "emoji" in str(e).lower() or "at most" in str(e).lower()
+
+
 def test_invalid_rarity():
     """Test that invalid rarity produces clear error."""
     try:
