@@ -15,6 +15,24 @@ Two independent defects surfaced by a live Gwen `image_search` turn: the model r
 - **Per-result bge-m3 relevance floor on the tool-brain path** (`services/search_relevance_service.py:filter_relevant`). Catches keyword-collision outliers a static denylist can't (the museum artwork). Flag-gated by the **existing** `SEARCH_RELEVANCE_GATE_ENABLED` (default OFF); graceful (never empties a uniform-low set), fail-open on embedder error, lazy module-singleton embedder. Closes the gap where the relevance gate only ran on the legacy `tool_calling_service` path, never the ADR-008 tool brain.
 - **Spurious-refusal handling in synthesis** (`services/tool_brain_service.py`). Abliteration drives residual refusal toward — not to — zero, so the model sometimes refuses the synthesis step even though the search already succeeded. `is_synthesis_refusal` detects a templated refusal in the opening 240 chars; the loop runs ONE bounded prefill-steered retry (anti-refusal nudge + compliant assistant prefill — the inference-time analogue of the DPO fix, >99% steer-success in the literature). A new `ToolBrainResult.refused` flag is set only if the retry also refuses. `routes/chat.py:_try_tool_brain` returns None (falls through to the legacy honest floor) when `refused` — citations are **never** stapled onto a refusal.
 
+See [ADR-010](docs/decisions/010-image-search-result-quality-and-spurious-refusal-handling.md) for the full record (incl. the live cosine study that keeps the relevance floor OFF for images).
+
+### Fixed (2026-07-06) — image-search query quality + interceptor query-validation gap
+
+Root-cause follow-up to the junk fix. A trace found the model authors the `image_search` query freely with zero guidance and it flows byte-identical to the backend (the keyword-collision artwork came from pasting story prose). QA-gatekeeper PASS (baseline 1983 → 1998, +15 tests, 0 regressions).
+
+- **Query-formulation guidance** (`tools/web_tool_generators.py`): `image_search`/`video_search` descriptions instruct the model to formulate `query` as concrete visual keywords, not narrative prose. Content-neutral — NSFW keyword search still works.
+- **Interceptor query-validation gap** (`services/tool_interceptor.py`): `_validate_arguments` now applies the query allowlist (non-empty, ≤300 chars, no control chars) to the live ADR-009 tool-brain names via `_SEARCH_QUERY_TOOLS` (`web_search`/`image_search`/`video_search`/`news_search`), not just the dead `brave_web_search` — the tool-brain query was previously structurally unvalidated.
+
+### Changed (2026-07-06) — Gwen NSFW web-search policy = Allow (coherence only)
+
+Gwen's `escalation_policy.tool_intent` said "avoid web search for sexual content" while she is granted `image_search`/`video_search` with safesearch off — a contradiction. The line was replaced with a positive statement (she may search explicit content when asked). **No behavioral change:** `tool_intent` is not read by any code and does not reach the system prompt; the runtime was already "allow". Only that one line of her content was touched.
+
+### Added (2026-07-06) — persona `tool_intent` prompt injection (flag OFF) + emoji constraint fix
+
+- **`PERSONA_TOOL_INTENT_IN_PROMPT`** (default OFF, `config.AgentSettings`): when on, `prompt_builder._get_tool_intent_block_lean` appends each persona's `escalation_policy.tool_intent` lines as a `<tools>` guidance block (previously dead schema data). **Eval-gated:** full-7 distinctiveness OFF 0.786 = ON 0.786 (+0.000) — MATCH-OR-BEAT but voice-neutral. Kept default OFF (no measured benefit; tool selection is router/native-driven, not prose-driven). Now a live, flippable, eval-proven-safe lever.
+- **`PersonaCard.emoji` `max_length` 4 → 8**: the constraint counted Unicode code points, not emoji, rejecting legit 4-emoji avatars whose glyphs carry variation selectors (Gwen's `♠️` = U+2660 U+FE0F). Schema-only fix — no persona content changed.
+
 ### Added (2026-07-05) — ADR-008 P1: single-model native tool brain (TB1–TB4, flag OFF)
 
 Eval-first (a decision-critical spike overturned the design mid-flight), isolated worktree, QA-gated per milestone (independent qa-gatekeeper PASS on TB1–TB3, both safety properties verified). Backend suite 1779 → 1815 passing, 0 regressions. **`TOOL_BRAIN_ENABLED` default OFF — byte-identical legacy until the operator flips it after their own live test.**
