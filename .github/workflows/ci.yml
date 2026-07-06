@@ -67,4 +67,10 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Build
+        # CI=false: CRA promotes ESLint warnings to hard errors when CI=true
+        # (GitHub Actions sets it automatically), turning every lint nit into
+        # a red build. Same calibration as the advisory ruff step above — this
+        # job gates on "does it compile"; warnings still print in the log.
+        env:
+          CI: "false"
         run: npm run build
