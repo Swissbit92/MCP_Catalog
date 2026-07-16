@@ -11,6 +11,15 @@ applies_to: nephilim
 
 Append-only, dated entries. Newest first. Each entry: what happened, what we learned, how to apply going forward.
 
+## 2026-07-16 — ADR-011 conversation-control commands: one contract, two clients
+
+- **What:** Added companion/RP verbs (regenerate, continue, undo, /sys narrate, /note, /impersonate, /whoami, /help) required to work identically in BOTH the Telegram gateway and the React UI. Built as shared coordinator session-API endpoints; both clients are thin callers. 5 QA-gated phases, one branch, merged to dev (coordinator 2030 / gateway 113 / React build green).
+- **Learned:** "Works in both clients" is an architecture constraint, not a feature detail — it forces the stateful logic into the *server*, and reframes the gateway's "zero coordinator changes" invariant into "thin client of a session API the coordinator may extend for all clients." The spirit (no logic/secrets/tool-surface in the gateway) survives; the letter doesn't.
+- **Learned:** The cleanest reuse seam was adding two default-True flags to `handle_session_chat` (`persist_user`, `run_post_turn_updates`) so regenerate/continue re-run the exact pipeline (first-person, groundedness gate, multi-message shaping) without re-persisting the user turn or double-counting progression — zero change for the 25 existing callers, no parallel LLM path.
+- **Learned (mistake caught):** An alembic migration smoke-test that set `sqlalchemy.url` via `Config.set_main_option` silently ran against the LIVE `data/chats.db`, because `alembic/env.py` hardcodes the path from `COORDINATOR_DB_PATH` (env var) and ignores the config URL. The upgrade landed on prod; caught immediately via a post-run version check, downgraded prod back to `4memory_facts`, and re-tested correctly by setting `COORDINATOR_DB_PATH` to a temp file. **Always drive this repo's alembic tests through `COORDINATOR_DB_PATH`, never `sqlalchemy.url`** — and verify prod DB version after any migration command that could have hit it.
+- **Learned:** A new `messages.role` value ('narrator') is a cross-cutting change — four separate sites did a binary `== "assistant" else "user"` collapse (chat history render, fact extractor, triplet extractor, tool-brain) that would silently mislabel it. Grep every role-switch before adding a role.
+- **Apply:** For any "same behavior across clients" feature, put the logic behind the shared API and make clients dumb. Gate migration tests on the repo's real DB-path mechanism. Live enablement here still OWES: `alembic upgrade head` + restart backend + restart gateway + rebuild/redeploy frontend (nothing deploys on merge).
+
 ## 2026-07-16 — Editing an existing persona JSON needs a backend restart to take effect
 
 - **What:** User edited `personas/gwen.json` (new lore wording — "cock" replacing the old "shaft") but Gwen kept speaking in her pre-edit persona. The edit was correctly on disk; the running always-on backend just never re-read it.
