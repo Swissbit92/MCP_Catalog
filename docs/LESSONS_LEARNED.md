@@ -11,6 +11,13 @@ applies_to: nephilim
 
 Append-only, dated entries. Newest first. Each entry: what happened, what we learned, how to apply going forward.
 
+## 2026-07-16 — Editing an existing persona JSON needs a backend restart to take effect
+
+- **What:** User edited `personas/gwen.json` (new lore wording — "cock" replacing the old "shaft") but Gwen kept speaking in her pre-edit persona. The edit was correctly on disk; the running always-on backend just never re-read it.
+- **Learned:** Two process/disk caches shadow a live persona edit. (1) `prompt_builder._build_system_prompt_lean()` is `@lru_cache(maxsize=32)` keyed only on the persona selector — the fully-assembled system prompt is memoized for the life of the process, and nothing in production calls `build_system_prompt.cache_clear()` (only tests do). `persona_loader` re-reads the JSON fresh every request, but that fresh card never reaches the cached builder. (2) The `<identity>` block is filled from a disk-cached CV summary (`personas/_summaries/{Key}.json`) keyed by a SHA1 fingerprint of the card (excluding `emoji`/`voice_signature`); it self-invalidates on hash mismatch, but is only ever regenerated *inside* the lru_cached builder, so while the process runs it never refreshes either. Since the backend runs under launchd `KeepAlive`, neither cache clears on its own.
+- **Learned:** CLAUDE.md's "persona auto-discovered on next load — no restart needed" applies to *discovering a new* persona file, NOT to *editing an existing* one whose prompt is already memoized. Easy to misread as "all persona changes are hot."
+- **Apply:** After editing any existing persona JSON, restart the backend: `launchctl kickstart -k gui/$(id -u)/com.nephilim.backend`. That clears the lru_cache and, because the edited card's fingerprint no longer matches the cached summary, forces the CV summary to regenerate from the new lore at boot (`startup.ensure_all_summaries_serialized`). Optionally `rm personas/_summaries/{Key}.json` first as belt-and-suspenders. The Telegram gateway relays to this same backend, so the one restart covers both web and Telegram. Verify: new PID + the regenerated `_summaries/{Key}.json` `hash` matches the current card's fingerprint.
+
 ## 2026-07-04 — Anti-hallucination guards can all be bypassed by one upstream decision
 
 - **What:** A real Telegram conversation surfaced E.E.V.A. confidently fabricating a FIFA World Cup match result, then reinforcing her own fabrication when the user "confirmed" it. Traced via `data/chats.db` message `source_type` per turn (not guesswork) to five distinct causes across routing, query resolution, and grounding.
