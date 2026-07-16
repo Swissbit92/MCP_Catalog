@@ -15,6 +15,7 @@ from ..schemas import (
     CreateSessionBody,
     GreetBody,
     ImportBody,
+    NoteBody,
     SourceType,
     UpdateSessionBody,
 )
@@ -176,6 +177,36 @@ def get_session_meta_route(session_id: str):
     from ..services.conversation_control_service import get_session_meta
 
     return get_session_meta(session_repo, message_repo, session_id)
+
+
+@router.put("/sessions/{session_id}/note")
+def set_session_note(session_id: str, body: NoteBody):
+    """Set the per-session author's note (ADR-011 /note set)."""
+    session_repo, _, _ = _get_repos()
+    if not session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+    startup.get_session_note_repo().set_note(session_id, body.note)
+    return {"ok": True, "note": body.note}
+
+
+@router.get("/sessions/{session_id}/note")
+def get_session_note(session_id: str):
+    """Get the per-session author's note (ADR-011 /note show)."""
+    session_repo, _, _ = _get_repos()
+    if not session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+    note = startup.get_session_note_repo().get_note(session_id)
+    return {"note": note}
+
+
+@router.delete("/sessions/{session_id}/note")
+def clear_session_note(session_id: str):
+    """Clear the per-session author's note (ADR-011 /note clear)."""
+    session_repo, _, _ = _get_repos()
+    if not session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+    cleared = startup.get_session_note_repo().clear_note(session_id)
+    return {"ok": True, "cleared": cleared}
 
 
 @router.get("/sessions/{session_id}/export")

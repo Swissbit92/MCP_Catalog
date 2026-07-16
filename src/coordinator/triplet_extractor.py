@@ -103,6 +103,8 @@ class TripletExtractor:
         recent = messages[-max_messages:] if len(messages) > max_messages else messages
         lines = []
         for m in recent:
+            if m.get("role") == "narrator":
+                continue  # ADR-011: scene direction, not a speaker's facts
             role = "User" if m.get("role") == "user" else "Assistant"
             lines.append(f"{role}: {str(m.get('content', ''))[:500]}")
         return "\n".join(lines)

@@ -16,9 +16,19 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import HTTPException
 
 from ..persona_memory import get_persona_card
+from ..repositories.base_repository import utc_now_iso
+from ..schemas import AppendMessageBody, MessageRole
 from .chat_session_service import handle_session_chat
 
 logger = logging.getLogger(__name__)
+
+# Fixed instruction that turns a stored narrator beat into a persona reaction. It
+# becomes the turn's (non-stored) message; the narrator message itself is already
+# in history for the model to react to.
+NARRATE_RESPONSE_INSTRUCTION = (
+    "[The message above is a scene/narration beat, not the user speaking to you. "
+    "React in-character to what just happened — do not narrate as the user.]"
+)
 
 # The synthetic, non-stored instruction that drives ``/continue``. It becomes the
 # turn's ``message`` (so it steers generation) but is never persisted — the prior
@@ -144,6 +154,82 @@ def continue_last_reply(session_id: str, deps: dict, chat_function, add_message_
         persist_user=False,
         run_post_turn_updates=False,
     )
+
+
+def narrate(session_id: str, text: str, deps: dict, chat_function, add_message_function) -> Dict[str, Any]:
+    """Inject a narrator/scene beat (ADR-011 /sys) and return the persona's in-world reaction.
+
+    Persists ``text`` as a ``narrator``-role message, then runs a turn (with a
+    synthetic, non-stored instruction) so the model reacts to the scene. The
+    narrator beat is rendered as bracketed scene direction, never as user dialogue.
+    """
+    session_repo = deps["session_repo"]
+    if not session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    add_message_function(
+        session_id,
+        AppendMessageBody(role=MessageRole.NARRATOR, content=text, ts=utc_now_iso()),
+    )
+    logger.info("[ConvControl] narrate: stored scene beat for session %s", session_id[:8])
+    return handle_session_chat(
+        session_id=session_id,
+        message=NARRATE_RESPONSE_INSTRUCTION,
+        deps=deps,
+        chat_function=chat_function,
+        add_message_function=add_message_function,
+        persist_user=False,
+        run_post_turn_updates=False,
+    )
+
+
+def _format_history_for_impersonate(messages: List[Dict[str, Any]], persona_name: str, limit: int = 12) -> str:
+    """Render recent turns for the impersonation prompt (user='You', assistant=persona)."""
+    lines: List[str] = []
+    for m in messages[-limit:]:
+        role = m.get("role")
+        content = str(m.get("content", ""))[:500]
+        if role == "assistant":
+            lines.append(f"{persona_name}: {content}")
+        elif role == "narrator":
+            lines.append(f"[Scene: {content}]")
+        else:
+            lines.append(f"You: {content}")
+    return "\n".join(lines)
+
+
+def impersonate(session_id: str, deps: dict, hint: Optional[str] = None) -> Dict[str, Any]:
+    """Draft the USER's next line (ADR-011 /impersonate). Returns {"draft": ...}; not stored."""
+    session_repo = deps["session_repo"]
+    message_repo = deps["message_repo"]
+    if not session_repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    persona_key = session_repo.get_persona_key(session_id)
+    card = get_persona_card(persona_key) or {}
+    persona_name = card.get("display_name") or persona_key or "the character"
+    messages = message_repo.get_messages_by_session(session_id)
+    convo = _format_history_for_impersonate(messages, persona_name)
+
+    system = (
+        "You ghost-write the USER's side of a conversation/roleplay. Given the "
+        f"exchange so far, write the user's next message in first person to {persona_name}. "
+        "Return ONLY the message text — no quotes, no narration, no stage directions."
+    )
+    user_prompt = f"Conversation so far:\n{convo}\n\n"
+    if hint:
+        user_prompt += f"The user wants to convey: {hint}\n\n"
+    user_prompt += "Write the user's next message:"
+
+    from ..llm_client import create_llm_client  # lazy — avoid import cost/cycles
+
+    try:
+        draft = create_llm_client(card).complete(system=system, user_prompt=user_prompt).strip()
+    except Exception as e:
+        logger.error("[ConvControl] impersonate LLM failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=503, detail=f"LLM service temporarily unavailable: {type(e).__name__}")
+
+    return {"draft": draft}
 
 
 def get_session_meta(session_repo, message_repo, session_id: str) -> Dict[str, Any]:

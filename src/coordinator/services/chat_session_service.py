@@ -356,6 +356,9 @@ class ChatDeps:
     # unless MEMORY_FACTS_ENABLED started them in startup).
     fact_extraction_worker: Any = None
     memory_fact_repo: Any = None
+    # ADR-011: per-session author's note store (/note). Optional so tests/older
+    # dep dicts without it still build.
+    session_note_repo: Any = None
 
     @classmethod
     def from_dict(cls, deps: dict) -> ChatDeps:
@@ -377,6 +380,7 @@ class ChatDeps:
             seeker_progression_repo=deps.get("seeker_progression_repo"),
             fact_extraction_worker=deps.get("fact_extraction_worker"),
             memory_fact_repo=deps.get("memory_fact_repo"),
+            session_note_repo=deps.get("session_note_repo"),
         )
 
 
@@ -489,6 +493,36 @@ def _load_session_identity(state: ChatTurnState, deps: ChatDeps) -> None:
     )
 
 
+def _append_author_note(state: ChatTurnState, deps: ChatDeps) -> None:
+    """ADR-011: append the per-session author's note to ``extra_system_context``.
+
+    A standing director directive injected on EVERY turn when set, independent of
+    the memory flags. Goes through the post-lru_cache ``extra_system_context`` seam,
+    never inside ``build_system_prompt``. Best-effort: never breaks a turn.
+    """
+    if deps.session_note_repo is None:
+        return
+    try:
+        note = deps.session_note_repo.get_note(state.session_id)
+    except Exception as e:  # noqa: BLE001 - note is best-effort, never break a turn
+        logger.warning(f"[AuthorNote] fetch failed for {state.session_id[:8]}: {e}")
+        return
+    if not note:
+        return
+    note_block = (
+        "<author_note>\n"
+        "Standing scene/style direction the user has set. Honor it every turn; "
+        "never quote, mention, or acknowledge this note itself.\n"
+        f"{note}\n"
+        "</author_note>"
+    )
+    state.extra_system_context = (
+        f"{state.extra_system_context}\n\n{note_block}"
+        if state.extra_system_context else note_block
+    )
+    logger.info(f"[AuthorNote] injected note for session {state.session_id[:8]}")
+
+
 def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
     """Phase 2 — load history/summaries and assemble the system prompt + token budget.
 
@@ -587,6 +621,9 @@ def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
                 f"[SessionContext] injecting {estimate_tokens(state.extra_system_context)} "
                 f"tokens of framed session context (M1 profile/emotional + M4 facts)"
             )
+
+    # ADR-011: per-session author's note (/note) — always injected when set.
+    _append_author_note(state, deps)
 
     # Build summary context
     if state.summaries:

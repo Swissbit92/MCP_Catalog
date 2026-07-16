@@ -119,6 +119,8 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no explanations, just the JSON o
         messages_to_analyze = messages[-max_messages:] if len(messages) > max_messages else messages
 
         for msg in messages_to_analyze:
+            if msg["role"] == "narrator":
+                continue  # ADR-011: scene direction, not a speaker's facts
             role = "User" if msg["role"] == "user" else "Assistant"
             content = msg["content"][:500]  # Truncate very long messages
             lines.append(f"{role}: {content}")

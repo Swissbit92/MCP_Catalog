@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import startup  # module ref for call-time getter resolution (tests patch
                         # src.coordinator.startup.get_* to neutralize deps); cycle-free.
-from ..schemas import ChatBody, GreetBody, ResponseMetadata, SourceType
+from ..schemas import ChatBody, GreetBody, ImpersonateBody, NarrateBody, ResponseMetadata, SourceType
 from ..config import get_settings
 from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
 from ..persona_memory import (
@@ -92,6 +92,7 @@ def _get_dependencies():
         "fact_extraction_worker": startup.get_fact_extraction_worker(),
         "memory_fact_repo": startup.get_memory_fact_repo(),
         "seeker_progression_repo": startup.get_seeker_progression_repo(),
+        "session_note_repo": startup.get_session_note_repo(),
     }
 
 
@@ -299,6 +300,9 @@ def chat(body: ChatBody):
         role = (t.role or "").lower()
         if role == "assistant":
             lines.append(f"Assistant: {t.content}")
+        elif role == "narrator":
+            # ADR-011: a /sys narrator beat — scene direction, not user dialogue.
+            lines.append(f"[Scene: {t.content}]")
         else:
             lines.append(f"User: {t.content}")
     persona_name_early = card.get("display_name") or card.get("key") or "Persona"
@@ -496,6 +500,25 @@ def continue_with_session(session_id: str):
     from ..services.conversation_control_service import continue_last_reply
 
     return continue_last_reply(session_id, deps, chat, add_message)
+
+
+@router.post("/sessions/{session_id}/narrate")
+def narrate_with_session(session_id: str, body: NarrateBody):
+    """Inject a narrator/scene beat and return the persona's in-world reaction (ADR-011 /sys)."""
+    deps = _get_dependencies()
+    from .sessions import add_message
+    from ..services.conversation_control_service import narrate
+
+    return narrate(session_id, body.text, deps, chat, add_message)
+
+
+@router.post("/sessions/{session_id}/impersonate")
+def impersonate_with_session(session_id: str, body: ImpersonateBody):
+    """Draft the user's next line (ADR-011 /impersonate). Returns {"draft": ...}; not stored."""
+    deps = _get_dependencies()
+    from ..services.conversation_control_service import impersonate
+
+    return impersonate(session_id, deps, body.hint)
 
 
 @router.post("/persona/greet")

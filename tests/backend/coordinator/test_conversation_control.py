@@ -266,3 +266,185 @@ def test_route_regenerate_no_user_400():
     with patch("src.coordinator.routes.chat._get_dependencies", return_value=deps):
         resp = client.post("/sessions/s1/regenerate")
     assert resp.status_code == 400
+
+
+# ═══ M2: Tier 3 director verbs + session_notes ═══════════════════════════════
+
+from src.coordinator.repositories.session_note_repository import SessionNoteRepository
+from src.coordinator.services.chat_session_service import (
+    ChatDeps, ChatTurnState, _append_author_note,
+)
+
+
+# ─── SessionNoteRepository ───────────────────────────────────────────────────
+
+def test_session_note_repo_crud():
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        db_path = tmp.name
+    try:
+        repo = SessionNoteRepository(db_path)
+        assert repo.get_note("s1") is None
+        repo.set_note("s1", "be playful")
+        assert repo.get_note("s1") == "be playful"
+        repo.set_note("s1", "be shy")           # upsert
+        assert repo.get_note("s1") == "be shy"
+        assert repo.clear_note("s1") is True
+        assert repo.get_note("s1") is None
+        assert repo.clear_note("s1") is False   # already gone
+    finally:
+        os.path.exists(db_path) and os.unlink(db_path)
+
+
+# ─── _append_author_note (injection seam) ────────────────────────────────────
+
+def _chat_deps(note_repo=None):
+    keys = ["session_repo", "message_repo", "summary_repo", "emotional_state_repo",
+            "memory_manager", "user_profile_repo", "episodic_memory_rag", "fact_extractor"]
+    d = {k: MagicMock() for k in keys}
+    d["session_note_repo"] = note_repo
+    return ChatDeps.from_dict(d)
+
+
+def test_append_author_note_injects_when_set():
+    note_repo = MagicMock()
+    note_repo.get_note.return_value = "keep it slow and teasing"
+    state = ChatTurnState(session_id="s1", message="hi", persona_key="gwen")
+    _append_author_note(state, _chat_deps(note_repo))
+    assert "<author_note>" in state.extra_system_context
+    assert "keep it slow and teasing" in state.extra_system_context
+
+
+def test_append_author_note_appends_to_existing_context():
+    note_repo = MagicMock()
+    note_repo.get_note.return_value = "be bold"
+    state = ChatTurnState(session_id="s1", message="hi", persona_key="gwen")
+    state.extra_system_context = "PRE-EXISTING"
+    _append_author_note(state, _chat_deps(note_repo))
+    assert "PRE-EXISTING" in state.extra_system_context
+    assert "be bold" in state.extra_system_context
+
+
+def test_append_author_note_noop_when_unset():
+    note_repo = MagicMock()
+    note_repo.get_note.return_value = None
+    state = ChatTurnState(session_id="s1", message="hi", persona_key="gwen")
+    _append_author_note(state, _chat_deps(note_repo))
+    assert state.extra_system_context is None
+
+
+def test_append_author_note_noop_when_no_repo():
+    state = ChatTurnState(session_id="s1", message="hi", persona_key="gwen")
+    _append_author_note(state, _chat_deps(None))
+    assert state.extra_system_context is None
+
+
+# ─── narrate / impersonate (service) ─────────────────────────────────────────
+
+def test_narrate_stores_beat_and_reacts():
+    sr, mr = _repos([{"id": "u1", "role": "user", "content": "hi"}])
+    deps = {"session_repo": sr, "message_repo": mr}
+    add = MagicMock()
+    with patch.object(ccs, "handle_session_chat", return_value={"answer": "reacts"}) as h:
+        out = ccs.narrate("s1", "A storm knocks the power out.", deps, MagicMock(), add)
+    assert out == {"answer": "reacts"}
+    stored = add.call_args.args[1]  # AppendMessageBody
+    assert stored.role == "narrator"
+    assert stored.content == "A storm knocks the power out."
+    kwargs = h.call_args.kwargs
+    assert kwargs["message"] == ccs.NARRATE_RESPONSE_INSTRUCTION
+    assert kwargs["persist_user"] is False
+
+
+def test_narrate_missing_session_404():
+    sr, mr = _repos(exists=False)
+    deps = {"session_repo": sr, "message_repo": mr}
+    with pytest.raises(Exception) as e:
+        ccs.narrate("bad", "x", deps, MagicMock(), MagicMock())
+    assert getattr(e.value, "status_code", None) == 404
+
+
+def test_impersonate_returns_trimmed_draft():
+    sr, mr = _repos([{"id": "a1", "role": "assistant", "content": "Hey you"}])
+    sr.get_persona_key.return_value = "gwen"
+    deps = {"session_repo": sr, "message_repo": mr}
+    llm = MagicMock()
+    llm.complete.return_value = "  I missed you today  "
+    with patch.object(ccs, "get_persona_card", return_value={"display_name": "Gwen"}), \
+         patch("src.coordinator.llm_client.create_llm_client", return_value=llm):
+        out = ccs.impersonate("s1", deps, hint="be flirty")
+    assert out == {"draft": "I missed you today"}
+
+
+def test_impersonate_missing_session_404():
+    sr, mr = _repos(exists=False)
+    deps = {"session_repo": sr, "message_repo": mr}
+    with pytest.raises(Exception) as e:
+        ccs.impersonate("bad", deps)
+    assert getattr(e.value, "status_code", None) == 404
+
+
+def test_format_history_for_impersonate_labels_roles():
+    msgs = [
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "hello"},
+        {"role": "narrator", "content": "night falls"},
+    ]
+    out = ccs._format_history_for_impersonate(msgs, "Gwen")
+    assert "You: hi" in out
+    assert "Gwen: hello" in out
+    assert "[Scene: night falls]" in out
+
+
+# ─── Routes: note CRUD, narrate, impersonate ─────────────────────────────────
+
+def test_route_note_set_get_clear():
+    sr, _ = _repos()
+    note_repo = MagicMock()
+    note_repo.get_note.return_value = "be bold"
+    note_repo.clear_note.return_value = True
+    with patch("src.coordinator.routes.sessions._get_repos", return_value=(sr, MagicMock(), MagicMock())), \
+         patch("src.coordinator.startup.get_session_note_repo", return_value=note_repo):
+        r_set = client.put("/sessions/s1/note", json={"note": "be bold"})
+        r_get = client.get("/sessions/s1/note")
+        r_clr = client.delete("/sessions/s1/note")
+    assert r_set.status_code == 200 and r_set.json()["note"] == "be bold"
+    note_repo.set_note.assert_called_once_with("s1", "be bold")
+    assert r_get.json()["note"] == "be bold"
+    assert r_clr.status_code == 200 and r_clr.json()["cleared"] is True
+
+
+def test_route_note_missing_body_422():
+    sr, _ = _repos()
+    with patch("src.coordinator.routes.sessions._get_repos", return_value=(sr, MagicMock(), MagicMock())):
+        resp = client.put("/sessions/s1/note", json={})
+    assert resp.status_code == 422
+
+
+def test_route_note_404():
+    sr, _ = _repos(exists=False)
+    with patch("src.coordinator.routes.sessions._get_repos", return_value=(sr, MagicMock(), MagicMock())):
+        resp = client.get("/sessions/bad/note")
+    assert resp.status_code == 404
+
+
+def test_route_narrate_happy():
+    sr, mr = _repos([{"id": "u1", "role": "user", "content": "hi"}])
+    deps = {"session_repo": sr, "message_repo": mr}
+    with patch("src.coordinator.routes.chat._get_dependencies", return_value=deps), \
+         patch("src.coordinator.routes.sessions.add_message", MagicMock()), \
+         patch.object(ccs, "handle_session_chat", return_value={"answer": "reacts", "message_flow": "single"}):
+        resp = client.post("/sessions/s1/narrate", json={"text": "A storm hits."})
+    assert resp.status_code == 200 and resp.json()["answer"] == "reacts"
+
+
+def test_route_impersonate_happy():
+    sr, mr = _repos([{"id": "a1", "role": "assistant", "content": "hey"}])
+    sr.get_persona_key.return_value = "gwen"
+    deps = {"session_repo": sr, "message_repo": mr}
+    llm = MagicMock()
+    llm.complete.return_value = "draft line"
+    with patch("src.coordinator.routes.chat._get_dependencies", return_value=deps), \
+         patch.object(ccs, "get_persona_card", return_value={"display_name": "Gwen"}), \
+         patch("src.coordinator.llm_client.create_llm_client", return_value=llm):
+        resp = client.post("/sessions/s1/impersonate", json={"hint": "flirty"})
+    assert resp.status_code == 200 and resp.json()["draft"] == "draft line"
