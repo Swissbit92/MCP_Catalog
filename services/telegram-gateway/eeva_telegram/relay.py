@@ -123,3 +123,56 @@ async def reset_session(
     server-side, recreate a clean one.
     """
     await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.clear_messages(sid))
+
+
+# ── ADR-011 conversation-control verbs (thin relay over the session API) ─────
+
+
+async def regenerate_reply(client, store, chat_id, persona_key) -> list[str]:
+    """/regen — reroll the last reply; returns the new persona message(s)."""
+    resp = await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.regenerate(sid))
+    return extract_messages(resp)
+
+
+async def continue_reply(client, store, chat_id, persona_key) -> list[str]:
+    """/continue — extend the last reply; returns the continuation message(s)."""
+    resp = await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.continue_reply(sid))
+    return extract_messages(resp)
+
+
+async def undo_last(client, store, chat_id, persona_key) -> None:
+    """/undo — delete the last exchange."""
+    await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.undo(sid))
+
+
+async def narrate(client, store, chat_id, persona_key, text: str) -> list[str]:
+    """/sys — inject a scene beat; returns the persona's in-world reaction."""
+    resp = await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.narrate(sid, text))
+    return extract_messages(resp)
+
+
+async def impersonate(client, store, chat_id, persona_key, hint: str | None) -> str:
+    """/impersonate — draft the user's next line; returns the draft text."""
+    resp = await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.impersonate(sid, hint))
+    return str(resp.get("draft", "")).strip()
+
+
+async def whoami(client, store, chat_id, persona_key) -> dict[str, Any]:
+    """/whoami — lean session/persona metadata."""
+    return await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.get_session_meta(sid))
+
+
+async def set_note(client, store, chat_id, persona_key, note: str) -> None:
+    """/note <text> — set the author's note."""
+    await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.set_note(sid, note))
+
+
+async def get_note(client, store, chat_id, persona_key) -> str | None:
+    """/note — show the author's note."""
+    resp = await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.get_note(sid))
+    return resp.get("note")
+
+
+async def clear_note(client, store, chat_id, persona_key) -> None:
+    """/note clear — remove the author's note."""
+    await _with_session_recreate(client, store, chat_id, persona_key, lambda sid: client.clear_note(sid))

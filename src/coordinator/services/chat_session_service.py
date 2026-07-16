@@ -356,6 +356,9 @@ class ChatDeps:
     # unless MEMORY_FACTS_ENABLED started them in startup).
     fact_extraction_worker: Any = None
     memory_fact_repo: Any = None
+    # ADR-011: per-session author's note store (/note). Optional so tests/older
+    # dep dicts without it still build.
+    session_note_repo: Any = None
 
     @classmethod
     def from_dict(cls, deps: dict) -> ChatDeps:
@@ -377,6 +380,7 @@ class ChatDeps:
             seeker_progression_repo=deps.get("seeker_progression_repo"),
             fact_extraction_worker=deps.get("fact_extraction_worker"),
             memory_fact_repo=deps.get("memory_fact_repo"),
+            session_note_repo=deps.get("session_note_repo"),
         )
 
 
@@ -489,6 +493,36 @@ def _load_session_identity(state: ChatTurnState, deps: ChatDeps) -> None:
     )
 
 
+def _append_author_note(state: ChatTurnState, deps: ChatDeps) -> None:
+    """ADR-011: append the per-session author's note to ``extra_system_context``.
+
+    A standing director directive injected on EVERY turn when set, independent of
+    the memory flags. Goes through the post-lru_cache ``extra_system_context`` seam,
+    never inside ``build_system_prompt``. Best-effort: never breaks a turn.
+    """
+    if deps.session_note_repo is None:
+        return
+    try:
+        note = deps.session_note_repo.get_note(state.session_id)
+    except Exception as e:  # noqa: BLE001 - note is best-effort, never break a turn
+        logger.warning(f"[AuthorNote] fetch failed for {state.session_id[:8]}: {e}")
+        return
+    if not note:
+        return
+    note_block = (
+        "<author_note>\n"
+        "Standing scene/style direction the user has set. Honor it every turn; "
+        "never quote, mention, or acknowledge this note itself.\n"
+        f"{note}\n"
+        "</author_note>"
+    )
+    state.extra_system_context = (
+        f"{state.extra_system_context}\n\n{note_block}"
+        if state.extra_system_context else note_block
+    )
+    logger.info(f"[AuthorNote] injected note for session {state.session_id[:8]}")
+
+
 def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
     """Phase 2 — load history/summaries and assemble the system prompt + token budget.
 
@@ -588,6 +622,9 @@ def _build_turn_prompt(state: ChatTurnState, deps: ChatDeps) -> None:
                 f"tokens of framed session context (M1 profile/emotional + M4 facts)"
             )
 
+    # ADR-011: per-session author's note (/note) — always injected when set.
+    _append_author_note(state, deps)
+
     # Build summary context
     if state.summaries:
         logger.info(f"[Memory] Found {len(state.summaries)} conversation summaries for session {state.session_id}")
@@ -682,13 +719,19 @@ def _generate_turn_response(state: ChatTurnState, chat_function) -> None:
     state.response = chat_function(chat_body)
 
 
-def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
-    """Phase 5 — persist the user turn and assistant turn(s) (multi-message aware)."""
+def _persist_turn_messages(state: ChatTurnState, add_message_function, persist_user: bool = True) -> None:
+    """Phase 5 — persist the user turn and assistant turn(s) (multi-message aware).
+
+    ``persist_user=False`` (ADR-011 regenerate/continue) skips saving the user
+    turn — the caller either kept the original user message (regenerate) or the
+    ``message`` is a synthetic, non-stored instruction (continue).
+    """
     response = state.response
     now = utc_now_iso()
 
-    user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
-    add_message_function(state.session_id, user_msg_body)
+    if persist_user:
+        user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
+        add_message_function(state.session_id, user_msg_body)
 
     source_type = SourceType.LLM
     if "metadata" in response and response["metadata"]:
@@ -857,7 +900,9 @@ def handle_session_chat(
     message: str,
     deps: dict,
     chat_function,
-    add_message_function
+    add_message_function,
+    persist_user: bool = True,
+    run_post_turn_updates: bool = True,
 ):
     """Handle chat with persona using database-backed conversation history.
 
@@ -890,12 +935,14 @@ def handle_session_chat(
     _build_turn_prompt(state, cdeps)
     _select_turn_history(state, cdeps)
     _generate_turn_response(state, chat_function)
-    _persist_turn_messages(state, add_message_function)
+    _persist_turn_messages(state, add_message_function, persist_user=persist_user)
 
-    # Auto-summarization check (still takes the raw dependency dict).
-    _check_and_summarize(session_id, persona_key, deps)
-
-    _apply_post_turn_updates(state, cdeps)
+    # ADR-011: regenerate/continue re-run an already-counted exchange, so they
+    # skip summarization + emotional/RAG/facts/progression to avoid double-counting.
+    if run_post_turn_updates:
+        # Auto-summarization check (still takes the raw dependency dict).
+        _check_and_summarize(session_id, persona_key, deps)
+        _apply_post_turn_updates(state, cdeps)
 
     return state.response
 

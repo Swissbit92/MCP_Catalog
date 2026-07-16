@@ -93,7 +93,8 @@ export interface EmotionalState {
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  // 'narrator' — ADR-011 /sys scene beat; not user dialogue, rendered distinctly.
+  role: 'user' | 'assistant' | 'narrator';
   content: string;
   timestamp: Date;
   latency_ms?: number;

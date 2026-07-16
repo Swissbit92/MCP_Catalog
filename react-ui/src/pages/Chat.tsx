@@ -13,7 +13,7 @@ import { RankCeremonyOverlay } from '../components/RankCeremonyOverlay'
 import { CapabilityUnlockToast } from '../components/nephilim/CapabilityUnlockToast'
 import type { RankCeremony, CapabilityUnlock } from '../services/api/types'
 import NephilimBackground from '../components/NephilimBackground'
-import { greetWithSession, checkLoreUnlocks } from '../services/api'
+import { greetWithSession, checkLoreUnlocks, getSessionMeta } from '../services/api'
 import { usePersona } from '../context/PersonaContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -41,6 +41,20 @@ const defaultOrbColors: [string, string, string] = [
   'rgba(0, 255, 255, 0.05)',
 ]
 
+// ADR-011: conversation-control slash commands (mirrors the Telegram gateway's /help)
+const HELP_TEXT = [
+  'Here\'s what I can do:',
+  '',
+  '/regen — reroll my last reply',
+  '/continue — have me continue my last reply',
+  '/undo — delete the last exchange',
+  '/sys <text> — set a scene beat (e.g. /sys it\'s late and quiet)',
+  '/note [text | clear] — standing direction; no text shows it, \'clear\' removes it',
+  '/impersonate [hint] — draft a reply as you, fills the composer',
+  '/whoami — who you\'re talking to',
+  '/help — this list',
+].join('\n')
+
 const Chat: React.FC = () => {
   const { user } = useAuth()
   const [input, setInput] = useState<string>('')
@@ -55,7 +69,13 @@ const Chat: React.FC = () => {
   const touchEndX = useRef<number>(0)
   const initializingRef = useRef<string | null>(null)
   const resonanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { personas, selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage, exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages, retryMessage, refreshSessions, isSearching, toolType } = usePersona()
+  const {
+    personas, selectedPersona, currentSession, messages, sessions, createNewSession, sendMessage,
+    exportCurrentSession, importSessionData, loadSessionMessages, setSelectedPersona, clearSessionMessages,
+    retryMessage, refreshSessions, isSearching, toolType,
+    regenerateLastReply, continueLastReply, undoLastExchange, narrate, impersonate,
+    setAuthorNote, getAuthorNote, clearAuthorNote,
+  } = usePersona()
 
   useEffect(() => {
     return () => {
@@ -114,8 +134,117 @@ const Chat: React.FC = () => {
     initializeChat()
   }, [selectedPersona, currentSession, sessions, loadSessionMessages, createNewSession])
 
+  // ── ADR-011 conversation-control handlers ───────────────────────────────────
+
+  const handleRegenerate = useCallback(async () => {
+    try {
+      setLoading(true)
+      await regenerateLastReply()
+    } catch (error) {
+      console.error('Failed to regenerate reply:', error)
+      alert('Failed to regenerate reply. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [regenerateLastReply])
+
+  const handleContinue = useCallback(async () => {
+    try {
+      setLoading(true)
+      await continueLastReply()
+    } catch (error) {
+      console.error('Failed to continue reply:', error)
+      alert('Failed to continue reply. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [continueLastReply])
+
+  const handleUndo = useCallback(async () => {
+    try {
+      await undoLastExchange()
+    } catch (error) {
+      console.error('Failed to undo last exchange:', error)
+      alert('Failed to undo. Please try again.')
+    }
+  }, [undoLastExchange])
+
+  /** Intercepts a leading "/" command; returns true if handled (never sent as chat text). */
+  const handleSlashCommand = useCallback(async (raw: string): Promise<boolean> => {
+    const trimmed = raw.trim()
+    if (!trimmed.startsWith('/') || !currentSession) return false
+
+    const spaceIdx = trimmed.indexOf(' ')
+    const cmd = (spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx)).toLowerCase()
+    const arg = spaceIdx === -1 ? '' : trimmed.slice(spaceIdx + 1).trim()
+
+    try {
+      switch (cmd) {
+        case '/regen':
+          await handleRegenerate()
+          return true
+        case '/continue':
+          await handleContinue()
+          return true
+        case '/undo':
+          await handleUndo()
+          return true
+        case '/sys':
+          if (!arg) {
+            alert('Give me a scene to set, like: /sys it\'s raining outside')
+            return true
+          }
+          setLoading(true)
+          try {
+            await narrate(arg)
+          } finally {
+            setLoading(false)
+          }
+          return true
+        case '/note':
+          if (!arg) {
+            const note = await getAuthorNote()
+            alert(note ? `Current direction:\n${note}` : 'No standing direction set. Set one with /note <text>.')
+          } else if (arg.toLowerCase() === 'clear') {
+            await clearAuthorNote()
+            alert('Cleared — no standing direction now.')
+          } else {
+            await setAuthorNote(arg)
+            alert('Got it — I\'ll keep that in mind from now on.')
+          }
+          return true
+        case '/impersonate': {
+          const draft = await impersonate(arg || undefined)
+          setInput(draft || '')
+          return true
+        }
+        case '/whoami': {
+          const meta = await getSessionMeta(currentSession.id)
+          const name = meta.display_name || meta.persona_key || 'someone'
+          alert(`You're talking to ${name}${meta.nsfw ? ' (adult mode)' : ''}.\n${meta.message_count} messages so far.`)
+          return true
+        }
+        case '/help':
+          alert(HELP_TEXT)
+          return true
+        default:
+          alert(`Unknown command: ${cmd}\n\n${HELP_TEXT}`)
+          return true
+      }
+    } catch (error) {
+      console.error(`Slash command ${cmd} failed:`, error)
+      alert('That command failed. Please try again.')
+      return true
+    }
+  }, [currentSession, handleRegenerate, handleContinue, handleUndo, narrate, getAuthorNote, clearAuthorNote, setAuthorNote, impersonate])
+
   const handleSendMessage = useCallback(async () => {
     if (input.trim() && currentSession && selectedPersona && !initializingSession) {
+      const trimmedInput = input.trim()
+      if (trimmedInput.startsWith('/')) {
+        setInput('')
+        if (await handleSlashCommand(trimmedInput)) return
+      }
       setInput('')
       setLoading(true)
 
@@ -164,7 +293,7 @@ const Chat: React.FC = () => {
         setLoading(false)
       }
     }
-  }, [input, currentSession, selectedPersona, initializingSession, sendMessage, user])
+  }, [input, currentSession, selectedPersona, initializingSession, sendMessage, user, handleSlashCommand])
 
   const handleRetryMessage = useCallback(async (messageId: string) => {
     try {
@@ -409,6 +538,9 @@ const Chat: React.FC = () => {
                     personaRarity={selectedPersona.rarity}
                     personaName={selectedPersona.display_name}
                     onRetry={handleRetryMessage}
+                    onRegenerate={handleRegenerate}
+                    onContinue={handleContinue}
+                    onUndo={handleUndo}
                     loadingIndicator={
                       !initializingSession ? (
                         isSearching && toolType !== 'none' ? (

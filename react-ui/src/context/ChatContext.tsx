@@ -12,6 +12,14 @@ import {
   exportSession,
   importSession,
   clearSessionMessages as clearSessionMessagesApi,
+  regenerateMessage,
+  continueMessage,
+  undoLastTurn,
+  narrateMessage,
+  impersonateDraft,
+  setSessionNote,
+  getSessionNote,
+  clearSessionNote,
   ChatApiResponse,
   ExportData,
 } from '../services/api'
@@ -38,6 +46,15 @@ export interface ChatContextType {
   retryMessage: (messageId: string) => Promise<void>
   exportCurrentSession: () => Promise<string>
   importSessionData: (exportData: ExportData) => Promise<ChatSession>
+  // ADR-011: conversation-control verbs (shared with the Telegram gateway)
+  regenerateLastReply: () => Promise<void>
+  continueLastReply: () => Promise<void>
+  undoLastExchange: () => Promise<void>
+  narrate: (text: string) => Promise<void>
+  impersonate: (hint?: string) => Promise<string>
+  setAuthorNote: (note: string) => Promise<void>
+  getAuthorNote: () => Promise<string | null>
+  clearAuthorNote: () => Promise<void>
   // Tool status
   isSearching: boolean
   toolType: 'brave' | 'wallet' | 'none'
@@ -158,6 +175,61 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw error // Re-throw so UI can handle the error
     }
   }, [])
+
+  // ── ADR-011 conversation-control verbs ──────────────────────────────────────
+  // Regenerate/continue/undo/narrate mutate stored history server-side; refresh
+  // from backend truth via loadSessionMessages rather than hand-patching state
+  // (avoids duplicating the multi-message staggering logic in sendMessage).
+
+  const regenerateLastReply = useCallback(async (): Promise<void> => {
+    if (!currentSession) return
+    await regenerateMessage(currentSession.id)
+    await loadSessionMessages(currentSession.id)
+    loadSessions()
+  }, [currentSession, loadSessionMessages, loadSessions])
+
+  const continueLastReply = useCallback(async (): Promise<void> => {
+    if (!currentSession) return
+    await continueMessage(currentSession.id)
+    await loadSessionMessages(currentSession.id)
+    loadSessions()
+  }, [currentSession, loadSessionMessages, loadSessions])
+
+  const undoLastExchange = useCallback(async (): Promise<void> => {
+    if (!currentSession) return
+    await undoLastTurn(currentSession.id)
+    await loadSessionMessages(currentSession.id)
+    loadSessions()
+  }, [currentSession, loadSessionMessages, loadSessions])
+
+  const narrate = useCallback(async (text: string): Promise<void> => {
+    if (!currentSession) return
+    await narrateMessage(currentSession.id, text)
+    await loadSessionMessages(currentSession.id)
+    loadSessions()
+  }, [currentSession, loadSessionMessages, loadSessions])
+
+  const impersonate = useCallback(async (hint?: string): Promise<string> => {
+    if (!currentSession) return ''
+    const { draft } = await impersonateDraft(currentSession.id, hint)
+    return draft
+  }, [currentSession])
+
+  const setAuthorNote = useCallback(async (note: string): Promise<void> => {
+    if (!currentSession) return
+    await setSessionNote(currentSession.id, note)
+  }, [currentSession])
+
+  const getAuthorNote = useCallback(async (): Promise<string | null> => {
+    if (!currentSession) return null
+    const { note } = await getSessionNote(currentSession.id)
+    return note
+  }, [currentSession])
+
+  const clearAuthorNote = useCallback(async (): Promise<void> => {
+    if (!currentSession) return
+    await clearSessionNote(currentSession.id)
+  }, [currentSession])
 
   const sendMessage = useCallback(async (message: string, sessionId?: string, retryCount = 0): Promise<Message> => {
     const targetSessionId = sessionId || currentSession?.id
@@ -406,6 +478,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       retryMessage,
       exportCurrentSession,
       importSessionData,
+      regenerateLastReply,
+      continueLastReply,
+      undoLastExchange,
+      narrate,
+      impersonate,
+      setAuthorNote,
+      getAuthorNote,
+      clearAuthorNote,
       isSearching,
       toolType,
     }}>

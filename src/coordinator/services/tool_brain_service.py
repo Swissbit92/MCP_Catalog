@@ -197,7 +197,10 @@ class ToolBrainService:
 
         messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
         for h in (history or []):
-            role = "assistant" if (h.get("role") or "").lower() == "assistant" else "user"
+            hrole = (h.get("role") or "").lower()
+            if hrole == "narrator":
+                continue  # ADR-011: scene direction is not a tool-decision turn
+            role = "assistant" if hrole == "assistant" else "user"
             messages.append({"role": role, "content": h.get("content", "")})
         messages.append({"role": "user", "content": user_message})
 

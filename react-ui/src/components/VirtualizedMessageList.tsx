@@ -3,7 +3,7 @@ import { MessageBubble } from './MessageBubble'
 
 interface Message {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'narrator'
   content: string
   timestamp: Date
   [key: string]: any
@@ -19,6 +19,10 @@ interface VirtualizedMessageListProps {
   showTypingIndicator?: boolean
   typingIndicatorComponent?: React.ReactNode
   loadingIndicator?: React.ReactNode
+  // ADR-011: conversation-control actions, shown only on the latest assistant reply
+  onRegenerate?: () => void
+  onContinue?: () => void
+  onUndo?: () => void
 }
 
 export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
@@ -30,8 +34,12 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
   onRetry,
   showTypingIndicator,
   typingIndicatorComponent,
-  loadingIndicator
+  loadingIndicator,
+  onRegenerate,
+  onContinue,
+  onUndo,
 }) => {
+  const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive or loading indicator changes
@@ -68,6 +76,10 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
             onRetry={onRetry}
             personaRarity={personaRarity}
             personaName={personaName}
+            isLatestAssistant={message.role === 'assistant' && message.id === lastAssistantId}
+            onRegenerate={onRegenerate}
+            onContinue={onContinue}
+            onUndo={onUndo}
           />
         </div>
       ))}

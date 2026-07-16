@@ -18,7 +18,12 @@ from telegram.ext import ContextTypes
 
 from . import messaging, relay
 from .config import TelegramConfig
-from .nephilim_client import NephilimClient, NephilimError, NephilimUnavailableError
+from .nephilim_client import (
+    NephilimBadRequestError,
+    NephilimClient,
+    NephilimError,
+    NephilimUnavailableError,
+)
 from .session_store import SessionStore
 from .typing_indicator import TypingIndicator
 
@@ -36,6 +41,29 @@ MSG_START_ACK = (
 )
 MSG_RESET_DONE = "Done — our conversation history is wiped. We're starting fresh."
 MSG_TOOLKIT_EMPTY = "I don't have any tools available right now — just conversation."
+
+# ── ADR-011 conversation-control command strings (fixed; never interpolate errors) ──
+MSG_HELP = (
+    "Here's what I can do:\n\n"
+    "/start — begin or resume our chat\n"
+    "/regen — reroll my last reply\n"
+    "/continue — have me continue my last reply\n"
+    "/undo — delete the last exchange\n"
+    "/sys <text> — set a scene beat (e.g. /sys it's late and quiet)\n"
+    "/note [text | clear] — standing direction; no text shows it, 'clear' removes it\n"
+    "/impersonate [hint] — draft a reply as you\n"
+    "/whoami — who you're talking to\n"
+    "/tools — my available tools\n"
+    "/reset — wipe our history and start fresh"
+)
+MSG_NOTHING_TO_REGEN = "Nothing to reroll yet — say something first."
+MSG_NOTHING_TO_CONTINUE = "Nothing to continue yet."
+MSG_UNDO_DONE = "Done — dropped the last exchange."
+MSG_SYS_USAGE = "Give me a scene to set, like: /sys it's raining outside"
+MSG_NOTE_SET = "Got it — I'll keep that in mind from now on."
+MSG_NOTE_CLEARED = "Cleared — no standing direction now."
+MSG_NOTE_NONE = "No standing direction set. Set one with /note <text>."
+MSG_IMPERSONATE_EMPTY = "I couldn't think of anything to say for you."
 
 # Human-friendly toolset labels for the /tools listing.
 _TOOLSET_LABELS = {
@@ -189,6 +217,199 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
         return
     await messaging.send_text(bot, chat_id, MSG_RESET_DONE, limit)
+
+
+# ── ADR-011 conversation-control commands ───────────────────────────────────
+
+
+async def _reply_or_error(update, context, *, action, empty_msg: str) -> None:
+    """Run an LLM-producing conversation-control action under the lock and send its messages.
+
+    ``action(client, store, chat_id, persona) -> list[str]``. Maps the standard
+    errors to fixed strings; a 400 (``NephilimBadRequestError`` — "nothing to act
+    on") shows the friendlier ``empty_msg``.
+    """
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    persona = gateway.config.persona_for_chat(chat_id)
+    bot = context.bot
+    limit = gateway.config.message_char_limit
+    try:
+        async with gateway.llm_lock, TypingIndicator(bot, chat_id, gateway.config.typing_interval_seconds):
+            messages = await action(gateway.client, gateway.store, chat_id, persona)
+    except NephilimBadRequestError:
+        await messaging.send_text(bot, chat_id, empty_msg, limit)
+        return
+    except NephilimUnavailableError:
+        await messaging.send_text(bot, chat_id, MSG_UNAVAILABLE, limit)
+        return
+    except NephilimError:
+        logger.exception("conversation-control verb failed for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    except Exception:
+        logger.exception("Unexpected error in conversation-control verb for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    if not messages:
+        messages = [MSG_EMPTY]
+    await messaging.send_messages(bot, chat_id, messages, limit)
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/help — list available commands (client-local, no backend call)."""
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    await messaging.send_text(context.bot, chat_id, MSG_HELP, gateway.config.message_char_limit)
+
+
+async def whoami_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/whoami — show the bound persona + session counts (read-only)."""
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    persona = gateway.config.persona_for_chat(chat_id)
+    bot = context.bot
+    limit = gateway.config.message_char_limit
+    try:
+        meta = await relay.whoami(gateway.client, gateway.store, chat_id, persona)
+    except NephilimUnavailableError:
+        await messaging.send_text(bot, chat_id, MSG_UNAVAILABLE, limit)
+        return
+    except NephilimError:
+        logger.exception("whoami failed for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    except Exception:
+        logger.exception("Unexpected error in /whoami for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    # Structured fields from OUR backend only — safe to render.
+    name = meta.get("display_name") or meta.get("persona_key") or "someone"
+    nsfw = " · 🔞 adult mode" if meta.get("nsfw") else ""
+    count = meta.get("message_count", 0)
+    await messaging.send_text(bot, chat_id, f"You're talking to {name}{nsfw}.\n{count} messages so far.", limit)
+
+
+async def regen_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/regen — reroll the last reply."""
+    await _reply_or_error(update, context, action=relay.regenerate_reply, empty_msg=MSG_NOTHING_TO_REGEN)
+
+
+async def continue_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/continue — extend the last reply."""
+    await _reply_or_error(update, context, action=relay.continue_reply, empty_msg=MSG_NOTHING_TO_CONTINUE)
+
+
+async def undo_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/undo — delete the last exchange (no LLM)."""
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    persona = gateway.config.persona_for_chat(chat_id)
+    bot = context.bot
+    limit = gateway.config.message_char_limit
+    try:
+        await relay.undo_last(gateway.client, gateway.store, chat_id, persona)
+    except NephilimUnavailableError:
+        await messaging.send_text(bot, chat_id, MSG_UNAVAILABLE, limit)
+        return
+    except NephilimError:
+        logger.exception("undo failed for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    except Exception:
+        logger.exception("Unexpected error in /undo for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    await messaging.send_text(bot, chat_id, MSG_UNDO_DONE, limit)
+
+
+async def sys_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/sys <text> — inject a narrator/scene beat and get the persona's reaction."""
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    text = " ".join(context.args).strip() if context.args else ""
+    if not text:
+        await messaging.send_text(context.bot, chat_id, MSG_SYS_USAGE, gateway.config.message_char_limit)
+        return
+    await _reply_or_error(
+        update,
+        context,
+        action=lambda c, s, cid, p: relay.narrate(c, s, cid, p, text),
+        empty_msg=MSG_ERROR,
+    )
+
+
+async def note_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/note [text | clear] — show / set / clear the standing author's note (no LLM)."""
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    persona = gateway.config.persona_for_chat(chat_id)
+    bot = context.bot
+    limit = gateway.config.message_char_limit
+    arg = " ".join(context.args).strip() if context.args else ""
+    try:
+        if not arg:
+            note = await relay.get_note(gateway.client, gateway.store, chat_id, persona)
+            msg = f"📝 Current direction:\n{note}" if note else MSG_NOTE_NONE
+        elif arg.lower() == "clear":
+            await relay.clear_note(gateway.client, gateway.store, chat_id, persona)
+            msg = MSG_NOTE_CLEARED
+        else:
+            await relay.set_note(gateway.client, gateway.store, chat_id, persona, arg)
+            msg = MSG_NOTE_SET
+    except NephilimUnavailableError:
+        await messaging.send_text(bot, chat_id, MSG_UNAVAILABLE, limit)
+        return
+    except NephilimError:
+        logger.exception("note command failed for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    except Exception:
+        logger.exception("Unexpected error in /note for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    await messaging.send_text(bot, chat_id, msg, limit)
+
+
+async def impersonate_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/impersonate [hint] — draft the user's next line (returned as a suggestion)."""
+    gateway = get_gateway(context)
+    chat_id = _allowed_chat_id(update, gateway)
+    if chat_id is None:
+        return
+    persona = gateway.config.persona_for_chat(chat_id)
+    bot = context.bot
+    limit = gateway.config.message_char_limit
+    hint = " ".join(context.args).strip() if context.args else None
+    try:
+        async with gateway.llm_lock, TypingIndicator(bot, chat_id, gateway.config.typing_interval_seconds):
+            draft = await relay.impersonate(gateway.client, gateway.store, chat_id, persona, hint)
+    except NephilimUnavailableError:
+        await messaging.send_text(bot, chat_id, MSG_UNAVAILABLE, limit)
+        return
+    except NephilimError:
+        logger.exception("impersonate failed for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    except Exception:
+        logger.exception("Unexpected error in /impersonate for chat_id=%s", chat_id)
+        await messaging.send_text(bot, chat_id, MSG_ERROR, limit)
+        return
+    await messaging.send_text(
+        bot, chat_id, f"✍️ Draft (yours to send or edit):\n{draft}" if draft else MSG_IMPERSONATE_EMPTY, limit
+    )
 
 
 async def text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
