@@ -682,13 +682,19 @@ def _generate_turn_response(state: ChatTurnState, chat_function) -> None:
     state.response = chat_function(chat_body)
 
 
-def _persist_turn_messages(state: ChatTurnState, add_message_function) -> None:
-    """Phase 5 — persist the user turn and assistant turn(s) (multi-message aware)."""
+def _persist_turn_messages(state: ChatTurnState, add_message_function, persist_user: bool = True) -> None:
+    """Phase 5 — persist the user turn and assistant turn(s) (multi-message aware).
+
+    ``persist_user=False`` (ADR-011 regenerate/continue) skips saving the user
+    turn — the caller either kept the original user message (regenerate) or the
+    ``message`` is a synthetic, non-stored instruction (continue).
+    """
     response = state.response
     now = utc_now_iso()
 
-    user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
-    add_message_function(state.session_id, user_msg_body)
+    if persist_user:
+        user_msg_body = AppendMessageBody(role=MessageRole.USER, content=state.message, ts=now, source_type=SourceType.LLM)
+        add_message_function(state.session_id, user_msg_body)
 
     source_type = SourceType.LLM
     if "metadata" in response and response["metadata"]:
@@ -857,7 +863,9 @@ def handle_session_chat(
     message: str,
     deps: dict,
     chat_function,
-    add_message_function
+    add_message_function,
+    persist_user: bool = True,
+    run_post_turn_updates: bool = True,
 ):
     """Handle chat with persona using database-backed conversation history.
 
@@ -890,12 +898,14 @@ def handle_session_chat(
     _build_turn_prompt(state, cdeps)
     _select_turn_history(state, cdeps)
     _generate_turn_response(state, chat_function)
-    _persist_turn_messages(state, add_message_function)
+    _persist_turn_messages(state, add_message_function, persist_user=persist_user)
 
-    # Auto-summarization check (still takes the raw dependency dict).
-    _check_and_summarize(session_id, persona_key, deps)
-
-    _apply_post_turn_updates(state, cdeps)
+    # ADR-011: regenerate/continue re-run an already-counted exchange, so they
+    # skip summarization + emotional/RAG/facts/progression to avoid double-counting.
+    if run_post_turn_updates:
+        # Auto-summarization check (still takes the raw dependency dict).
+        _check_and_summarize(session_id, persona_key, deps)
+        _apply_post_turn_updates(state, cdeps)
 
     return state.response
 

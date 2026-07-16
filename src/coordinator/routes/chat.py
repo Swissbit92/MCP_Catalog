@@ -470,6 +470,34 @@ def chat_with_session(session_id: str, body: ChatBody):
     )
 
 
+@router.post("/sessions/{session_id}/regenerate")
+def regenerate_with_session(session_id: str):
+    """Reroll the last assistant reply (ADR-011 /regen).
+
+    Deletes the previous reply and re-generates for the same user turn via the
+    standard pipeline (same finalize path as ``/chat``).
+    """
+    deps = _get_dependencies()
+    from .sessions import add_message
+    from ..services.conversation_control_service import regenerate_last_reply
+
+    return regenerate_last_reply(session_id, deps, chat, add_message)
+
+
+@router.post("/sessions/{session_id}/continue")
+def continue_with_session(session_id: str):
+    """Extend the last assistant reply (ADR-011 /continue).
+
+    Appends a continuation as a new assistant turn; the driving instruction is
+    synthetic and never stored.
+    """
+    deps = _get_dependencies()
+    from .sessions import add_message
+    from ..services.conversation_control_service import continue_last_reply
+
+    return continue_last_reply(session_id, deps, chat, add_message)
+
+
 @router.post("/persona/greet")
 def greet(body: GreetBody):
     """Generate a greeting from a persona."""

@@ -160,6 +160,24 @@ def clear_session_messages(session_id: str):
     return {"ok": True}
 
 
+@router.post("/sessions/{session_id}/undo")
+def undo_last_exchange_route(session_id: str):
+    """Delete the last exchange — last user turn + its reply (ADR-011 /undo)."""
+    session_repo, message_repo, _ = _get_repos()
+    from ..services.conversation_control_service import undo_last_exchange
+
+    return undo_last_exchange(session_repo, message_repo, session_id)
+
+
+@router.get("/sessions/{session_id}/meta")
+def get_session_meta_route(session_id: str):
+    """Lean session metadata for /whoami (ADR-011) — persona identity + counts."""
+    session_repo, message_repo, _ = _get_repos()
+    from ..services.conversation_control_service import get_session_meta
+
+    return get_session_meta(session_repo, message_repo, session_id)
+
+
 @router.get("/sessions/{session_id}/export")
 def export_session(session_id: str):
     """Export a chat session as JSON."""
