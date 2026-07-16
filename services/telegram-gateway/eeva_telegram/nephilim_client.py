@@ -1,10 +1,8 @@
 """Async HTTP client for the nephilim FastAPI backend.
 
-Wraps exactly the four endpoints the gateway needs:
-  - POST /sessions                       create a session
-  - POST /sessions/{id}/greet            generate + store an in-character greeting
-  - POST /sessions/{id}/chat             one chat turn
-  - DELETE /sessions/{id}/messages       clear history + emotional state (true reset)
+Wraps the session-API endpoints the gateway needs: create/greet/chat/clear,
+the read-only toolkit introspection, and the ADR-011 conversation-control verbs
+(regenerate/continue/undo/narrate/impersonate, session metadata, and note CRUD).
 
 Errors are normalised into a small typed hierarchy so the handler layer can map
 them to user-facing messages WITHOUT ever leaking URLs, stack traces, or JSON
@@ -35,6 +33,14 @@ class NephilimSessionNotFoundError(NephilimError):
 
 class NephilimServerError(NephilimError):
     """Backend returned an unexpected non-2xx status, or a malformed body."""
+
+
+class NephilimBadRequestError(NephilimError):
+    """Backend rejected the request as invalid (HTTP 400).
+
+    For conversation-control verbs this means "nothing to act on" (e.g. /regen
+    with no prior reply) — a normal, user-facing state, not a server fault.
+    """
 
 
 class NephilimClient:
@@ -69,6 +75,8 @@ class NephilimClient:
 
         if response.status_code == 404:
             raise NephilimSessionNotFoundError(path)
+        if response.status_code == 400:
+            raise NephilimBadRequestError(f"HTTP 400 for {path}")
         if response.status_code >= 400:
             raise NephilimServerError(f"HTTP {response.status_code} for {path}")
 
@@ -103,3 +111,41 @@ class NephilimClient:
     async def get_toolkit(self, persona_key: str) -> dict[str, Any]:
         """Fetch the registry-driven toolkit summary for a persona (ADR-009 W3)."""
         return await self._request("GET", f"/personas/{persona_key}/toolkit")
+
+    # ── ADR-011 conversation-control verbs (thin, no logic) ──────────────────
+
+    async def regenerate(self, session_id: str) -> dict[str, Any]:
+        """Reroll the last assistant reply (/regen)."""
+        return await self._request("POST", f"/sessions/{session_id}/regenerate", json={})
+
+    async def continue_reply(self, session_id: str) -> dict[str, Any]:
+        """Extend the last assistant reply (/continue)."""
+        return await self._request("POST", f"/sessions/{session_id}/continue", json={})
+
+    async def undo(self, session_id: str) -> dict[str, Any]:
+        """Delete the last exchange (/undo)."""
+        return await self._request("POST", f"/sessions/{session_id}/undo", json={})
+
+    async def narrate(self, session_id: str, text: str) -> dict[str, Any]:
+        """Inject a narrator/scene beat and return the persona's reaction (/sys)."""
+        return await self._request("POST", f"/sessions/{session_id}/narrate", json={"text": text})
+
+    async def impersonate(self, session_id: str, hint: str | None = None) -> dict[str, Any]:
+        """Draft the user's next line (/impersonate). Returns {"draft": ...}."""
+        return await self._request("POST", f"/sessions/{session_id}/impersonate", json={"hint": hint} if hint else {})
+
+    async def get_session_meta(self, session_id: str) -> dict[str, Any]:
+        """Lean session metadata for /whoami (persona identity + counts)."""
+        return await self._request("GET", f"/sessions/{session_id}/meta")
+
+    async def set_note(self, session_id: str, note: str) -> dict[str, Any]:
+        """Set the per-session author's note (/note <text>)."""
+        return await self._request("PUT", f"/sessions/{session_id}/note", json={"note": note})
+
+    async def get_note(self, session_id: str) -> dict[str, Any]:
+        """Get the per-session author's note (/note)."""
+        return await self._request("GET", f"/sessions/{session_id}/note")
+
+    async def clear_note(self, session_id: str) -> dict[str, Any]:
+        """Clear the per-session author's note (/note clear)."""
+        return await self._request("DELETE", f"/sessions/{session_id}/note")
