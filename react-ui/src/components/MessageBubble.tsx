@@ -23,6 +23,11 @@ interface MessageBubbleProps {
   onRetry?: (messageId: string) => void
   personaRarity?: string
   personaName?: string
+  // ADR-011: conversation-control actions, shown only on the latest assistant reply
+  onRegenerate?: () => void
+  onContinue?: () => void
+  onUndo?: () => void
+  isLatestAssistant?: boolean
 }
 
 interface ParsedContent {
@@ -70,10 +75,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   onRetry,
   personaRarity,
   personaName,
+  onRegenerate,
+  onContinue,
+  onUndo,
+  isLatestAssistant,
 }) => {
   const isUser = message.role === 'user'
+  const isNarrator = message.role === 'narrator'
 
   const parsed = React.useMemo(() => parseMessageContent(message.content), [message.content])
+
+  // ADR-011: a /sys scene beat — narration, not a speaker's bubble.
+  if (isNarrator) {
+    return (
+      <motion.div
+        className="flex justify-center mb-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="max-w-[85%] md:max-w-[70%] text-center italic text-sm text-gray-400 px-4 py-2">
+          {message.content}
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div
@@ -194,6 +220,39 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
           return null
         })()}
+
+        {/* ADR-011: conversation-control actions — only on the latest assistant reply */}
+        {!isUser && isLatestAssistant && (onRegenerate || onContinue || onUndo) && (
+          <div className="mt-1 flex items-center gap-3">
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                title="Reroll this reply"
+              >
+                ↻ Regenerate
+              </button>
+            )}
+            {onContinue && (
+              <button
+                onClick={onContinue}
+                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                title="Continue this reply"
+              >
+                → Continue
+              </button>
+            )}
+            {onUndo && (
+              <button
+                onClick={onUndo}
+                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                title="Delete the last exchange"
+              >
+                ⤺ Undo
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Timestamp, Latency, and Status */}
         <div className={`mt-1 flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
