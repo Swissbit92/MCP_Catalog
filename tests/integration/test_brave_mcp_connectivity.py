@@ -3,7 +3,6 @@
 # Manual integration test for Brave MCP connectivity
 
 import sys
-import os
 import logging
 from pathlib import Path
 
@@ -22,6 +21,13 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Live end-to-end check: starts a real Brave MCP Docker container and calls the
+# Brave API. Auto-skipped when the key/Docker are absent (tests/conftest.py's
+# pytest_collection_modifyitems reads BRAVE_API_KEY from os.environ at collection),
+# so a headless run skips instead of failing. Without these markers this test ran
+# everywhere and silently "passed" by swallowing its own connection errors.
+pytestmark = [pytest.mark.requires_api_key, pytest.mark.requires_docker]
 
 
 @pytest.fixture
@@ -49,60 +55,37 @@ def brave_env(monkeypatch):
             monkeypatch.setenv(key, value)
 
 
-def test_brave_connectivity(brave_env):
-    """Test actual Brave MCP server connectivity."""
-    print("\n" + "=" * 70)
-    print("BRAVE MCP CONNECTIVITY TEST")
-    print("=" * 70)
+def _run_search(query: str = "Bitcoin price 2024", count: int = 3):
+    """Run one live Brave MCP search and return the results.
 
+    Deliberately does NOT swallow exceptions: the pytest test asserts on the
+    results, and script mode below wraps this in its own try/except for a
+    human-readable exit code. (Previously the whole check lived inside a
+    catch-everything block that returned False, so a total failure still reported
+    as a passing test.)
+    """
+    client = get_brave_client()
     try:
-        # Create client
-        print("\n[1/4] Creating Brave MCP client...")
-        client = get_brave_client()
-        print(f"[OK] Client created: timeout={client.timeout}s, max_results={client.max_results}")
-
-        # Test search
-        print("\n[2/4] Testing web search...")
-        query = "Bitcoin price 2024"
-        print(f"   Query: '{query}'")
-
-        results = client.search_web(query, count=3)
-
-        print(f"[OK] Search completed: {len(results)} results")
-
-        # Display results
-        print("\n[3/4] Displaying results...")
-        print("-" * 70)
-        for i, result in enumerate(results, 1):
-            # Handle Unicode properly for Windows console
-            title = result.title.encode('ascii', 'ignore').decode('ascii')
-            desc = result.description[:150].encode('ascii', 'ignore').decode('ascii')
-
-            print(f"\n{i}. {title}")
-            print(f"   URL: {result.url}")
-            print(f"   Description: {desc}...")
-            if result.age:
-                print(f"   Age: {result.age}")
-
-        # Cleanup
-        print("\n[4/4] Cleaning up...")
+        return client.search_web(query, count=count)
+    finally:
         client.close()
-        print("[OK] Client closed successfully")
 
-        print("\n" + "=" * 70)
-        print("[OK] ALL TESTS PASSED")
-        print("=" * 70)
-        print("\n>> Brave MCP integration is working correctly!\n")
-        return True
 
-    except MCPError as e:
-        print(f"\n[ERROR] MCP Error: {e}")
-        logger.error("MCP error occurred", exc_info=True)
-        return False
-    except Exception as e:
-        print(f"\n[ERROR] Unexpected error: {e}")
-        logger.error("Unexpected error", exc_info=True)
-        return False
+def test_brave_connectivity(brave_env):
+    """Live: the Brave MCP container starts and returns usable search results.
+
+    Skipped automatically unless BRAVE_API_KEY is exported and Docker is up
+    (see the requires_* markers + tests/conftest.py::pytest_collection_modifyitems).
+    """
+    results = _run_search(count=3)
+
+    assert results, "Brave MCP returned no results for a common query"
+    assert len(results) <= 3, f"requested 3 results, got {len(results)}"
+
+    first = results[0]
+    assert first.title and first.title.strip(), "first result has an empty title"
+    assert first.url.startswith(("http://", "https://")), f"non-http result url: {first.url!r}"
+    assert first.description is not None, "first result has no description field"
 
 
 if __name__ == "__main__":
@@ -123,6 +106,33 @@ if __name__ == "__main__":
     except ImportError:
         print("Warning: python-dotenv not installed, using system environment only")
 
-    success = test_brave_connectivity(None)  # fixture arg unused by the body
+    print("\n[1/3] Creating client and searching...")
+    try:
+        results = _run_search(count=3)
+    except MCPError as e:
+        print(f"\n[ERROR] MCP Error: {e}")
+        logger.error("MCP error occurred", exc_info=True)
+        sys.exit(1)
+    except Exception as e:  # noqa: BLE001 - script mode wants a readable exit, not a traceback
+        print(f"\n[ERROR] Unexpected error: {e}")
+        logger.error("Unexpected error", exc_info=True)
+        sys.exit(1)
 
-    sys.exit(0 if success else 1)
+    print(f"[OK] Search completed: {len(results)} results")
+    print("\n[2/3] Displaying results...")
+    print("-" * 70)
+    for i, result in enumerate(results, 1):
+        # Handle Unicode properly for Windows console
+        title = result.title.encode('ascii', 'ignore').decode('ascii')
+        desc = result.description[:150].encode('ascii', 'ignore').decode('ascii')
+        print(f"\n{i}. {title}")
+        print(f"   URL: {result.url}")
+        print(f"   Description: {desc}...")
+        if result.age:
+            print(f"   Age: {result.age}")
+
+    print("\n[3/3] Done.")
+    print("\n" + "=" * 70)
+    print("[OK] Brave MCP integration is working correctly!")
+    print("=" * 70 + "\n")
+    sys.exit(0)
