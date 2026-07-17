@@ -300,3 +300,83 @@ class TestParseMultiMessageResponseExtra:
         assert flow_type == "multi"
         assert messages[0] == ""
         assert messages[1] == "Real content"
+
+
+# ═══ ADR-011 follow-up fixes B + C (found in live Telegram testing) ═══════════
+
+from src.coordinator.services.message_processing_service import (  # noqa: E402
+    parse_multi_message_response as _parse,
+    strip_role_prefix_leaks as _strip,
+)
+
+
+# ─── B: unclosed <msg> tags must not leak literally ──────────────────────────
+
+def test_unclosed_msg_tags_are_recovered_not_leaked():
+    """Live bug: /continue emitted unclosed <msg> tags that reached the chat verbatim."""
+    raw = "<msg>first beat\n<msg>second beat\n<msg>third beat"
+    msgs, flow = _parse(raw)
+    assert flow == 'multi'
+    assert msgs == ["first beat", "second beat", "third beat"]
+    assert not any('<msg>' in m for m in msgs)
+
+
+def test_single_unclosed_msg_tag_stripped():
+    msgs, flow = _parse("<msg>just one")
+    assert flow == 'single'
+    assert msgs == ["just one"]
+
+
+def test_mixed_unclosed_with_stray_closing_tag():
+    msgs, flow = _parse("<msg>alpha</msg>\n<msg>beta")
+    # one well-formed pair exists -> existing path wins, unchanged behavior
+    assert flow == 'single'
+    assert '<msg>' not in msgs[0]
+
+
+def test_wellformed_pairs_unchanged():
+    """The pre-existing well-formed path must stay byte-identical."""
+    msgs, flow = _parse("<msg>one</msg><msg>two</msg>")
+    assert flow == 'multi'
+    assert msgs == ["one", "two"]
+
+
+def test_no_tags_returns_original():
+    msgs, flow = _parse("plain reply")
+    assert (msgs, flow) == (["plain reply"], 'single')
+
+
+def test_unclosed_msg_capped_at_four():
+    msgs, flow = _parse("<msg>a\n<msg>b\n<msg>c\n<msg>d\n<msg>e")
+    assert len(msgs) == 4
+
+
+# ─── C: role-prefix / hallucinated-turn leaks ────────────────────────────────
+
+def test_cuts_trailing_hallucinated_user_turn():
+    """Live bug: a /sys reply ended with a fabricated 'User:\\nFrom behind'."""
+    raw = "Let's talk about next time: do you prefer this?\n\nUser:\nFrom behind"
+    out = _strip(raw)
+    assert out == "Let's talk about next time: do you prefer this?"
+    assert 'User:' not in out
+
+
+def test_strips_leading_assistant_prefix():
+    assert _strip("Assistant: hey you") == "hey you"
+
+
+def test_keeps_user_word_inside_prose():
+    """Only line-anchored 'User:' is a leak — prose must survive."""
+    raw = "I am a power User: of this app, Daddy."
+    assert _strip(raw) == raw
+
+
+def test_does_not_cut_when_leak_is_the_whole_answer():
+    """No real content before the marker -> nothing to keep, leave as-is."""
+    out = _strip("User: hello")
+    assert out == "hello"
+
+
+def test_empty_answer_safe():
+    assert _strip("") == ""
+    assert _strip("   ") == ""

@@ -84,6 +84,49 @@ def test_split_user_then_multi_assistant():
     assert [m["id"] for m in trailing] == ["a1", "a2"]
 
 
+def test_split_narrator_is_a_stimulus():
+    """ADR-011 fix A: a /sys beat prompts the reply, so it counts as the stimulus."""
+    msgs = [
+        {"id": "u1", "role": "user"},
+        {"id": "a1", "role": "assistant"},
+        {"id": "n1", "role": "narrator"},
+        {"id": "a2", "role": "assistant"},
+    ]
+    stimulus, trailing = ccs._split_last_exchange(msgs)
+    assert stimulus["id"] == "n1"
+    assert [m["id"] for m in trailing] == ["a2"]
+
+
+def test_regenerate_after_sys_uses_narrate_instruction():
+    """Fix A: /regen right after /sys must reroll the reaction, not 400."""
+    sr, mr = _repos([
+        {"id": "n1", "role": "narrator", "content": "A storm hits."},
+        {"id": "a1", "role": "assistant", "content": "old reaction"},
+    ])
+    deps = {"session_repo": sr, "message_repo": mr}
+    with patch.object(ccs, "handle_session_chat", return_value={"answer": "new reaction"}) as h:
+        out = ccs.regenerate_last_reply("s1", deps, MagicMock(), MagicMock())
+    assert out == {"answer": "new reaction"}
+    mr.delete_message.assert_called_once_with("a1")   # only the reply dropped
+    kwargs = h.call_args.kwargs
+    assert kwargs["message"] == ccs.NARRATE_RESPONSE_INSTRUCTION  # not the beat text
+    assert kwargs["persist_user"] is False
+
+
+def test_undo_after_sys_removes_beat_and_reply():
+    """Fix A: /undo after /sys must not orphan the narrator beat."""
+    sr, mr = _repos([
+        {"id": "u1", "role": "user"},
+        {"id": "a0", "role": "assistant"},
+        {"id": "n1", "role": "narrator"},
+        {"id": "a1", "role": "assistant"},
+    ])
+    out = ccs.undo_last_exchange(sr, mr, "s1")
+    assert out == {"ok": True, "deleted": 2}
+    deleted = {c.args[0] for c in mr.delete_message.call_args_list}
+    assert deleted == {"n1", "a1"}  # beat + its reply; earlier turn untouched
+
+
 def test_split_lone_greeting_has_no_user():
     msgs = [{"id": "a1", "role": "assistant"}]
     last_user, trailing = ccs._split_last_exchange(msgs)
