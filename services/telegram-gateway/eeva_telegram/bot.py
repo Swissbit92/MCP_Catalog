@@ -29,15 +29,24 @@ async def _post_shutdown(application: Application) -> None:
         gateway.store.close()
 
 
-# Native slash menu — surface the 6 highest-value commands (ADR-011 + UX research:
-# 5-8 sweet spot, lead with the money verb). The remaining commands (/whoami, /sys,
-# /note, /impersonate) still work when typed but stay off the menu to avoid dilution.
+# Native slash menu — EVERY command is surfaced, ordered most-used first.
+#
+# An earlier cut showed only 6, citing the "5-8 sweet spot / dilution past 8"
+# command-menu research. That research measures tap-through in a multi-user
+# conversion funnel; this is a single-operator personal bot, where discoverability
+# strictly beats funnel optimisation (the hidden commands were simply invisible).
+# Keep the high-value verbs at the top — the first entries are the ones reached for.
 _MENU_COMMANDS = [
-    BotCommand("start", "Begin or resume our chat"),
     BotCommand("regen", "Reroll my last reply"),
     BotCommand("continue", "Continue my last reply"),
     BotCommand("undo", "Delete the last exchange"),
+    BotCommand("sys", "Set a scene beat, e.g. /sys it's late"),
+    BotCommand("note", "Standing direction: [text | clear]"),
+    BotCommand("impersonate", "Draft a reply as you: [hint]"),
+    BotCommand("whoami", "Who you're talking to"),
     BotCommand("tools", "Show my available tools"),
+    BotCommand("start", "Begin or resume our chat"),
+    BotCommand("reset", "Wipe our history and start fresh"),
     BotCommand("help", "List everything I can do"),
 ]
 

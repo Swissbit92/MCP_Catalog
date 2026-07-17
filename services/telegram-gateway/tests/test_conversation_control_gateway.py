@@ -287,3 +287,44 @@ async def test_conversation_verbs_silent_when_not_allowed(gateway, fake_client):
     await handlers.note_command(make_update(999, "/note"), make_context(gateway, bot, args=["x"]))
     assert bot.sent == []
     assert fake_client.set_note_calls == []
+
+
+# ─── Native command menu ─────────────────────────────────────────────────────
+
+
+def test_menu_surfaces_every_command():
+    """Every command the bot handles must be discoverable in the native slash menu.
+
+    Guards the regression where only 6 of 11 were surfaced, leaving /sys, /note,
+    /impersonate, /whoami and /reset invisible.
+    """
+    from eeva_telegram.bot import _MENU_COMMANDS
+
+    menu = {c.command for c in _MENU_COMMANDS}
+    expected = {
+        "start",
+        "reset",
+        "tools",
+        "help",
+        "whoami",
+        "regen",
+        "continue",
+        "undo",
+        "sys",
+        "note",
+        "impersonate",
+    }
+    assert menu == expected
+
+
+def test_menu_leads_with_regen():
+    """Most-used verb first — the top entries are what you reach for."""
+    from eeva_telegram.bot import _MENU_COMMANDS
+
+    assert _MENU_COMMANDS[0].command == "regen"
+
+
+def test_menu_descriptions_are_nonempty():
+    from eeva_telegram.bot import _MENU_COMMANDS
+
+    assert all(c.description.strip() for c in _MENU_COMMANDS)
