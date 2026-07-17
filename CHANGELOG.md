@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-07-17) — ADR-011 regression: stale dependency-patch list broke `test_routes_chat` in narrow scopes
+
+`pytest tests/backend/coordinator` failed 28 tests (all of `test_routes_chat.py`) while the full suite was green. **This was an ADR-011 regression, not the pre-existing order-dependence it was first reported as** — verified by A/B against the pre-ADR-011 tree (11 failures there vs 28 after).
+
+Cause: ADR-011 M2 added `session_note_repo` to `routes/chat.py::_get_dependencies()`, and `startup.get_session_note_repo()` **raises** when its singleton is uninitialised. `test_routes_chat.py` neutralises deps with a **hardcoded** list of `startup.get_*` patches, which silently went stale — it covered 11 of the 14 getters `_get_dependencies()` resolves. A full-suite run masked it because an earlier test happened to initialise startup, so the full-suite QA gate never saw it.
+
+Fix (test-only): the patch list is now **derived from `_get_dependencies()`'s own source** (`_dependency_getter_names()`), so a new dependency is neutralised automatically and the list cannot go stale again. Added `TestDependencyPatchCoverage` as an explicit guard (asserts the derived names exist on `startup` and that the patch list covers every one). All scopes green: full **2056**, `tests/backend` **1956**, `tests/backend/coordinator` **1910** — 0 failures.
+
+Lesson recorded: a full-suite-only QA gate can mask a broken narrow scope; when a shared dependency bundle grows, every test that neutralises it must grow too — so derive, don't hardcode.
+
 ### Fixed (2026-07-17) — test suite is hermetic: prod `.env` no longer leaks into tests (10 failures → 0)
 
 The suite had 10 long-standing failures that only appeared on a configured dev machine, and they were worse than they looked: **six search tests were making REAL network calls to the live local SearXNG** (returning actual Bitcoin/FIFA web results where `None` was asserted), with their Brave mocks never called. Full suite is now **2054 passed / 0 failed** and **~2.4× faster** (14s → 5.8s — the removed time was real HTTP).
@@ -18,7 +28,7 @@ Two independent channels caused it; closing either alone left the other winning 
 
 Fix — `tests/conftest.py::_hermetic_settings` (session-scoped, autouse, restored on teardown): strips only the env keys that collection *injected* (diffed against a snapshot taken at conftest import, so shell/CI vars like `OLLAMA_BASE` survive), and disables `env_file` on every settings class in **both** import trees — `coordinator.*` and `src.coordinator.*` are distinct module objects with distinct class objects here, so patching one leaves the other reading `.env`. New settings modules and new dotenv-loading test modules are covered automatically. **No production code changed.**
 
-Verified at name level: 0 new failures, exactly the 10 targets fixed. (Running `tests/backend/coordinator` *alone* still shows 28 pre-existing order-dependent failures — unrelated to `.env`, present at baseline as 38, outside this fix's scope; the canonical `pytest tests/` is green.)
+Verified at name level: 0 new failures, exactly the 10 targets fixed. (This entry originally called the 28 remaining `tests/backend/coordinator`-scope failures "pre-existing order-dependent" — that was **wrong**. The next entry corrects it: they were an ADR-011 regression, since fixed. Every scope is now green.)
 
 ### Fixed (2026-07-17) — ADR-011 live-testing follow-ups: narrator regen, `<msg>` leaks, role leaks, menu
 

@@ -63,20 +63,36 @@ def _make_llm_client(answer="Hello there!"):
     return llm
 
 
+def _dependency_getter_names() -> list[str]:
+    """The startup getters `routes.chat._get_dependencies()` actually resolves.
+
+    Derived from the function's own source rather than hardcoded. The previous
+    hardcoded list silently went stale when ADR-011 added `get_session_note_repo`
+    to `_get_dependencies`; that getter RAISES when its singleton is
+    uninitialised, so every test in this module failed — except in a full-suite
+    run, where an earlier test happened to initialise startup and masked it.
+    Deriving the list means a new dependency is neutralised automatically.
+    """
+    import inspect
+    import re
+
+    from src.coordinator.routes import chat as _chat_routes
+
+    source = inspect.getsource(_chat_routes._get_dependencies)
+    names = sorted(set(re.findall(r"startup\.(get_\w+)\(", source)))
+    assert names, "no startup getters found in _get_dependencies() — source/regex drift"
+    return names
+
+
 def _startup_patches():
-    """List of patches that neutralise all _get_dependencies() startup calls."""
+    """Patches that neutralise every _get_dependencies() startup call."""
     return [
-        patch("src.coordinator.startup.get_brave_client", return_value=None),
-        patch("src.coordinator.startup.get_session_repo", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_message_repo", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_summary_repo", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_emotional_state_repo", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_memory_manager", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_conversation_summarizer", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_user_profile_repo", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_episodic_memory_rag", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_fact_extractor", return_value=MagicMock()),
-        patch("src.coordinator.startup.get_seeker_progression_repo", return_value=MagicMock()),
+        # brave stays None: these tests exercise the llm-only / non-brave paths.
+        patch(
+            f"src.coordinator.startup.{name}",
+            return_value=None if name == "get_brave_client" else MagicMock(),
+        )
+        for name in _dependency_getter_names()
     ]
 
 
@@ -685,3 +701,27 @@ class TestExtraSystemContext:
         assert resp.status_code == 200
         system_arg = llm.complete.call_args.kwargs.get("system", "")
         assert "MEMORY_CONTEXT_MARKER" not in system_arg
+
+
+class TestDependencyPatchCoverage:
+    """Guard: the neutralising patch list must cover every _get_dependencies() getter.
+
+    Regression guard for the ADR-011 miss — a new dependency (`session_note_repo`)
+    was added to `_get_dependencies()` whose real getter raises when uninitialised,
+    while this module's patch list stayed stale. A full-suite run masked it (an
+    earlier test initialised startup), so it only failed in a narrower scope.
+    """
+
+    def test_patch_list_covers_every_dependency_getter(self):
+        from src.coordinator import startup as _startup
+
+        names = _dependency_getter_names()
+        # every derived name must actually exist on startup (catches regex drift)
+        for name in names:
+            assert hasattr(_startup, name), f"_get_dependencies references unknown {name}"
+        # and the patch list must have one patch per getter
+        assert len(_startup_patches()) == len(names)
+
+    def test_session_note_repo_is_neutralised(self):
+        """ADR-011's getter raises when uninitialised — it must be patched here."""
+        assert "get_session_note_repo" in _dependency_getter_names()
