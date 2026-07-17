@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-07-17) — test suite is hermetic: prod `.env` no longer leaks into tests (10 failures → 0)
+
+The suite had 10 long-standing failures that only appeared on a configured dev machine, and they were worse than they looked: **six search tests were making REAL network calls to the live local SearXNG** (returning actual Bitcoin/FIFA web results where `None` was asserted), with their Brave mocks never called. Full suite is now **2054 passed / 0 failed** and **~2.4× faster** (14s → 5.8s — the removed time was real HTTP).
+
+Two independent channels caused it; closing either alone left the other winning (priority: `os.environ` > dotenv file > field defaults):
+
+- **`os.environ` (the real culprit).** `tests/integration/test_mvp2_integration.py` and `test_brave_mcp_connectivity.py` call `load_dotenv()` at **module scope**, and pytest imports every test module during *collection* — so the whole prod `.env` was exported into the process environment before the first test ran, outranking everything. Hence the scope-dependence (`tests/integration/` is only collected in a full run).
+- **The dotenv file.** Every settings class declares `model_config["env_file"] = ".env"`, read *in addition to* `os.environ` — so `monkeypatch.delenv` could never simulate "env absent"; it just fell back to the file (e.g. `TOOL_BRAIN_ENABLED=true`).
+
+Fix — `tests/conftest.py::_hermetic_settings` (session-scoped, autouse, restored on teardown): strips only the env keys that collection *injected* (diffed against a snapshot taken at conftest import, so shell/CI vars like `OLLAMA_BASE` survive), and disables `env_file` on every settings class in **both** import trees — `coordinator.*` and `src.coordinator.*` are distinct module objects with distinct class objects here, so patching one leaves the other reading `.env`. New settings modules and new dotenv-loading test modules are covered automatically. **No production code changed.**
+
+Verified at name level: 0 new failures, exactly the 10 targets fixed. (Running `tests/backend/coordinator` *alone* still shows 28 pre-existing order-dependent failures — unrelated to `.env`, present at baseline as 38, outside this fix's scope; the canonical `pytest tests/` is green.)
+
 ### Fixed (2026-07-17) — ADR-011 live-testing follow-ups: narrator regen, `<msg>` leaks, role leaks, menu
 
 Three defects found by real Telegram use of the ADR-011 command set, plus a UX correction. Coordinator suite 2030 → 2044 (+14), gateway 113 → 116 (+3), 0 regressions.

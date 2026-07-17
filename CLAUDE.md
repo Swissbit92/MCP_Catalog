@@ -26,7 +26,7 @@ Quick hits:
 .venv/bin/python -m uvicorn src.coordinator.server:app --port 8000
 cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into the script (Node 17+)
 
-# Backend tests (~1,400; 63% coverage, gate --cov-fail-under=60). Live tests
+# Backend tests (~2,050; gate --cov-fail-under=60). Live tests
 # auto-skip when Ollama/Brave/Docker are unreachable (tests/conftest.py).
 pytest tests/
 OLLAMA_BASE=http://127.0.0.1:1 pytest tests/   # force headless: live tests skip
@@ -39,6 +39,8 @@ docker-compose --env-file .env.docker up -d
 ```
 
 > **Writing backend tests:** mark anything that hits Ollama/Brave/Docker with `@pytest.mark.requires_ollama`/`requires_api_key`/`requires_docker` (else it fails headless). Use `asyncio.run()` not `get_event_loop()`, `TestClient(app)` without the `with` (skips lifespan), and don't add `__init__.py` to the test tree. Full conventions: [`docs/development/TESTING_GUIDE.md`](docs/development/TESTING_GUIDE.md).
+
+> **Tests are hermetic — never let prod `.env` reach them.** `tests/conftest.py::_hermetic_settings` (session, autouse) closes BOTH channels: it strips whatever a module-scope `load_dotenv()` exported into `os.environ` during collection (diffed against a pre-collection snapshot, so shell/CI vars survive), and disables `model_config["env_file"]` on every settings class in BOTH import trees (`coordinator.*` AND `src.coordinator.*` are distinct module objects here). Settings then resolve from `os.environ` + field defaults only. **Do not add a module-scope `load_dotenv()` to a test** — it leaks prod config into the whole session at collection time. Symptoms it prevents: search tests bypassing their mocks to hit the real SearXNG; `monkeypatch.delenv` failing to reach defaults.
 
 > **⚠️ macOS:** run Ollama natively for Metal GPU acceleration — Docker-on-Mac runs Ollama CPU-only. Docker also serves the legacy UI unless rebuilt, so use local dev for the Phase 7 NEPHILIM UI (`docs/DEVELOPMENT.md`).
 
