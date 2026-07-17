@@ -14,10 +14,108 @@ sys.path.insert(0, str(project_root))
 
 # This allows imports like: from coordinator.server import app
 
+# Snapshot of the REAL process environment, taken at conftest import — i.e. before
+# pytest collects (imports) any test module. Two integration modules call
+# `load_dotenv()` at module scope, which exports the developer's whole prod `.env`
+# into os.environ during collection; `_hermetic_settings` diffs against this
+# snapshot to undo exactly that, while preserving vars genuinely exported by the
+# shell/CI (which are in the snapshot and must survive).
+_ENV_SNAPSHOT = dict(os.environ)
+
 
 # ============================================================================
 # Environment Configuration
 # ============================================================================
+
+@pytest.fixture(autouse=True, scope="session")
+def _hermetic_settings():
+    """Never read the developer's real `.env` during tests.
+
+    The suite was silently coupled to live prod config through TWO channels, and
+    both must be closed — closing either alone leaves the other winning:
+
+    1. **os.environ** (highest priority). ``tests/integration/`` modules call
+       ``load_dotenv()`` at MODULE scope, and pytest imports every test module
+       during collection — so the whole prod `.env` is exported into the process
+       environment before the first test runs. Undone here by diffing against
+       ``_ENV_SNAPSHOT`` (captured at conftest import, pre-collection) and removing
+       only what collection injected; shell/CI-exported vars survive.
+    2. **the dotenv file**. Every settings class declares
+       ``model_config["env_file"] = ".env"``, which pydantic-settings reads as a
+       source in addition to os.environ (priority: os.environ > dotenv > defaults).
+       So ``monkeypatch.delenv`` could not simulate "env absent" — it just fell
+       back to the file. Disabled here.
+
+    Net effect: settings resolve from os.environ + field defaults only, so tests are
+    deterministic and monkeypatch behaves as written. Symptoms this prevents: search
+    tests bypassing their Brave mocks to issue REAL requests against the local
+    SearXNG, and default-assertion tests seeing prod flags (TOOL_BRAIN_ENABLED=true).
+
+    Session-scoped; everything is restored on teardown. New settings modules and new
+    dotenv-loading test modules are covered automatically.
+
+    NOTE: this conftest puts BOTH ``src/`` and the repo root on ``sys.path``, so
+    ``coordinator.config`` and ``src.coordinator.config`` are two DISTINCT module
+    objects holding two distinct copies of each settings class. Both trees must be
+    patched — patching only one leaves the other reading the real `.env`, which
+    reproduces exactly the bug this fixture exists to prevent.
+    """
+    import importlib
+    import inspect
+    import pkgutil
+
+    from pydantic_settings import BaseSettings
+
+    # (1) Undo the prod `.env` that a module-scope load_dotenv() exported into
+    # os.environ during collection. Only keys ADDED since conftest import are
+    # removed, so genuinely-exported vars (e.g. OLLAMA_BASE from the CI command)
+    # are left untouched.
+    injected = {k: v for k, v in os.environ.items() if k not in _ENV_SNAPSHOT}
+    for key in injected:
+        del os.environ[key]
+
+    # (2) Stop pydantic-settings reading the `.env` FILE as a source.
+    modules = []
+    for root in ("src.coordinator.config", "coordinator.config"):
+        try:
+            pkg = importlib.import_module(root)
+        except ImportError:  # tree not importable in this layout — skip
+            continue
+        modules.append(pkg)
+        for info in pkgutil.iter_modules(pkg.__path__):
+            try:
+                modules.append(importlib.import_module(f"{root}.{info.name}"))
+            except ImportError:
+                continue
+
+    patched = []
+    seen = set()
+    for module in modules:
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            if id(obj) in seen or not issubclass(obj, BaseSettings):
+                continue
+            seen.add(id(obj))
+            cfg = obj.__dict__.get("model_config")
+            if isinstance(cfg, dict) and cfg.get("env_file") is not None:
+                patched.append((obj, cfg["env_file"]))
+                cfg["env_file"] = None
+
+    caches = []
+    for module in modules:
+        get_settings = getattr(module, "get_settings", None)
+        if get_settings is not None and hasattr(get_settings, "cache_clear"):
+            caches.append(get_settings)
+    for fn in caches:
+        fn.cache_clear()
+
+    yield
+
+    os.environ.update(injected)
+    for obj, original in patched:
+        obj.model_config["env_file"] = original
+    for fn in caches:
+        fn.cache_clear()
+
 
 @pytest.fixture(scope="session")
 def test_env():
