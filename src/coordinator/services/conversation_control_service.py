@@ -39,15 +39,23 @@ CONTINUE_INSTRUCTION = (
 )
 
 
+# Roles that can *prompt* a reply — the "stimulus" a reply was generated for.
+# A /sys narrator beat is as much a stimulus as a user turn (the persona reacts to
+# it), so regenerate/undo must treat both alike. Anything else (e.g. a lone
+# greeting) leaves no stimulus.
+_STIMULUS_ROLES = ("user", "narrator")
+
+
 def _split_last_exchange(
     messages: List[Dict[str, Any]],
 ) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Split a session's ordered messages into (last_user_msg, [trailing_assistant_msgs]).
+    """Split a session's ordered messages into (stimulus_msg, [trailing_assistant_msgs]).
 
     ``trailing_assistant_msgs`` are the contiguous assistant-role messages at the
     very end (a single reply may be several rows when multi-message split). The
-    ``last_user_msg`` is the user turn immediately before them, or ``None`` when
-    there is none (e.g. a lone greeting).
+    ``stimulus_msg`` is the turn immediately before them that prompted the reply —
+    a ``user`` turn OR a ``narrator`` beat (:data:`_STIMULUS_ROLES`) — or ``None``
+    when there is none (e.g. a lone greeting).
     """
     trailing: List[Dict[str, Any]] = []
     i = len(messages) - 1
@@ -55,8 +63,8 @@ def _split_last_exchange(
         trailing.append(messages[i])
         i -= 1
     trailing.reverse()
-    last_user = messages[i] if i >= 0 and messages[i].get("role") == "user" else None
-    return last_user, trailing
+    stimulus = messages[i] if i >= 0 and messages[i].get("role") in _STIMULUS_ROLES else None
+    return stimulus, trailing
 
 
 def undo_last_exchange(session_repo, message_repo, session_id: str) -> Dict[str, Any]:
@@ -72,12 +80,14 @@ def undo_last_exchange(session_repo, message_repo, session_id: str) -> Dict[str,
     if not messages:
         return {"ok": True, "deleted": 0}
 
-    last_user, trailing = _split_last_exchange(messages)
+    stimulus, trailing = _split_last_exchange(messages)
     to_delete = list(trailing)
-    if last_user is not None:
-        to_delete.append(last_user)
+    if stimulus is not None:
+        # Delete the stimulus too — a user turn OR a /sys narrator beat. Dropping
+        # only the reply would orphan the beat and leave the scene half-applied.
+        to_delete.append(stimulus)
     if not to_delete:
-        # Neither a trailing assistant reply nor a user turn (e.g. history ends on
+        # Neither a trailing assistant reply nor a stimulus (e.g. history ends on
         # a non-standard role) — drop the single most recent message.
         to_delete = [messages[-1]]
 
@@ -105,20 +115,26 @@ def regenerate_last_reply(session_id: str, deps: dict, chat_function, add_messag
         raise HTTPException(status_code=404, detail="Session not found.")
 
     messages = message_repo.get_messages_by_session(session_id)
-    last_user, trailing = _split_last_exchange(messages)
-    if last_user is None:
-        raise HTTPException(status_code=400, detail="Nothing to regenerate — no user message to reply to.")
+    stimulus, trailing = _split_last_exchange(messages)
+    if stimulus is None:
+        raise HTTPException(status_code=400, detail="Nothing to regenerate — no message to reply to.")
 
     for msg in trailing:
         message_repo.delete_message(msg["id"])
 
+    # Re-drive the same stimulus. A narrator beat stays in history and is re-reacted
+    # to via the standard instruction; a user turn is simply resent.
+    turn_message = (
+        NARRATE_RESPONSE_INSTRUCTION if stimulus.get("role") == "narrator" else stimulus["content"]
+    )
+
     logger.info(
-        "[ConvControl] regenerate: dropped %d assistant msg(s), re-generating for session %s",
-        len(trailing), session_id[:8],
+        "[ConvControl] regenerate: dropped %d assistant msg(s), re-generating for %s stimulus in session %s",
+        len(trailing), stimulus.get("role"), session_id[:8],
     )
     return handle_session_chat(
         session_id=session_id,
-        message=last_user["content"],
+        message=turn_message,
         deps=deps,
         chat_function=chat_function,
         add_message_function=add_message_function,
