@@ -256,11 +256,17 @@ class QueryHandlerService:
             if '</msg>' in answer and not answer.strip().endswith('</msg>'):
                 answer = f'{answer}</msg>'
 
-        # Strip role prefix/suffix leaks that aren't part of message separators
-        answer = re.sub(r'^(?:[Aa]ssistant:\s*)', '', answer, flags=re.IGNORECASE).strip()
-
         # Import message processing functions
-        from .message_processing_service import force_multi_message_split, parse_multi_message_response
+        from .message_processing_service import (
+            force_multi_message_split,
+            parse_multi_message_response,
+            strip_role_prefix_leaks,
+        )
+
+        # Strip role prefix/suffix leaks that aren't part of message separators.
+        # Shared helper (subsumes the old leading-"Assistant:" regex and also cuts a
+        # trailing fabricated "User:" turn) so both finalize paths behave identically.
+        answer = strip_role_prefix_leaks(answer)
 
         # Force-split into multi-message if LLM didn't use <msg> tags
         answer = force_multi_message_split(answer, "")

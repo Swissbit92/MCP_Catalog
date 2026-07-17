@@ -28,6 +28,7 @@ from ..services.query_handler_service import QueryHandlerService
 from ..services.message_processing_service import (
     force_multi_message_split,
     parse_multi_message_response,
+    strip_role_prefix_leaks,
 )
 from ..services.chat_session_service import handle_session_chat
 
@@ -54,6 +55,11 @@ def _build_llm_response(
             answer = f'<msg>{answer}'
         if '</msg>' in answer and not answer.strip().endswith('</msg>'):
             answer = f'{answer}</msg>'
+
+    # Strip leading role prefixes + any fabricated next turn ("\nUser: ..."). This
+    # path previously had no role-leak handling at all (only _finalize_response did,
+    # and only for a leading "Assistant:").
+    answer = strip_role_prefix_leaks(answer)
 
     answer = force_multi_message_split(answer, user_message)
     messages, flow_type = parse_multi_message_response(answer)
