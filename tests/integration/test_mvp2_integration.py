@@ -29,11 +29,13 @@ def get_brave_max_results() -> int: return _settings.brave.max_results
 def get_brave_safesearch() -> str: return _settings.brave.safesearch
 def get_brave_search_timeout() -> int: return _settings.brave.timeout
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except:
-    pass
+# NOTE: deliberately no load_dotenv() here. This module reads config only through
+# get_settings() (pydantic-settings already sources `.env` via env_file) and passes
+# the key explicitly as api_key=get_brave_api_key() — so the old call was dead weight
+# that ran *after* `_settings` was built anyway. Its one real effect was exporting the
+# whole prod `.env` into os.environ at COLLECTION time (pytest imports every test
+# module before running any), silently coupling unrelated tests to live prod config.
+# See tests/conftest.py::_hermetic_settings.
 
 
 def test_no_search_scenario():
