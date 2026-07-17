@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-07-17) — `.env` loading scoped to the test that needs it; Brave connectivity is a real test now
+
+Closes the hermeticity root cause at source (the conftest fixture stays as defense-in-depth).
+
+- **Module-scope `load_dotenv()` removed from `tests/integration/`.** In `test_mvp2_integration.py` it was **dead weight** — that module reads config only via `get_settings()` (pydantic already sources `.env` through `env_file`) and passes `api_key=get_brave_api_key()` explicitly; it also ran *after* module-level `_settings` was built. Its one real effect was exporting prod `.env` into `os.environ` at collection. In `test_brave_mcp_connectivity.py` it **is** load-bearing (`mcp_client_stdio` resolves `api_key or os.getenv("BRAVE_API_KEY")`), so it became a test-scoped `brave_env` fixture using `dotenv_values` (reads the file without touching `os.environ`) + `monkeypatch.setenv`, restored by pytest at teardown. A plain in-function `load_dotenv()` would still leak for the rest of the session — that test has no skip markers and runs every time. Verified: importing the module no longer mutates `os.environ`, checked **without** the conftest net.
+- **`test_brave_connectivity` is an actual test now.** It had no markers and wrapped everything in a catch-all that `return`ed `True`/`False` instead of asserting — so on every headless run it failed to reach Docker/Brave, swallowed the error, and reported **green** (pytest only emitted a "test returned non-None" warning). Now `pytestmark = [requires_api_key, requires_docker]` auto-skips it when the key/Docker are absent, and it asserts on real results (non-empty, count honoured, title/url/description present, `url` is http(s)); the live check moved into `_run_search()`, which no longer swallows exceptions. Proven both ways — skips headless (`BRAVE_API_KEY not set`) and **fails** when forced against an invalid key. Suite now reads 2055 passed / 45 skipped (one fake pass became an honest skip; warnings 16 → 15).
+
 ### Fixed (2026-07-17) — ADR-011 regression: stale dependency-patch list broke `test_routes_chat` in narrow scopes
 
 `pytest tests/backend/coordinator` failed 28 tests (all of `test_routes_chat.py`) while the full suite was green. **This was an ADR-011 regression, not the pre-existing order-dependence it was first reported as** — verified by A/B against the pre-ADR-011 tree (11 failures there vs 28 after).
