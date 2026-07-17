@@ -11,6 +11,14 @@ applies_to: nephilim
 
 Append-only, dated entries. Newest first. Each entry: what happened, what we learned, how to apply going forward.
 
+## 2026-07-17 — Live testing found what 2044 green tests didn't
+
+- **What:** Within an hour of real Telegram use, the freshly-shipped ADR-011 command set produced three defects the full suite had missed: `/regen` 400'd right after `/sys`, `/continue` leaked literal `<msg>` tags, and a `/sys` reply ended with a fabricated `User:\nFrom behind` turn. Plus the native menu hid 5 of 11 commands.
+- **Learned (the big one):** Adding an enum value mid-feature silently invalidates earlier milestones' logic. M2 introduced `MessageRole.NARRATOR` and I diligently audited the four *role-switch* sites it touched — but never re-audited **M1's `_split_last_exchange`**, which asks "is the previous turn a `user`?" and now had a third answer. The grep I ran looked for `role ==` comparisons; the bug was in code that didn't compare roles at all until M2 gave it a reason to. **When you add a member to an enum, re-audit every consumer of the *concept*, not just the string.**
+- **Learned:** Two of the three bugs (`<msg>` leak, role leak) were **pre-existing on the shared chat path** and only surfaced because the new verbs drove the model into unusual output shapes. New features are cheap fuzzers for old code — the `_build_llm_response` / `_finalize_response` divergence had been flagged in this feature's own research doc and shrugged off ("unlikely for pure narrator turns"). It shipped, then bit within the hour. **When research names a divergence, close it or write down why not.**
+- **Learned:** I applied Telegram "5-8 command sweet spot / dilution past 8" research to a **single-operator** bot. That metric measures tap-through in a multi-user conversion funnel; here it just made 5 commands invisible. **Check that a study's population matches yours before importing its conclusion.**
+- **Apply:** Test suites verify the paths you thought of; a 20-minute real session verifies the ones you didn't. For any conversational feature, hand-drive it before calling it done — and treat the first live transcript as the real acceptance gate.
+
 ## 2026-07-16 — ADR-011 conversation-control commands: one contract, two clients
 
 - **What:** Added companion/RP verbs (regenerate, continue, undo, /sys narrate, /note, /impersonate, /whoami, /help) required to work identically in BOTH the Telegram gateway and the React UI. Built as shared coordinator session-API endpoints; both clients are thin callers. 5 QA-gated phases, one branch, merged to dev (coordinator 2030 / gateway 113 / React build green).
