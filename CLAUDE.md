@@ -34,6 +34,13 @@ OLLAMA_BASE=http://127.0.0.1:1 pytest tests/   # force headless: live tests skip
 # Full persona test suite (primary quality gate, ~60 min)
 .venv/bin/python tests/manual/comprehensive_persona_test.py
 
+# Tool-firing eval — does a tool actually fire when a turn needs one, and is it
+# the native brain or the legacy floor doing the work? Needs the backend live.
+# NOTE: `eval_*.py` is not auto-collected (pytest.ini: python_files = test_*.py);
+# its headless guards live in tests/evaluation/test_tool_firing_cases.py.
+.venv/bin/python tests/evaluation/eval_tool_firing.py
+NEPHILIM_BASE_URL=http://127.0.0.1:8001 .venv/bin/python tests/evaluation/eval_tool_firing.py  # scratch instance
+
 # Docker (full stack + MCP containers; for Linux/NVIDIA GPU — runs Ollama CPU-only on Mac)
 docker-compose --env-file .env.docker up -d
 ```
@@ -123,7 +130,7 @@ PERSONA_DIR=personas
 Optional (see `.env.docker` for full list):
 - `BRAVE_API_KEY` - Web search (access controlled per-persona via `mcp_access`/`toolsets` in persona JSON)
 - **Web toolset (ADR-009 W1):** `WEB_SEARCH_BACKEND` (`auto`|`searxng`|`brave`, default `auto` = SearXNG-if-configured-else-Brave), `SEARXNG_BASE_URL` (empty = Brave-only, byte-identical legacy), `SEARXNG_TIMEOUT` (10), `WEB_SAFESEARCH_DEFAULT` (`off`|`moderate`|`strict`, default **`off`** — uncensored companion; per-persona `nsfw:false` clamps UP to `moderate`, the model may tighten per-call). Self-host SearXNG: `docker run -d -p 8888:8080 searxng/searxng` with `search.formats: [html, json]` enabled, then `SEARXNG_BASE_URL=http://127.0.0.1:8888`
-- **Tool brain (ADR-008 P1):** `TOOL_BRAIN_ENABLED` (default **OFF** = byte-identical legacy force-search), `TOOL_BRAIN_MAX_ITERATIONS` (3), `TOOL_BRAIN_DETERMINISTIC_FALLBACK` (default ON). Single-model native tool-calling loop — the daily driver decides+fills tool calls itself, and when it stays silent on a tool-needing query (native calling is phrasing-sensitive per the TB0 spike) the loop falls through to the legacy intent-router/force-search floor. Enables Gwen's image/video subset + the safesearch clamp to actually execute.
+- **Tool brain (ADR-008 P1):** `TOOL_BRAIN_ENABLED` (default **OFF** = byte-identical legacy force-search), `TOOL_BRAIN_MAX_ITERATIONS` (3), `TOOL_BRAIN_DETERMINISTIC_FALLBACK` (default ON). Single-model native tool-calling loop — the daily driver decides+fills tool calls itself, and when it stays silent on a tool-needing query (native calling is phrasing-sensitive per the TB0 spike) the loop falls through to the legacy intent-router/force-search floor. Enables Gwen's image/video subset + the safesearch clamp to actually execute. **`TOOL_BRAIN_UNGATED_WEB`** (default **OFF**, ADR-008 TB6) additionally engages the loop on `NEEDS_NEITHER` turns with **web tools only** — the bge-m3 router silently blocked real web queries below its 0.66 threshold (measured 0.49–0.61), so the model was never offered a tool. `NEEDS_WALLET` is never ungated in either mode. Measured 76%→90% on the tool-firing eval, voice-neutral; **not yet flipped on prod** — Gwen is absent from the voice probe set (see ROADMAP).
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings (default `bge-m3:latest`, 8192-token ctx; `ollama pull bge-m3`). `MEMORY_EMBEDDING_MAX_TOKENS` (8192) caps input before chunking
 - `MEMORY_CONTEXT_INJECT` (default OFF) - inject the M1-framed profile+emotional narrative. `MEMORY_FACTS_ENABLED` (default OFF) - the ADR-006 M2–M4 ontology-lite fact store (async extraction + framed retrieval); `MEMORY_FACTS_RETRIEVAL_K` (5), `MEMORY_FACTS_INJECT_ALL_THRESHOLD` (15). **Both OFF on prod** — the 2026-07-06 abliterated-model eval showed both injections degrade voice distinctiveness (EEVA 0.75→0.25; overall 0.804 off → 0.625 on); the M5 gate that greenlit them was measured on Magidonia and does NOT hold on the current model. Re-entry needs reworked per-persona framing + an M5 re-run ON abliterated ([ADR-006](docs/decisions/006-companion-memory-and-continuity-eval-first.md))
 

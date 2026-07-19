@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-07-19) — tool-firing eval, and the router-recall bug it found
+
+`tests/evaluation/eval_tool_firing.py` + `tool_firing_cases.py` + 9 headless guards in `test_tool_firing_cases.py`. A 29-case golden set over 6 buckets (explicit web, colloquial web, image-find, video-find, chitchat must-not-fire, wallet must-stay-deterministic), driven through the live session API and scored from the observable `source_type`. Built because the ADR-008 soak produced no usable data — it generates the traffic instead of waiting for it. Suite 2036 → **2046**.
+
+The headline metric is **native-fire rate**, not accuracy: accuracy alone cannot distinguish "the tool brain works" from "the legacy floor is carrying it", and the stored `source_type` counts cannot either.
+
+**It found a real defect on its first run.** Baseline **76% accuracy / 79% native-fire**, but `web_colloquial` at **33% / 0% native** — 4 of 6 genuinely web-needing turns answered from model weights with no search. Root cause was **bge-m3 router recall, not the tool brain**: `_try_tool_brain` engaged only on `NEEDS_WEB_SEARCH`, and the misses scored **0.49–0.61 against the 0.66 threshold**, so the model was never offered a tool at all. The 28 `web_search` anchors are crypto/weather/sports only, with no general-knowledge template. The same narrowness inverts: *"how are you feeling today?"* scores 0.70 against "how's the market doing today" and triggers a real search on a companion turn.
+
+- **Fixed an observability bug the eval surfaced:** `routes/chat.py` hardcoded `metadata.tools_used = ["web_search"]` on the tool-brain path, so `image_search`/`video_search` were indistinguishable from a generic search. Now derived from `result.tool_trace`. This had made the eval briefly appear to show media narrowing was broken; it was working all along (media: 100% accuracy, 100% native, 100% correct tool).
+
+### Added (2026-07-19) — `TOOL_BRAIN_UNGATED_WEB` (ADR-008 TB6), default OFF
+
+Engages the native loop on `NEEDS_NEITHER` turns too, offering **web tools only**. Follows Nous Research's Hermes Agent, which has no pre-classification router at all — tools are exposed every turn and the model decides, steered by an enumerated trigger list. The structural argument: a routing miss is invisible (no tool was ever offered), whereas a model declining an offered tool is visible in traces and fixable with prompt text.
+
+- **`NEEDS_WALLET` is never ungated**, in either mode. TB5's live failure was wallet fixation and a false positive there costs more than a missed search; two tests assert the invariant directly.
+- `_SEARCH_TRIGGER_GUIDANCE` enumerates triggers (current facts, prices, recent/latest, named real entities) and exclusions (feelings, lore, this conversation, creative writing). Deliberately carries **no voice language** so it does not compete with the ADR-005 `voice_signature`; a test asserts this.
+- Ungated no-tool turns **reuse the tool brain's own answer** through the groundedness gate rather than returning None — returning None would send the turn to the legacy branch and regenerate from scratch, a second full generation on every chitchat turn at ~16 tok/s with `OLLAMA_NUM_PARALLEL=1`. Exactly one generation per turn in both modes.
+
+**Measured (scratch instance :8001, prod untouched):** overall **76% → 90%** accuracy, **79% → 89%** native-fire. `web_explicit` 60→100%, `web_colloquial` 33→67% (native 0→75%), media 100% with tool-match 0→100%, wallet **100% with 0 leaks** in both modes.
+
+**Voice gate (ADR-005 attribution, both arms on the same instance minutes apart so the flag is the only variable):** distinctiveness **0.6964 in BOTH arms**; per persona cipher +0.25, aegis +0.125, solace −0.25, gojo −0.125, eeva/nyx/aurora flat. Read as noise on specific evidence: **gojo has no web tools**, so the flag provably cannot affect it, yet gojo still moved 0.125 — an accidental control group putting the instrument's noise floor at ±0.125 (one probe of eight). Arms verified genuinely distinct: all 35 shared probes differed in text, and source mixes differed (ON `tool_brain` 9 / OFF 5; OFF emitted 3 `groundedness_abstain`, ON zero).
+
+**Not flipped on prod.** `probes.json` covers 7 of 8 personas — **gwen is absent** (pre-existing, ADR-005 era), and she is the persona this change affects most: restricted tool surface, own live Telegram daemon, most voice-sensitive. She cannot simply be added, since 7→8 moves the attribution chance level 0.143→0.125 and invalidates every historical baseline. See ROADMAP.
+
 ### Removed (2026-07-19) — ADR-004 two-stage agentic pipeline retired (superseded by the ADR-008 tool brain)
 
 The pipeline existed only because Magidonia-24B couldn't native-tool-call. The ADR-008 single-model tool brain replaced that purpose and has been live since 2026-07-05; `AGENTIC_ENABLED` was never flipped on in production. Net **−1,946 / +218 lines** across 22 files. Suite 2068 → **2027 passed, 0 failed** (the drop is 46 deleted agentic tests, 3 added; reconciled test-by-test). Ruff repo-wide 1863 → 1808.
