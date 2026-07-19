@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 import time
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 from .. import startup  # module ref (not `from ..startup import get_X`): resolves
                         # getters at call time so tests patching startup.get_X still
@@ -208,7 +208,8 @@ class QueryHandlerService:
         metadata: ResponseMetadata,
         used_search: bool = False,
         citation_valid: Optional[bool] = None,
-        search_results_count: Optional[int] = None
+        search_results_count: Optional[int] = None,
+        word_substitutions: Optional[Dict[str, str]] = None,
     ) -> dict:
         """Finalize response with common post-processing.
 
@@ -258,6 +259,7 @@ class QueryHandlerService:
 
         # Import message processing functions
         from .message_processing_service import (
+            apply_word_substitutions,
             force_multi_message_split,
             parse_multi_message_response,
             strip_role_prefix_leaks,
@@ -267,6 +269,10 @@ class QueryHandlerService:
         # Shared helper (subsumes the old leading-"Assistant:" regex and also cuts a
         # trailing fabricated "User:" turn) so both finalize paths behave identically.
         answer = strip_role_prefix_leaks(answer)
+
+        # ADR-012: persona-configurable whole-word substitutions (e.g. shaft→cock).
+        # No-op unless the card declares `word_substitutions`.
+        answer = apply_word_substitutions(answer, word_substitutions)
 
         # Force-split into multi-message if LLM didn't use <msg> tags
         answer = force_multi_message_split(answer, "")
@@ -345,7 +351,8 @@ class QueryHandlerService:
             metadata=metadata,
             used_search=tool_call is not None,
             citation_valid=has_valid_citations,
-            search_results_count=search_count if search_results else None
+            search_results_count=search_count if search_results else None,
+            word_substitutions=persona_card.get("word_substitutions"),
         )
 
         # Log completion
@@ -446,6 +453,7 @@ class QueryHandlerService:
             metadata=metadata,
             used_search=used_search,
             search_results_count=search_count,
+            word_substitutions=persona_card.get("word_substitutions"),
         )
 
     def handle_wallet_query(
@@ -522,6 +530,7 @@ class QueryHandlerService:
                     persona_name=persona_name,
                     metadata=metadata,
                     used_search=False,
+                    word_substitutions=persona_card.get("word_substitutions"),
                 )
 
             # Build and return a deletion confirmation card
@@ -541,6 +550,7 @@ class QueryHandlerService:
                 persona_name=persona_name,
                 metadata=metadata,
                 used_search=False,
+                word_substitutions=persona_card.get("word_substitutions"),
             )
 
         # Keyword-based wallet creation detection — deterministic, doesn't rely on LLM tool call
@@ -597,4 +607,5 @@ class QueryHandlerService:
             persona_name=persona_name,
             metadata=metadata,
             used_search=tool_call is not None,
+            word_substitutions=persona_card.get("word_substitutions"),
         )

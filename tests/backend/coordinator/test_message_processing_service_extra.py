@@ -380,3 +380,49 @@ def test_does_not_cut_when_leak_is_the_whole_answer():
 def test_empty_answer_safe():
     assert _strip("") == ""
     assert _strip("   ") == ""
+
+
+# ═══ ADR-012 persona-configurable word substitutions ═════════════════════════
+
+from src.coordinator.services.message_processing_service import apply_word_substitutions as _sub  # noqa: E402
+
+
+def test_word_sub_basic_replacement():
+    assert _sub("I love your shaft, Daddy", {"shaft": "cock"}) == "I love your cock, Daddy"
+
+
+def test_word_sub_whole_word_only():
+    # substrings must survive — no boundary inside 'driveshaft'
+    assert _sub("the driveshaft broke", {"shaft": "cock"}) == "the driveshaft broke"
+
+
+def test_word_sub_case_preserving():
+    assert _sub("Shaft", {"shaft": "cock"}) == "Cock"       # Title
+    assert _sub("SHAFT", {"shaft": "cock"}) == "COCK"       # ALL CAPS
+    assert _sub("shaft", {"shaft": "cock"}) == "cock"       # lower
+
+
+def test_word_sub_multiple_rules_and_occurrences():
+    out = _sub("his shaft and her member", {"shaft": "cock", "member": "clit"})
+    assert out == "his cock and her clit"
+
+
+def test_word_sub_noop_when_empty_or_none():
+    assert _sub("keep his shaft", None) == "keep his shaft"
+    assert _sub("keep his shaft", {}) == "keep his shaft"
+
+
+def test_word_sub_noop_on_empty_answer():
+    assert _sub("", {"shaft": "cock"}) == ""
+
+
+def test_word_sub_skips_bad_rule_values():
+    # non-string replacement / blank key are ignored, valid ones still apply
+    assert _sub("a shaft here", {"shaft": "cock", "  ": "x", "member": 5}) == "a cock here"
+
+
+def test_word_sub_respects_cap():
+    rules = {f"w{i}": "x" for i in range(40)}
+    rules["w0"] = "zero"
+    # only the first 25 rules apply; w0 is first so it does
+    assert "zero" in _sub("w0 w39", rules)
