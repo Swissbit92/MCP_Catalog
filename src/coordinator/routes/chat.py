@@ -242,7 +242,16 @@ def _try_tool_brain(
         if result.status == ST_ANSWERED and result.answer and result.used_search \
                 and result.search_results:
             metadata.source_type = SourceType.TOOL_BRAIN
-            metadata.tools_used = ["web_search"]
+            # Report the tools that actually executed, from the trace — this was
+            # hardcoded to ["web_search"], which made image_search/video_search
+            # indistinguishable from a generic search in telemetry and in the
+            # tool-firing eval. Falls back to the old constant if the trace is
+            # somehow empty, so the field is never blank on an answered turn.
+            executed = [
+                t["tool"] for t in result.tool_trace
+                if t.get("allowed") and t.get("tool")
+            ]
+            metadata.tools_used = executed or ["web_search"]
             answer = CitationService.strip_hallucinated_citations(result.answer)
             # Strip the model's own inline [REF]n[/REF] citation markers (it
             # sometimes invents that format; the verified 🔍 Sources block below

@@ -1,0 +1,366 @@
+{
+  "overall": {
+    "n": 29,
+    "accuracy": 0.7586,
+    "native_fire_rate": 0.7857,
+    "false_positives": 1,
+    "wallet_leaks": 0,
+    "errors": 0
+  },
+  "buckets": {
+    "web_explicit": {
+      "n": 5,
+      "accuracy": 0.6,
+      "native_fire_rate": 1.0,
+      "tool_match_rate": 0.0
+    },
+    "web_colloquial": {
+      "n": 6,
+      "accuracy": 0.3333,
+      "native_fire_rate": 0.0,
+      "tool_match_rate": 0.0
+    },
+    "image_find": {
+      "n": 4,
+      "accuracy": 1.0,
+      "native_fire_rate": 1.0,
+      "tool_match_rate": 0.0
+    },
+    "video_find": {
+      "n": 4,
+      "accuracy": 1.0,
+      "native_fire_rate": 1.0,
+      "tool_match_rate": 0.0
+    },
+    "chitchat": {
+      "n": 7,
+      "accuracy": 0.8571,
+      "native_fire_rate": 0.0,
+      "tool_match_rate": 0.0
+    },
+    "wallet": {
+      "n": 3,
+      "accuracy": 1.0,
+      "native_fire_rate": 0.0,
+      "tool_match_rate": 0.0
+    }
+  },
+  "cases": [
+    {
+      "id": "we1",
+      "bucket": "web_explicit",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "we2",
+      "bucket": "web_explicit",
+      "source_type": "groundedness_abstain",
+      "tools_used": [],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "we3",
+      "bucket": "web_explicit",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "we4",
+      "bucket": "web_explicit",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "we5",
+      "bucket": "web_explicit",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wc1",
+      "bucket": "web_colloquial",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wc2",
+      "bucket": "web_colloquial",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wc3",
+      "bucket": "web_colloquial",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wc4",
+      "bucket": "web_colloquial",
+      "source_type": "brave_mcp",
+      "tools_used": [
+        "brave_web_search"
+      ],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wc5",
+      "bucket": "web_colloquial",
+      "source_type": "brave_mcp",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wc6",
+      "bucket": "web_colloquial",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "im1",
+      "bucket": "image_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "im2",
+      "bucket": "image_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "im3",
+      "bucket": "image_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "im4",
+      "bucket": "image_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "vi1",
+      "bucket": "video_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "vi2",
+      "bucket": "video_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "vi3",
+      "bucket": "video_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "vi4",
+      "bucket": "video_find",
+      "source_type": "tool_brain",
+      "tools_used": [
+        "web_search"
+      ],
+      "correct": true,
+      "native_fire": true,
+      "tool_match": false,
+      "error": null
+    },
+    {
+      "id": "cc1",
+      "bucket": "chitchat",
+      "source_type": "brave_mcp",
+      "tools_used": [
+        "brave_web_search"
+      ],
+      "correct": false,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "cc2",
+      "bucket": "chitchat",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "cc3",
+      "bucket": "chitchat",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "cc4",
+      "bucket": "chitchat",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "cc5",
+      "bucket": "chitchat",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "cc6",
+      "bucket": "chitchat",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "cc7",
+      "bucket": "chitchat",
+      "source_type": "llm",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wa1",
+      "bucket": "wallet",
+      "source_type": "wallet_mcp",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wa2",
+      "bucket": "wallet",
+      "source_type": "wallet_mcp",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    },
+    {
+      "id": "wa3",
+      "bucket": "wallet",
+      "source_type": "wallet_mcp",
+      "tools_used": [],
+      "correct": true,
+      "native_fire": false,
+      "tool_match": null,
+      "error": null
+    }
+  ]
+}
