@@ -134,6 +134,15 @@ Optional (see `.env.docker` for full list):
 - `MEMORY_EMBEDDING_MODEL` - RAG embeddings (default `bge-m3:latest`, 8192-token ctx; `ollama pull bge-m3`). `MEMORY_EMBEDDING_MAX_TOKENS` (8192) caps input before chunking
 - `MEMORY_CONTEXT_INJECT` (default OFF) - inject the M1-framed profile+emotional narrative. `MEMORY_FACTS_ENABLED` (default OFF) - the ADR-006 M2–M4 ontology-lite fact store (async extraction + framed retrieval); `MEMORY_FACTS_RETRIEVAL_K` (5), `MEMORY_FACTS_INJECT_ALL_THRESHOLD` (15). **Both OFF on prod** — the 2026-07-06 abliterated-model eval showed both injections degrade voice distinctiveness (EEVA 0.75→0.25; overall 0.804 off → 0.625 on); the M5 gate that greenlit them was measured on Magidonia and does NOT hold on the current model. Re-entry needs reworked per-persona framing + an M5 re-run ON abliterated ([ADR-006](docs/decisions/006-companion-memory-and-continuity-eval-first.md))
 
+## Branch model
+
+**Two branches only** (`PROD` and five stale feature branches were retired 2026-07-19 — see [ROADMAP](docs/ROADMAP.md)):
+
+- **`dev`** integrates. Feature work goes on its own branch/worktree → PR → `dev`.
+- **`main`** releases. Promoted from `dev` locally with a `Release: promote dev to main — …` merge commit (not via PR).
+
+The live backend runs from the **`dev` checkout** under launchd, so `dev` is what is actually serving. There is no separate deploy branch.
+
 ## Code Style
 
 ### Python
