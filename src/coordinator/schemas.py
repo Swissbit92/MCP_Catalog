@@ -24,13 +24,12 @@ class SourceType(StrEnum):
     BRAVE_MCP = "brave_mcp"
     WALLET_MCP = "wallet_mcp"
     WALLET_FLOW = "wallet_flow"
-    AGENTIC = "agentic"
-    AGENTIC_BLOCKED = "agentic_blocked"
-    AGENTIC_HITL = "agentic_hitl"
     GROUNDEDNESS_ABSTAIN = "groundedness_abstain"
     WALLET_PROPOSAL = "wallet_proposal"
-    # ADR-008: single-model native tool-brain loop (distinct from the ADR-004
-    # AGENTIC two-stage pipeline so the two are A/B-distinguishable in telemetry).
+    # ADR-008: single-model native tool-brain loop. (The ADR-004 two-stage
+    # pipeline's `agentic`/`agentic_blocked`/`agentic_hitl` members were removed
+    # with that pipeline — verified 0 rows carried them, since AGENTIC_ENABLED
+    # was never flipped on in production.)
     TOOL_BRAIN = "tool_brain"
 
 

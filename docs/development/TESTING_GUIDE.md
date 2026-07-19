@@ -106,6 +106,29 @@ Tests are automatically categorized based on their location:
 | `@pytest.mark.requires_docker` | Manual | Needs Docker running |
 | `@pytest.mark.requires_ollama` | Manual | Needs Ollama running locally (`ollama serve`) |
 
+### Eval harnesses vs. tests
+
+`tests/evaluation/` holds two different kinds of file, and the distinction is enforced by
+`pytest.ini` (`python_files = test_*.py *_test.py`):
+
+| Naming | Collected by pytest? | Purpose |
+|--------|----------------------|---------|
+| `test_*.py` | **Yes** — runs in every suite run | Headless guards: schema of a golden set, scoring math, metric denominators. Cheap, deterministic. |
+| `eval_*.py` | **No** — run deliberately by path | Live harnesses that cost real LLM turns. Run them by hand or by explicit path. |
+
+Current `eval_*` harnesses:
+
+- `eval_tool_firing.py` — does a tool actually fire when a turn needs one, and is it the
+  native tool brain or the legacy deterministic floor doing the work? Reports per-bucket
+  accuracy and **native-fire rate**. Needs the backend live; `NEPHILIM_BASE_URL` targets a
+  scratch instance. Guards: `test_tool_firing_cases.py`.
+- `eval_lore_retrieval.py` — precision/recall of the bge-m3 lore tier + threshold sweep.
+- `persona_eval/run_eval.py` — ADR-005 persona voice/distinctiveness baselines (`--personas`
+  for a canary subset; the acceptance gate always runs the full probe set).
+
+> The pairing matters: an `eval_*` harness that nobody runs for weeks will silently rot, so
+> each one keeps its cheap, always-collected `test_*` guard alongside it.
+
 **Auto-skip when a resource is unavailable (since 2026-06-22):** `tests/conftest.py` `pytest_collection_modifyitems` skips `requires_ollama` / `requires_api_key` / `requires_docker` tests automatically when the resource isn't reachable (TCP probe to `OLLAMA_BASE`, `BRAVE_API_KEY` env var, `docker info`). So a plain `pytest tests/` is green both with Ollama up (live tests run) and headless (they skip). To force the headless path locally:
 
 ```bash

@@ -37,9 +37,6 @@ def _make_settings():
     s.ollama.context_window = 4096
     s.ollama.model = "test-model"
     s.db_path = "/tmp/test.db"
-    # Phase-3 agentic flag: pin OFF so legacy-routing tests are deterministic
-    # regardless of the ambient .env (a deployment flip must not break the suite).
-    s.agent.enabled = False
     # ADR-007 groundedness gate: pin OFF (MagicMock auto-attributes are truthy,
     # so an un-pinned s.groundedness.gate_enabled would silently enable a second
     # classifier LLM call in every existing no-tools/fallback test here).

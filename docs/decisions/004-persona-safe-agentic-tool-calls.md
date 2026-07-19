@@ -1,8 +1,8 @@
 ---
 title: Persona-safe agentic tool calls
-status: Proposed
+status: Superseded
 created: 2026-06-26
-last_reviewed_on: 2026-06-26
+last_reviewed_on: 2026-07-19
 review_in: 12 months
 applies_to: nephilim
 ---
@@ -10,6 +10,39 @@ applies_to: nephilim
 # ADR-004: Persona-safe agentic tool calls
 
 ## Status
+
+**Superseded by [ADR-008](008-two-brain-split-tool-brain-voice-brain.md) — pipeline
+RETIRED and DELETED 2026-07-19.** The two-stage pipeline existed only because
+Magidonia-24B could not native-tool-call; the ADR-008 single-model tool brain
+replaced that purpose, and `AGENTIC_ENABLED` was never flipped on in production.
+The decision record below is preserved unedited as history.
+
+What was deleted: `services/agentic_pipeline.py`, `services/argument_extractor.py`,
+`QueryHandlerService.handle_agentic_query`, the `routes/chat.py` branch,
+`SourceType.AGENTIC*` (verified 0 rows carried those values), the
+`AGENTIC_ENABLED` / `AGENTIC_EXTRACTION_*` / `AGENTIC_TRIGGER_SIMILARITY_THRESHOLD`
+settings, and the orphaned `build_scene_contract` diegetic-naming layer.
+
+What was KEPT, because the tool brain genuinely reuses it: `ToolCallInterceptor`
+(every tool-brain call passes `interceptor.validate` before execution) and its
+`AGENTIC_ARGUMENT_ALLOWLIST` flag, plus `InjectionGuard.sanitize_memory_write` and
+its `AGENTIC_INJECTION_GUARD` flag (live on the memory-write path).
+
+**Deliberate safety decision — `check_tool_trigger_source` and `detect_escalation`
+were DELETED, not rewired.** An adversarial review during the retirement found
+both had no caller outside this pipeline: `ToolBrainService` accepted an
+`injection_guard` constructor param it never invoked, and `routes/chat.py`
+never passed one. So the trust-hierarchy rule (retrieved RAG/lore content may
+inform but never *trigger* a tool call) and the multi-turn escalation detector
+were **never protecting production** — they shipped built-and-tested but unwired.
+The alternative considered was to wire them into the tool brain (arguably more
+exposed to indirect injection, since the model now selects tools itself from
+context containing retrieved lore). Deleting was chosen over rewiring to avoid
+carrying an unproven control; the 5 injection + 3 escalation red-team vectors
+went with them, leaving the 17 interceptor vectors that cover the live gate.
+Recoverable from git history if the threat model changes.
+
+## Original decision (historical — describes code that no longer exists)
 
 Accepted — **BUILT 2026-06-26. Safety middleware ACTIVE (default-ON flags);
 agentic pipeline PARKED (`AGENTIC_ENABLED` OFF) — no go-live for read-only

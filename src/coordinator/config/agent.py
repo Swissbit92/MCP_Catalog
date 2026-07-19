@@ -5,27 +5,15 @@ from pydantic_settings import BaseSettings
 
 
 class AgentSettings(BaseSettings):
-    """Persona-safe agentic behaviour configuration (HERMES-Agents Phase 3).
+    """Deterministic tool-call safety configuration.
 
-    Gates single-action, in-character tool use where ALL enforcement is
-    deterministic middleware, never LLM self-policing. When ``enabled`` is False
-    (default) the existing handle_brave_query / handle_wallet_query paths run
-    unchanged — byte-identical to pre-Phase-3.
-
-    The two safety flags (``argument_allowlist`` / ``injection_guard``) default
-    True so the interceptor and injection guard harden the EXISTING tool paths
-    even before ``enabled`` is flipped, at zero functional cost when off.
+    Originally the ADR-004 two-stage agentic pipeline's config; that pipeline was
+    retired once the ADR-008 single-model tool brain superseded it. What remains
+    are the middleware flags that outlived it: the argument allowlist (enforced
+    by ``ToolCallInterceptor`` on every tool-brain call) and the memory-write
+    sanitizer flag, plus the unrelated lean-prompt ``tool_intent_in_prompt``.
     """
 
-    enabled: bool = Field(
-        default=False,
-        description=(
-            "Enable persona-safe single-action agentic tool calls (the two-stage "
-            "pipeline). False (default) = byte-identical to pre-Phase-3. "
-            "Set AGENTIC_ENABLED=true to enable."
-        ),
-        alias="AGENTIC_ENABLED",
-    )
     argument_allowlist: bool = Field(
         default=True,
         description=(
@@ -38,40 +26,14 @@ class AgentSettings(BaseSettings):
     injection_guard: bool = Field(
         default=True,
         description=(
-            "Block tool triggers sourced from RAG/lore context and sanitize "
-            "memory writes (trust hierarchy: system > user > retrieved). Default "
-            "ON — shippable independently of AGENTIC_ENABLED."
+            "Sanitize memory writes before they are indexed into RAG (strips "
+            "instruction-like content so retrieved memories cannot issue "
+            "directives on a later turn). Default ON. Scoped to the memory-write "
+            "path in chat_session_service; the tool-trigger-source and escalation "
+            "checks this flag also used to gate were removed with the ADR-004 "
+            "pipeline that was their only caller."
         ),
         alias="AGENTIC_INJECTION_GUARD",
-    )
-    trigger_similarity_threshold: float = Field(
-        default=0.85,
-        ge=0.5,
-        le=1.0,
-        description=(
-            "Cosine floor above which a proposed tool argument is treated as "
-            "mirroring retrieved (RAG/lore) content — i.e. a suspected indirect "
-            "injection. bge-m3 scoring, reuses the RAG embedder."
-        ),
-        alias="AGENTIC_TRIGGER_SIMILARITY_THRESHOLD",
-    )
-    extraction_coherence_threshold: float = Field(
-        default=0.55,
-        ge=0.3,
-        le=0.9,
-        description=(
-            "Cosine floor for the argument-extraction semantic gate: an extracted "
-            "argument must be this topically related to the user message or the "
-            "extraction is rejected (catches well-formed-but-hallucinated values)."
-        ),
-        alias="AGENTIC_EXTRACTION_COHERENCE_THRESHOLD",
-    )
-    extraction_max_retries: int = Field(
-        default=3,
-        ge=1,
-        le=5,
-        description="Max grammar-constrained extraction attempts before regex fallback.",
-        alias="AGENTIC_EXTRACTION_MAX_RETRIES",
     )
     tool_intent_in_prompt: bool = Field(
         default=False,
@@ -139,6 +101,26 @@ class ToolBrainSettings(BaseSettings):
             "colloquial queries per the TB0 spike)."
         ),
         alias="TOOL_BRAIN_DETERMINISTIC_FALLBACK",
+    )
+    ungated_web: bool = Field(
+        default=False,
+        description=(
+            "Offer the persona's WEB tools on NEEDS_NEITHER turns too, letting "
+            "the model decide (Hermes-Agent-style), instead of requiring the "
+            "bge-m3 router to first classify the turn as NEEDS_WEB_SEARCH. "
+            "WALLET is NEVER ungated — it keeps its deterministic gate, which is "
+            "the part TB5 proved must stay classifier-scoped. "
+            "Motivation: the tool-firing eval measured the router silently "
+            "blocking real web queries (\"who is the current chancellor of "
+            "Germany?\" scores 0.56 vs the 0.66 threshold), so the model never "
+            "saw a tool at all. Ungating converts an invisible routing miss into "
+            "a visible model choice. "
+            "COST: tool schemas then sit in the prompt on chitchat turns too, and "
+            "prompt bloat has twice measured as flattening persona voice — so "
+            "this is eval-gated on the ADR-005 attribution eval, not just the "
+            "tool-firing eval. Default OFF = byte-identical TB5 behaviour."
+        ),
+        alias="TOOL_BRAIN_UNGATED_WEB",
     )
 
     model_config = {

@@ -469,17 +469,6 @@ class PersonaCard(BaseModel):
         description="Example dialogues to teach voice (Phase 1.5)"
     )
 
-    # HERMES-Agents Phase 3: per-persona diegetic (in-world) names for tool
-    # actions, mapping real tool name -> in-world phrase (e.g.
-    # {"brave_web_search": "consult the Lattice"}). Used by build_scene_contract()
-    # to keep tool-use framing inside the fiction. Falls back to ecosystem
-    # defaults (DEFAULT_ACTION_ALIASES) for any tool not listed here.
-    agentic_action_aliases: Optional[Dict[str, str]] = Field(
-        default=None,
-        description="Per-persona in-world names for tool actions "
-                    "(real tool name -> diegetic phrase). Optional; defaults apply."
-    )
-
     # ADR-005 Phase B: per-persona distinctiveness anchors for the lean prompt.
     voice_signature: Optional[VoiceSignature] = Field(
         default=None,

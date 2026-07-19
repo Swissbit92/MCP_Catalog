@@ -2,7 +2,7 @@
 title: Lessons Learned
 status: active
 created: 2026-04-19
-last_reviewed_on: 2026-06-22
+last_reviewed_on: 2026-07-19
 review_in: 12 months
 applies_to: nephilim
 ---
@@ -10,6 +10,22 @@ applies_to: nephilim
 # Lessons Learned
 
 Append-only, dated entries. Newest first. Each entry: what happened, what we learned, how to apply going forward.
+
+## 2026-07-19 — A security control that was built, tested, and never wired to anything
+
+- **What:** Retiring the ADR-004 pipeline started as "delete two inert files." An agent tasked to *refute* the claim "the interceptor and injection guard are shared with the tool brain, so safety survives" found it half false. `ToolCallInterceptor` genuinely is shared. But `InjectionGuard.check_tool_trigger_source` (retrieved content may inform but never *trigger* a tool) and `.detect_escalation` had **no caller outside the code being deleted**. `ToolBrainService.__init__` accepted an `injection_guard` parameter, stored it, and never read it; `routes/chat.py` never passed one. Both controls had been built, red-team-tested, and documented in the threat model as active — while never once running in production.
+- **Learned (the big one):** The red-team eval imported the guard **modules directly** (`GUARD = InjectionGuard()`) and called their methods. So it passed, and would have passed forever, no matter how thoroughly the wiring was removed. **A security test that constructs the control itself proves the logic works, not that anything reaches it.** Reachability and correctness are different properties and need different tests.
+- **Learned:** Grep is not reachability. `injection_guard` appeared in `tool_brain_service.py`, so a symbol search says "used." A stored-and-never-read constructor parameter looks exactly like wiring. The question that finds this is "does an executed request actually reach this line?", answered by reading the call graph — not by searching for the name.
+- **Learned:** `docs/THREAT_LEVEL.md` had claimed this mitigation since it was written. Documentation asserting a control you don't have is worse than documenting the gap, because it stops anyone from looking. Corrected 2026-07-19; A03 moved from checked to partially-mitigated.
+- **Apply:** When a refactor "keeps the shared safety component," spawn an adversarial check that must produce file:line evidence of the successor's call site. When adding a collaborator to a constructor, assert it is *invoked*, not just accepted. And when a threat model cites a control, periodically verify the control is reachable — not merely present.
+
+## 2026-07-19 — "The soak held" was elapsed time, not evidence
+
+- **What:** The ADR-004 retirement was gated on "~1 week of tool-brain soak." Two weeks had passed with nothing broken, so the gate was declared met — by me, in the ROADMAP. Measuring it afterwards showed the soak never happened: all 24 `tool_brain` messages dated from 2026-07-05, the live-test day itself, and there were **zero assistant messages between 2026-07-06 and 2026-07-19**. The system had had no conversations at all.
+- **Learned:** A soak gate is a claim about *traffic*, but calendar time is what's easy to observe, so the two get silently swapped. "It's been live two weeks and nothing broke" is only evidence if something exercised it. **Before citing a soak, count the events.** One SQL query would have caught this.
+- **Learned:** The headline signal the ROADMAP asked to monitor — "web-intent turns answering without searching" — was **not measurable from stored data at all**: `source_type` only distinguishes `tool_brain` from `llm`, so a turn that silently answered from training data looked identical to ordinary chitchat. A monitoring instruction that can't be executed is a to-do that never fails visibly.
+- **Learned:** The fix was to stop waiting and **generate the traffic** (`tests/evaluation/eval_tool_firing.py`). It found a real defect on its first run — 4 of 6 colloquial web queries answered ungrounded because the bge-m3 router scored them below threshold and never offered the model a tool. Two weeks of "soak" had surfaced none of it.
+- **Apply:** When writing a soak gate, name the observable and the threshold ("≥50 tool-brain turns, ≥10 of them media"), and check the instrument exists before relying on it. If organic traffic is uncertain, prefer a harness that produces the traffic on demand — it converts an open-ended wait into a repeatable number.
 
 ## 2026-07-17 — Live testing found what 2044 green tests didn't
 

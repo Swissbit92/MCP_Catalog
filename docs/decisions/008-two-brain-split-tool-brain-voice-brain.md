@@ -11,6 +11,16 @@ applies_to: nephilim
 
 ## Status
 
+**Supersedes [ADR-004](004-persona-safe-agentic-tool-calls.md)** — that pipeline was
+retired and deleted 2026-07-19 once the tool brain had soaked. The interceptor and
+the memory-write sanitizer it contributed are retained and remain live; see ADR-004's
+supersession note for the full delete/keep boundary and the deliberate decision to
+drop the never-wired injection-guard tool-trigger checks.
+
+**TB6 — ungated web (`TOOL_BRAIN_UNGATED_WEB`, default OFF, 2026-07-19).** TB5's
+"the router scopes the surface" premise is half right, and the tool-firing eval
+(`tests/evaluation/eval_tool_firing.py`) measured which half. See below.
+
 **P1 + TB5 HARDENING DONE (2026-07-05 night). Live re-test PASSED; ready for operator to enable.** The first live test (flag ON) FAILED — EEVA's full 14-tool surface caused wallet fixation (unsolicited "let me check your wallet"), explicit search not firing, and fabrication escaping the groundedness gate. **TB5 reframe (a correction to this ADR's "model decides everything" premise): the deterministic bge-m3 router scopes the tool surface; the model decides only WITHIN it.** `_try_tool_brain` now engages ONLY on `NEEDS_WEB_SEARCH`, offers WEB tools only (wallet never in the native surface), and returns an answer only if a search actually ran (else falls through to the legacy force-search floor). `NEEDS_WALLET`/`NEEDS_NEITHER` stay on the legacy deterministic path (+ ADR-007 gate). Live re-test PASSED: wallet fixation gone, explicit search fires, fabrication closed, wallet routing intact, Gwen image search in-voice. The honest lesson: model-decided calling degrades on a rich multi-domain toolset; keep the classifier for coarse routing, the model for fine tool-choice + args + voice within one lane.
 
 **P1 BUILT (2026-07-05 night, flag OFF).** The single-model native tool brain is implemented + QA-gated + live-smoke-validated behind `TOOL_BRAIN_ENABLED` (default OFF, byte-identical legacy). TB0 spike overturned the pure-native design → **native-first + deterministic fallback** (native calling is phrasing-sensitive, misses ~40% of colloquial phrasings; the legacy force-search is the floor). TB1 config, TB2 executor bindings + safesearch clamp (both were dead code), TB3 loop service (`tool_brain_service.py`, ADR-004 interceptor reused before every execution, wallet stays on the HITL flow), TB4 route wiring (`_try_tool_brain`) + a SearXNG-no-Brave bug fix the smoke surfaced. Live-validated on abliterated + SearXNG: EEVA news + Gwen `image_search` execute + synthesize in-voice. `argument_extractor.py` + the ADR-004 Stage1/Stage2 split are superseded (kept for rollback). **Owed before prod enablement:** operator live test on Telegram, then flip the flag; a fuller multi-turn agentic red-team once exercised live.
@@ -176,6 +186,99 @@ ADR-004 middleware + persona safety layer as the only safety net.
   testable, `[inspected]` verifiable).
 - **P3:** Agent Skills (SKILL.md progressive disclosure) on the tool brain;
   retire the per-incident router-example patching loop.
+
+## TB6 — ungated web (2026-07-19)
+
+TB5 concluded "the deterministic router scopes the surface; the model decides
+within it." The tool-firing eval showed that is right about **wallet** and wrong
+about **web**.
+
+**What was measured.** `tests/evaluation/eval_tool_firing.py` drives a 29-case
+golden set (6 buckets) through the live session API and scores the observable
+`source_type`. Baseline (TB5, gated) was **76% accuracy / 79% native-fire**, with
+`web_colloquial` at **33% / 0% native** — 4 of 6 genuinely web-needing turns
+answered from model weights with no search at all.
+
+**Root cause: router recall, not model judgment.** The misses never reached the
+model — `_try_tool_brain` engaged only on `NEEDS_WEB_SEARCH`, and the bge-m3
+router scored them *below* its 0.66 threshold:
+
+| query | best anchor | score |
+|---|---|---|
+| who is the current chancellor of Germany? | "what's the latest news in Switzerland today" | 0.560 |
+| how much does a Tesla Model 3 cost these days? | "what's the current price of bitcoin" | 0.575 |
+| what's going on with the ECB lately? | "how's the market doing today" | 0.613 |
+| tell me about the latest Mistral AI model release | "latest bitcoin news" | 0.547 |
+| find me information about the Gotthard Base Tunnel | "look up the latest ethereum news" | 0.492 |
+
+The 28 `web_search` anchors are crypto/weather/sports only — there is no
+general-knowledge or entity-lookup template, so that whole query class sits
+below threshold. The same narrowness produces the inverse error: *"how are you
+feeling today?"* scores **0.70** against "how's the market doing today" and
+triggers a real web search on a pure companion turn.
+
+**Prior art.** Nous Research's Hermes Agent has **no pre-classification router at
+all** (`agent/prompt_builder.py`): tools are exposed every turn and the model
+decides, steered by an enumerated trigger list in the system prompt. Notably it
+applies that nudge to GPT/Gemini/Qwen/DeepSeek but *not* to Hermes or Claude —
+native tool-judgment reliability is treated as model-specific and empirically
+determined, not assumed. The structural argument: a routing miss is invisible
+(no tool was ever offered), whereas a model declining an offered tool is visible
+in traces and correctable with prompt text.
+
+**Decision.** `TOOL_BRAIN_UNGATED_WEB` (default OFF) engages the loop on
+`NEEDS_NEITHER` too, offering **web tools only**. `NEEDS_WALLET` returns None in
+both modes — TB5's wallet-fixation finding stands, and a false positive there
+costs more than a missed search. A short `_SEARCH_TRIGGER_GUIDANCE` block
+enumerates triggers and exclusions; it carries no voice language so it does not
+compete with the ADR-005 `voice_signature`.
+
+An ungated no-tool turn **reuses the tool brain's own answer** through the
+groundedness gate rather than returning None. Returning None would route the turn
+to the legacy branch and regenerate from scratch — a second full generation on
+every chitchat turn, and generation is the bottleneck (~16 tok/s,
+`OLLAMA_NUM_PARALLEL=1`). Exactly one generation per turn in both modes.
+
+**Results (scratch instance :8001, prod untouched).**
+
+| bucket | gated | ungated |
+|---|---|---|
+| web_explicit | 60% | **100%** |
+| web_colloquial | 33% (0% native) | **67% (75% native)** |
+| image / video | 100%, tool-match 0% | 100%, **tool-match 100%** |
+| chitchat | 86% | 86% (same single FP) |
+| wallet | 100%, 0 leaks | **100%, 0 leaks** |
+| **overall** | **76% / 79% native** | **90% / 89% native** |
+
+The media tool-match 0%→100% is a measurement fix, not a behaviour change:
+`routes/chat.py` hardcoded `metadata.tools_used = ["web_search"]`, hiding which
+tool ran. Media narrowing was working all along.
+
+**Voice gate (ADR-005 attribution, full probe set, both arms on the same
+instance minutes apart so the flag is the only variable).** Overall
+distinctiveness **0.6964 in BOTH arms** (flatness 0.0 → 0.0119). Per persona:
+cipher **+0.25**, aegis **+0.125**, solace **−0.25**, gojo **−0.125**, and
+eeva/nyx/aurora unchanged.
+
+Read as noise, not signal, on one specific piece of evidence: **gojo has no web
+tools**, so `_try_tool_brain` returns None for it in *both* modes — the flag
+cannot affect gojo — yet gojo still moved 0.125. That is an accidental control
+group establishing the instrument's noise floor at ±0.125 (one probe of eight).
+Every observed movement is at or near that floor, and the directions are mixed;
+systematic flattening looks different (memory injection drove EEVA 0.75→0.25
+broadly). **Verified the arms were genuinely distinct**: all 35 shared probes
+produced different text, and source mixes differed (ON `tool_brain` 9 / OFF 5;
+OFF emitted 3 `groundedness_abstain`, ON zero).
+
+**Known gap — Gwen was not in the voice gate.** `probes.json` covers 7 of the 8
+personas; `gwen` is absent (pre-existing, ADR-005 era). She is the persona this
+change affects most — restricted tool surface (`image_search`/`video_search`
+only), actively used via her own Telegram daemon, and the most voice-sensitive.
+She cannot simply be added: attribution is a discrimination metric, so 7→8 moves
+chance from 0.143 to 0.125 and invalidates comparison with every historical
+baseline. Tool-firing evidence for her is good (8/8 media correct and native; 2/2
+RP-phrased chitchat correctly fired nothing) but that is tool behaviour, not
+voice. **Resolve before flipping the flag on prod.**
 
 ## Consequences
 
