@@ -155,6 +155,22 @@ def _apply_groundedness_gate(
         return answer
 
 
+# Appended to the persona system prompt ONLY in ungated mode. Deliberately
+# short and behavioural (no persona/voice language) so it steers tool choice
+# without competing with the ADR-005 voice_signature for the model's attention.
+_SEARCH_TRIGGER_GUIDANCE = """
+
+<tool_guidance>
+Look it up with a search tool instead of answering from memory whenever the
+answer depends on the outside world rather than on you or this conversation:
+- current facts: who currently holds a role, prices, scores, statistics
+- anything recent, latest, upcoming, or changing
+- specific real organisations, people, products, places, or software versions
+Do NOT search for how you feel, your own nature, this conversation, your
+world's lore, opinions, creative writing, or anything the user tells you.
+</tool_guidance>"""
+
+
 def _try_tool_brain(
     *, card, system: str, body: ChatBody, history, intent,
     metadata: ResponseMetadata, persona_name: str, deps,
@@ -165,10 +181,15 @@ def _try_tool_brain(
     TB5 hardening (after the live test showed EEVA's full 14-tool surface caused
     wallet fixation + mis-selection + fabrication): the deterministic bge-m3
     router scopes the surface; the model decides only WITHIN it. This function
-    engages ONLY on ``NEEDS_WEB_SEARCH`` and offers only the persona's WEB tools
-    (never wallet). ``NEEDS_WALLET`` / ``NEEDS_NEITHER`` return None immediately
-    so the legacy deterministic wallet flow and the ADR-007 groundedness gate
-    (on the no-tools completion) stay in charge — exactly where they belong.
+    offers only the persona's WEB tools — **wallet specs never enter the native
+    surface**, which is the half of TB5 that is not negotiable.
+
+    ``TOOL_BRAIN_UNGATED_WEB`` (default OFF) relaxes the *other* half. With it ON
+    the loop also engages on ``NEEDS_NEITHER``, because the tool-firing eval
+    showed the router silently blocking genuine web queries below its 0.66
+    threshold — the model never saw a tool, so the miss was invisible. Ungating
+    turns that into a visible model decision. ``NEEDS_WALLET`` still returns None
+    immediately in BOTH modes.
 
     Returns a response dict on a final answer; **None** to fall through to the
     legacy branches. Never raises — any failure returns None so legacy backs it.
@@ -181,8 +202,13 @@ def _try_tool_brain(
     from ..tools.registry import registry
     from ..tools import registrations  # noqa: F401 - ensure specs registered
 
-    # TB5.1: only the web lane. Wallet + no-tool turns stay on the legacy path.
-    if intent != QueryIntent.NEEDS_WEB_SEARCH:
+    # Wallet is NEVER model-decided — TB5's live failure was wallet fixation, and
+    # a false positive there costs more than a missed search. Unconditional.
+    if intent == QueryIntent.NEEDS_WALLET:
+        return None
+
+    ungated = get_settings().tool_brain.ungated_web
+    if intent != QueryIntent.NEEDS_WEB_SEARCH and not ungated:
         return None
 
     try:
@@ -206,9 +232,19 @@ def _try_tool_brain(
         tools = [s.definition() for s in web_specs]
         if not tools:
             return None  # persona has no web tools -> legacy handles it
+
+        # In ungated mode the router no longer vouches that this turn needs the
+        # web, so the model needs to be told what warrants a lookup. Enumerated
+        # triggers rather than "use tools when helpful" — Hermes Agent applies
+        # the same explicit list, and vague guidance is what left the 24B
+        # answering "who is the current chancellor" from stale weights.
+        tb_system = system
+        if ungated:
+            tb_system = system + _SEARCH_TRIGGER_GUIDANCE
+
         svc = ToolBrainService(interceptor=ToolCallInterceptor())
         hist = [{"role": t.role, "content": t.content} for t in history]
-        result = svc.run(persona_card=card, system_prompt=system,
+        result = svc.run(persona_card=card, system_prompt=tb_system,
                          user_message=body.message, history=hist, tools=tools)
 
         if result.status in (ST_HITL, ST_DELEGATE_WALLET):
@@ -242,7 +278,16 @@ def _try_tool_brain(
         if result.status == ST_ANSWERED and result.answer and result.used_search \
                 and result.search_results:
             metadata.source_type = SourceType.TOOL_BRAIN
-            metadata.tools_used = ["web_search"]
+            # Report the tools that actually executed, from the trace — this was
+            # hardcoded to ["web_search"], which made image_search/video_search
+            # indistinguishable from a generic search in telemetry and in the
+            # tool-firing eval. Falls back to the old constant if the trace is
+            # somehow empty, so the field is never blank on an answered turn.
+            executed = [
+                t["tool"] for t in result.tool_trace
+                if t.get("allowed") and t.get("tool")
+            ]
+            metadata.tools_used = executed or ["web_search"]
             answer = CitationService.strip_hallucinated_citations(result.answer)
             # Strip the model's own inline [REF]n[/REF] citation markers (it
             # sometimes invents that format; the verified 🔍 Sources block below
@@ -253,6 +298,22 @@ def _try_tool_brain(
             resp = _build_llm_response(answer, body.message, persona_name, metadata, word_substitutions=card.get("word_substitutions"))
             resp["used_search"] = True  # telemetry: the tool brain did search
             return resp
+
+        # Ungated NEEDS_NEITHER + the model chose not to search: it already wrote
+        # a normal in-voice reply, so USE it. Returning None here would send the
+        # turn to the legacy no-tools branch, which regenerates from scratch —
+        # a second full generation on every chitchat turn, and generation is the
+        # bottleneck (~16 tok/s, OLLAMA_NUM_PARALLEL=1). Exactly one generation
+        # per turn either way. The ADR-007 groundedness gate still runs, so an
+        # ungrounded factual claim is caught here just as on the legacy path.
+        if ungated and intent != QueryIntent.NEEDS_WEB_SEARCH \
+                and result.status == ST_SILENT and result.answer:
+            logger.info("[ToolBrain] ungated no-tool turn -> using native answer")
+            answer = _apply_groundedness_gate(card, body.message, result.answer, metadata)
+            return _build_llm_response(
+                answer, body.message, persona_name, metadata,
+                word_substitutions=card.get("word_substitutions"),
+            )
 
         # Silent, answered-without-searching, or loop error -> deterministic
         # floor (legacy force-search on this web-intent turn).
