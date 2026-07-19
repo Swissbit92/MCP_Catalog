@@ -29,6 +29,9 @@ class SourceType(StrEnum):
     AGENTIC_HITL = "agentic_hitl"
     GROUNDEDNESS_ABSTAIN = "groundedness_abstain"
     WALLET_PROPOSAL = "wallet_proposal"
+    # ADR-008: single-model native tool-brain loop (distinct from the ADR-004
+    # AGENTIC two-stage pipeline so the two are A/B-distinguishable in telemetry).
+    TOOL_BRAIN = "tool_brain"
 
 
 class MessageRole(StrEnum):
@@ -41,6 +44,9 @@ class MessageRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+    # ADR-011 /sys — an in-world narrator/scene beat (not user dialogue). Rendered
+    # to the model as bracketed scene direction; role-switch sites must tolerate it.
+    NARRATOR = "narrator"
 
 
 class ProposalType(StrEnum):
@@ -94,6 +100,21 @@ class ChatBody(BaseModel):
 class GreetBody(BaseModel):
     """Request body for greeting endpoint."""
     persona: Optional[str] = None
+
+
+class NoteBody(BaseModel):
+    """Request body for setting a per-session author's note (ADR-011 /note)."""
+    note: str = Field(..., max_length=2_000)
+
+
+class NarrateBody(BaseModel):
+    """Request body for a narrator/scene beat (ADR-011 /sys)."""
+    text: str = Field(..., max_length=2_000)
+
+
+class ImpersonateBody(BaseModel):
+    """Request body for drafting the user's next line (ADR-011 /impersonate)."""
+    hint: Optional[str] = Field(default=None, max_length=500)
 
 
 class SummaryBody(BaseModel):

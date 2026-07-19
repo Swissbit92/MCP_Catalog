@@ -13,6 +13,7 @@ from .mcp_client_stdio import BraveMCPClientStdio
 from .persona_memory import _load_all_cards_cached, ensure_all_summaries_serialized
 from .repositories.session_repository import SessionRepository
 from .repositories.message_repository import MessageRepository
+from .repositories.session_note_repository import SessionNoteRepository
 from .repositories.summary_repository import SummaryRepository
 from .repositories.emotional_state_repository import EmotionalStateRepository
 from .repositories.user_profile_repository import UserProfileRepository
@@ -48,6 +49,7 @@ _strategy_scheduler = None
 # Repositories
 _session_repo: Optional[SessionRepository] = None
 _message_repo: Optional[MessageRepository] = None
+_session_note_repo: Optional[SessionNoteRepository] = None
 _summary_repo: Optional[SummaryRepository] = None
 _emotional_state_repo: Optional[EmotionalStateRepository] = None
 _user_profile_repo: Optional[UserProfileRepository] = None
@@ -89,6 +91,13 @@ def get_session_repo() -> SessionRepository:
     if _session_repo is None:
         raise RuntimeError("SessionRepository not initialized — server startup incomplete")
     return _session_repo
+
+
+def get_session_note_repo() -> SessionNoteRepository:
+    """Return the per-session author's-note repo (ADR-011)."""
+    if _session_note_repo is None:
+        raise RuntimeError("SessionNoteRepository not initialized — server startup incomplete")
+    return _session_note_repo
 
 
 def get_message_repo() -> MessageRepository:
@@ -285,10 +294,11 @@ def init_repositories():
     global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
     global _user_profile_repo, _seeker_progression_repo, _user_repo
     global _wallet_registry_repo, _wallet_summary_repo, _trade_history_repo
-    global _wallet_flow_repo
+    global _wallet_flow_repo, _session_note_repo
 
     _session_repo = SessionRepository(_DB_PATH)
     _message_repo = MessageRepository(_DB_PATH)
+    _session_note_repo = SessionNoteRepository(_DB_PATH)
     _summary_repo = SummaryRepository(_DB_PATH)
     _emotional_state_repo = EmotionalStateRepository(_DB_PATH)
     _user_profile_repo = UserProfileRepository(_DB_PATH)
@@ -658,6 +668,16 @@ def initialize_all():
             logger.info("Brave MCP disabled (web search not available)")
     except Exception as e:
         logger.warning(f"Brave MCP initialization warning: {e}")
+
+    # Bind web-toolset executors onto the tool registry (ADR-008 TB2). Attaches
+    # the runtime search/fetch executors + the per-persona safesearch clamp;
+    # harmless when the tool brain is off (nothing calls them). Lazy client
+    # resolution inside the executors makes this init-order-independent.
+    try:
+        from .tools.executor_bindings import bind_web_executors
+        bind_web_executors()
+    except Exception as e:
+        logger.warning(f"Tool-executor binding warning: {e}")
 
     # Initialize Jupiter MCP
     try:

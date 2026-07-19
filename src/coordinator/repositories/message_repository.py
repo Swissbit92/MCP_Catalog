@@ -155,3 +155,27 @@ class MessageRepository(BaseRepository):
             LIMIT 1
         """
         return self._fetchone_dict(query, (session_id,))
+
+    def delete_message(self, message_id: str) -> bool:
+        """
+        Delete a single message by ID (ADR-011 undo/regenerate — partial deletes).
+
+        Unlike ``delete_messages_by_session`` (full wipe), this removes exactly one
+        row so conversation-control verbs can drop the last turn without touching
+        the rest of the history.
+
+        Args:
+            message_id: Message identifier
+
+        Returns:
+            True if a row was deleted, False if no message matched.
+        """
+        with self._lock:
+            conn = self._conn()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM messages WHERE id = ?", (message_id,))
+            deleted = cur.rowcount
+            conn.commit()
+            conn.close()
+
+        return deleted > 0

@@ -142,3 +142,109 @@ class TestPersonaSummary:
             resp = client.post("/persona/summary", json={})
         assert resp.status_code == 200
         mock_fn.assert_called_once_with(None)
+
+
+class TestPersonaToolkit:
+    """GET /personas/{key}/toolkit — ADR-009 W3 introspection."""
+
+    _CARDS = [
+        {"key": "nephilim_eeva", "display_name": "E.E.V.A.",
+         "mcp_access": ["brave_search", "solana_wallet"], "nsfw": True},
+        {"key": "nephilim_nyx", "display_name": "Nyx", "toolsets": [], "nsfw": False},
+    ]
+
+    def test_toolkit_for_web_wallet_persona(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/nephilim_eeva/toolkit")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["persona_key"] == "nephilim_eeva"
+        assert body["nsfw"] is True
+        assert set(body["toolsets"]) == {"web", "wallet"}
+        # generic web tools listed (W2)
+        web_names = {t["name"] for t in body["tools"]["web"]}
+        assert {"web_search", "fetch_url"} <= web_names
+        assert "wallet" in body["tools"]
+
+    def test_toolkit_empty_for_no_tools_persona(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/nephilim_nyx/toolkit")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["toolsets"] == []
+        assert body["tools"] == {}
+
+    def test_toolkit_case_insensitive(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/NEPHILIM_EEVA/toolkit")
+        assert resp.status_code == 200
+
+    def test_unknown_persona_404(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached",
+                   return_value=self._CARDS):
+            resp = client.get("/personas/does_not_exist/toolkit")
+        assert resp.status_code == 404
+
+
+class TestActiveFilter:
+    """Roster hide: `active: false` personas are excluded from /personas but
+    NOT from the loader (so they stay resolvable + not orphan-cleaned)."""
+
+    _ACTIVE = {"key": "nephilim_eeva", "display_name": "E.E.V.A.", "active": True}
+    _NO_FLAG = {"key": "gwen", "display_name": "Gwen"}  # missing = active
+    _HIDDEN = {"key": "nephilim_nyx", "display_name": "Nyx", "active": False}
+
+    def test_hidden_persona_excluded_from_roster(self):
+        cards = [self._ACTIVE, self._NO_FLAG, self._HIDDEN]
+        with patch("src.coordinator.routes.personas._load_all_cards_cached", return_value=cards), \
+             patch("src.coordinator.routes.personas.cleanup_orphaned_sessions"):
+            resp = client.get("/personas")
+        keys = {p["key"] for p in resp.json()}
+        assert keys == {"nephilim_eeva", "gwen"}  # active + missing-flag
+        assert "nephilim_nyx" not in keys
+
+    def test_missing_active_flag_defaults_visible(self):
+        with patch("src.coordinator.routes.personas._load_all_cards_cached", return_value=[self._NO_FLAG]), \
+             patch("src.coordinator.routes.personas.cleanup_orphaned_sessions"):
+            resp = client.get("/personas")
+        assert [p["key"] for p in resp.json()] == ["gwen"]
+
+    def test_orphan_cleanup_sees_unfiltered_keys(self):
+        # The change-detection set must be computed from ALL cards (incl.
+        # hidden), so hiding never marks a persona orphaned. Assert cleanup,
+        # if triggered, was not fed a shrunk set: we verify by confirming the
+        # module global _last_persona_keys includes the hidden key.
+        import src.coordinator.routes.personas as pr
+        pr._last_persona_keys = set()  # force a change so cleanup path runs
+        cards = [self._ACTIVE, self._HIDDEN]
+        with patch("src.coordinator.routes.personas._load_all_cards_cached", return_value=cards), \
+             patch("src.coordinator.routes.personas.cleanup_orphaned_sessions") as mock_cleanup:
+            client.get("/personas")
+        # current_keys (from unfiltered cards) drives change-detection:
+        assert "nephilim_nyx" in pr._last_persona_keys
+        mock_cleanup.assert_called_once()
+
+
+class TestHiddenStillLoadableByKey:
+    """Hiding must NOT break by-key resolution (evals, direct chat, toolkit)."""
+
+    def test_real_hidden_personas_resolvable(self):
+        # The 6 hidden personas must still load by key from the real JSONs.
+        from src.coordinator.persona_loader import get_persona_card
+        for key in ("nephilim_nyx", "nephilim_aegis", "Gojo", "nephilim_cipher",
+                    "nephilim_aurora", "nephilim_solace"):
+            card = get_persona_card(key)
+            assert card.get("key") == key, f"{key} not resolvable by key"
+            assert card.get("active") is False
+
+    def test_real_active_personas_visible_in_roster(self):
+        # EEVA + Gwen (real JSONs) appear; the 6 hidden ones do not.
+        resp = client.get("/personas")
+        keys = {p["key"] for p in resp.json()}
+        assert "nephilim_eeva" in keys and "gwen" in keys
+        for hidden in ("nephilim_nyx", "nephilim_aegis", "Gojo", "nephilim_cipher",
+                       "nephilim_aurora", "nephilim_solace"):
+            assert hidden not in keys

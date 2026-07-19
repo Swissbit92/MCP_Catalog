@@ -75,37 +75,61 @@ class SearchExecutionService:
         Returns:
             List of SearchResult objects, or None if search failed
         """
-        if not self.mcp_client:
-            logger.error("[SearchExecution] Brave MCP client not available, cannot execute search")
-            return None
-
         try:
             query = tool_call.arguments.get("query", "")
             if not query:
                 logger.warning("[SearchExecution] Search query is empty")
                 return None
 
-            # Locale + freshness (2026-07-05 incident: neither was ever passed —
-            # a Swiss weather query returned a US aggregator in °F, and "news
-            # today" surfaced a 5-day-old roundup). Country/lang come from
-            # settings (lazy import: config imports at module level cycle);
-            # freshness is inferred from temporal cues in the resolved query.
+            # ADR-009 Phase W: backend chain. Prefer SearXNG (self-hosted, query
+            # stays local, most-permissive safesearch) when configured; fall back
+            # to Brave. safesearch comes from the tool_call args when the model/
+            # executor set it (per-persona nsfw clamp, W2), else the global
+            # WEB_SAFESEARCH_DEFAULT.
             from ..config import get_settings
 
-            brave = get_settings().brave
+            settings = get_settings()
+            web = settings.web_search
+            args = tool_call.arguments or {}
+            safesearch = args.get("safesearch") or web.safesearch_default
+            category = args.get("category") or "general"
+
+            # SearXNG needs no Brave client — try it FIRST so a SearXNG-primary
+            # deployment works even with Brave unconfigured (bug surfaced by the
+            # ADR-008 live smoke: the old `if not self.mcp_client: return None`
+            # guard bailed before SearXNG ever ran).
+            searxng_results = self._try_searxng(
+                query, category, safesearch, web
+            )
+            if searxng_results is not None:
+                logger.info(
+                    f"[SearchExecution] SearXNG returned {len(searxng_results)} results"
+                )
+                return searxng_results
+
+            # --- Brave fallback (or backend='brave') --------------------------
+            if not self.mcp_client:
+                logger.warning(
+                    "[SearchExecution] SearXNG gave no results and no Brave client "
+                    "is available — returning no results."
+                )
+                return None
+            brave = settings.brave
             country = brave.country or None
             search_lang = brave.search_lang or None
             freshness = infer_freshness(query)
 
             logger.info(
                 f"[SearchExecution] Executing Brave search: '{query}' "
-                f"(country={country}, lang={search_lang}, freshness={freshness})"
+                f"(country={country}, lang={search_lang}, freshness={freshness}, "
+                f"safesearch={safesearch})"
             )
             results = self.mcp_client.search_web(
                 query,
                 country=country,
                 search_lang=search_lang,
                 freshness=freshness,
+                safesearch=safesearch,
             )
             logger.info(f"[SearchExecution] Brave search returned {len(results)} results")
 
@@ -114,3 +138,36 @@ class SearchExecutionService:
         except Exception as e:
             logger.error(f"[SearchExecution] Brave search failed: {e}", exc_info=True)
             return None
+
+    def _try_searxng(self, query, category, safesearch, web_settings):
+        """Attempt the SearXNG backend per config; None => fall through to Brave.
+
+        Returns a results list (possibly empty) when SearXNG is the selected
+        backend and the call succeeds; returns None to signal "use Brave" —
+        either because the backend selection excludes SearXNG, it is not
+        configured, or its call errored (transport failure falls back rather
+        than failing the turn). When backend is 'searxng' (SearXNG-only), an
+        error returns [] instead of None so we do NOT silently hit Brave.
+        """
+        backend = web_settings.backend
+        base = (web_settings.searxng_base_url or "").strip()
+
+        if backend == "brave":
+            return None
+        if backend == "auto" and not base:
+            return None  # legacy Brave-only path
+        if not base:
+            logger.warning("[SearchExecution] backend=searxng but SEARXNG_BASE_URL unset")
+            return None
+
+        from ..searxng_client import SearxngClient
+        from ..models.mcp_models import MCPError
+
+        client = SearxngClient(base, timeout=web_settings.searxng_timeout)
+        try:
+            return client.search(query, category=category, safesearch=safesearch)
+        except MCPError as e:
+            logger.warning(f"[SearchExecution] SearXNG failed ({e})")
+            # searxng-only: honour the choice, don't leak to Brave -> empty.
+            # auto: fall back to Brave.
+            return [] if backend == "searxng" else None

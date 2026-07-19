@@ -150,6 +150,39 @@ def force_multi_message_split(response: str, query: str) -> str:
     return response
 
 
+# A hallucinated next turn: the compiled prompt renders history as "User: ..." /
+# "Assistant: ...", so the model sometimes keeps going and writes the *next* turn
+# itself. Anchored to line-start so persona prose containing the word is untouched.
+_HALLUCINATED_TURN_RE = re.compile(r'^\s*(?:User|Assistant)\s*:', re.MULTILINE)
+_LEADING_ROLE_RE = re.compile(r'^\s*(?:Assistant|User)\s*:\s*', re.IGNORECASE)
+
+
+def strip_role_prefix_leaks(answer: str) -> str:
+    """Remove role-prefix artifacts leaked from the compiled prompt format.
+
+    Two distinct leaks, both from the "User:/Assistant:" transcript framing:
+      1. a leading ``Assistant:`` / ``User:`` prefix on the reply itself;
+      2. a *trailing* fabricated turn — the model writes ``\\nUser: ...`` and keeps
+         going (the classic missing-stop-sequence artifact). Everything from that
+         line on is cut.
+
+    Shared by both finalize paths (``routes/chat.py:_build_llm_response`` and
+    ``QueryHandlerService._finalize_response``) so they can't drift apart again.
+    """
+    if not answer:
+        return answer
+
+    cleaned = _LEADING_ROLE_RE.sub('', answer, count=1)
+
+    # Cut a fabricated next turn, but only if real content precedes it.
+    match = _HALLUCINATED_TURN_RE.search(cleaned)
+    if match and cleaned[:match.start()].strip():
+        logger.info("[RoleLeak] Cut hallucinated turn at offset %d", match.start())
+        cleaned = cleaned[:match.start()]
+
+    return cleaned.strip()
+
+
 def parse_multi_message_response(response: str) -> tuple[list[str], str]:
     """
     Parse LLM response for <msg> tags and split into multiple messages.
@@ -176,6 +209,22 @@ def parse_multi_message_response(response: str) -> tuple[list[str], str]:
     elif matches and len(matches) == 1:
         # Single message with tags (treat as single)
         return ([matches[0].strip()], 'single')
-    else:
-        # No tags found, return original response
-        return ([response], 'single')
+
+    # No well-formed pair matched. The model sometimes opens <msg> without ever
+    # closing it, which used to fall through and leak the literal tags into the
+    # chat. Recover by splitting on the opening tags (only reached when the
+    # well-formed path above found nothing, so that path stays byte-identical).
+    if '<msg>' in response:
+        pieces = [
+            re.sub(r'</msg>', '', p).strip()
+            for p in response.split('<msg>')
+        ]
+        pieces = [p for p in pieces if p]
+        if len(pieces) > 1:
+            logger.info(f"[Phase2] Recovered {len(pieces)} messages from unclosed <msg> tags")
+            return (pieces[:4], 'multi')
+        if len(pieces) == 1:
+            return ([pieces[0]], 'single')
+
+    # No tags found, return original response
+    return ([response], 'single')

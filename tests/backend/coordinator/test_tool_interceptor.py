@@ -4,6 +4,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from coordinator.services.tool_interceptor import (
@@ -148,6 +150,36 @@ def test_empty_query_rejected():
     r = ICEPT.validate("brave_web_search", {"query": "   "}, "nephilim_eeva", WALLET)
     assert r.allowed is False
     assert r.blocked_category == CAT_ARGS
+
+
+@pytest.mark.parametrize("tool", ["web_search", "image_search", "video_search", "news_search"])
+def test_adr009_search_query_too_long_rejected(tool):
+    # The live tool-brain path names — previously UNVALIDATED (only the dead
+    # brave_web_search name was checked). Now the 300-char cap applies here too.
+    r = ICEPT.validate(tool, {"query": "a" * 400}, "nephilim_eeva", BRAVE)
+    assert r.allowed is False
+    assert r.blocked_category == CAT_ARGS
+
+
+@pytest.mark.parametrize("tool", ["web_search", "image_search", "video_search", "news_search"])
+def test_adr009_search_control_char_rejected(tool):
+    r = ICEPT.validate(tool, {"query": "evil\x00query"}, "nephilim_eeva", BRAVE)
+    assert r.allowed is False
+    assert r.blocked_category == CAT_ARGS
+
+
+@pytest.mark.parametrize("tool", ["web_search", "image_search", "video_search", "news_search"])
+def test_adr009_search_empty_query_rejected(tool):
+    r = ICEPT.validate(tool, {"query": "   "}, "nephilim_eeva", BRAVE)
+    assert r.allowed is False
+    assert r.blocked_category == CAT_ARGS
+
+
+def test_image_search_valid_query_allowed():
+    # A normal keyword query still passes (regression guard for the new branch).
+    r = ICEPT.validate("image_search", {"query": "golden retriever puppy"},
+                       "nephilim_eeva", BRAVE)
+    assert r.allowed is True
 
 
 def test_wallet_create_name_too_long_rejected():

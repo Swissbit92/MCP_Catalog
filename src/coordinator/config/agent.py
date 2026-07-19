@@ -73,6 +73,73 @@ class AgentSettings(BaseSettings):
         description="Max grammar-constrained extraction attempts before regex fallback.",
         alias="AGENTIC_EXTRACTION_MAX_RETRIES",
     )
+    tool_intent_in_prompt: bool = Field(
+        default=False,
+        description=(
+            "Inject each persona's escalation_policy.tool_intent lines as a "
+            "<tools> guidance block in the lean system prompt. Default OFF = "
+            "byte-identical (the field is otherwise dead data). Behavioral: adds "
+            "prompt content to every persona that has tool_intent, so it is "
+            "eval-gated (ADR-005 distinctiveness) before any flip. Set "
+            "PERSONA_TOOL_INTENT_IN_PROMPT=true to enable."
+        ),
+        alias="PERSONA_TOOL_INTENT_IN_PROMPT",
+    )
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+
+class ToolBrainSettings(BaseSettings):
+    """ADR-008 P1 single-model native tool-brain loop configuration.
+
+    The daily-driver model (abliterated Mistral-Small-24B) decides + fills tool
+    calls natively; deterministic middleware (ADR-004 interceptor + injection
+    guard) gates execution; the same model synthesizes in-voice. When the model
+    emits no native call, the loop falls back to the existing deterministic
+    intent-router / force-search floor (the spike found native calling is
+    phrasing-sensitive: explicit phrasings trigger calls, colloquial ones miss).
+
+    ``enabled`` default **False** = byte-identical to the legacy force-search
+    chat path; the whole loop is bypassed. Flip TOOL_BRAIN_ENABLED=true only
+    after the TB4 red-team/eval gate.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Route non-wallet-flow chat turns through the native tool-brain loop "
+            "(model-decided tool calls + deterministic fallback). False (default) "
+            "= byte-identical legacy force-search path. Set TOOL_BRAIN_ENABLED=true."
+        ),
+        alias="TOOL_BRAIN_ENABLED",
+    )
+    max_iterations: int = Field(
+        default=3,
+        ge=1,
+        le=6,
+        description=(
+            "Max native tool-call round-trips per turn before forcing synthesis. "
+            "Bounds latency + injection-compounding on a local model. 3 covers "
+            "search->fetch->answer; the reads-only MVP rarely needs more."
+        ),
+        alias="TOOL_BRAIN_MAX_ITERATIONS",
+    )
+    deterministic_fallback: bool = Field(
+        default=True,
+        description=(
+            "When the model emits NO native tool call, fall back to the "
+            "deterministic intent router / force-search (the reliability floor "
+            "for colloquial phrasings the model misses). Default ON. OFF = pure "
+            "native (research/debug only — will silently skip tools on ~40% of "
+            "colloquial queries per the TB0 spike)."
+        ),
+        alias="TOOL_BRAIN_DETERMINISTIC_FALLBACK",
+    )
 
     model_config = {
         "env_file": ".env",

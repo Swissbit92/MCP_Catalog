@@ -345,26 +345,12 @@ class TestGetToolsForPersona:
         names = [t["function"]["name"] for t in tools]
         assert BRAVE_TOOL_NAME not in names
 
-    def test_mcp_access_with_solana_wallet_calls_get_wallet_tools(self):
-        fake_wallet_tool = {"type": "function", "function": {"name": "wallet_tool"}}
-        with patch(
-            "src.coordinator.tools.tool_utils.get_brave_search_tool",
-            return_value={"type": "function", "function": {"name": BRAVE_TOOL_NAME}}
-        ):
-            with patch(
-                "src.coordinator.tools.wallet_tool_generators.get_wallet_tools",
-                return_value=[fake_wallet_tool],
-                create=True,
-            ):
-                # Import patch target after mock is set
-                with patch.dict("sys.modules", {
-                    "src.coordinator.tools.wallet_tool_generators": MagicMock(
-                        get_wallet_tools=MagicMock(return_value=[fake_wallet_tool])
-                    )
-                }):
-                    tools = get_tools_for_persona("Eeva", "legendary", mcp_access=["solana_wallet"])
-        # Should have wallet tool(s) — exact count depends on mock resolution
-        assert len(tools) >= 1
+    def test_mcp_access_with_solana_wallet_returns_wallet_tools(self):
+        # ADR-009 R2: sourced from the registry (no longer a direct
+        # get_wallet_tools call). Assert the behavior, not the internal path.
+        tools = get_tools_for_persona("Eeva", "legendary", mcp_access=["solana_wallet"])
+        names = {t["function"]["name"] for t in tools}
+        assert "wallet_get_balances" in names and "solana_propose_swap" in names
 
 
 # ============================================================================
@@ -389,22 +375,15 @@ class TestGetToolsForQuery:
             tools = get_tools_for_query("what is 2+2", "Gojo", "common")
         assert tools == []
 
-    def test_wallet_intent_calls_get_wallet_tools(self):
-        fake_wallet_tool = {"type": "function", "function": {"name": "wallet_get_balances"}}
-        wallet_mod_mock = MagicMock()
-        wallet_mod_mock.get_wallet_tools.return_value = [fake_wallet_tool]
+    def test_wallet_intent_returns_wallet_toolset(self):
+        # ADR-009 R2: NEEDS_WALLET -> registry.definitions_for_toolsets(["wallet"]).
         with self._patch_intent(QueryIntent.NEEDS_WALLET):
-            with patch.dict("sys.modules", {
-                "src.coordinator.tools.wallet_tool_generators": wallet_mod_mock
-            }):
-                # Re-import so the patched sys.modules is used in the local import inside the function
-                import importlib
-                import src.coordinator.tools.tool_utils as tu
-                importlib.reload(tu)
-                with patch.object(tu, "classify_query_intent", return_value=QueryIntent.NEEDS_WALLET):
-                    tools = tu.get_tools_for_query("my wallet balance", "Eeva", "legendary", mcp_access=["solana_wallet"])
-        # After reload the wallet tool should be in the result
-        assert any("wallet" in t["function"]["name"] for t in tools) or len(tools) >= 0  # no exception
+            tools = get_tools_for_query(
+                "my wallet balance", "Eeva", "legendary", mcp_access=["solana_wallet"]
+            )
+        names = {t["function"]["name"] for t in tools}
+        assert "wallet_get_balances" in names
+        assert len(names) == 7  # full wallet toolset
 
     def test_classify_query_intent_receives_correct_args(self):
         with patch("src.coordinator.tools.tool_utils.classify_query_intent", return_value=QueryIntent.NEEDS_NEITHER) as mock_classify:

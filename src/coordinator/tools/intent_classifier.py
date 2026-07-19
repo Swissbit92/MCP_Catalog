@@ -23,6 +23,38 @@ _NEGATED_ACTION = re.compile(
     re.IGNORECASE,
 )
 
+# Media-search fast-path (2026-07-05): colloquial "find me images / find me a
+# video / show me pics" must route to web search so the tool brain's
+# image_search/video_search fire. REQUIRES a media noun near a fetch verb — so
+# it catches those but NOT bare "find me" RP ("come find me when you're ready",
+# "I hope you find me pretty") which has no media noun. More precise than a
+# semantic example (which over-routes "find me" RP; measured 2026-07-05).
+_MEDIA_VERB = r"\b(?:find|show|get|give|pull\s+up|search(?:\s+for)?|look\s+(?:up|for))\b[^.?!]{0,25}?\b"
+_IMAGE_NOUN = r"(?:image|images|pic|pics|picture|pictures|photo|photos|gif|gifs)\b"
+_VIDEO_NOUN = r"(?:video|videos|vid|vids|clip|clips|movie|movies|footage)\b"
+_MEDIA_IMAGE = re.compile(_MEDIA_VERB + _IMAGE_NOUN, re.IGNORECASE)
+_MEDIA_VIDEO = re.compile(_MEDIA_VERB + _VIDEO_NOUN, re.IGNORECASE)
+# Combined matcher (kept for the fast-path route decision).
+_MEDIA_SEARCH = re.compile(
+    _MEDIA_VERB + r"(?:" + _IMAGE_NOUN + r"|" + _VIDEO_NOUN + r")",
+    re.IGNORECASE,
+)
+
+
+def media_search_type(query: str) -> Optional[str]:
+    """Return "video", "image", or None for a colloquial media-find query.
+
+    Lets the tool-brain route DETERMINISTICALLY narrow the offered surface to the
+    single matching media tool (video_search/image_search) — native calling is
+    unreliable at picking video_search among 4 web tools, but reliably calls the
+    one tool it's given (2026-07-05: "find me a video" fix). Video checked first
+    so "video clip" etc. never mis-tag as image."""
+    if _MEDIA_VIDEO.search(query):
+        return "video"
+    if _MEDIA_IMAGE.search(query):
+        return "image"
+    return None
+
 
 class QueryIntent(Enum):
     """Query intent classification for MCP routing."""
@@ -59,6 +91,10 @@ def _classify_semantic_primary(
         if not _NEGATED_ACTION.search(query_lower):
             return QueryIntent.NEEDS_WALLET
     if can_use_brave and any(kw in query_lower for kw in EXPLICIT_SEARCH_COMMANDS):
+        return QueryIntent.NEEDS_WEB_SEARCH
+    # Colloquial media-find ("find me images", "show me a video") — precise
+    # verb+media-noun rule, so bare "find me" RP never matches (see _MEDIA_SEARCH).
+    if can_use_brave and _MEDIA_SEARCH.search(query_lower):
         return QueryIntent.NEEDS_WEB_SEARCH
 
     # 2. Semantic router — the primary decision.

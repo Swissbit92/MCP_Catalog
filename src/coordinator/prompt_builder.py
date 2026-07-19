@@ -192,6 +192,28 @@ def _get_wallet_copilot_block_lean() -> str:
 - Private keys and seed phrases must never leave the wallet: if asked to share, export, or decrypt them, begin with "I cannot and will not"."""
 
 
+def _get_tool_intent_block_lean(card: Dict) -> str:
+    """Per-persona tool-usage guidance from `escalation_policy.tool_intent`.
+
+    Flag-gated (``PERSONA_TOOL_INTENT_IN_PROMPT``, default OFF) — returns "" when
+    the flag is off (so the field stays dead data, byte-identical) OR the persona
+    has no tool_intent lines. Static per-persona data, so it is safe inside the
+    lru_cached builder (unlike per-turn lore/memory).
+    """
+    if not get_settings().agent.tool_intent_in_prompt:
+        return ""
+    policy = card.get("escalation_policy") or {}
+    if not isinstance(policy, dict):
+        return ""
+    tool_intent = policy.get("tool_intent")
+    if not (isinstance(tool_intent, list) and tool_intent):
+        return ""
+    lines = [f"- {t.strip()}" for t in tool_intent if isinstance(t, str) and t.strip()]
+    if not lines:
+        return ""
+    return "\n".join(["Tool guidance:"] + lines)
+
+
 def _lean_voice_block(card: Dict) -> str:
     """Per-persona distinctiveness anchors from the `voice_signature` field.
 
@@ -368,8 +390,17 @@ def _build_system_prompt_lean(selector: Optional[str]) -> str:
     if world_block:
         parts.extend(["", "<world>", world_block, "</world>"])
 
+    # <tools>: wallet co-pilot (if granted) + per-persona tool_intent guidance
+    # (flag-gated, default OFF). Merged into one section so a tool_intent-only
+    # persona still gets a coherent block and wallet personas don't get two.
+    tool_sections = []
     if has_wallet:
-        parts.extend(["", "<tools>", _get_wallet_copilot_block_lean(), "</tools>"])
+        tool_sections.append(_get_wallet_copilot_block_lean())
+    tool_intent_block = _get_tool_intent_block_lean(card)
+    if tool_intent_block:
+        tool_sections.append(tool_intent_block)
+    if tool_sections:
+        parts.extend(["", "<tools>", "\n\n".join(tool_sections), "</tools>"])
 
     parts.extend(["", "<memory>", LEAN_MEMORY, "</memory>"])
     parts.extend(["", "<format>", LEAN_FORMAT, "</format>"])

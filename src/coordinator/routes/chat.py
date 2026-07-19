@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import startup  # module ref for call-time getter resolution (tests patch
                         # src.coordinator.startup.get_* to neutralize deps); cycle-free.
-from ..schemas import ChatBody, GreetBody, ResponseMetadata, SourceType
+from ..schemas import ChatBody, GreetBody, ImpersonateBody, NarrateBody, ResponseMetadata, SourceType
 from ..config import get_settings
 from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
 from ..persona_memory import (
@@ -28,6 +28,7 @@ from ..services.query_handler_service import QueryHandlerService
 from ..services.message_processing_service import (
     force_multi_message_split,
     parse_multi_message_response,
+    strip_role_prefix_leaks,
 )
 from ..services.chat_session_service import handle_session_chat
 
@@ -54,6 +55,11 @@ def _build_llm_response(
             answer = f'<msg>{answer}'
         if '</msg>' in answer and not answer.strip().endswith('</msg>'):
             answer = f'{answer}</msg>'
+
+    # Strip leading role prefixes + any fabricated next turn ("\nUser: ..."). This
+    # path previously had no role-leak handling at all (only _finalize_response did,
+    # and only for a leading "Assistant:").
+    answer = strip_role_prefix_leaks(answer)
 
     answer = force_multi_message_split(answer, user_message)
     messages, flow_type = parse_multi_message_response(answer)
@@ -92,6 +98,7 @@ def _get_dependencies():
         "fact_extraction_worker": startup.get_fact_extraction_worker(),
         "memory_fact_repo": startup.get_memory_fact_repo(),
         "seeker_progression_repo": startup.get_seeker_progression_repo(),
+        "session_note_repo": startup.get_session_note_repo(),
     }
 
 
@@ -142,6 +149,117 @@ def _apply_groundedness_gate(
         return answer
 
 
+def _try_tool_brain(
+    *, card, system: str, body: ChatBody, history, intent,
+    metadata: ResponseMetadata, persona_name: str, deps,
+):
+    """ADR-008 TB4/TB5: run the single-model native tool-brain loop within the
+    WEB lane only, orchestrating the deterministic fallback.
+
+    TB5 hardening (after the live test showed EEVA's full 14-tool surface caused
+    wallet fixation + mis-selection + fabrication): the deterministic bge-m3
+    router scopes the surface; the model decides only WITHIN it. This function
+    engages ONLY on ``NEEDS_WEB_SEARCH`` and offers only the persona's WEB tools
+    (never wallet). ``NEEDS_WALLET`` / ``NEEDS_NEITHER`` return None immediately
+    so the legacy deterministic wallet flow and the ADR-007 groundedness gate
+    (on the no-tools completion) stay in charge — exactly where they belong.
+
+    Returns a response dict on a final answer; **None** to fall through to the
+    legacy branches. Never raises — any failure returns None so legacy backs it.
+    """
+    from ..services.tool_brain_service import (
+        ToolBrainService, ST_ANSWERED, ST_SILENT, ST_DELEGATE_WALLET, ST_HITL,
+    )
+    from ..services.tool_interceptor import ToolCallInterceptor
+    from ..services.citation_service import CitationService
+    from ..tools.registry import registry
+    from ..tools import registrations  # noqa: F401 - ensure specs registered
+
+    # TB5.1: only the web lane. Wallet + no-tool turns stay on the legacy path.
+    if intent != QueryIntent.NEEDS_WEB_SEARCH:
+        return None
+
+    try:
+        # Web-toolset ONLY (respects a persona's granted subset, e.g. Gwen's
+        # image/video). Wallet specs are never placed in the native surface.
+        web_specs = [s for s in registry.specs_for_persona(card) if s.toolset == "web"]
+
+        # Media forcing: a colloquial "find me a video / find me images" query
+        # deterministically NARROWS the surface to the single matching media
+        # tool. Native calling is unreliable at picking video_search among four
+        # web tools (choice paralysis) but reliably calls the one tool it's
+        # given — the regex already knows the type, so don't leave it to chance.
+        from ..tools.intent_classifier import media_search_type
+        forced = media_search_type(body.message)
+        if forced:
+            want = f"{forced}_search"
+            narrowed = [s for s in web_specs if s.name == want]
+            if narrowed:  # only if the persona actually has that media tool
+                web_specs = narrowed
+
+        tools = [s.definition() for s in web_specs]
+        if not tools:
+            return None  # persona has no web tools -> legacy handles it
+        svc = ToolBrainService(interceptor=ToolCallInterceptor())
+        hist = [{"role": t.role, "content": t.content} for t in history]
+        result = svc.run(persona_card=card, system_prompt=system,
+                         user_message=body.message, history=hist, tools=tools)
+
+        if result.status in (ST_HITL, ST_DELEGATE_WALLET):
+            # Wallet stays entirely on the existing propose->confirm / read flow.
+            handler = QueryHandlerService(brave_client=deps.get("brave_client"))
+            return handler.handle_wallet_query(
+                message=body.message, system_prompt=system,
+                user_compiled="\n\n".join(f"{t.role}: {t.content}" for t in history)
+                + f"\n\nUser: {body.message}",
+                wallet_tools=tools, metadata=metadata, persona_name=persona_name,
+                persona_card=card, session_id=body.session_id, user_id="default_user",
+            )
+
+        # TB5.2: on web-intent, ONLY return an answer that was actually grounded
+        # in a search. If the model answered WITHOUT searching (used_search=False)
+        # — the live-test fabrication case ("switzerland today" from training
+        # data) — fall through to the legacy force-search, which WILL search.
+        # This closes the groundedness hole: every web-intent answer is either
+        # tool-grounded here or force-searched by legacy; none comes from memory.
+        # A synthesis that refused despite a successful search (survived the
+        # ToolBrain prefill retry) must NEVER get citations stapled on — that
+        # produces the incoherent "I cannot search for images 🔍 Sources: ..."
+        # artifact. Fall through to the legacy honest floor instead.
+        if getattr(result, "refused", False):
+            logger.info(
+                "[ToolBrain] status=answered but synthesis refused post-retry "
+                "-> falling through to legacy (no citations stapled)"
+            )
+            return None
+
+        if result.status == ST_ANSWERED and result.answer and result.used_search \
+                and result.search_results:
+            metadata.source_type = SourceType.TOOL_BRAIN
+            metadata.tools_used = ["web_search"]
+            answer = CitationService.strip_hallucinated_citations(result.answer)
+            # Strip the model's own inline [REF]n[/REF] citation markers (it
+            # sometimes invents that format; the verified 🔍 Sources block below
+            # is the real citation) — TB5.3 live-test cleanup.
+            import re as _re
+            answer = _re.sub(r"\[/?REF[^\]]*\]", "", answer).strip()
+            answer = answer + CitationService.auto_generate_citations(result.search_results)
+            resp = _build_llm_response(answer, body.message, persona_name, metadata)
+            resp["used_search"] = True  # telemetry: the tool brain did search
+            return resp
+
+        # Silent, answered-without-searching, or loop error -> deterministic
+        # floor (legacy force-search on this web-intent turn).
+        logger.info(
+            f"[ToolBrain] status={result.status} used_search={result.used_search} "
+            f"-> falling through to legacy force-search"
+        )
+        return None
+    except Exception as e:  # noqa: BLE001 - never break chat; legacy backs it up
+        logger.warning(f"[ToolBrain] integration error ({e}); falling through to legacy")
+        return None
+
+
 @router.post("/persona/chat")
 def chat(body: ChatBody):
     """Chat with a persona, with autonomous tool support (web search, Solana wallet) for MCP-capable personas."""
@@ -188,6 +306,9 @@ def chat(body: ChatBody):
         role = (t.role or "").lower()
         if role == "assistant":
             lines.append(f"Assistant: {t.content}")
+        elif role == "narrator":
+            # ADR-011: a /sys narrator beat — scene direction, not user dialogue.
+            lines.append(f"[Scene: {t.content}]")
         else:
             lines.append(f"User: {t.content}")
     persona_name_early = card.get("display_name") or card.get("key") or "Persona"
@@ -254,6 +375,19 @@ def chat(body: ChatBody):
     tools = get_tools_for_query(body.message, persona_key, persona_rarity, mcp_access=mcp_access, precomputed_intent=intent)
     tool_names = [t["function"]["name"] for t in tools] if tools else []
     logger.info(f"[Tools] Injecting {len(tools)} tool(s): {tool_names}")
+
+    # ADR-008 (TB4): single-model native tool-brain loop. Flag-gated (default
+    # OFF = byte-identical legacy). Runs the model-decided tool loop over the
+    # persona's FULL registry toolset; returns None (falls through to the legacy
+    # deterministic branches below) whenever native calling was silent on a
+    # tool-needing query — so legacy is always the reliability floor.
+    if get_settings().tool_brain.enabled:
+        tb_response = _try_tool_brain(
+            card=card, system=system, body=body, history=history, intent=intent,
+            metadata=metadata, persona_name=persona_name, deps=deps,
+        )
+        if tb_response is not None:
+            return tb_response
 
     # Route wallet intent before MongoDB/Brave checks
     if intent == QueryIntent.NEEDS_WALLET:
@@ -344,6 +478,53 @@ def chat_with_session(session_id: str, body: ChatBody):
         chat_function=chat,
         add_message_function=add_message
     )
+
+
+@router.post("/sessions/{session_id}/regenerate")
+def regenerate_with_session(session_id: str):
+    """Reroll the last assistant reply (ADR-011 /regen).
+
+    Deletes the previous reply and re-generates for the same user turn via the
+    standard pipeline (same finalize path as ``/chat``).
+    """
+    deps = _get_dependencies()
+    from .sessions import add_message
+    from ..services.conversation_control_service import regenerate_last_reply
+
+    return regenerate_last_reply(session_id, deps, chat, add_message)
+
+
+@router.post("/sessions/{session_id}/continue")
+def continue_with_session(session_id: str):
+    """Extend the last assistant reply (ADR-011 /continue).
+
+    Appends a continuation as a new assistant turn; the driving instruction is
+    synthetic and never stored.
+    """
+    deps = _get_dependencies()
+    from .sessions import add_message
+    from ..services.conversation_control_service import continue_last_reply
+
+    return continue_last_reply(session_id, deps, chat, add_message)
+
+
+@router.post("/sessions/{session_id}/narrate")
+def narrate_with_session(session_id: str, body: NarrateBody):
+    """Inject a narrator/scene beat and return the persona's in-world reaction (ADR-011 /sys)."""
+    deps = _get_dependencies()
+    from .sessions import add_message
+    from ..services.conversation_control_service import narrate
+
+    return narrate(session_id, body.text, deps, chat, add_message)
+
+
+@router.post("/sessions/{session_id}/impersonate")
+def impersonate_with_session(session_id: str, body: ImpersonateBody):
+    """Draft the user's next line (ADR-011 /impersonate). Returns {"draft": ...}; not stored."""
+    deps = _get_dependencies()
+    from ..services.conversation_control_service import impersonate
+
+    return impersonate(session_id, deps, body.hint)
 
 
 @router.post("/persona/greet")
