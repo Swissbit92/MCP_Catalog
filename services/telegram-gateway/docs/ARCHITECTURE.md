@@ -2,7 +2,7 @@
 title: Architecture
 status: active
 created: 2026-07-04
-last_reviewed_on: 2026-07-04
+last_reviewed_on: 2026-07-17
 review_in: 6 months
 applies_to: services/telegram-gateway
 ---
@@ -41,7 +41,7 @@ The bot is a stateless relay. All conversation state (history, emotional state, 
 | Splitter | Paragraph/sentence-aware 4096-char splitting | `eeva_telegram/splitter.py` |
 | Messaging | Outbound sends (link previews off, plain text) | `eeva_telegram/messaging.py` |
 | Typing indicator | Repeating `typing…` chat action while generating | `eeva_telegram/typing_indicator.py` |
-| Handlers | PTB glue: allowlist, forwarded guard, error mapping, `/start` `/reset` | `eeva_telegram/handlers.py` |
+| Handlers | PTB glue: allowlist, forwarded guard, error mapping; commands `/start` `/reset` `/tools` + ADR-011 `/help` `/whoami` `/regen` `/continue` `/undo` `/sys` `/note` `/impersonate` | `eeva_telegram/handlers.py` |
 | Bot factory | Wire handlers + gateway + shutdown cleanup | `eeva_telegram/bot.py` |
 | Entrypoint | flock singleton guard, logging, `run_polling` | `bin/run_telegram_bot.py` |
 
@@ -57,7 +57,8 @@ The bot never writes to the coordinator's database — only through its HTTP API
 
 ## Key invariants
 
-- Zero coordinator changes; all coupling is the HTTP session API — see [../CLAUDE.md](../CLAUDE.md).
+- Zero gateway-side logic; all coupling is the HTTP session API — which the coordinator may extend for all clients (ADR-011 conversation-control endpoints are consumed by both this gateway and the React UI). See [../CLAUDE.md](../CLAUDE.md).
+- **Bot factory** also registers the native slash menu (`bot.py::_post_init` → `setMyCommands`, all 11 commands) and maps a backend 400 to a friendly "nothing to act on" (`NephilimBadRequestError`).
 - The security boundary is the Telegram allowlist + a loopback-only backend (coordinator chat routes have no auth).
 - No secrets in the launchd plist; this subfolder's own `.env` (chmod 600) is the only secret source.
 - No exec/file/trading access in this process.

@@ -2,7 +2,7 @@
 title: Architecture
 status: active
 created: 2026-04-19
-last_reviewed_on: 2026-07-04
+last_reviewed_on: 2026-07-17
 review_in: 6 months
 applies_to: nephilim
 ---
@@ -34,7 +34,8 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 | Component | Responsibility | Module |
 |-----------|----------------|--------|
 | API routes | HTTP endpoints: chat, sessions, personas, nephilim, auth, wallet | `src/coordinator/routes/` |
-| Chat-turn orchestration | Per-turn phase pipeline (load identity → build prompt → select history → generate → persist → post-updates), typed `ChatDeps`/`ChatTurnState` | `services/chat_session_service.py` |
+| Chat-turn orchestration | Per-turn phase pipeline (load identity → build prompt → select history → generate → persist → post-updates), typed `ChatDeps`/`ChatTurnState`; `persist_user`/`run_post_turn_updates` flags let regenerate/continue reuse it | `services/chat_session_service.py` |
+| Conversation-control (ADR-011) | Shared session-API verbs consumed by BOTH the React UI and Telegram gateway: regenerate/continue/undo/narrate(`/sys`)/impersonate + session metadata + author's note. Reuses the standard finalize path (no parallel LLM plumbing) | `services/conversation_control_service.py` (routes in `routes/chat.py` + `routes/sessions.py`) |
 | Query routing | Intent → wallet / brave / agentic / pure-LLM; wallet ground-truth injection | `services/query_handler_service.py` |
 | Wallet-creation flow | Guided multi-turn onboarding, typed `WalletFlowStep`(IntEnum)/`WalletFlowState` + `match` dispatch | `services/wallet_creation_flow_service.py` |
 | LLM orchestration | Ollama completion, per-persona sampling, forced tool-calling | `llm_client.py`, `services/llm_completion_service.py`, `services/tool_calling_service.py` |
@@ -52,7 +53,8 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 
 | Source | Format | Writer | Readers |
 |--------|--------|--------|---------|
-| `chat_sessions`, `messages`, `conversation_summaries` | SQLite | session / message / summary repos | `chat_session_service`, `memory_manager` |
+| `chat_sessions`, `messages`, `conversation_summaries` | SQLite (`messages.role` ∈ user/assistant/**narrator**, ADR-011) | session / message / summary repos | `chat_session_service`, `memory_manager` |
+| `session_notes` (ADR-011) | SQLite one-row-per-session author's note (FK-cascade to `chat_sessions`); alembic `5session_notes` + `_ensure_table` dual-cover | `session_note_repository` | `chat_session_service._append_author_note` (injected every turn via `extra_system_context`) |
 | `emotional_state` | SQLite | `emotional_state_repository` | `chat_session_service` (trust/rapport/mood) |
 | `seeker_profiles`, `persona_affinity`, `resonance_log`, `unlocked_lore` | SQLite | `seeker_progression_repository` | `chat_session_service`, nephilim routes |
 | `user_profiles` | SQLite | `user_profile_repository` | cross-session memory injection |
