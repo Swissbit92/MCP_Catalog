@@ -622,7 +622,8 @@ cd react-ui && npx playwright test --headed    # With browser visible
 
 ### Test Coverage
 
-- **Backend**: ~1,400 tests; **63%** line coverage, enforced by `--cov-fail-under=60` in `pytest.ini` (headless, live tests excluded).
+- **Backend**: ~2,050 tests; **63%** line coverage, enforced by `--cov-fail-under=60` in `pytest.ini` (headless, live tests excluded).
+- **Evals** (`tests/evaluation/`): persona voice/distinctiveness (ADR-005), lore retrieval, tool-call red team, and tool-firing (`eval_tool_firing.py` — does a tool actually fire when a turn needs one). Files named `eval_*.py` are **not** auto-collected by pytest; they cost real LLM turns and are run deliberately.
 - **Frontend**: 40+ Jest tests with React Testing Library
 - **Playwright E2E**: OAuth flow, chat interactions, Jupiter wallet, visual regression
 - **Live-LLM tests** (`requires_ollama`): run only when Ollama is reachable; the comprehensive persona suite (`tests/manual/`) remains the primary quality gate.

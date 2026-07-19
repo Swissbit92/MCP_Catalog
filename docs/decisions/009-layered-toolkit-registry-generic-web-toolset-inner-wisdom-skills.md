@@ -30,9 +30,11 @@ poverty** problem. Verified state of the codebase:
   two bespoke paths (Brave via `SearchExecutionService`, wallet via the
   `handle_wallet_query` cascade). Adding one tool today touches ≥4 files
   plus the interceptor policy and extractor schema tables. The only
-  extension point built for pluggability is
+  extension point built for pluggability was
   `AgenticPipeline.tool_executors` (ADR-004), gated behind
-  `AGENTIC_ENABLED`.
+  `AGENTIC_ENABLED`. *(Historical: that pipeline was deleted 2026-07-19 —
+  the registry's `executor_bindings` now fills this role. See ADR-004,
+  Superseded.)*
 - The lore wiki's `entity_type: capability` entries are **diegetic
   flavor**, not a skills mechanism — a real skill loader is a new
   subsystem and must use different vocabulary.
