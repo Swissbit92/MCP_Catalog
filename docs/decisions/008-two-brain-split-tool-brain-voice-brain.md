@@ -11,6 +11,12 @@ applies_to: nephilim
 
 ## Status
 
+**Supersedes [ADR-004](004-persona-safe-agentic-tool-calls.md)** — that pipeline was
+retired and deleted 2026-07-19 once the tool brain had soaked. The interceptor and
+the memory-write sanitizer it contributed are retained and remain live; see ADR-004's
+supersession note for the full delete/keep boundary and the deliberate decision to
+drop the never-wired injection-guard tool-trigger checks.
+
 **P1 + TB5 HARDENING DONE (2026-07-05 night). Live re-test PASSED; ready for operator to enable.** The first live test (flag ON) FAILED — EEVA's full 14-tool surface caused wallet fixation (unsolicited "let me check your wallet"), explicit search not firing, and fabrication escaping the groundedness gate. **TB5 reframe (a correction to this ADR's "model decides everything" premise): the deterministic bge-m3 router scopes the tool surface; the model decides only WITHIN it.** `_try_tool_brain` now engages ONLY on `NEEDS_WEB_SEARCH`, offers WEB tools only (wallet never in the native surface), and returns an answer only if a search actually ran (else falls through to the legacy force-search floor). `NEEDS_WALLET`/`NEEDS_NEITHER` stay on the legacy deterministic path (+ ADR-007 gate). Live re-test PASSED: wallet fixation gone, explicit search fires, fabrication closed, wallet routing intact, Gwen image search in-voice. The honest lesson: model-decided calling degrades on a rich multi-domain toolset; keep the classifier for coarse routing, the model for fine tool-choice + args + voice within one lane.
 
 **P1 BUILT (2026-07-05 night, flag OFF).** The single-model native tool brain is implemented + QA-gated + live-smoke-validated behind `TOOL_BRAIN_ENABLED` (default OFF, byte-identical legacy). TB0 spike overturned the pure-native design → **native-first + deterministic fallback** (native calling is phrasing-sensitive, misses ~40% of colloquial phrasings; the legacy force-search is the floor). TB1 config, TB2 executor bindings + safesearch clamp (both were dead code), TB3 loop service (`tool_brain_service.py`, ADR-004 interceptor reused before every execution, wallet stays on the HITL flow), TB4 route wiring (`_try_tool_brain`) + a SearXNG-no-Brave bug fix the smoke surfaced. Live-validated on abliterated + SearXNG: EEVA news + Gwen `image_search` execute + synthesize in-voice. `argument_extractor.py` + the ADR-004 Stage1/Stage2 split are superseded (kept for rollback). **Owed before prod enablement:** operator live test on Telegram, then flip the flag; a fuller multi-turn agentic red-team once exercised live.

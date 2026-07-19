@@ -104,9 +104,8 @@ class ToolBrainResult:
 class ToolBrainService:
     """Native tool-calling loop. Stateless apart from injected collaborators."""
 
-    def __init__(self, interceptor, injection_guard=None, ollama_client=None):
+    def __init__(self, interceptor, ollama_client=None):
         self.interceptor = interceptor
-        self.injection_guard = injection_guard
         self._client = ollama_client  # injectable for tests
 
     # ------------------------------------------------------------------ client

@@ -27,8 +27,6 @@ from .tools.tool_generators import (
 from .tools.synthesis_prompts import (
     build_tool_system_prompt,
     build_synthesis_prompt,
-    build_scene_contract,
-    DEFAULT_ACTION_ALIASES,
 )
 
 # Re-export utility functions
@@ -51,8 +49,6 @@ __all__ = [
     "AVAILABLE_TOOLS",
     "build_tool_system_prompt",
     "build_synthesis_prompt",
-    "build_scene_contract",
-    "DEFAULT_ACTION_ALIASES",
     "ToolCall",
     "should_use_keyword_filter",
     "parse_tool_call",
