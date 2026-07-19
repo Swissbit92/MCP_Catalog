@@ -17,6 +17,7 @@ The pipeline existed only because Magidonia-24B couldn't native-tool-call. The A
 - Enum deletion was verified against production data rather than assumed safe: `SELECT source_type, COUNT(*)` on `data/chats.db` returned `llm:737, tool_brain:24, brave_mcp:17, groundedness_abstain:1` — zero rows carried the removed values.
 - `tests/backend/coordinator/test_scene_contract.py` → `test_agent_settings.py` (its surviving half), plus a new `test_agent_settings_drops_retired_pipeline_fields` guarding against silent re-introduction of the four retired settings.
 - A lingering `AGENTIC_ENABLED=false` in a local `.env` is harmless (config uses `extra="ignore"`).
+- **Basis for the removal was structural, not observational.** The ROADMAP gate for this item was "~1 week of tool-brain soak." Measuring that soak on 2026-07-19 showed it never happened: all 24 `tool_brain` messages date from 2026-07-05 (the live-test day) and there are **zero assistant messages between 2026-07-06 and 2026-07-19**. What actually justified the deletion was that the removed code was inert (flag never true in prod) and that the retained interceptor's reachability on the live path was verified by call-graph review + a re-run red-team eval. Recorded so the "two-week soak" framing isn't repeated as precedent — and noting that the tool brain remains genuinely un-soaked; see the ROADMAP soak item.
 
 ### Fixed (2026-07-19) — intermittent HTTP 500 on `/sessions/{id}/greet` (multi-message greeting)
 
