@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-07-19) — intermittent HTTP 500 on `/sessions/{id}/greet` (multi-message greeting)
+
+`greet_with_session` passed the greet response's `answer` straight into `AppendMessageBody(content=...)`, but `answer` is a **list** whenever the greeting split into `message_flow == "multi"` — a pydantic `ValidationError` (`content` must be `str`) surfaced as an unhandled 500. Latent + pre-existing (nothing to do with ADR-011/012); intermittent because only *long* greetings split. Fix: persist a multi-part greeting as separate assistant messages with a shared `multi_message_id` (mirroring chat persistence); single greetings unchanged. Regression test proven to fail on the old code (500) and pass on the fix. Suite → 2068.
+
+### Added (2026-07-19) — persona-configurable deterministic word substitutions (ADR-012)
+
+A persona can now declare a `word_substitutions` map in its JSON (e.g. Gwen's `{"shaft": "cock"}`) and the finalize path enforces it deterministically. This is the **only** reliable lever for word choice: live testing proved prompting can't do it — the lean prompt builder (ADR-005) doesn't include the `do`/`dont` arrays (so a "always say cock not shaft" `dont` line never reached the model), and "shaft" still appeared in **6/12** turns at temperature **0.9**.
+
+- `apply_word_substitutions()` in `message_processing_service.py`: whole-word (`\b`, so `driveshaft` survives), case-preserving (`Shaft`→`Cock`), keys regex-escaped, rule count capped (25). One `re.sub` per rule on the finished string — **microseconds, zero effect on generation speed** (it's not a second LLM pass). No-op when a persona declares none, so the other 5 pay nothing.
+- Wired into **both** finalize paths (persona-agnostic): `_build_llm_response` (chat.py) and `_finalize_response` (query_handler_service.py). `PersonaCard.word_substitutions` added to the schema.
+- Gwen: `word_substitutions: {shaft: cock}` added; the earlier dead `dont` line (never reached the prompt) removed. +10 tests, suite → 2065. See [ADR-012](docs/decisions/012-persona-configurable-deterministic-word-substitutions.md).
+
 ### Fixed (2026-07-17) — `.env` loading scoped to the test that needs it; Brave connectivity is a real test now
 
 Closes the hermeticity root cause at source (the conftest fixture stays as defense-in-depth).

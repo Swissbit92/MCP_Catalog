@@ -725,3 +725,25 @@ class TestDependencyPatchCoverage:
     def test_session_note_repo_is_neutralised(self):
         """ADR-011's getter raises when uninitialised — it must be patched here."""
         assert "get_session_note_repo" in _dependency_getter_names()
+
+
+class TestWordSubstitutionsWiring:
+    """ADR-012: _build_llm_response applies persona word_substitutions end-to-end."""
+
+    def _call(self, answer, subs):
+        # real finalize chain (no mocks) — post-process + apply_word_substitutions
+        # + <msg> parse all run for real.
+        from src.coordinator.routes.chat import _build_llm_response
+        from src.coordinator.schemas import ResponseMetadata
+        return _build_llm_response(answer, "hi", "Gwen", ResponseMetadata(), word_substitutions=subs)
+
+    def test_substitution_applied_in_output(self):
+        out = self._call("I want your shaft tonight", {"shaft": "cock"})
+        ans = out["answer"] if isinstance(out["answer"], str) else " ".join(out["answer"])
+        assert "shaft" not in ans.lower()
+        assert "cock" in ans.lower()
+
+    def test_noop_without_substitutions(self):
+        out = self._call("I want your shaft tonight", None)
+        ans = out["answer"] if isinstance(out["answer"], str) else " ".join(out["answer"])
+        assert "shaft" in ans.lower()  # untouched when the persona declares none

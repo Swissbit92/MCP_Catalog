@@ -411,6 +411,12 @@ class PersonaCard(BaseModel):
         default_factory=list,
         description="Boundaries and anti-patterns"
     )
+    word_substitutions: Dict[str, str] = Field(
+        default_factory=dict,
+        description="ADR-012: whole-word output substitutions (e.g. {'shaft': 'cock'}) "
+                    "applied deterministically in the finalize path — the only reliable "
+                    "lever for word choice, since the lean prompt omits do/dont."
+    )
 
     # Behavior configuration
     behavior: BehaviorProfile = Field(

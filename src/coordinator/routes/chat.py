@@ -26,6 +26,7 @@ from ..tools.intent_classifier import QueryIntent
 from ..services.first_person_service import post_process_first_person
 from ..services.query_handler_service import QueryHandlerService
 from ..services.message_processing_service import (
+    apply_word_substitutions,
     force_multi_message_split,
     parse_multi_message_response,
     strip_role_prefix_leaks,
@@ -41,10 +42,15 @@ def _build_llm_response(
     user_message: str,
     persona_name: str,
     metadata: ResponseMetadata,
+    word_substitutions: dict | None = None,
 ) -> dict:
     """Post-process LLM output into a standard response dict."""
     import re as _re
     answer, was_rewritten = post_process_first_person(answer, persona_name)
+
+    # ADR-012: persona-configurable whole-word substitutions (e.g. shaft→cock).
+    # No-op unless the card declares `word_substitutions`.
+    answer = apply_word_substitutions(answer, word_substitutions)
 
     # Convert <Assistant> separators to <msg> tags (LLM sometimes uses them as message delimiters)
     if _re.search(r'<[Aa]ssistant>', answer):
@@ -244,7 +250,7 @@ def _try_tool_brain(
             import re as _re
             answer = _re.sub(r"\[/?REF[^\]]*\]", "", answer).strip()
             answer = answer + CitationService.auto_generate_citations(result.search_results)
-            resp = _build_llm_response(answer, body.message, persona_name, metadata)
+            resp = _build_llm_response(answer, body.message, persona_name, metadata, word_substitutions=card.get("word_substitutions"))
             resp["used_search"] = True  # telemetry: the tool brain did search
             return resp
 
@@ -412,7 +418,7 @@ def chat(body: ChatBody):
         logger.info("No tools needed, using regular completion")
         answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} no-tools:")
         answer = _apply_groundedness_gate(card, body.message, answer, metadata)
-        return _build_llm_response(answer, body.message, persona_name, metadata)
+        return _build_llm_response(answer, body.message, persona_name, metadata, word_substitutions=card.get("word_substitutions"))
 
     brave_tools = [t for t in tools if t.get("function", {}).get("name", "") == "brave_web_search"]
 
@@ -456,7 +462,7 @@ def chat(body: ChatBody):
         # same groundedness gap applies as the no-tools branch above).
         answer = _complete_or_503(card, system, user_compiled, log_context=f"[Chat] {persona_key} fallback:")
         answer = _apply_groundedness_gate(card, body.message, answer, metadata)
-        return _build_llm_response(answer, body.message, persona_name, metadata)
+        return _build_llm_response(answer, body.message, persona_name, metadata, word_substitutions=card.get("word_substitutions"))
 
 
 @router.post("/sessions/{session_id}/chat")

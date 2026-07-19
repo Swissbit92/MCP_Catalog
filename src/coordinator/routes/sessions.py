@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 
 from fastapi import APIRouter, HTTPException
 
@@ -318,12 +319,24 @@ def greet_with_session(session_id: str, body: GreetBody):
     greet_body = GreetBody(persona=persona_key)
     response = greet(greet_body)
 
-    # Save greeting to session
-    greeting_msg_body = AppendMessageBody(
-        role="assistant",
-        content=response["answer"],
-        ts=utc_now_iso()
-    )
-    add_message(session_id, greeting_msg_body)
+    # Save greeting to session. A greeting can be multi-message (message_flow ==
+    # "multi" → answer is a LIST); persist each part separately with a shared
+    # multi_message_id, mirroring chat persistence. Passing the list straight to
+    # AppendMessageBody(content=...) was a pydantic ValidationError → intermittent
+    # HTTP 500 whenever a greeting happened to split.
+    answer = response["answer"]
+    now = utc_now_iso()
+    if isinstance(answer, list):
+        multi_id = str(uuid.uuid4()) if len(answer) > 1 else None
+        for idx, part in enumerate(answer):
+            add_message(session_id, AppendMessageBody(
+                role="assistant",
+                content=part,
+                ts=now,
+                multi_message_id=multi_id,
+                multi_message_index=idx if multi_id else None,
+            ))
+    else:
+        add_message(session_id, AppendMessageBody(role="assistant", content=answer, ts=now))
 
     return response

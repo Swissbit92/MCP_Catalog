@@ -328,3 +328,44 @@ class TestGetEmotionalState:
         with patch("src.coordinator.routes.sessions._get_repos", return_value=repos):
             resp = client.get("/sessions/bad/emotional-state")
         assert resp.status_code == 404
+
+
+class TestGreetWithSessionPersistence:
+    """POST /sessions/{id}/greet must persist a multi-message greeting without 500.
+
+    Regression: a greeting that split into message_flow=='multi' (answer is a LIST)
+    was passed straight to AppendMessageBody(content=list) -> ValidationError -> 500.
+    """
+
+    def _greet(self, answer, flow):
+        repos = _make_repos(persona_key="gwen")
+        with patch("src.coordinator.routes.sessions._get_repos", return_value=repos), \
+             patch("src.coordinator.routes.chat.greet",
+                   return_value={"answer": answer, "message_flow": flow, "message_count": 1}), \
+             patch("src.coordinator.routes.sessions.add_message") as add_msg:
+            resp = client.post("/sessions/sess-1/greet", json={})
+        return resp, add_msg
+
+    def test_multi_message_greeting_persists_without_500(self):
+        resp, add_msg = self._greet(["Hey Daddy", "I missed you"], "multi")
+        assert resp.status_code == 200
+        # one add_message per part, each with a STRING content (never a list)
+        assert add_msg.call_count == 2
+        for call in add_msg.call_args_list:
+            body = call.args[1]
+            assert isinstance(body.content, str)
+        # parts share a multi_message_id
+        ids = {c.args[1].multi_message_id for c in add_msg.call_args_list}
+        assert len(ids) == 1 and next(iter(ids)) is not None
+
+    def test_single_message_greeting_persists(self):
+        resp, add_msg = self._greet("Hey Daddy", "single")
+        assert resp.status_code == 200
+        assert add_msg.call_count == 1
+        assert isinstance(add_msg.call_args_list[0].args[1].content, str)
+
+    def test_greet_unknown_session_404(self):
+        repos = _make_repos(session_exists=False)
+        with patch("src.coordinator.routes.sessions._get_repos", return_value=repos):
+            resp = client.post("/sessions/bad/greet", json={})
+        assert resp.status_code == 404

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import logging
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,48 @@ def strip_role_prefix_leaks(answer: str) -> str:
         cleaned = cleaned[:match.start()]
 
     return cleaned.strip()
+
+
+# Cap on how many substitution rules a persona may declare — a persona card is
+# owner-authored, but this bounds the per-reply regex work regardless.
+_MAX_WORD_SUBSTITUTIONS = 25
+
+
+def _case_preserving_replacement(good: str, matched: str) -> str:
+    """Return ``good`` cased to mirror the matched text (ALL-CAPS / Title / lower)."""
+    if matched.isupper():
+        return good.upper()
+    if matched[:1].isupper():
+        return good[:1].upper() + good[1:]
+    return good
+
+
+def apply_word_substitutions(answer: str, substitutions: Optional[Dict[str, str]]) -> str:
+    r"""Replace whole-word banned terms with a persona-approved form (ADR-012).
+
+    Data-driven from the persona card's ``word_substitutions`` map (e.g.
+    ``{"shaft": "cock"}``): the ONLY reliable lever for word choice, since the lean
+    prompt builder (ADR-005) doesn't include the ``do``/``dont`` arrays and negative
+    instructions can't steer a local model's baseline vocabulary at temperature.
+
+    Runs once on the finished string (a plain ``re.sub`` per rule — microseconds, no
+    effect on generation speed). Guards: whole-word (``\b``) so substrings survive;
+    case-insensitive match with case-preserving output; keys regex-escaped; rule
+    count capped. No-op (returns ``answer`` unchanged) when the map is empty — so the
+    other personas pay nothing.
+    """
+    if not substitutions or not answer:
+        return answer
+    for bad, good in list(substitutions.items())[:_MAX_WORD_SUBSTITUTIONS]:
+        if not isinstance(bad, str) or not bad.strip() or not isinstance(good, str):
+            continue
+        answer = re.sub(
+            rf"\b{re.escape(bad)}\b",
+            lambda m, g=good: _case_preserving_replacement(g, m.group(0)),
+            answer,
+            flags=re.IGNORECASE,
+        )
+    return answer
 
 
 def parse_multi_message_response(response: str) -> tuple[list[str], str]:
