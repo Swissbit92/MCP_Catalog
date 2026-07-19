@@ -102,6 +102,26 @@ class ToolBrainSettings(BaseSettings):
         ),
         alias="TOOL_BRAIN_DETERMINISTIC_FALLBACK",
     )
+    ungated_web: bool = Field(
+        default=False,
+        description=(
+            "Offer the persona's WEB tools on NEEDS_NEITHER turns too, letting "
+            "the model decide (Hermes-Agent-style), instead of requiring the "
+            "bge-m3 router to first classify the turn as NEEDS_WEB_SEARCH. "
+            "WALLET is NEVER ungated — it keeps its deterministic gate, which is "
+            "the part TB5 proved must stay classifier-scoped. "
+            "Motivation: the tool-firing eval measured the router silently "
+            "blocking real web queries (\"who is the current chancellor of "
+            "Germany?\" scores 0.56 vs the 0.66 threshold), so the model never "
+            "saw a tool at all. Ungating converts an invisible routing miss into "
+            "a visible model choice. "
+            "COST: tool schemas then sit in the prompt on chitchat turns too, and "
+            "prompt bloat has twice measured as flattening persona voice — so "
+            "this is eval-gated on the ADR-005 attribution eval, not just the "
+            "tool-firing eval. Default OFF = byte-identical TB5 behaviour."
+        ),
+        alias="TOOL_BRAIN_UNGATED_WEB",
+    )
 
     model_config = {
         "env_file": ".env",
