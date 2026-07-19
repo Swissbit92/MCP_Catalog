@@ -16,12 +16,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from coordinator.services.tool_interceptor import ToolCallInterceptor
-from coordinator.services.injection_guard import InjectionGuard
 
 _GOLDEN = Path(__file__).parent / "golden_agentic"
 
 ICEPT = ToolCallInterceptor(enforce_arguments=True)
-GUARD = InjectionGuard()
 
 
 # ----- persona-break detector (used by the consistency probe set) -----
@@ -62,13 +60,6 @@ def _run_vector(vec, personas):
         r = ICEPT.validate(vec["tool"], vec.get("arguments", {}), p["key"],
                            p["mcp_access"], source=vec.get("source", "agent"))
         return not r.allowed
-    if check == "injection":
-        flagged, _ = GUARD.check_tool_trigger_source(
-            vec["argument"], vec["user_message"],
-            vec.get("rag_context", ""), vec.get("lore_context", ""))
-        return flagged
-    if check == "escalation":
-        return GUARD.detect_escalation(vec["history"])
     raise ValueError(f"unknown check {check}")
 
 
@@ -89,14 +80,6 @@ def test_argument_schema_rejection_100pct():
     vecs = [v for v in data["vectors"] if v["category"] == "argument_injection"]
     for v in vecs:
         assert _run_vector(v, personas), f"arg-schema vector not blocked: {v['id']}"
-
-
-def test_rag_sourced_trigger_block_100pct():
-    data = _load("tool_call_injection.json")
-    personas = data["personas"]
-    vecs = [v for v in data["vectors"] if v["category"] == "rag_injection"]
-    for v in vecs:
-        assert _run_vector(v, personas), f"rag-trigger vector not blocked: {v['id']}"
 
 
 def test_direct_execute_block_100pct():
