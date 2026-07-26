@@ -15,17 +15,53 @@ SQLite for persistence, FAISS for semantic memory.
 
 ## System context
 
+```archview
+{
+  "caption": "Two thin clients, one session API, one turn pipeline. Everything that can leave the machine is gated per persona.",
+  "nodes": [
+    {"id":"ui","label":"React UI","sub":"chat · personas · wallet","tech":"React 19 · TS","kind":"external"},
+    {"id":"tg","label":"telegram-gateway","sub":"allowlisted single user","tech":"own venv · launchd","kind":"external"},
+    {"id":"routes","label":"routes/","sub":"chat · sessions · personas · auth · wallet","tech":"FastAPI","kind":"service"},
+    {"id":"chat","label":"chat_session_service","sub":"per-turn phase pipeline","tech":"ChatDeps / ChatTurnState","kind":"module"},
+    {"id":"router","label":"query_handler_service","sub":"intent -> wallet / web / LLM","tech":"bge-m3 semantic router","kind":"module"},
+    {"id":"prompt","label":"prompt_builder","sub":"exemplar-first, voice-last","tech":"lru_cache","kind":"module"},
+    {"id":"memory","label":"memory_rag","sub":"token-budget selection + lore","tech":"FAISS · bge-m3","kind":"module"},
+    {"id":"repos","label":"repositories/","sub":"all extend BaseRepository","tech":"SQLite · pooled","kind":"module"},
+    {"id":"guard","label":"tool_interceptor","sub":"mcp_access + arg allowlist + HITL","tech":"deterministic middleware","kind":"secret"},
+    {"id":"llm","label":"llm_completion_service","sub":"per-persona sampling","tech":"Ollama client","kind":"module"},
+    {"id":"sqlite","label":"SQLite","sub":"chats · progression · wallets","tech":"local file","kind":"store"},
+    {"id":"faiss","label":"FAISS","sub":"session + lore vectors","tech":"local index","kind":"store"},
+    {"id":"ollama","label":"Ollama","sub":"LLM + bge-m3 embeddings","tech":"on-device, Metal GPU","kind":"external"},
+    {"id":"web","label":"SearXNG / Brave","sub":"ephemeral Docker","tech":"MCP","kind":"external"},
+    {"id":"jupiter","label":"Jupiter / Solana","sub":"long-running Docker","tech":"MCP","kind":"external"}
+  ],
+  "edges": [
+    {"from":"ui","to":"routes","label":"session API"},
+    {"from":"tg","to":"routes","label":"the SAME API"},
+    {"from":"routes","to":"chat"},
+    {"from":"chat","to":"router"},
+    {"from":"chat","to":"prompt"},
+    {"from":"chat","to":"memory"},
+    {"from":"chat","to":"repos"},
+    {"from":"router","to":"guard","label":"every tool call"},
+    {"from":"prompt","to":"llm"},
+    {"from":"memory","to":"faiss"},
+    {"from":"repos","to":"sqlite"},
+    {"from":"guard","to":"web","label":"if mcp_access allows"},
+    {"from":"guard","to":"jupiter","label":"if mcp_access allows"},
+    {"from":"llm","to":"ollama"}
+  ]
+}
 ```
-[User: web UI / Telegram gateway]
-        │  HTTP (session API)
-        ▼
-   nephilim FastAPI coordinator ──▶ Ollama (local LLM + bge-m3 embeddings)
-        │            │
-        │            ├──▶ Brave Search (ephemeral Docker, per-persona mcp_access)
-        │            └──▶ Jupiter DEX / Solana wallet (long-running Docker)
-        ▼
-   SQLite (chats, progression, wallets)  +  FAISS (session/lore vectors)
-```
+
+**Local-first is a constraint, not a preference.** Inference runs on-device
+because the alternative leaks financial context to a third party. The two Docker
+MCP servers are the only paths off the machine, and both sit behind
+`tool_interceptor` — deterministic middleware, never LLM self-policing.
+
+The Telegram gateway consumes the **same** session API as the React UI
+([ADR-011](decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md)),
+which is why regenerate/continue/undo exist once rather than twice.
 
 ## Components
 
