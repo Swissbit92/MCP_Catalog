@@ -12,7 +12,7 @@ applies_to: nephilim
 Punch list from bringing nephilim back online on the Mac Mini M4 Pro (48 GB, Apple Silicon/Metal, native Ollama+MLX) after migrating off the Windows/NVIDIA-RTX-4090 Zephyrus. Audit performed 2026-06-21.
 
 > **2026-07-04 audit follow-up (repo-audit cleanup, step 4).** Closed the Node-durability
-> remedy from the react-scripts/OpenSSL blocker below: added `react-ui/.nvmrc` (Node 20)
+> remedy from the react-scripts/OpenSSL blocker below: added `react-ui/.nvmrc` (now Node 24 LTS)
 > and an `engines` field to `react-ui/package.json`. The remaining open `[ ]` items are the
 > **cosmetic Windows→Mac / NVIDIA→Metal doc-reframes** in `Readme.md` and
 > `docs/setup/DOCKER_QUICKSTART.md` — **intentionally deferred**: they are low-risk prose
@@ -63,7 +63,7 @@ Punch list from bringing nephilim back online on the Mac Mini M4 Pro (48 GB, App
 - [x] 9 test files — `sys.stdout = io.TextIOWrapper(...)` Windows-console UTF-8 fix (no-op on Mac, can break pytest capture). Guard with `if sys.platform == 'win32':`.
 - [ ] `scripts/utils/run_react.py:85,139` — `shell=True` (Windows `npm.cmd` workaround); drop on macOS.
 - [ ] `docs/setup/DOCKER_QUICKSTART.md:310-312` — `netstat/findstr/taskkill` Windows commands; lead with `lsof`/`kill`.
-- [ ] Node version docs — `Readme.md:188`, `scripts/setup/README.md:10`, `requirements.txt:46` say "Node 16+"; note Node 17+ breaks react-scripts without the OpenSSL flag.
+- [x] Node version docs — reconciled 2026-07-27. Four sources disagreed: CI pinned 20 (EOL April 2026), `.nvmrc` said 20, `package.json` engines said `>=18`, and the machine that actually builds production runs 25. All now point at **Node 24 LTS** (engines `>=22`). The OpenSSL legacy flag stays — `react-scripts@5` needs it on any Node 17+.
 - [ ] Workflow docs — `CLAUDE.md:25-26` ("Docker most common") and `docs/DEVELOPMENT.md:14` ("Docker Recommended"): local dev + native Ollama is now primary on Mac; reframe.
 
 ### Cosmetic

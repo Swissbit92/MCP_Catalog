@@ -7,7 +7,7 @@ Automated installation scripts for local development environment.
 Before running setup scripts, ensure you have:
 
 - **Python 3.8+**: `python --version`
-- **Node.js 20 LTS recommended** (react-scripts breaks on Node 17+ without the OpenSSL legacy flag, which is baked into react-ui/package.json): `node --version`
+- **Node.js 24 LTS recommended** — matches CI and `react-ui/.nvmrc`. Node 20 reached EOL in April 2026. react-scripts@5 breaks on any Node 17+ without the OpenSSL legacy flag, which is baked into `react-ui/package.json`: `node --version`
 - **pip**: `pip --version`
 - **npm**: `npm --version`
 
