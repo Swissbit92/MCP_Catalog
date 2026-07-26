@@ -182,7 +182,7 @@
 | Component | Requirement | Notes |
 |-----------|-------------|-------|
 | **Python** | 3.12+ | [python.org](https://python.org) |
-| **Node.js** | v18+ with npm (Node 25 needs `NODE_OPTIONS=--openssl-legacy-provider`, already baked into `package.json`) | [nodejs.org](https://nodejs.org) |
+| **Node.js** | v22+ with npm — CI and `.nvmrc` pin **24 LTS**. Any Node 17+ needs `NODE_OPTIONS=--openssl-legacy-provider` for `react-scripts@5`; already baked into the `package.json` scripts | [nodejs.org](https://nodejs.org) |
 | **Ollama** | Latest (native, not Docker) | [ollama.ai](https://ollama.ai) — Docker-on-Mac runs Ollama CPU-only |
 | **GPU** | Apple Silicon M4 Pro (Metal) | Metal GPU acceleration is automatic with native Ollama |
 

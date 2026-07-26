@@ -24,7 +24,7 @@ Quick hits:
 ```bash
 # Local dev — PRIMARY on macOS (native Ollama + Metal GPU). Backend, then frontend:
 .venv/bin/python -m uvicorn src.coordinator.server:app --port 8000
-cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into the script (Node 17+)
+cd react-ui && PORT=3001 npm run start:dev   # --openssl-legacy-provider baked into the script (needed on any Node 17+)
 
 # Backend tests (~2,050; gate --cov-fail-under=60). Live tests
 # auto-skip when Ollama/Brave/Docker are unreachable (tests/conftest.py).
