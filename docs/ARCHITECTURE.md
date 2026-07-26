@@ -15,21 +15,28 @@ SQLite for persistence, FAISS for semantic memory.
 
 ## System context
 
+Verified against the call graph, not sketched from memory — every edge below is
+an import or call that exists in `src/coordinator/`.
+
 ```archview
 {
-  "caption": "Two thin clients, one session API, one turn pipeline. Everything that can leave the machine is gated per persona.",
+  "caption": "routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.",
   "nodes": [
     {"id":"ui","label":"React UI","sub":"chat · personas · wallet","tech":"React 19 · TS","kind":"external"},
     {"id":"tg","label":"telegram-gateway","sub":"allowlisted single user","tech":"own venv · launchd","kind":"external"},
-    {"id":"routes","label":"routes/","sub":"chat · sessions · personas · auth · wallet","tech":"FastAPI","kind":"service"},
-    {"id":"chat","label":"chat_session_service","sub":"per-turn phase pipeline","tech":"ChatDeps / ChatTurnState","kind":"module"},
-    {"id":"router","label":"query_handler_service","sub":"intent -> wallet / web / LLM","tech":"bge-m3 semantic router","kind":"module"},
-    {"id":"prompt","label":"prompt_builder","sub":"exemplar-first, voice-last","tech":"lru_cache","kind":"module"},
-    {"id":"memory","label":"memory_rag","sub":"token-budget selection + lore","tech":"FAISS · bge-m3","kind":"module"},
+    {"id":"routes","label":"routes/chat.py","sub":"orchestrator — picks the path","tech":"FastAPI","kind":"service"},
+    {"id":"chat","label":"handle_session_chat","sub":"per-turn phase pipeline","tech":"ChatDeps / ChatTurnState","kind":"module"},
+    {"id":"brain","label":"tool_brain_service","sub":"web intents only, never wallet","tech":"Ollama native tool-calling","kind":"module"},
+    {"id":"qh","label":"query_handler_service","sub":"legacy wallet + force-search","tech":"bge-m3 semantic router","kind":"module"},
+    {"id":"persona","label":"persona_memory","sub":"-> prompt_builder, lean prompt","tech":"lru_cache","kind":"module"},
+    {"id":"facts","label":"memory_fact_retrieval","sub":"through the M1 frame","tech":"bi-temporal store","kind":"module"},
+    {"id":"llm","label":"llm_client","sub":"per-persona sampling","tech":"Ollama","kind":"module"},
     {"id":"repos","label":"repositories/","sub":"all extend BaseRepository","tech":"SQLite · pooled","kind":"module"},
-    {"id":"guard","label":"tool_interceptor","sub":"mcp_access + arg allowlist + HITL","tech":"deterministic middleware","kind":"secret"},
-    {"id":"llm","label":"llm_completion_service","sub":"per-persona sampling","tech":"Ollama client","kind":"module"},
-    {"id":"sqlite","label":"SQLite","sub":"chats · progression · wallets","tech":"local file","kind":"store"},
+    {"id":"guard","label":"tool_interceptor","sub":"validate() only — gates, never executes","tech":"deterministic middleware","kind":"secret"},
+    {"id":"exec","label":"executor_bindings","sub":"runs the tool the guard permitted","tech":"registry-bound","kind":"module"},
+    {"id":"relevance","label":"search_relevance_service","sub":"per-result cosine floor","tech":"reuses the RAG embedder","kind":"module"},
+    {"id":"rag","label":"memory_rag","sub":"EpisodicMemoryRAG · startup singleton","tech":"bge-m3","kind":"module"},
+    {"id":"sqlite","label":"SQLite","sub":"chats · progression · facts · wallets","tech":"local file","kind":"store"},
     {"id":"faiss","label":"FAISS","sub":"session + lore vectors","tech":"local index","kind":"store"},
     {"id":"ollama","label":"Ollama","sub":"LLM + bge-m3 embeddings","tech":"on-device, Metal GPU","kind":"external"},
     {"id":"web","label":"SearXNG / Brave","sub":"ephemeral Docker","tech":"MCP","kind":"external"},
@@ -38,26 +45,40 @@ SQLite for persistence, FAISS for semantic memory.
   "edges": [
     {"from":"ui","to":"routes","label":"session API"},
     {"from":"tg","to":"routes","label":"the SAME API"},
-    {"from":"routes","to":"chat"},
-    {"from":"chat","to":"router"},
-    {"from":"chat","to":"prompt"},
-    {"from":"chat","to":"memory"},
+    {"from":"routes","to":"chat","label":"handle_session_chat"},
+    {"from":"routes","to":"brain","label":"_try_tool_brain"},
+    {"from":"routes","to":"qh","label":"legacy fallthrough"},
+    {"from":"chat","to":"persona"},
+    {"from":"chat","to":"facts"},
+    {"from":"chat","to":"llm"},
     {"from":"chat","to":"repos"},
-    {"from":"router","to":"guard","label":"every tool call"},
-    {"from":"prompt","to":"llm"},
-    {"from":"memory","to":"faiss"},
+    {"from":"brain","to":"guard","label":"every tool call"},
+    {"from":"guard","to":"exec","label":"only if permitted"},
+    {"from":"exec","to":"relevance"},
+    {"from":"relevance","to":"rag","label":"reuses the embedder"},
+    {"from":"exec","to":"web"},
+    {"from":"qh","to":"jupiter","label":"propose -> confirm -> execute"},
+    {"from":"llm","to":"ollama"},
     {"from":"repos","to":"sqlite"},
-    {"from":"guard","to":"web","label":"if mcp_access allows"},
-    {"from":"guard","to":"jupiter","label":"if mcp_access allows"},
-    {"from":"llm","to":"ollama"}
+    {"from":"facts","to":"sqlite"},
+    {"from":"rag","to":"faiss"}
   ]
 }
 ```
 
+**Wallet is never model-decided.** `_try_tool_brain` returns `None` on
+`NEEDS_WALLET` unconditionally, so the wallet path stays on the deterministic
+propose→confirm→execute flow. The tool brain is offered **web tools only** — a
+live test showed the full 14-tool surface caused wallet fixation and
+fabrication.
+
+**The guard gates; it does not execute.** `ToolCallInterceptor` exposes
+`validate()` and nothing else. Execution happens in `executor_bindings` *after*
+the check passes, which is why the two are separate nodes above rather than one.
+
 **Local-first is a constraint, not a preference.** Inference runs on-device
 because the alternative leaks financial context to a third party. The two Docker
-MCP servers are the only paths off the machine, and both sit behind
-`tool_interceptor` — deterministic middleware, never LLM self-policing.
+MCP servers are the only paths off the machine.
 
 The Telegram gateway consumes the **same** session API as the React UI
 ([ADR-011](decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md)),
