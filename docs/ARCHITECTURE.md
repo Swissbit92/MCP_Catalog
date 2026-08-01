@@ -14,6 +14,39 @@ Reference-style: tables and diagrams, not prose narratives. A local-first,
 persona-driven chat platform — FastAPI backend + React 19 frontend + local Ollama,
 SQLite for persistence, FAISS for semantic memory.
 
+```archstat
+[
+  {
+    "label": "Trading data",
+    "value": "Read",
+    "note": "never writes",
+    "state": "ok"
+  },
+  {
+    "label": "Inference",
+    "value": "Local",
+    "note": "on-device"
+  },
+  {
+    "label": "Clients",
+    "value": "Two",
+    "note": "UI + Telegram"
+  },
+  {
+    "label": "Wallet path",
+    "value": "Manual",
+    "note": "never model-decided",
+    "state": "ok"
+  },
+  {
+    "label": "Off-machine",
+    "value": "Two",
+    "note": "MCP servers",
+    "state": "warn"
+  }
+]
+```
+
 ## System context
 
 Verified against the call graph, not sketched from memory — every edge below is
