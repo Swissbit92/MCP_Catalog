@@ -85,6 +85,63 @@ The Telegram gateway consumes the **same** session API as the React UI
 ([ADR-011](decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md)),
 which is why regenerate/continue/undo exist once rather than twice.
 
+## The turn pipeline
+
+The diagram above shows which modules exist. It does not show what happens when
+someone actually sends a message, which is the thing most questions are really
+about.
+
+```archview
+{
+  "id": "turn",
+  "caption": "One chat turn, from message to persisted reply.",
+  "nodes": [
+    {"id": "arrive", "label": "Message arrives", "sub": "React UI or Telegram", "kind": "external"},
+    {"id": "identity", "label": "Load identity", "sub": "persona + cached CV", "kind": "module"},
+    {"id": "route", "label": "Route the intent", "sub": "semantic, bge-m3", "kind": "module"},
+    {"id": "prompt", "label": "Build the prompt", "sub": "lean, exemplar-first", "kind": "module"},
+    {"id": "history", "label": "Select history", "sub": "token budget + RAG", "kind": "module"},
+    {"id": "generate", "label": "Generate", "sub": "per-persona sampling", "kind": "external"},
+    {"id": "guard", "label": "Post-process", "sub": "strip tool leaks, first person", "kind": "secret"},
+    {"id": "persist", "label": "Persist", "sub": "SQLite", "kind": "store"},
+    {"id": "after", "label": "Post-turn updates", "sub": "progression, facts, summaries", "kind": "module"}
+  ],
+  "edges": [
+    {"from": "arrive", "to": "identity"},
+    {"from": "identity", "to": "route"},
+    {"from": "route", "to": "prompt"},
+    {"from": "prompt", "to": "history"},
+    {"from": "history", "to": "generate"},
+    {"from": "generate", "to": "guard"},
+    {"from": "guard", "to": "persist"},
+    {"from": "persist", "to": "after"}
+  ]
+}
+```
+
+```archflow
+{
+  "view": "turn",
+  "flows": [
+    {
+      "id": "chat-turn",
+      "label": "A single chat turn",
+      "steps": [
+        {"node": "arrive", "note": "Both clients hit the same session API. That is the whole point of ADR-011 — regenerate, continue and undo exist once, not twice."},
+        {"node": "identity", "note": "The persona JSON and its cached CV summary are loaded. The cache is why the voice signature must stay OUT of the fingerprint, or edits would not take."},
+        {"node": "route", "note": "Intent routing is semantic-primary: follow-up detection, then a narrow keyword fast-path, then the bge-m3 router. Wallet is never model-decided."},
+        {"node": "prompt", "note": "The lean prompt is built exemplar-first and voice-last. It is lru_cached, so anything per-turn (lore, author's note) must be appended AFTER it rather than baked in."},
+        {"node": "history", "note": "Messages are selected against a token budget, with semantic recall over past sessions."},
+        {"node": "generate", "note": "Ollama generates on-device with per-persona sampling overrides. Local-first is a constraint, not a preference — the alternative leaks financial context to a third party."},
+        {"node": "guard", "note": "Leaked tool names are stripped, first person is enforced, and any tool call that ran had to pass the interceptor before execution."},
+        {"node": "persist", "note": "The exchange is written to SQLite through the pooled BaseRepository — never a raw connection."},
+        {"node": "after", "note": "Progression, resonance, fact extraction and summarisation run after the reply is already out, so none of them can slow the response."}
+      ]
+    }
+  ]
+}
+```
+
 ## Components
 
 Layered: **routes → services → repositories → models**, mirrored on the frontend.
