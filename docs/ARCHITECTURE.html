@@ -1,15 +1,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="source-sha256" content="aa83c7cd4e7d245f2c8779456ea76411f2e9de0a7d9139a7291ef68ca46f57c1">
-<meta name="renderer-sha256" content="9ef93153f5ca3fdc6cfed24d4a6bb08c28e646b4056a87f2b62f530ae35c2ab8">
+<meta name="source-sha256" content="2fec897e5b5af5aceb7bc37b47a921bf37c9bdfc033b1ac8a30977b8bc3d5aa3">
+<meta name="renderer-sha256" content="36d4f842d4c507e9df4c8d45c8b205c4ad0bbda1942d3c1f2762c4349cd121a5">
 <title>nephilim — Architecture</title>
+<script>
+/* Before first paint, deliberately. Setting the theme after the stylesheet has
+   painted shows the wrong one for a frame — the flash people notice and nobody
+   can un-see. Dark stays the default when nothing is stored. */
+(function(){
+  try{
+    var t=localStorage.getItem('arch-theme');
+    if(!t) t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+    document.documentElement.setAttribute('data-theme',t);
+  }catch(e){document.documentElement.setAttribute('data-theme','dark');}
+})();
+</script>
 <style>
 :root{
   --void:#060908; --panel:#0C1211; --panel2:#101817;
   --edge:#1C2827; --edge2:#283735;
   --accent:#F5A623; --accent-dim:#F5A62318; --accent-glow:#F5A62366;
   --phos:#4BE38A; --phos-dim:#4BE38A14; --red:#E8664F;
-  --txt:#D6E0DD; --mid:#7C8B87; --faint:#4E5C58;
+  /* Contrast, not taste. The old ramp put --faint at 2.85:1 on --void and --mid
+     at 5.62:1; the dimmest tier carries table headers, figure captions and the
+     8px sub-labels inside every diagram, so it failed WCAG AA exactly where the
+     type is smallest. Lifting --faint alone would have collapsed it into --mid,
+     so the whole ramp is re-spaced. Now 5.04 / 8.15 / 14.82 on --void, and the
+     tightest of the three still clears 4.5:1 against --panel2. */
+  --txt:#D6E0DD; --mid:#9CA8A5; --faint:#70847E;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
 }
 body{background:var(--void);color:var(--txt);font-family:var(--mono);
@@ -79,7 +97,111 @@ footer{margin-top:3rem;border-top:1px solid var(--edge);padding-top:.9rem;displa
 button.pz{font-family:var(--mono);font-size:.6rem;background:transparent;color:var(--accent);
   border:1px solid var(--edge2);padding:.2rem .55rem;cursor:pointer;letter-spacing:.08em}
 button.pz:hover{border-color:var(--accent)}
+button.pz[disabled]{opacity:.4;cursor:default;border-color:var(--edge)}
 :focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+
+/* Visible to a screen reader, absent from the page. Not display:none, which
+   removes it from the accessibility tree along with everything else. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;padding:.5rem .8rem;
+  border-top:1px solid var(--edge);font-size:.62rem;color:var(--faint)}
+.lgi{display:flex;align-items:center;gap:.35rem}
+.lgs{width:15px;height:10px;flex:none;border-radius:2px;
+  background:var(--panel2);border:1px solid var(--edge2)}
+.lgs-store{border-color:var(--phos);background:#0D1614}
+.lgs-external{border-style:dashed;background:#0A0F0E}
+.lgs-service{border-color:var(--accent)}
+.lgs-secret{border-color:var(--red);background:#160C0A}
+:root[data-theme="light"] .lgs{background:#FFFFFF}
+:root[data-theme="light"] .lgs-store{background:#F1F8F4}
+:root[data-theme="light"] .lgs-external{background:#F5F7F6}
+:root[data-theme="light"] .lgs-secret{background:#FDF3F1}
+
+/* ── flow walker ───────────────────────────────────────────────────────── */
+.flowctl{margin:.9rem 0 0;border:1px solid var(--edge);background:var(--panel)}
+.flowhd{display:flex;align-items:baseline;gap:.8rem;padding:.5rem .8rem;
+  border-bottom:1px solid var(--edge)}
+.flowlbl{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.flowjump{margin-left:auto;font-size:.6rem;color:var(--mid);text-decoration:none}
+.flowjump:hover{color:var(--accent)}
+.flowlist{list-style:none;margin:0;padding:.4rem;display:flex;flex-wrap:wrap;
+  gap:.35rem}
+.flowlist li{font-size:.66rem;padding:.2rem .55rem;border:1px solid var(--edge2);
+  color:var(--mid);cursor:pointer;max-width:none}
+.flowlist li:hover{border-color:var(--accent);color:var(--txt)}
+.flowlist li[aria-selected="true"]{border-color:var(--accent);color:var(--accent);
+  background:var(--accent-dim)}
+.flownav{display:flex;align-items:center;gap:.5rem;padding:0 .8rem .5rem}
+.flowpos{font-size:.6rem;color:var(--faint);letter-spacing:.08em;min-width:5rem}
+.flowclear{margin-left:auto}
+.flowcap{margin:0;padding:.5rem .8rem;border-top:1px solid var(--edge);
+  font-size:.7rem;color:var(--mid);min-height:1.2rem}
+
+/* Dim with fill-opacity/stroke-opacity rather than `opacity`: the composite
+   property promotes every element to its own compositing layer, which is real
+   jank once a diagram has thirty boxes. These two are paint-only. */
+svg.flowing .nd,svg.flowing .wire,svg.flowing .wire-a,
+svg.flowing .ndl,svg.flowing .nds,svg.flowing .ndt,svg.flowing .wlab{
+  fill-opacity:.18;stroke-opacity:.18;transition:fill-opacity .18s,stroke-opacity .18s}
+svg.flowing [data-node].on-path .nd,svg.flowing [data-node].on-path .ndl,
+svg.flowing [data-node].on-path .nds,svg.flowing [data-node].on-path .ndt,
+svg.flowing [data-edge].on-path .wire,svg.flowing [data-edge].on-path .wire-a,
+svg.flowing [data-edge].on-path .wlab{fill-opacity:1;stroke-opacity:1}
+svg.flowing [data-node].at-step .nd{stroke:var(--accent);stroke-width:2}
+svg.flowing [data-edge].at-step .wire-a{stroke-width:2.4}
+
+@media (prefers-reduced-motion:reduce){
+  svg.flowing .nd,svg.flowing .wire,svg.flowing .wire-a,
+  svg.flowing .ndl,svg.flowing .nds,svg.flowing .ndt,svg.flowing .wlab{transition:none}
+}
+
+/* ── light theme ───────────────────────────────────────────────────────────
+   An attribute override, not light-dark(). The dark skin leans on glow —
+   text-shadow, box-shadow, a scanline overlay — and those have to be switched
+   off as a group, which a per-value colour function cannot express. */
+:root[data-theme="light"]{
+  --void:#F4F6F5; --panel:#FFFFFF; --panel2:#F9FBFA;
+  --edge:#D5DEDB; --edge2:#B9C6C2;
+  --phos:#0F7A44; --phos-dim:#0F7A4414; --red:#B3341C;
+  --txt:#12201C; --mid:#3F514C; --faint:#5A6B66;
+}
+:root[data-theme="light"] body::before{display:none}
+:root[data-theme="light"] h1{text-shadow:none}
+:root[data-theme="light"] .led{box-shadow:none}
+:root[data-theme="light"] .figwrap{background:#FFFFFF}
+:root[data-theme="light"] .nd{fill:#FFFFFF}
+:root[data-theme="light"] .nd-store{fill:#F1F8F4}
+:root[data-theme="light"] .nd-external{fill:#F5F7F6}
+:root[data-theme="light"] .nd-secret{fill:#FDF3F1}
+
+/* ── print ─────────────────────────────────────────────────────────────────
+   The scanline overlay and a near-black page background are a screen
+   affectation; on paper they are a toner bill and an unreadable page. */
+@media print{
+  :root{
+    --void:#FFFFFF; --panel:#FFFFFF; --panel2:#FFFFFF;
+    --edge:#9AA8A4; --edge2:#6E7D79;
+    --txt:#000000; --mid:#1C2A26; --faint:#3D4B47; --phos:#0A5C33;
+  }
+  @page{margin:14mm}
+  body{background:#fff;font-size:10pt}
+  body::before{display:none}
+  .bar{position:static;border-bottom:1px solid var(--edge)}
+  nav,button.pz,.flownav,.flowjump{display:none}
+  h1{text-shadow:none}
+  .led{box-shadow:none}
+  h2,h3{break-after:avoid}
+  pre,table,.figwrap,.flowctl,blockquote{break-inside:avoid}
+  .figwrap{background:#fff}
+  .nd{fill:#fff}
+  /* Every flow, spelled out — the picker is gone on paper, so the steps have to
+     be readable as a list or the section says nothing. */
+  .flowlist li{border-color:var(--edge2)}
+  a{color:inherit;text-decoration:underline}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:.8em;color:var(--faint)}
+}
 </style>
 
 <div class="rig">
@@ -93,7 +215,7 @@ button.pz:hover{border-color:var(--accent)}
 <p>Reference-style: tables and diagrams, not prose narratives. A local-first, persona-driven chat platform — FastAPI backend + React 19 frontend + local Ollama, SQLite for persistence, FAISS for semantic memory.</p>
 <h2 id="system-context">System context</h2>
 <p>Verified against the call graph, not sketched from memory — every edge below is an import or call that exists in <code>src/coordinator/</code>.</p>
-<div class="figwrap"><svg viewBox="0 0 1278 1008" width="1278" height="1008" role="img" aria-label="routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings."><path class="wire" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="594" y="122">session API</text><path class="wire" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="698" y="122">the SAME API</text><path class="wire" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><text class="wlab" x="525" y="248">handle_session_chat</text><path class="wire" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><text class="wlab" x="637" y="248">_try_tool_brain</text><path class="wire" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><text class="wlab" x="757" y="248">legacy fallthrough</text><path class="wire" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/><path class="wire" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/><path class="wire" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/><path class="wire" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/><path class="wire" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><path class="wire-a" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><text class="wlab" x="802" y="374">every tool call</text><path class="wire" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><path class="wire-a" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><text class="wlab" x="698" y="500">only if permitted</text><path class="wire" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/><path class="wire" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><path class="wire-a" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><text class="wlab" x="606" y="752">reuses the embedder</text><path class="wire" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/><path class="wire" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><path class="wire-a" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><text class="wlab" x="1028" y="374">propose -&gt; confirm -&gt; execute</text><path class="wire" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/><path class="wire-a" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/><path class="wire" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire" d="M638.2 852.0 L638.2 907.0"/><path class="wire-a" d="M638.2 852.0 L638.2 907.0"/><rect class="nd nd-external" x="446" y="30" width="180" height="66" rx="3"/><text class="ndl" x="458" y="51">React UI</text><text class="nds" x="458" y="65">chat · personas · wallet</text><text class="ndt" x="458" y="79">[React 19 · TS]</text><rect class="nd nd-external" x="656" y="30" width="174" height="66" rx="3"/><text class="ndl" x="668" y="51">telegram-gateway</text><text class="nds" x="668" y="65">allowlisted single user</text><text class="ndt" x="668" y="79">[own venv · launchd]</text><rect class="nd nd-service" x="532" y="156" width="212" height="66" rx="3"/><text class="ndl" x="543" y="177">routes/chat.py</text><text class="nds" x="543" y="191">orchestrator — picks the path</text><text class="ndt" x="543" y="205">[FastAPI]</text><rect class="nd nd-module" x="311" y="282" width="174" height="66" rx="3"/><text class="ndl" x="322" y="303">handle_session_chat</text><text class="nds" x="322" y="317">per-turn phase pipeline</text><text class="ndt" x="322" y="331">[ChatDeps / ChatTurnState]</text><rect class="nd nd-module" x="514" y="282" width="215" height="66" rx="3"/><text class="ndl" x="526" y="303">tool_brain_service</text><text class="nds" x="526" y="317">web intents only, never wallet</text><text class="ndt" x="526" y="331">[Ollama native tool-calling]</text><rect class="nd nd-module" x="760" y="282" width="206" height="66" rx="3"/><text class="ndl" x="770" y="303">query_handler_service</text><text class="nds" x="770" y="317">legacy wallet + force-search</text><text class="ndt" x="770" y="331">[bge-m3 semantic router]</text><rect class="nd nd-module" x="24" y="408" width="215" height="66" rx="3"/><text class="ndl" x="35" y="429">persona_memory</text><text class="nds" x="35" y="443">-&gt; prompt_builder, lean prompt</text><text class="ndt" x="35" y="457">[lru_cache]</text><rect class="nd nd-module" x="269" y="408" width="160" height="66" rx="3"/><text class="ndl" x="280" y="429">memory_fact_retrieval</text><text class="nds" x="280" y="443">through the M1 frame</text><text class="ndt" x="280" y="457">[bi-temporal store]</text><rect class="nd nd-module" x="460" y="408" width="154" height="66" rx="3"/><text class="ndl" x="470" y="429">llm_client</text><text class="nds" x="470" y="443">per-persona sampling</text><text class="ndt" x="470" y="457">[Ollama]</text><rect class="nd nd-module" x="644" y="408" width="186" height="66" rx="3"/><text class="ndl" x="654" y="429">repositories/</text><text class="nds" x="654" y="443">all extend BaseRepository</text><text class="ndt" x="654" y="457">[SQLite · pooled]</text><rect class="nd nd-secret" x="860" y="408" width="215" height="66" rx="3"/><text class="ndl" x="871" y="429">tool_interceptor</text><text class="nds" x="871" y="443">validate() only — gates, never executes</text><text class="ndt" x="871" y="457">[deterministic middleware]</text><rect class="nd nd-external" x="1105" y="408" width="148" height="66" rx="3"/><text class="ndl" x="1116" y="429">Jupiter / Solana</text><text class="nds" x="1116" y="443">long-running Docker</text><text class="ndt" x="1116" y="457">[MCP]</text><rect class="nd nd-module" x="306" y="534" width="215" height="66" rx="3"/><text class="ndl" x="318" y="555">executor_bindings</text><text class="nds" x="318" y="569">runs the tool the guard permitted</text><text class="ndt" x="318" y="583">[registry-bound]</text><rect class="nd nd-store" x="552" y="534" width="215" height="66" rx="3"/><text class="ndl" x="562" y="555">SQLite</text><text class="nds" x="562" y="569">chats · progression · facts · wallets</text><text class="ndt" x="562" y="583">[local file]</text><rect class="nd nd-external" x="796" y="534" width="174" height="66" rx="3"/><text class="ndl" x="808" y="555">Ollama</text><text class="nds" x="808" y="569">LLM + bge-m3 embeddings</text><text class="ndt" x="808" y="583">[on-device, Metal GPU]</text><rect class="nd nd-module" x="469" y="660" width="180" height="66" rx="3"/><text class="ndl" x="480" y="681">search_relevance_service</text><text class="nds" x="480" y="695">per-result cosine floor</text><text class="ndt" x="480" y="709">[reuses the RAG embedder]</text><rect class="nd nd-external" x="679" y="660" width="128" height="66" rx="3"/><text class="ndl" x="690" y="681">SearXNG / Brave</text><text class="nds" x="690" y="695">ephemeral Docker</text><text class="ndt" x="690" y="709">[MCP]</text><rect class="nd nd-module" x="531" y="786" width="215" height="66" rx="3"/><text class="ndl" x="542" y="807">memory_rag</text><text class="nds" x="542" y="821">EpisodicMemoryRAG · startup singleton</text><text class="ndt" x="542" y="835">[bge-m3]</text><rect class="nd nd-store" x="555" y="912" width="167" height="66" rx="3"/><text class="ndl" x="566" y="933">FAISS</text><text class="nds" x="566" y="947">session + lore vectors</text><text class="ndt" x="566" y="961">[local index]</text></svg><div class="figcap">routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.</div></div>
+<div class="figwrap"><svg id="fig-f1" viewBox="0 0 1278 1008" width="1278" height="1008" role="img" aria-label="routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings."><g data-edge-from="ui" data-edge-to="routes"><path class="wire" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="594" y="122">session API</text></g><g data-edge-from="tg" data-edge-to="routes"><path class="wire" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="698" y="122">the SAME API</text></g><g data-edge-from="routes" data-edge-to="chat"><path class="wire" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><text class="wlab" x="525" y="248">handle_session_chat</text></g><g data-edge-from="routes" data-edge-to="brain"><path class="wire" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><text class="wlab" x="637" y="248">_try_tool_brain</text></g><g data-edge-from="routes" data-edge-to="qh"><path class="wire" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><text class="wlab" x="757" y="248">legacy fallthrough</text></g><g data-edge-from="chat" data-edge-to="persona"><path class="wire" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/></g><g data-edge-from="chat" data-edge-to="facts"><path class="wire" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/></g><g data-edge-from="chat" data-edge-to="llm"><path class="wire" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/></g><g data-edge-from="chat" data-edge-to="repos"><path class="wire" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/></g><g data-edge-from="brain" data-edge-to="guard"><path class="wire" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><path class="wire-a" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><text class="wlab" x="802" y="374">every tool call</text></g><g data-edge-from="guard" data-edge-to="exec"><path class="wire" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><path class="wire-a" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><text class="wlab" x="698" y="500">only if permitted</text></g><g data-edge-from="exec" data-edge-to="relevance"><path class="wire" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/></g><g data-edge-from="relevance" data-edge-to="rag"><path class="wire" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><path class="wire-a" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><text class="wlab" x="606" y="752">reuses the embedder</text></g><g data-edge-from="exec" data-edge-to="web"><path class="wire" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/></g><g data-edge-from="qh" data-edge-to="jupiter"><path class="wire" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><path class="wire-a" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><text class="wlab" x="1028" y="374">propose -&gt; confirm -&gt; execute</text></g><g data-edge-from="llm" data-edge-to="ollama"><path class="wire" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/><path class="wire-a" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/></g><g data-edge-from="repos" data-edge-to="sqlite"><path class="wire" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/></g><g data-edge-from="facts" data-edge-to="sqlite"><path class="wire" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/></g><g data-edge-from="rag" data-edge-to="faiss"><path class="wire" d="M638.2 852.0 L638.2 907.0"/><path class="wire-a" d="M638.2 852.0 L638.2 907.0"/></g><g id="f1-nd-ui" data-node="ui" role="graphics-symbol" aria-label="React UI — chat · personas · wallet — built with React 19 · TS"><rect class="nd nd-external" x="446" y="30" width="180" height="66" rx="3"/><text class="ndl" x="458" y="51">React UI</text><text class="nds" x="458" y="65">chat · personas · wallet</text><text class="ndt" x="458" y="79">[React 19 · TS]</text></g><g id="f1-nd-tg" data-node="tg" role="graphics-symbol" aria-label="telegram-gateway — allowlisted single user — built with own venv · launchd"><rect class="nd nd-external" x="656" y="30" width="174" height="66" rx="3"/><text class="ndl" x="668" y="51">telegram-gateway</text><text class="nds" x="668" y="65">allowlisted single user</text><text class="ndt" x="668" y="79">[own venv · launchd]</text></g><g id="f1-nd-routes" data-node="routes" role="graphics-symbol" aria-label="routes/chat.py — orchestrator — picks the path — built with FastAPI"><rect class="nd nd-service" x="532" y="156" width="212" height="66" rx="3"/><text class="ndl" x="543" y="177">routes/chat.py</text><text class="nds" x="543" y="191">orchestrator — picks the path</text><text class="ndt" x="543" y="205">[FastAPI]</text></g><g id="f1-nd-chat" data-node="chat" role="graphics-symbol" aria-label="handle_session_chat — per-turn phase pipeline — built with ChatDeps / ChatTurnState"><rect class="nd nd-module" x="311" y="282" width="174" height="66" rx="3"/><text class="ndl" x="322" y="303">handle_session_chat</text><text class="nds" x="322" y="317">per-turn phase pipeline</text><text class="ndt" x="322" y="331">[ChatDeps / ChatTurnState]</text></g><g id="f1-nd-brain" data-node="brain" role="graphics-symbol" aria-label="tool_brain_service — web intents only, never wallet — built with Ollama native tool-calling"><rect class="nd nd-module" x="514" y="282" width="215" height="66" rx="3"/><text class="ndl" x="526" y="303">tool_brain_service</text><text class="nds" x="526" y="317">web intents only, never wallet</text><text class="ndt" x="526" y="331">[Ollama native tool-calling]</text></g><g id="f1-nd-qh" data-node="qh" role="graphics-symbol" aria-label="query_handler_service — legacy wallet + force-search — built with bge-m3 semantic router"><rect class="nd nd-module" x="760" y="282" width="206" height="66" rx="3"/><text class="ndl" x="770" y="303">query_handler_service</text><text class="nds" x="770" y="317">legacy wallet + force-search</text><text class="ndt" x="770" y="331">[bge-m3 semantic router]</text></g><g id="f1-nd-persona" data-node="persona" role="graphics-symbol" aria-label="persona_memory — -&gt; prompt_builder, lean prompt — built with lru_cache"><rect class="nd nd-module" x="24" y="408" width="215" height="66" rx="3"/><text class="ndl" x="35" y="429">persona_memory</text><text class="nds" x="35" y="443">-&gt; prompt_builder, lean prompt</text><text class="ndt" x="35" y="457">[lru_cache]</text></g><g id="f1-nd-facts" data-node="facts" role="graphics-symbol" aria-label="memory_fact_retrieval — through the M1 frame — built with bi-temporal store"><rect class="nd nd-module" x="269" y="408" width="160" height="66" rx="3"/><text class="ndl" x="280" y="429">memory_fact_retrieval</text><text class="nds" x="280" y="443">through the M1 frame</text><text class="ndt" x="280" y="457">[bi-temporal store]</text></g><g id="f1-nd-llm" data-node="llm" role="graphics-symbol" aria-label="llm_client — per-persona sampling — built with Ollama"><rect class="nd nd-module" x="460" y="408" width="154" height="66" rx="3"/><text class="ndl" x="470" y="429">llm_client</text><text class="nds" x="470" y="443">per-persona sampling</text><text class="ndt" x="470" y="457">[Ollama]</text></g><g id="f1-nd-repos" data-node="repos" role="graphics-symbol" aria-label="repositories/ — all extend BaseRepository — built with SQLite · pooled"><rect class="nd nd-module" x="644" y="408" width="186" height="66" rx="3"/><text class="ndl" x="654" y="429">repositories/</text><text class="nds" x="654" y="443">all extend BaseRepository</text><text class="ndt" x="654" y="457">[SQLite · pooled]</text></g><g id="f1-nd-guard" data-node="guard" role="graphics-symbol" aria-label="tool_interceptor — validate() only — gates, never executes — built with deterministic middleware"><rect class="nd nd-secret" x="860" y="408" width="215" height="66" rx="3"/><text class="ndl" x="871" y="429">tool_interceptor</text><text class="nds" x="871" y="443">validate() only — gates, never executes</text><text class="ndt" x="871" y="457">[deterministic middleware]</text></g><g id="f1-nd-jupiter" data-node="jupiter" role="graphics-symbol" aria-label="Jupiter / Solana — long-running Docker — built with MCP"><rect class="nd nd-external" x="1105" y="408" width="148" height="66" rx="3"/><text class="ndl" x="1116" y="429">Jupiter / Solana</text><text class="nds" x="1116" y="443">long-running Docker</text><text class="ndt" x="1116" y="457">[MCP]</text></g><g id="f1-nd-exec" data-node="exec" role="graphics-symbol" aria-label="executor_bindings — runs the tool the guard permitted — built with registry-bound"><rect class="nd nd-module" x="306" y="534" width="215" height="66" rx="3"/><text class="ndl" x="318" y="555">executor_bindings</text><text class="nds" x="318" y="569">runs the tool the guard permitted</text><text class="ndt" x="318" y="583">[registry-bound]</text></g><g id="f1-nd-sqlite" data-node="sqlite" role="graphics-symbol" aria-label="SQLite — chats · progression · facts · wallets — built with local file"><rect class="nd nd-store" x="552" y="534" width="215" height="66" rx="3"/><text class="ndl" x="562" y="555">SQLite</text><text class="nds" x="562" y="569">chats · progression · facts · wallets</text><text class="ndt" x="562" y="583">[local file]</text></g><g id="f1-nd-ollama" data-node="ollama" role="graphics-symbol" aria-label="Ollama — LLM + bge-m3 embeddings — built with on-device, Metal GPU"><rect class="nd nd-external" x="796" y="534" width="174" height="66" rx="3"/><text class="ndl" x="808" y="555">Ollama</text><text class="nds" x="808" y="569">LLM + bge-m3 embeddings</text><text class="ndt" x="808" y="583">[on-device, Metal GPU]</text></g><g id="f1-nd-relevance" data-node="relevance" role="graphics-symbol" aria-label="search_relevance_service — per-result cosine floor — built with reuses the RAG embedder"><rect class="nd nd-module" x="469" y="660" width="180" height="66" rx="3"/><text class="ndl" x="480" y="681">search_relevance_service</text><text class="nds" x="480" y="695">per-result cosine floor</text><text class="ndt" x="480" y="709">[reuses the RAG embedder]</text></g><g id="f1-nd-web" data-node="web" role="graphics-symbol" aria-label="SearXNG / Brave — ephemeral Docker — built with MCP"><rect class="nd nd-external" x="679" y="660" width="128" height="66" rx="3"/><text class="ndl" x="690" y="681">SearXNG / Brave</text><text class="nds" x="690" y="695">ephemeral Docker</text><text class="ndt" x="690" y="709">[MCP]</text></g><g id="f1-nd-rag" data-node="rag" role="graphics-symbol" aria-label="memory_rag — EpisodicMemoryRAG · startup singleton — built with bge-m3"><rect class="nd nd-module" x="531" y="786" width="215" height="66" rx="3"/><text class="ndl" x="542" y="807">memory_rag</text><text class="nds" x="542" y="821">EpisodicMemoryRAG · startup singleton</text><text class="ndt" x="542" y="835">[bge-m3]</text></g><g id="f1-nd-faiss" data-node="faiss" role="graphics-symbol" aria-label="FAISS — session + lore vectors — built with local index"><rect class="nd nd-store" x="555" y="912" width="167" height="66" rx="3"/><text class="ndl" x="566" y="933">FAISS</text><text class="nds" x="566" y="947">session + lore vectors</text><text class="ndt" x="566" y="961">[local index]</text></g></svg><div class="legend"><span class="lgi"><span class="lgs lgs-external" aria-hidden="true"></span>something you do not control</span><span class="lgi"><span class="lgs lgs-service" aria-hidden="true"></span>a process or entry point</span><span class="lgi"><span class="lgs lgs-module" aria-hidden="true"></span>code in this repo</span><span class="lgi"><span class="lgs lgs-secret" aria-hidden="true"></span>a credential store</span><span class="lgi"><span class="lgs lgs-store" aria-hidden="true"></span>a database, table, queue or bucket</span></div><table class="sr-only"><caption>routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings. — text alternative</caption><thead><tr><th>Component</th><th>Kind</th><th>Role</th><th>Connects to</th></tr></thead><tbody><tr><td>React UI</td><td>something you do not control</td><td>chat · personas · wallet</td><td>routes/chat.py (session API)</td></tr><tr><td>telegram-gateway</td><td>something you do not control</td><td>allowlisted single user</td><td>routes/chat.py (the SAME API)</td></tr><tr><td>routes/chat.py</td><td>a process or entry point</td><td>orchestrator — picks the path</td><td>handle_session_chat (handle_session_chat); tool_brain_service (_try_tool_brain); query_handler_service (legacy fallthrough)</td></tr><tr><td>handle_session_chat</td><td>code in this repo</td><td>per-turn phase pipeline</td><td>persona_memory; memory_fact_retrieval; llm_client; repositories/</td></tr><tr><td>tool_brain_service</td><td>code in this repo</td><td>web intents only, never wallet</td><td>tool_interceptor (every tool call)</td></tr><tr><td>query_handler_service</td><td>code in this repo</td><td>legacy wallet + force-search</td><td>Jupiter / Solana (propose -&gt; confirm -&gt; execute)</td></tr><tr><td>persona_memory</td><td>code in this repo</td><td>-&gt; prompt_builder, lean prompt</td><td>—</td></tr><tr><td>memory_fact_retrieval</td><td>code in this repo</td><td>through the M1 frame</td><td>SQLite</td></tr><tr><td>llm_client</td><td>code in this repo</td><td>per-persona sampling</td><td>Ollama</td></tr><tr><td>repositories/</td><td>code in this repo</td><td>all extend BaseRepository</td><td>SQLite</td></tr><tr><td>tool_interceptor</td><td>a credential store</td><td>validate() only — gates, never executes</td><td>executor_bindings (only if permitted)</td></tr><tr><td>executor_bindings</td><td>code in this repo</td><td>runs the tool the guard permitted</td><td>search_relevance_service; SearXNG / Brave</td></tr><tr><td>search_relevance_service</td><td>code in this repo</td><td>per-result cosine floor</td><td>memory_rag (reuses the embedder)</td></tr><tr><td>memory_rag</td><td>code in this repo</td><td>EpisodicMemoryRAG · startup singleton</td><td>FAISS</td></tr><tr><td>SQLite</td><td>a database, table, queue or bucket</td><td>chats · progression · facts · wallets</td><td>—</td></tr><tr><td>FAISS</td><td>a database, table, queue or bucket</td><td>session + lore vectors</td><td>—</td></tr><tr><td>Ollama</td><td>something you do not control</td><td>LLM + bge-m3 embeddings</td><td>—</td></tr><tr><td>SearXNG / Brave</td><td>something you do not control</td><td>ephemeral Docker</td><td>—</td></tr><tr><td>Jupiter / Solana</td><td>something you do not control</td><td>long-running Docker</td><td>—</td></tr></tbody></table><div class="figcap">routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.</div></div>
 <p><strong>Wallet is never model-decided.</strong> <code>_try_tool_brain</code> returns <code>None</code> on <code>NEEDS_WALLET</code> unconditionally, so the wallet path stays on the deterministic propose→confirm→execute flow. The tool brain is offered <strong>web tools only</strong> — a live test showed the full 14-tool surface caused wallet fixation and fabrication.</p>
 <p><strong>The guard gates; it does not execute.</strong> <code>ToolCallInterceptor</code> exposes <code>validate()</code> and nothing else. Execution happens in <code>executor_bindings</code> <em>after</em> the check passes, which is why the two are separate nodes above rather than one.</p>
 <p><strong>Local-first is a constraint, not a preference.</strong> Inference runs on-device because the alternative leaks financial context to a third party. The two Docker MCP servers are the only paths off the machine.</p>
@@ -110,24 +232,137 @@ button.pz:hover{border-color:var(--accent)}
 <ul><li><a href="../../docs/shared/indicator_api.md">../../docs/shared/indicator_api.md</a></li><li><a href="../../docs/shared/launchd_schedule.md">../../docs/shared/launchd_schedule.md</a></li></ul>
 <p>The Telegram gateway (<code>services/telegram-gateway/</code>) couples to nephilim only through the localhost HTTP session API — never SQLite/FAISS directly.</p>
 <h2 id="decisions">Decisions</h2>
-<p>Architectural decisions affecting this repo live in <a href="decisions/">decisions/</a>.</p>
+<p>A pointer to a directory is not an index — it makes the reader open twelve files to find out which one governs the thing they are looking at. ADR-008 in particular decides the branch at the centre of the System context diagram above, and this page previously never named it.</p>
+<div class="tw"><table><thead><tr><th>ADR</th><th>Decides</th><th>Status</th></tr></thead><tbody><tr><td><a href="decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md">001</a></td><td>Lore is a typed markdown wiki, not a graph DB</td><td>Accepted</td></tr><tr><td><a href="decisions/002-remove-mongodb-mcp.md">002</a></td><td>MongoDB MCP removed from the persona path</td><td>Accepted</td></tr><tr><td><a href="decisions/003-on-demand-hybrid-lore-retrieval.md">003</a></td><td>Lore is retrieved on demand, hybrid dense + lexical</td><td>Accepted</td></tr><tr><td><a href="decisions/004-persona-safe-agentic-tool-calls.md">004</a></td><td>Persona-safe agentic tool calls</td><td><strong>Superseded</strong> — by 008/009</td></tr><tr><td><a href="decisions/005-persona-architecture-simplification-eval-first.md">005</a></td><td>Persona simplification, gated eval-first</td><td>Accepted</td></tr><tr><td><a href="decisions/006-companion-memory-and-continuity-eval-first.md">006</a></td><td>Companion memory and continuity</td><td>Accepted</td></tr><tr><td><a href="decisions/007-generation-time-groundedness-gate.md">007</a></td><td>Groundedness gate at generation time</td><td>Proposed</td></tr><tr><td><a href="decisions/008-two-brain-split-tool-brain-voice-brain.md">008</a></td><td><strong>Two-brain split: tool brain vs voice brain</strong> — the branch the diagram above turns on</td><td>Proposed</td></tr><tr><td><a href="decisions/009-layered-toolkit-registry-generic-web-toolset-inner-wisdom-skills.md">009</a></td><td>Layered toolkit registry</td><td>Accepted</td></tr><tr><td><a href="decisions/010-image-search-result-quality-and-spurious-refusal-handling.md">010</a></td><td>Image-search quality and spurious refusals</td><td>Accepted</td></tr><tr><td><a href="decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md">011</a></td><td>Conversation control as shared session API — consumed by both the React UI and the Telegram gateway</td><td>Proposed</td></tr><tr><td><a href="decisions/012-persona-configurable-deterministic-word-substitutions.md">012</a></td><td>Persona-configurable deterministic word substitutions</td><td>Accepted</td></tr></tbody></table></div>
+<p>"Proposed" here does not mean unbuilt. Several of these are implemented behind flags that are off, or on in production while the ADR is still open — the ADR status tracks the <em>decision</em>, not the deployment. Which flags are actually live is recorded in <code>CLAUDE.md</code>, deliberately not here: this page describes structure, and runtime state on a structural page is the thing that goes stale first.</p>
 <footer>
   <span>GENERATED FROM DOCS/ARCHITECTURE.MD — DO NOT EDIT THIS FILE</span>
   <span>STRUCTURE ONLY, NO RUNTIME STATE</span>
-  <button class="pz" id="pz" aria-pressed="false">&#9208; PAUSE</button>
+  <a href="https://claude.ai/code/artifact/335a787e-3444-4eb1-8b1b-b217319da38f">CANONICAL COPY</a>
+  <span class="spacer"></span>
+  <button class="pz" id="th" type="button">&#9681; LIGHT</button>
+  <button class="pz" id="pz" type="button" aria-pressed="false">&#9208; PAUSE</button>
 </footer>
 </div>
 <script>
 (function(){
+  var doc=document.documentElement;
+  /* One iteration helper. NodeList.forEach and Array.prototype.forEach.call were
+     both in use here; picking one keeps the intent obvious. */
+  function each(xs,fn){Array.prototype.forEach.call(xs,fn);}
+
+  /* theme toggle */
+  var t=document.getElementById('th');
+  function paint(){
+    var light=doc.getAttribute('data-theme')==='light';
+    t.textContent=light?'\u25D1 DARK':'\u25D1 LIGHT';
+    t.setAttribute('aria-label',light?'Switch to dark theme':'Switch to light theme');
+  }
+  paint();
+  t.addEventListener('click',function(){
+    var next=doc.getAttribute('data-theme')==='light'?'dark':'light';
+    doc.setAttribute('data-theme',next);
+    try{localStorage.setItem('arch-theme',next);}catch(e){}
+    paint();
+  });
+
+  /* pause. The animation is CSS keyframes, so a class is the whole mechanism.
+     The SVG animation-pause API this used to call drives SMIL, which no diagram
+     on this page uses — it was a no-op dressed up as a feature. */
   var b=document.getElementById('pz'),p=false;
   b.addEventListener('click',function(){
     p=!p;document.body.classList.toggle('paused',p);
     b.setAttribute('aria-pressed',String(p));
     b.textContent=p?'\u25B6 RESUME':'\u23F8 PAUSE';
-    Array.prototype.forEach.call(document.querySelectorAll('svg'),function(s){
-      if(p&&s.pauseAnimations)s.pauseAnimations();
-      if(!p&&s.unpauseAnimations)s.unpauseAnimations();
+  });
+
+  /* flow walker */
+  each(document.querySelectorAll('.flowctl'),function(ctl){
+    var svg=document.getElementById(ctl.getAttribute('data-view'));
+    if(!svg) return;
+    var flows;
+    try{flows=JSON.parse(ctl.getAttribute('data-flows'));}catch(e){return;}
+    if(!flows||!flows.length) return;
+
+    var list=ctl.querySelector('.flowlist'),
+        cap=ctl.querySelector('[data-flow-cap]'),
+        pos=ctl.querySelector('[data-flow-pos]'),
+        prev=ctl.querySelector('[data-flow-prev]'),
+        next=ctl.querySelector('[data-flow-next]'),
+        clear=ctl.querySelector('[data-flow-clear]'),
+        cur=-1,step=0;
+
+    function marks(){
+      each(svg.querySelectorAll('.on-path,.at-step'),function(el){
+        el.classList.remove('on-path','at-step');
+        el.removeAttribute('aria-current');
+      });
+    }
+    function q(v){return typeof CSS!=='undefined'&&CSS.escape?CSS.escape(v):v;}
+    function find(s){
+      return s.t==='node'
+        ? svg.querySelector('[data-node="'+q(s.k)+'"]')
+        : svg.querySelector('[data-edge-from="'+q(s.f)+'"][data-edge-to="'+q(s.to)+'"]');
+    }
+    function draw(){
+      marks();
+      if(cur<0){
+        svg.classList.remove('flowing');
+        each(list.querySelectorAll('li'),function(li){li.setAttribute('aria-selected','false');});
+        cap.textContent='Select a flow to trace it through the diagram.';
+        pos.textContent='\u2014';
+        prev.disabled=next.disabled=true;
+        return;
+      }
+      var f=flows[cur];
+      svg.classList.add('flowing');
+      each(list.querySelectorAll('li'),function(li,k){
+        li.setAttribute('aria-selected',String(k===cur));
+      });
+      each(f.steps,function(s){
+        var el=find(s); if(el) el.classList.add('on-path');
+      });
+      var at=f.steps[step],el=at&&find(at);
+      if(el){el.classList.add('at-step');el.setAttribute('aria-current','step');}
+      pos.textContent='step '+(step+1)+' / '+f.steps.length;
+      /* One whole-text write, not an append — partial updates get dropped. */
+      cap.textContent=(at&&at.note)?at.note:f.label;
+      prev.disabled=step<=0;
+      next.disabled=step>=f.steps.length-1;
+      try{
+        history.replaceState(null,'','#flow='+encodeURIComponent(f.id)+'&step='+(step+1));
+      }catch(e){}
+    }
+    function pick(k,s){cur=k;step=s||0;draw();}
+
+    list.addEventListener('click',function(e){
+      var li=e.target.closest('li'); if(!li) return;
+      pick(Array.prototype.indexOf.call(list.children,li),0);
     });
+    list.addEventListener('keydown',function(e){
+      var k=e.key;
+      if(k==='ArrowDown'||k==='ArrowRight'){e.preventDefault();pick(Math.min((cur<0?-1:cur)+1,flows.length-1),0);}
+      else if(k==='ArrowUp'||k==='ArrowLeft'){e.preventDefault();pick(Math.max((cur<0?flows.length:cur)-1,0),0);}
+      else if(k==='Home'){e.preventDefault();pick(0,0);}
+      else if(k==='End'){e.preventDefault();pick(flows.length-1,0);}
+      else if(k==='Escape'){e.preventDefault();cur=-1;draw();}
+    });
+    prev.addEventListener('click',function(){if(step>0){step--;draw();}});
+    next.addEventListener('click',function(){if(cur>=0&&step<flows[cur].steps.length-1){step++;draw();}});
+    clear.addEventListener('click',function(){cur=-1;draw();});
+
+    function fromHash(){
+      var m=/flow=([^&]+)(?:&step=(\d+))?/.exec(location.hash||'');
+      if(!m) return false;
+      var id=decodeURIComponent(m[1]),k=-1;
+      each(flows,function(f,j){if(f.id===id)k=j;});
+      if(k<0) return false;                       /* unknown id: stay neutral */
+      var s=Math.max(0,Math.min((parseInt(m[2],10)||1)-1,flows[k].steps.length-1));
+      pick(k,s);
+      return true;
+    }
+    window.addEventListener('hashchange',fromHash);
+    if(!fromHash()) draw();
   });
 })();
 </script>

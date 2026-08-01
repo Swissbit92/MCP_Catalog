@@ -5,6 +5,7 @@ created: 2026-04-19
 last_reviewed_on: 2026-07-17
 review_in: 6 months
 applies_to: nephilim
+published_url: https://claude.ai/code/artifact/335a787e-3444-4eb1-8b1b-b217319da38f
 ---
 
 # Architecture
@@ -140,4 +141,28 @@ The Telegram gateway (`services/telegram-gateway/`) couples to nephilim only thr
 
 ## Decisions
 
-Architectural decisions affecting this repo live in [decisions/](decisions/).
+A pointer to a directory is not an index — it makes the reader open twelve files
+to find out which one governs the thing they are looking at. ADR-008 in
+particular decides the branch at the centre of the System context diagram above,
+and this page previously never named it.
+
+| ADR | Decides | Status |
+|---|---|---|
+| [001](decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md) | Lore is a typed markdown wiki, not a graph DB | Accepted |
+| [002](decisions/002-remove-mongodb-mcp.md) | MongoDB MCP removed from the persona path | Accepted |
+| [003](decisions/003-on-demand-hybrid-lore-retrieval.md) | Lore is retrieved on demand, hybrid dense + lexical | Accepted |
+| [004](decisions/004-persona-safe-agentic-tool-calls.md) | Persona-safe agentic tool calls | **Superseded** — by 008/009 |
+| [005](decisions/005-persona-architecture-simplification-eval-first.md) | Persona simplification, gated eval-first | Accepted |
+| [006](decisions/006-companion-memory-and-continuity-eval-first.md) | Companion memory and continuity | Accepted |
+| [007](decisions/007-generation-time-groundedness-gate.md) | Groundedness gate at generation time | Proposed |
+| [008](decisions/008-two-brain-split-tool-brain-voice-brain.md) | **Two-brain split: tool brain vs voice brain** — the branch the diagram above turns on | Proposed |
+| [009](decisions/009-layered-toolkit-registry-generic-web-toolset-inner-wisdom-skills.md) | Layered toolkit registry | Accepted |
+| [010](decisions/010-image-search-result-quality-and-spurious-refusal-handling.md) | Image-search quality and spurious refusals | Accepted |
+| [011](decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md) | Conversation control as shared session API — consumed by both the React UI and the Telegram gateway | Proposed |
+| [012](decisions/012-persona-configurable-deterministic-word-substitutions.md) | Persona-configurable deterministic word substitutions | Accepted |
+
+"Proposed" here does not mean unbuilt. Several of these are implemented behind
+flags that are off, or on in production while the ADR is still open — the ADR
+status tracks the *decision*, not the deployment. Which flags are actually live
+is recorded in `CLAUDE.md`, deliberately not here: this page describes structure,
+and runtime state on a structural page is the thing that goes stale first.
