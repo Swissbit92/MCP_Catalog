@@ -1,21 +1,62 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="source-sha256" content="aa83c7cd4e7d245f2c8779456ea76411f2e9de0a7d9139a7291ef68ca46f57c1">
-<meta name="renderer-sha256" content="9ef93153f5ca3fdc6cfed24d4a6bb08c28e646b4056a87f2b62f530ae35c2ab8">
+<meta name="source-sha256" content="0502db064564c8205cb98694bfe303911cadc5a6920c025190389412a4ecf354">
+<meta name="renderer-sha256" content="818aa004937cf2101193944b6a3c65737f08085bbb6f3ac9033cef733291af72">
 <title>nephilim — Architecture</title>
+<script>
+/* Before first paint, deliberately. Setting the theme after the stylesheet has
+   painted shows the wrong one for a frame — the flash people notice and nobody
+   can un-see. Dark stays the default when nothing is stored. */
+(function(){
+  try{
+    var t=localStorage.getItem('arch-theme');
+    if(!t) t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+    document.documentElement.setAttribute('data-theme',t);
+  }catch(e){document.documentElement.setAttribute('data-theme','dark');}
+})();
+</script>
 <style>
 :root{
-  --void:#060908; --panel:#0C1211; --panel2:#101817;
-  --edge:#1C2827; --edge2:#283735;
-  --accent:#F5A623; --accent-dim:#F5A62318; --accent-glow:#F5A62366;
-  --phos:#4BE38A; --phos-dim:#4BE38A14; --red:#E8664F;
-  --txt:#D6E0DD; --mid:#7C8B87; --faint:#4E5C58;
+  /* Ink, not phosphor. The green-black CRT read as a costume — a terminal
+     pastiche worn by a document that is not a terminal. These are blue-biased
+     neutrals: the ground of a technical plate, which is what the page actually
+     is. --faint is lifted from the study's #6E7C8C, which measured 3.84:1 on
+     --panel2 and would have re-introduced exactly the contrast bug fixed two
+     versions ago. */
+  --void:#0B0F14; --panel:#121822; --panel2:#18202C;
+  --edge:#25303E; --edge2:#33414F;
+  /* Derived, not concatenated. This used to build the tints by appending hex
+     alpha to the frontmatter value ({accent}18), which silently assumes a
+     6-digit hex and produces garbage for any other notation. color-mix in oklch
+     takes whatever CSS accepts and keeps hue stable while it moves lightness,
+     which HSL does not. */
+  --accent:#F5A623;
+  --accent-dim:color-mix(in oklch, var(--accent) 12%, transparent);
+  --accent-glow:color-mix(in oklch, var(--accent) 40%, transparent);
+  --accent-soft:color-mix(in oklch, var(--accent) 22%, var(--panel));
+  --phos:#3DD68C; --phos-dim:color-mix(in oklch, var(--phos) 14%, transparent); --red:#FF6B5B;
+  /* Contrast, not taste. The old ramp put --faint at 2.85:1 on --void and --mid
+     at 5.62:1; the dimmest tier carries table headers, figure captions and the
+     8px sub-labels inside every diagram, so it failed WCAG AA exactly where the
+     type is smallest. Lifting --faint alone would have collapsed it into --mid,
+     so the whole ramp is re-spaced. Now 5.04 / 8.15 / 14.82 on --void, and the
+     tightest of the three still clears 4.5:1 against --panel2. */
+  --txt:#E8EAED; --mid:#A7B2C0; --faint:#7B8897;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  /* ui-serif resolves to New York on macOS and a real text face elsewhere. No
+     webfont, so nothing to block and nothing to wait for. It is here to give
+     headings and figures a voice the body text does not have — everything on
+     this page used to be one width, which is even and flat. */
+  --serif:ui-serif,"New York",Georgia,"Times New Roman",serif;
 }
 body{background:var(--void);color:var(--txt);font-family:var(--mono);
-  font-size:13px;line-height:1.65;-webkit-font-smoothing:antialiased}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
-  background:repeating-linear-gradient(180deg,transparent 0 2px,rgba(0,0,0,.22) 2px 3px);opacity:.5}
+  font-size:13px;line-height:1.65;-webkit-font-smoothing:antialiased;
+  /* Every digit the same width. This page is mostly numbers in columns, and
+     proportional figures make them fail to line up vertically. */
+  font-variant-numeric:tabular-nums}
+/* The scanline overlay is gone. It was the loudest part of the costume, it
+   printed badly, and it sat at z-index 99 over everything including focus
+   rings. */
 .rig{max-width:70rem;margin:0 auto;padding:0 clamp(.75rem,3vw,1.75rem) 4rem}
 .bar{border:1px solid var(--edge);background:linear-gradient(180deg,var(--panel2),var(--panel));
   display:flex;flex-wrap:wrap;align-items:center;gap:.85rem;padding:.8rem 1.1rem;
@@ -31,37 +72,103 @@ h1{margin:0;font-size:1.05rem;font-weight:600;letter-spacing:.07em;color:var(--a
 nav{display:flex;flex-wrap:wrap;gap:.65rem;font-size:.6rem;letter-spacing:.09em}
 nav a{color:var(--mid);text-decoration:none;text-transform:uppercase}
 nav a:hover{color:var(--accent)}
-h2{margin:2.2rem 0 0;font-size:.76rem;font-weight:600;letter-spacing:.17em;text-transform:uppercase;
-  color:var(--accent);border-bottom:1px solid var(--edge);padding-bottom:.45rem;scroll-margin-top:4.5rem}
-h3{margin:1.5rem 0 0;font-size:.7rem;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--txt)}
-p{margin:.75rem 0 0;max-width:78ch;color:var(--mid)}
+/* Serif, sentence case, and bigger — not uppercase mono at .76rem. A heading
+   that is the same width and nearly the same size as the paragraph under it is
+   not doing the one job a heading has, which is to be findable while scanning. */
+h2{margin:2.4rem 0 0;font-family:var(--serif);font-size:1.5rem;font-weight:400;
+  letter-spacing:-.01em;text-transform:none;line-height:1.15;
+  color:var(--accent);border-bottom:1px solid var(--edge);padding-bottom:.5rem;
+  scroll-margin-top:4.5rem}
+h3{margin:1.6rem 0 0;font-family:var(--serif);font-size:1.08rem;font-weight:400;
+  letter-spacing:0;text-transform:none;color:var(--txt)}
+h1,h2,h3{text-wrap:balance}
+/* 68ch, not the 78ch this used to carry. The 45-75 character guidance assumes a
+   proportional face averaging ~0.5em; monospace runs ~0.6em, so the same ch
+   count is a materially longer line and the return sweep starts to miss. */
+p{margin:.75rem 0 0;max-width:68ch;color:var(--mid);text-wrap:pretty}
 p strong{color:var(--txt);font-weight:600}
 code{color:var(--phos);background:var(--phos-dim);padding:.06em .28em;font-size:.9em}
 a{color:var(--accent)}
 ul,ol{margin:.75rem 0 0;padding-left:1.35rem;color:var(--mid);display:flex;flex-direction:column;gap:.35rem}
-li{max-width:76ch}
+li{max-width:66ch;text-wrap:pretty}
 ol li::marker{color:var(--accent);font-size:.85em}
 hr{border:0;border-top:1px solid var(--edge);margin:1.8rem 0 0}
 blockquote{margin:.9rem 0 0;padding:.1rem 0 .1rem 1rem;border-left:2px solid var(--accent)}
 blockquote p{margin:.5rem 0 0;color:var(--mid)}
 blockquote p:first-child{margin-top:0}
-pre{margin:.85rem 0 0;background:var(--panel);border:1px solid var(--edge);padding:.7rem .85rem;
+pre{margin:0;background:var(--panel);border:1px solid var(--edge);padding:.7rem .85rem;
   overflow-x:auto;font-size:.76rem;color:var(--mid)}
-.tw{overflow-x:auto;margin:.9rem 0 0;border:1px solid var(--edge);background:var(--panel)}
-table{width:100%;min-width:30rem;border-collapse:collapse;font-size:.75rem}
+.cb{position:relative;margin:.85rem 0 0}
+.cpy{position:absolute;top:.4rem;right:.4rem;z-index:1;font-family:var(--mono);
+  font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;padding:.15rem .45rem;
+  background:var(--panel2);color:var(--faint);border:1px solid var(--edge2);
+  cursor:pointer;opacity:0;transition:opacity .12s}
+.cb:hover .cpy,.cpy:focus-visible{opacity:1}
+.cpy:hover{color:var(--accent);border-color:var(--accent)}
+.cpy[data-done]{opacity:1;color:var(--phos);border-color:var(--phos)}
+@media (prefers-reduced-motion:reduce){.cpy{transition:none}}
+/* Touch has no hover, so the affordance must not be hover-gated there. */
+@media (hover:none){.cpy{opacity:1}}
+/* ── gauge row ─────────────────────────────────────────────────────────
+   The handful of facts worth having before the prose. 1px gaps over a ruled
+   background so the cells read as one instrument rather than four cards. */
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));
+  gap:1px;background:var(--edge);border:1px solid var(--edge);margin:1.1rem 0 0}
+.gauge{background:var(--panel);padding:.85rem 1rem;display:grid;gap:.25rem}
+.gauge dt{margin:0;font-size:.57rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--faint)}
+.gauge dd{margin:0;font-family:var(--serif);font-size:1.5rem;line-height:1.05;
+  color:var(--txt);letter-spacing:-.01em}
+.gauge dd small{font-family:var(--mono);font-size:.58rem;color:var(--faint);
+  letter-spacing:.04em;margin-left:.4rem;white-space:nowrap}
+.gauge[data-state=ok] dd{color:var(--phos)}
+.gauge[data-state=warn] dd{color:var(--accent)}
+.gauge[data-state=bad] dd{color:var(--red)}
+
+/* ── state pills ───────────────────────────────────────────────────────
+   Never colour alone: the label carries the meaning, so the pill still works
+   in greyscale, in print, and for anyone who cannot separate the hues. */
+.pill{display:inline-block;font-size:.58rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.1rem .42rem;border:1px solid currentColor;
+  border-radius:2px;white-space:nowrap;vertical-align:.08em}
+.pill-ok{color:var(--phos)}
+.pill-warn{color:var(--accent)}
+.pill-bad{color:var(--red)}
+.pill-mute{color:var(--faint)}
+
+.tw{overflow:auto;max-height:min(80vh,44rem);margin:.9rem 0 0;
+  border:1px solid var(--edge);background:var(--panel)}
+table{width:100%;min-width:30rem;border-collapse:separate;border-spacing:0;font-size:.75rem}
 th,td{text-align:left;padding:.45rem .7rem;border-bottom:1px solid var(--edge);vertical-align:top}
-thead th{font-size:.57rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:400}
+/* Sticky header, because a reference table longer than a screen otherwise loses
+   its column names exactly when you start needing them. Needs an opaque
+   background or the rows show through. */
+thead th{position:sticky;top:0;z-index:2;background:var(--panel2);
+  font-size:.57rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+  font-weight:400;border-bottom:1px solid var(--edge2)}
+/* And a sticky first column, which matters more than the header once a table is
+   wide enough to scroll — the label column is what tells you which row you are
+   reading. Horizontal scroll, deliberately, not card-collapse: collapsing
+   destroys column-to-column comparison, which is the whole purpose of a
+   reference table. */
+tbody th:first-child,tbody td:first-child{position:sticky;left:0;z-index:1;
+  background:var(--panel);color:var(--txt)}
+thead th:first-child{z-index:3}
+tbody tr:hover td,tbody tr:hover th{background:var(--accent-dim)}
 tbody tr:last-child td{border-bottom:0}
 td{color:var(--mid)} td code{color:var(--phos)}
 .figwrap{margin:1.1rem 0 0;border:1px solid var(--edge);background:
-  radial-gradient(ellipse at 50% 40%,#0E1614 0%,#070B0A 82%);overflow-x:auto}
+  radial-gradient(ellipse at 50% 40%,#151D28 0%,#0A0E13 82%);overflow-x:auto}
 .figwrap svg{display:block;margin:0 auto}
 .figcap{border-top:1px solid var(--edge);padding:.45rem .8rem;font-size:.66rem;color:var(--faint)}
+.schem{display:inline-block;border:1px solid var(--edge2);border-radius:2px;
+  padding:0 .3rem;margin-right:.35rem;font-size:.6rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--mid)}
 .nd{fill:var(--panel2);stroke:var(--edge2);stroke-width:1}
-.nd-store{stroke:var(--phos);fill:#0D1614}
-.nd-external{stroke:var(--edge2);stroke-dasharray:4 3;fill:#0A0F0E}
+.nd-store{stroke:var(--phos);fill:#0F1C1B}
+.nd-external{stroke:var(--edge2);stroke-dasharray:4 3;fill:#0E141C}
 .nd-service{stroke:var(--accent)}
-.nd-secret{stroke:var(--red);fill:#160C0A}
+.nd-secret{stroke:var(--red);fill:#1E1114}
 .ndl{font-size:10.5px;fill:var(--txt);font-family:var(--mono)}
 .nds{font-size:8px;fill:var(--faint);font-family:var(--mono)}
 .ndt{font-size:7.5px;fill:var(--accent);font-family:var(--mono);opacity:.85;letter-spacing:.04em}
@@ -79,7 +186,155 @@ footer{margin-top:3rem;border-top:1px solid var(--edge);padding-top:.9rem;displa
 button.pz{font-family:var(--mono);font-size:.6rem;background:transparent;color:var(--accent);
   border:1px solid var(--edge2);padding:.2rem .55rem;cursor:pointer;letter-spacing:.08em}
 button.pz:hover{border-color:var(--accent)}
+button.pz[disabled]{opacity:.4;cursor:default;border-color:var(--edge)}
 :focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+
+/* Visible to a screen reader, absent from the page. Not display:none, which
+   removes it from the accessibility tree along with everything else. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;padding:.5rem .8rem;
+  border-top:1px solid var(--edge);font-size:.62rem;color:var(--faint)}
+.lgi{display:flex;align-items:center;gap:.35rem}
+.lgs{width:15px;height:10px;flex:none;border-radius:2px;
+  background:var(--panel2);border:1px solid var(--edge2)}
+.lgs-store{border-color:var(--phos);background:#0F1C1B}
+.lgs-external{border-style:dashed;background:#0E141C}
+.lgs-service{border-color:var(--accent)}
+.lgs-secret{border-color:var(--red);background:#1E1114}
+:root[data-theme="light"] .lgs{background:#FFFFFF}
+:root[data-theme="light"] .lgs-store{background:#F1F8F4}
+:root[data-theme="light"] .lgs-external{background:#F5F7F6}
+:root[data-theme="light"] .lgs-secret{background:#FDF3F1}
+
+/* ── node inspector ─────────────────────────────────────────────────────
+   Every box is selectable, on every diagram. Hover shows it is live; focus
+   shows it for the keyboard. */
+[data-node]{cursor:pointer}
+[data-node]:hover .nd{stroke:var(--accent)}
+[data-node]:focus{outline:none}
+[data-node]:focus-visible .nd{stroke:var(--accent);stroke-width:2}
+[data-node].picked .nd{stroke:var(--accent);stroke-width:2;
+  fill:color-mix(in oklch,var(--accent) 10%,var(--panel2))}
+[data-node].picked .ndl{fill:var(--accent)}
+/* The readout was one flex child holding three inline spans, so the label, the
+   kind and the subtitle ran together into "refuse — rung restscode in this
+   repo". The gap has to be on the element whose children they are. */
+.inspect{border-top:1px solid var(--edge);padding:.6rem .8rem;font-size:.72rem;
+  min-height:5.2rem}
+.ins-hint{color:var(--faint)}
+.ins-head{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;
+  margin-bottom:.3rem}
+.ins-t{font-family:var(--serif);font-size:1.05rem;font-weight:400;color:var(--txt)}
+.ins-k{font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);border:1px solid var(--edge2);padding:.08rem .38rem;border-radius:2px}
+.ins-tech{font-size:.6rem;color:var(--accent);letter-spacing:.04em}
+.ins-s{display:block;color:var(--mid);max-width:68ch;text-wrap:pretty}
+.ins-links{display:block;margin-top:.3rem;font-size:.63rem;color:var(--faint);
+  font-family:var(--mono)}
+.ins-none{color:var(--faint);font-style:italic}
+.tour{display:flex;align-items:center;gap:.5rem;padding:.5rem .8rem;
+  border-top:1px solid var(--edge);background:var(--panel2);flex-wrap:wrap}
+.tourlbl{font-size:.57rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--faint);min-width:9rem}
+.tourwhy{color:var(--edge2)}
+.tourpos{font-size:.6rem;color:var(--faint);letter-spacing:.08em;min-width:6rem}
+.tourclear{margin-left:auto}
+
+/* ── flow walker ───────────────────────────────────────────────────────── */
+.flowctl{margin:.9rem 0 0;border:1px solid var(--edge);background:var(--panel)}
+.flowhd{display:flex;align-items:baseline;gap:.8rem;padding:.5rem .8rem;
+  border-bottom:1px solid var(--edge)}
+.flowlbl{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.flowjump{margin-left:auto;font-size:.6rem;color:var(--mid);text-decoration:none}
+.flowjump:hover{color:var(--accent)}
+.flowlist{list-style:none;margin:0;padding:.4rem;display:flex;flex-wrap:wrap;
+  gap:.35rem}
+.flowlist li{font-size:.66rem;padding:.2rem .55rem;border:1px solid var(--edge2);
+  color:var(--mid);cursor:pointer;max-width:none}
+.flowlist li:hover{border-color:var(--accent);color:var(--txt)}
+.flowlist li[aria-selected="true"]{border-color:var(--accent);color:var(--accent);
+  background:var(--accent-dim)}
+.flownav{display:flex;align-items:center;gap:.5rem;padding:0 .8rem .5rem}
+.flowpos{font-size:.6rem;color:var(--faint);letter-spacing:.08em;min-width:5rem}
+.flowclear{margin-left:auto}
+.flowcap{margin:0;padding:.5rem .8rem;border-top:1px solid var(--edge);
+  font-size:.7rem;color:var(--mid);min-height:1.2rem}
+
+/* Dim with fill-opacity/stroke-opacity rather than `opacity`: the composite
+   property promotes every element to its own compositing layer, which is real
+   jank once a diagram has thirty boxes. These two are paint-only. */
+svg.flowing .nd,svg.flowing .wire,svg.flowing .wire-a,
+svg.flowing .ndl,svg.flowing .nds,svg.flowing .ndt,svg.flowing .wlab{
+  fill-opacity:.18;stroke-opacity:.18;transition:fill-opacity .18s,stroke-opacity .18s}
+svg.flowing [data-node].on-path .nd,svg.flowing [data-node].on-path .ndl,
+svg.flowing [data-node].on-path .nds,svg.flowing [data-node].on-path .ndt,
+svg.flowing [data-edge].on-path .wire,svg.flowing [data-edge].on-path .wire-a,
+svg.flowing [data-edge].on-path .wlab{fill-opacity:1;stroke-opacity:1}
+/* The current step has to win against the node-kind colours, which already use
+   the accent. Border alone was ambiguous on a service node, so it also gets the
+   accent wash and a halo. */
+svg.flowing [data-node].at-step .nd{stroke:var(--accent);stroke-width:2;
+  fill:var(--accent-dim);filter:drop-shadow(0 0 6px var(--accent-glow))}
+svg.flowing [data-node].at-step .ndl{fill:var(--accent)}
+svg.flowing [data-edge].at-step .wire-a{stroke-width:2.6;
+  filter:drop-shadow(0 0 5px var(--accent-glow))}
+@media (prefers-reduced-motion:reduce){
+  svg.flowing [data-node].at-step .nd,
+  svg.flowing [data-edge].at-step .wire-a{filter:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  svg.flowing .nd,svg.flowing .wire,svg.flowing .wire-a,
+  svg.flowing .ndl,svg.flowing .nds,svg.flowing .ndt,svg.flowing .wlab{transition:none}
+}
+
+/* ── light theme ───────────────────────────────────────────────────────────
+   An attribute override, not light-dark(). The dark skin leans on glow —
+   text-shadow, box-shadow, a scanline overlay — and those have to be switched
+   off as a group, which a per-value colour function cannot express. */
+:root[data-theme="light"]{
+  --void:#F4F6F5; --panel:#FFFFFF; --panel2:#F9FBFA;
+  --edge:#D5DEDB; --edge2:#B9C6C2;
+  --phos:#0F7A44; --phos-dim:#0F7A4414; --red:#B3341C;
+  --txt:#12201C; --mid:#3F514C; --faint:#5A6B66;
+}
+:root[data-theme="light"] body::before{display:none}
+:root[data-theme="light"] h1{text-shadow:none}
+:root[data-theme="light"] .led{box-shadow:none}
+:root[data-theme="light"] .figwrap{background:#FFFFFF}
+:root[data-theme="light"] .nd{fill:#FFFFFF}
+:root[data-theme="light"] .nd-store{fill:#F1F8F4}
+:root[data-theme="light"] .nd-external{fill:#F5F7F6}
+:root[data-theme="light"] .nd-secret{fill:#FDF3F1}
+
+/* ── print ─────────────────────────────────────────────────────────────────
+   The scanline overlay and a near-black page background are a screen
+   affectation; on paper they are a toner bill and an unreadable page. */
+@media print{
+  :root{
+    --void:#FFFFFF; --panel:#FFFFFF; --panel2:#FFFFFF;
+    --edge:#9AA8A4; --edge2:#6E7D79;
+    --txt:#000000; --mid:#1C2A26; --faint:#3D4B47; --phos:#0A5C33;
+  }
+  @page{margin:14mm}
+  body{background:#fff;font-size:10pt}
+  body::before{display:none}
+  .bar{position:static;border-bottom:1px solid var(--edge)}
+  nav,button.pz,.flownav,.flowjump{display:none}
+  h1{text-shadow:none}
+  .led{box-shadow:none}
+  h2,h3{break-after:avoid}
+  pre,table,.figwrap,.flowctl,blockquote{break-inside:avoid}
+  .figwrap{background:#fff}
+  .nd{fill:#fff}
+  /* Every flow, spelled out — the picker is gone on paper, so the steps have to
+     be readable as a list or the section says nothing. */
+  .flowlist li{border-color:var(--edge2)}
+  a{color:inherit;text-decoration:underline}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:.8em;color:var(--faint)}
+}
 </style>
 
 <div class="rig">
@@ -88,46 +343,274 @@ button.pz:hover{border-color:var(--accent)}
   <h1>NEPHILIM</h1>
 
   <span class="spacer"></span>
-  <nav><a href="#system-context">System context</a><a href="#components">Components</a><a href="#data">Data</a><a href="#key-invariants">Key invariants</a><a href="#cross-repo-contracts">Cross-repo contracts</a><a href="#decisions">Decisions</a></nav>
+  <nav><a href="#system-context">System context</a><a href="#the-turn-pipeline">The turn pipeline</a><a href="#components">Components</a><a href="#data">Data</a><a href="#key-invariants">Key invariants</a><a href="#cross-repo-contracts">Cross-repo contracts</a><a href="#decisions">Decisions</a><a href="#glossary">Glossary</a></nav>
 </header>
 <p>Reference-style: tables and diagrams, not prose narratives. A local-first, persona-driven chat platform — FastAPI backend + React 19 frontend + local Ollama, SQLite for persistence, FAISS for semantic memory.</p>
+<dl class="gauges"><div class="gauge" data-state=ok><dt>Trading data</dt><dd>Read<small>never writes</small></dd></div><div class="gauge"><dt>Inference</dt><dd>Local<small>on-device</small></dd></div><div class="gauge"><dt>Clients</dt><dd>Two<small>UI + Telegram</small></dd></div><div class="gauge" data-state=ok><dt>Wallet path</dt><dd>Manual<small>never model-decided</small></dd></div><div class="gauge" data-state=warn><dt>Off-machine</dt><dd>Two<small>MCP servers</small></dd></div></dl>
 <h2 id="system-context">System context</h2>
 <p>Verified against the call graph, not sketched from memory — every edge below is an import or call that exists in <code>src/coordinator/</code>.</p>
-<div class="figwrap"><svg viewBox="0 0 1278 1008" width="1278" height="1008" role="img" aria-label="routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings."><path class="wire" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="594" y="122">session API</text><path class="wire" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="698" y="122">the SAME API</text><path class="wire" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><text class="wlab" x="525" y="248">handle_session_chat</text><path class="wire" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><text class="wlab" x="637" y="248">_try_tool_brain</text><path class="wire" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><text class="wlab" x="757" y="248">legacy fallthrough</text><path class="wire" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/><path class="wire" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/><path class="wire" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/><path class="wire" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/><path class="wire" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><path class="wire-a" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><text class="wlab" x="802" y="374">every tool call</text><path class="wire" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><path class="wire-a" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><text class="wlab" x="698" y="500">only if permitted</text><path class="wire" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/><path class="wire" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><path class="wire-a" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><text class="wlab" x="606" y="752">reuses the embedder</text><path class="wire" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/><path class="wire" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><path class="wire-a" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><text class="wlab" x="1028" y="374">propose -&gt; confirm -&gt; execute</text><path class="wire" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/><path class="wire-a" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/><path class="wire" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire" d="M638.2 852.0 L638.2 907.0"/><path class="wire-a" d="M638.2 852.0 L638.2 907.0"/><rect class="nd nd-external" x="446" y="30" width="180" height="66" rx="3"/><text class="ndl" x="458" y="51">React UI</text><text class="nds" x="458" y="65">chat · personas · wallet</text><text class="ndt" x="458" y="79">[React 19 · TS]</text><rect class="nd nd-external" x="656" y="30" width="174" height="66" rx="3"/><text class="ndl" x="668" y="51">telegram-gateway</text><text class="nds" x="668" y="65">allowlisted single user</text><text class="ndt" x="668" y="79">[own venv · launchd]</text><rect class="nd nd-service" x="532" y="156" width="212" height="66" rx="3"/><text class="ndl" x="543" y="177">routes/chat.py</text><text class="nds" x="543" y="191">orchestrator — picks the path</text><text class="ndt" x="543" y="205">[FastAPI]</text><rect class="nd nd-module" x="311" y="282" width="174" height="66" rx="3"/><text class="ndl" x="322" y="303">handle_session_chat</text><text class="nds" x="322" y="317">per-turn phase pipeline</text><text class="ndt" x="322" y="331">[ChatDeps / ChatTurnState]</text><rect class="nd nd-module" x="514" y="282" width="215" height="66" rx="3"/><text class="ndl" x="526" y="303">tool_brain_service</text><text class="nds" x="526" y="317">web intents only, never wallet</text><text class="ndt" x="526" y="331">[Ollama native tool-calling]</text><rect class="nd nd-module" x="760" y="282" width="206" height="66" rx="3"/><text class="ndl" x="770" y="303">query_handler_service</text><text class="nds" x="770" y="317">legacy wallet + force-search</text><text class="ndt" x="770" y="331">[bge-m3 semantic router]</text><rect class="nd nd-module" x="24" y="408" width="215" height="66" rx="3"/><text class="ndl" x="35" y="429">persona_memory</text><text class="nds" x="35" y="443">-&gt; prompt_builder, lean prompt</text><text class="ndt" x="35" y="457">[lru_cache]</text><rect class="nd nd-module" x="269" y="408" width="160" height="66" rx="3"/><text class="ndl" x="280" y="429">memory_fact_retrieval</text><text class="nds" x="280" y="443">through the M1 frame</text><text class="ndt" x="280" y="457">[bi-temporal store]</text><rect class="nd nd-module" x="460" y="408" width="154" height="66" rx="3"/><text class="ndl" x="470" y="429">llm_client</text><text class="nds" x="470" y="443">per-persona sampling</text><text class="ndt" x="470" y="457">[Ollama]</text><rect class="nd nd-module" x="644" y="408" width="186" height="66" rx="3"/><text class="ndl" x="654" y="429">repositories/</text><text class="nds" x="654" y="443">all extend BaseRepository</text><text class="ndt" x="654" y="457">[SQLite · pooled]</text><rect class="nd nd-secret" x="860" y="408" width="215" height="66" rx="3"/><text class="ndl" x="871" y="429">tool_interceptor</text><text class="nds" x="871" y="443">validate() only — gates, never executes</text><text class="ndt" x="871" y="457">[deterministic middleware]</text><rect class="nd nd-external" x="1105" y="408" width="148" height="66" rx="3"/><text class="ndl" x="1116" y="429">Jupiter / Solana</text><text class="nds" x="1116" y="443">long-running Docker</text><text class="ndt" x="1116" y="457">[MCP]</text><rect class="nd nd-module" x="306" y="534" width="215" height="66" rx="3"/><text class="ndl" x="318" y="555">executor_bindings</text><text class="nds" x="318" y="569">runs the tool the guard permitted</text><text class="ndt" x="318" y="583">[registry-bound]</text><rect class="nd nd-store" x="552" y="534" width="215" height="66" rx="3"/><text class="ndl" x="562" y="555">SQLite</text><text class="nds" x="562" y="569">chats · progression · facts · wallets</text><text class="ndt" x="562" y="583">[local file]</text><rect class="nd nd-external" x="796" y="534" width="174" height="66" rx="3"/><text class="ndl" x="808" y="555">Ollama</text><text class="nds" x="808" y="569">LLM + bge-m3 embeddings</text><text class="ndt" x="808" y="583">[on-device, Metal GPU]</text><rect class="nd nd-module" x="469" y="660" width="180" height="66" rx="3"/><text class="ndl" x="480" y="681">search_relevance_service</text><text class="nds" x="480" y="695">per-result cosine floor</text><text class="ndt" x="480" y="709">[reuses the RAG embedder]</text><rect class="nd nd-external" x="679" y="660" width="128" height="66" rx="3"/><text class="ndl" x="690" y="681">SearXNG / Brave</text><text class="nds" x="690" y="695">ephemeral Docker</text><text class="ndt" x="690" y="709">[MCP]</text><rect class="nd nd-module" x="531" y="786" width="215" height="66" rx="3"/><text class="ndl" x="542" y="807">memory_rag</text><text class="nds" x="542" y="821">EpisodicMemoryRAG · startup singleton</text><text class="ndt" x="542" y="835">[bge-m3]</text><rect class="nd nd-store" x="555" y="912" width="167" height="66" rx="3"/><text class="ndl" x="566" y="933">FAISS</text><text class="nds" x="566" y="947">session + lore vectors</text><text class="ndt" x="566" y="961">[local index]</text></svg><div class="figcap">routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.</div></div>
+<div class="figwrap"><svg id="fig-f1" viewBox="0 0 1278 1008" width="1278" height="1008" role="img" aria-label="routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings."><g data-edge-from="ui" data-edge-to="routes"><path class="wire" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M536.5 96.0 L536.5 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="594" y="122">session API</text></g><g data-edge-from="tg" data-edge-to="routes"><path class="wire" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><path class="wire-a" d="M743.2 96.0 L743.2 126.0 L638.2 126.0 L638.2 151.0"/><text class="wlab" x="698" y="122">the SAME API</text></g><g data-edge-from="routes" data-edge-to="chat"><path class="wire" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L397.8 252.0 L397.8 277.0"/><text class="wlab" x="525" y="248">handle_session_chat</text></g><g data-edge-from="routes" data-edge-to="brain"><path class="wire" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L622.0 252.0 L622.0 277.0"/><text class="wlab" x="637" y="248">_try_tool_brain</text></g><g data-edge-from="routes" data-edge-to="qh"><path class="wire" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><path class="wire-a" d="M638.2 222.0 L638.2 252.0 L862.5 252.0 L862.5 277.0"/><text class="wlab" x="757" y="248">legacy fallthrough</text></g><g data-edge-from="chat" data-edge-to="persona"><path class="wire" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L131.5 378.0 L131.5 403.0"/></g><g data-edge-from="chat" data-edge-to="facts"><path class="wire" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L349.2 378.0 L349.2 403.0"/></g><g data-edge-from="chat" data-edge-to="llm"><path class="wire" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L536.5 378.0 L536.5 403.0"/></g><g data-edge-from="chat" data-edge-to="repos"><path class="wire" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/><path class="wire-a" d="M397.8 348.0 L397.8 378.0 L736.8 378.0 L736.8 403.0"/></g><g data-edge-from="brain" data-edge-to="guard"><path class="wire" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><path class="wire-a" d="M622.0 348.0 L622.0 378.0 L967.5 378.0 L967.5 403.0"/><text class="wlab" x="802" y="374">every tool call</text></g><g data-edge-from="guard" data-edge-to="exec"><path class="wire" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><path class="wire-a" d="M967.5 474.0 L967.5 504.0 L414.0 504.0 L414.0 529.0"/><text class="wlab" x="698" y="500">only if permitted</text></g><g data-edge-from="exec" data-edge-to="relevance"><path class="wire" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L559.2 630.0 L559.2 655.0"/></g><g data-edge-from="relevance" data-edge-to="rag"><path class="wire" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><path class="wire-a" d="M559.2 726.0 L559.2 756.0 L638.2 756.0 L638.2 781.0"/><text class="wlab" x="606" y="752">reuses the embedder</text></g><g data-edge-from="exec" data-edge-to="web"><path class="wire" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/><path class="wire-a" d="M414.0 600.0 L414.0 630.0 L743.2 630.0 L743.2 655.0"/></g><g data-edge-from="qh" data-edge-to="jupiter"><path class="wire" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><path class="wire-a" d="M862.5 348.0 L862.5 378.0 L1178.8 378.0 L1178.8 403.0"/><text class="wlab" x="1028" y="374">propose -&gt; confirm -&gt; execute</text></g><g data-edge-from="llm" data-edge-to="ollama"><path class="wire" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/><path class="wire-a" d="M536.5 474.0 L536.5 504.0 L883.2 504.0 L883.2 529.0"/></g><g data-edge-from="repos" data-edge-to="sqlite"><path class="wire" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M736.8 474.0 L736.8 504.0 L659.0 504.0 L659.0 529.0"/></g><g data-edge-from="facts" data-edge-to="sqlite"><path class="wire" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/><path class="wire-a" d="M349.2 474.0 L349.2 504.0 L659.0 504.0 L659.0 529.0"/></g><g data-edge-from="rag" data-edge-to="faiss"><path class="wire" d="M638.2 852.0 L638.2 907.0"/><path class="wire-a" d="M638.2 852.0 L638.2 907.0"/></g><g id="f1-nd-ui" data-node="ui" data-label="React UI" data-sub="chat · personas · wallet" data-tech="React 19 · TS" data-note="The React client. Hits the same session API the Telegram gateway does." data-links="→ routes/chat.py" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="React UI — chat · personas · wallet — built with React 19 · TS"><rect class="nd nd-external" x="446" y="30" width="180" height="66" rx="3"/><text class="ndl" x="458" y="51">React UI</text><text class="nds" x="458" y="65">chat · personas · wallet</text><text class="ndt" x="458" y="79">[React 19 · TS]</text></g><g id="f1-nd-tg" data-node="tg" data-label="telegram-gateway" data-sub="allowlisted single user" data-tech="own venv · launchd" data-note="An allowlisted single-user bot. Deliberately thin — it holds no logic the UI does not also use." data-links="→ routes/chat.py" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="telegram-gateway — allowlisted single user — built with own venv · launchd"><rect class="nd nd-external" x="656" y="30" width="174" height="66" rx="3"/><text class="ndl" x="668" y="51">telegram-gateway</text><text class="nds" x="668" y="65">allowlisted single user</text><text class="ndt" x="668" y="79">[own venv · launchd]</text></g><g id="f1-nd-routes" data-node="routes" data-label="routes/chat.py" data-sub="orchestrator — picks the path" data-tech="FastAPI" data-note="The orchestrator. Decides which of three paths a turn takes, and is where the tool brain is gated." data-links="← React UI, telegram-gateway   → handle_session_chat, tool_brain_service, query_handler_service" data-kind="a process or entry point" tabindex="0" role="graphics-symbol" aria-label="routes/chat.py — orchestrator — picks the path — built with FastAPI"><rect class="nd nd-service" x="532" y="156" width="212" height="66" rx="3"/><text class="ndl" x="543" y="177">routes/chat.py</text><text class="nds" x="543" y="191">orchestrator — picks the path</text><text class="ndt" x="543" y="205">[FastAPI]</text></g><g id="f1-nd-chat" data-node="chat" data-label="handle_session_chat" data-sub="per-turn phase pipeline" data-tech="ChatDeps / ChatTurnState" data-note="The per-turn pipeline: load identity, build the prompt, select history, generate, persist." data-links="← routes/chat.py   → persona_memory, memory_fact_retrieval, llm_client, repositories/" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="handle_session_chat — per-turn phase pipeline — built with ChatDeps / ChatTurnState"><rect class="nd nd-module" x="311" y="282" width="174" height="66" rx="3"/><text class="ndl" x="322" y="303">handle_session_chat</text><text class="nds" x="322" y="317">per-turn phase pipeline</text><text class="ndt" x="322" y="331">[ChatDeps / ChatTurnState]</text></g><g id="f1-nd-brain" data-node="brain" data-label="tool_brain_service" data-sub="web intents only, never wallet" data-tech="Ollama native tool-calling" data-note="Native tool-calling on web intents only. It is never offered wallet tools — the full surface caused fixation and fabrication in a live test." data-links="← routes/chat.py   → tool_interceptor" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="tool_brain_service — web intents only, never wallet — built with Ollama native tool-calling"><rect class="nd nd-module" x="514" y="282" width="215" height="66" rx="3"/><text class="ndl" x="526" y="303">tool_brain_service</text><text class="nds" x="526" y="317">web intents only, never wallet</text><text class="ndt" x="526" y="331">[Ollama native tool-calling]</text></g><g id="f1-nd-qh" data-node="qh" data-label="query_handler_service" data-sub="legacy wallet + force-search" data-tech="bge-m3 semantic router" data-note="The legacy deterministic path. Still in charge of wallet, and the floor the tool brain falls through to." data-links="← routes/chat.py   → Jupiter / Solana" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="query_handler_service — legacy wallet + force-search — built with bge-m3 semantic router"><rect class="nd nd-module" x="760" y="282" width="206" height="66" rx="3"/><text class="ndl" x="770" y="303">query_handler_service</text><text class="nds" x="770" y="317">legacy wallet + force-search</text><text class="ndt" x="770" y="331">[bge-m3 semantic router]</text></g><g id="f1-nd-persona" data-node="persona" data-label="persona_memory" data-sub="-&gt; prompt_builder, lean prompt" data-tech="lru_cache" data-note="Loads the persona and its cached CV summary. The cache is why per-turn context must be appended after it, never inside." data-links="← handle_session_chat" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="persona_memory — -&gt; prompt_builder, lean prompt — built with lru_cache"><rect class="nd nd-module" x="24" y="408" width="215" height="66" rx="3"/><text class="ndl" x="35" y="429">persona_memory</text><text class="nds" x="35" y="443">-&gt; prompt_builder, lean prompt</text><text class="ndt" x="35" y="457">[lru_cache]</text></g><g id="f1-nd-facts" data-node="facts" data-label="memory_fact_retrieval" data-sub="through the M1 frame" data-tech="bi-temporal store" data-note="Retrieves stored facts through the per-persona frame. Off on prod — the injection homogenised the warm personas." data-links="← handle_session_chat   → SQLite" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="memory_fact_retrieval — through the M1 frame — built with bi-temporal store"><rect class="nd nd-module" x="269" y="408" width="160" height="66" rx="3"/><text class="ndl" x="280" y="429">memory_fact_retrieval</text><text class="nds" x="280" y="443">through the M1 frame</text><text class="ndt" x="280" y="457">[bi-temporal store]</text></g><g id="f1-nd-llm" data-node="llm" data-label="llm_client" data-sub="per-persona sampling" data-tech="Ollama" data-note="Ollama, on-device, with per-persona sampling. Local-first is a constraint: the alternative leaks financial context." data-links="← handle_session_chat   → Ollama" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="llm_client — per-persona sampling — built with Ollama"><rect class="nd nd-module" x="460" y="408" width="154" height="66" rx="3"/><text class="ndl" x="470" y="429">llm_client</text><text class="nds" x="470" y="443">per-persona sampling</text><text class="ndt" x="470" y="457">[Ollama]</text></g><g id="f1-nd-repos" data-node="repos" data-label="repositories/" data-sub="all extend BaseRepository" data-tech="SQLite · pooled" data-note="Every repository extends BaseRepository, so nothing opens a raw SQLite connection." data-links="← handle_session_chat   → SQLite" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="repositories/ — all extend BaseRepository — built with SQLite · pooled"><rect class="nd nd-module" x="644" y="408" width="186" height="66" rx="3"/><text class="ndl" x="654" y="429">repositories/</text><text class="nds" x="654" y="443">all extend BaseRepository</text><text class="ndt" x="654" y="457">[SQLite · pooled]</text></g><g id="f1-nd-guard" data-node="guard" data-label="tool_interceptor" data-sub="validate() only — gates, never executes" data-tech="deterministic middleware" data-note="Validates every tool call before it runs — access, arguments, and a hard block on swaps that did not come from a human." data-links="← tool_brain_service   → executor_bindings" data-kind="a credential store" tabindex="0" role="graphics-symbol" aria-label="tool_interceptor — validate() only — gates, never executes — built with deterministic middleware"><rect class="nd nd-secret" x="860" y="408" width="215" height="66" rx="3"/><text class="ndl" x="871" y="429">tool_interceptor</text><text class="nds" x="871" y="443">validate() only — gates, never executes</text><text class="ndt" x="871" y="457">[deterministic middleware]</text></g><g id="f1-nd-jupiter" data-node="jupiter" data-label="Jupiter / Solana" data-sub="long-running Docker" data-tech="MCP" data-note="The wallet path. Always propose then confirm then execute — never model-decided." data-links="← query_handler_service" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="Jupiter / Solana — long-running Docker — built with MCP"><rect class="nd nd-external" x="1105" y="408" width="148" height="66" rx="3"/><text class="ndl" x="1116" y="429">Jupiter / Solana</text><text class="nds" x="1116" y="443">long-running Docker</text><text class="ndt" x="1116" y="457">[MCP]</text></g><g id="f1-nd-exec" data-node="exec" data-label="executor_bindings" data-sub="runs the tool the guard permitted" data-tech="registry-bound" data-note="Runs the tool the guard permitted. Separate from the guard on purpose: gating and executing are different jobs." data-links="← tool_interceptor   → search_relevance_service, SearXNG / Brave" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="executor_bindings — runs the tool the guard permitted — built with registry-bound"><rect class="nd nd-module" x="306" y="534" width="215" height="66" rx="3"/><text class="ndl" x="318" y="555">executor_bindings</text><text class="nds" x="318" y="569">runs the tool the guard permitted</text><text class="ndt" x="318" y="583">[registry-bound]</text></g><g id="f1-nd-sqlite" data-node="sqlite" data-label="SQLite" data-sub="chats · progression · facts · wallets" data-tech="local file" data-note="Sessions, progression, facts and wallets. Local file, pooled access." data-links="← repositories/, memory_fact_retrieval" data-kind="a database, table, queue or bucket" tabindex="0" role="graphics-symbol" aria-label="SQLite — chats · progression · facts · wallets — built with local file"><rect class="nd nd-store" x="552" y="534" width="215" height="66" rx="3"/><text class="ndl" x="562" y="555">SQLite</text><text class="nds" x="562" y="569">chats · progression · facts · wallets</text><text class="ndt" x="562" y="583">[local file]</text></g><g id="f1-nd-ollama" data-node="ollama" data-label="Ollama" data-sub="LLM + bge-m3 embeddings" data-tech="on-device, Metal GPU" data-note="On-device inference and embeddings, on the Metal GPU." data-links="← llm_client" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="Ollama — LLM + bge-m3 embeddings — built with on-device, Metal GPU"><rect class="nd nd-external" x="796" y="534" width="174" height="66" rx="3"/><text class="ndl" x="808" y="555">Ollama</text><text class="nds" x="808" y="569">LLM + bge-m3 embeddings</text><text class="ndt" x="808" y="583">[on-device, Metal GPU]</text></g><g id="f1-nd-relevance" data-node="relevance" data-label="search_relevance_service" data-sub="per-result cosine floor" data-tech="reuses the RAG embedder" data-note="Drops search results that are non-empty but off-topic, which the no-results guard cannot catch." data-links="← executor_bindings   → memory_rag" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="search_relevance_service — per-result cosine floor — built with reuses the RAG embedder"><rect class="nd nd-module" x="469" y="660" width="180" height="66" rx="3"/><text class="ndl" x="480" y="681">search_relevance_service</text><text class="nds" x="480" y="695">per-result cosine floor</text><text class="ndt" x="480" y="709">[reuses the RAG embedder]</text></g><g id="f1-nd-web" data-node="web" data-label="SearXNG / Brave" data-sub="ephemeral Docker" data-tech="MCP" data-note="Search, via SearXNG first so the query stays local, falling back to Brave." data-links="← executor_bindings" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="SearXNG / Brave — ephemeral Docker — built with MCP"><rect class="nd nd-external" x="679" y="660" width="128" height="66" rx="3"/><text class="ndl" x="690" y="681">SearXNG / Brave</text><text class="nds" x="690" y="695">ephemeral Docker</text><text class="ndt" x="690" y="709">[MCP]</text></g><g id="f1-nd-rag" data-node="rag" data-label="memory_rag" data-sub="EpisodicMemoryRAG · startup singleton" data-tech="bge-m3" data-note="Semantic recall over past sessions and the lore wiki, sharing one embedder." data-links="← search_relevance_service   → FAISS" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="memory_rag — EpisodicMemoryRAG · startup singleton — built with bge-m3"><rect class="nd nd-module" x="531" y="786" width="215" height="66" rx="3"/><text class="ndl" x="542" y="807">memory_rag</text><text class="nds" x="542" y="821">EpisodicMemoryRAG · startup singleton</text><text class="ndt" x="542" y="835">[bge-m3]</text></g><g id="f1-nd-faiss" data-node="faiss" data-label="FAISS" data-sub="session + lore vectors" data-tech="local index" data-note="The vector index for session and lore search." data-links="← memory_rag" data-kind="a database, table, queue or bucket" tabindex="0" role="graphics-symbol" aria-label="FAISS — session + lore vectors — built with local index"><rect class="nd nd-store" x="555" y="912" width="167" height="66" rx="3"/><text class="ndl" x="566" y="933">FAISS</text><text class="nds" x="566" y="947">session + lore vectors</text><text class="ndt" x="566" y="961">[local index]</text></g></svg><div class="legend"><span class="lgi"><span class="lgs lgs-module" aria-hidden="true"></span>code in this repo</span><span class="lgi"><span class="lgs lgs-service" aria-hidden="true"></span>a process or entry point</span><span class="lgi"><span class="lgs lgs-store" aria-hidden="true"></span>a database, table, queue or bucket</span><span class="lgi"><span class="lgs lgs-external" aria-hidden="true"></span>something you do not control</span><span class="lgi"><span class="lgs lgs-secret" aria-hidden="true"></span>a credential store</span></div><div class="inspect" data-inspect="fig-f1"><span class="ins-hint">Click a box to see what it is, what it does, and how it connects.</span><span class="ins-body" hidden aria-live="polite"><span class="ins-head"><b class="ins-t"></b><span class="ins-k"></span><span class="ins-tech"></span></span><span class="ins-s"></span><span class="ins-links"></span></span></div><div class="tour" data-tour="fig-f1" data-order="ui,tg,routes,chat,brain,qh,persona,facts,llm,repos,guard,jupiter,exec,sqlite,ollama,relevance,web,rag,faiss"><span class="tourlbl" data-tour-lbl>Tour<span class="tourwhy"> &middot; layout order</span></span><button class="pz" type="button" data-tour-prev disabled>&#8592; prev</button><span class="tourpos" data-tour-pos>&#8212;</span><button class="pz" type="button" data-tour-next>next &#8594;</button><button class="pz tourclear" type="button" data-tour-clear>clear</button></div><table class="sr-only"><caption>routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings. — text alternative</caption><thead><tr><th>Component</th><th>Kind</th><th>Role</th><th>Connects to</th></tr></thead><tbody><tr><td>React UI</td><td>something you do not control</td><td>chat · personas · wallet</td><td>routes/chat.py (session API)</td></tr><tr><td>telegram-gateway</td><td>something you do not control</td><td>allowlisted single user</td><td>routes/chat.py (the SAME API)</td></tr><tr><td>routes/chat.py</td><td>a process or entry point</td><td>orchestrator — picks the path</td><td>handle_session_chat (handle_session_chat); tool_brain_service (_try_tool_brain); query_handler_service (legacy fallthrough)</td></tr><tr><td>handle_session_chat</td><td>code in this repo</td><td>per-turn phase pipeline</td><td>persona_memory; memory_fact_retrieval; llm_client; repositories/</td></tr><tr><td>tool_brain_service</td><td>code in this repo</td><td>web intents only, never wallet</td><td>tool_interceptor (every tool call)</td></tr><tr><td>query_handler_service</td><td>code in this repo</td><td>legacy wallet + force-search</td><td>Jupiter / Solana (propose -&gt; confirm -&gt; execute)</td></tr><tr><td>persona_memory</td><td>code in this repo</td><td>-&gt; prompt_builder, lean prompt</td><td>—</td></tr><tr><td>memory_fact_retrieval</td><td>code in this repo</td><td>through the M1 frame</td><td>SQLite</td></tr><tr><td>llm_client</td><td>code in this repo</td><td>per-persona sampling</td><td>Ollama</td></tr><tr><td>repositories/</td><td>code in this repo</td><td>all extend BaseRepository</td><td>SQLite</td></tr><tr><td>tool_interceptor</td><td>a credential store</td><td>validate() only — gates, never executes</td><td>executor_bindings (only if permitted)</td></tr><tr><td>executor_bindings</td><td>code in this repo</td><td>runs the tool the guard permitted</td><td>search_relevance_service; SearXNG / Brave</td></tr><tr><td>search_relevance_service</td><td>code in this repo</td><td>per-result cosine floor</td><td>memory_rag (reuses the embedder)</td></tr><tr><td>memory_rag</td><td>code in this repo</td><td>EpisodicMemoryRAG · startup singleton</td><td>FAISS</td></tr><tr><td>SQLite</td><td>a database, table, queue or bucket</td><td>chats · progression · facts · wallets</td><td>—</td></tr><tr><td>FAISS</td><td>a database, table, queue or bucket</td><td>session + lore vectors</td><td>—</td></tr><tr><td>Ollama</td><td>something you do not control</td><td>LLM + bge-m3 embeddings</td><td>—</td></tr><tr><td>SearXNG / Brave</td><td>something you do not control</td><td>ephemeral Docker</td><td>—</td></tr><tr><td>Jupiter / Solana</td><td>something you do not control</td><td>long-running Docker</td><td>—</td></tr></tbody></table><div class="figcap">routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.</div></div>
 <p><strong>Wallet is never model-decided.</strong> <code>_try_tool_brain</code> returns <code>None</code> on <code>NEEDS_WALLET</code> unconditionally, so the wallet path stays on the deterministic propose→confirm→execute flow. The tool brain is offered <strong>web tools only</strong> — a live test showed the full 14-tool surface caused wallet fixation and fabrication.</p>
 <p><strong>The guard gates; it does not execute.</strong> <code>ToolCallInterceptor</code> exposes <code>validate()</code> and nothing else. Execution happens in <code>executor_bindings</code> <em>after</em> the check passes, which is why the two are separate nodes above rather than one.</p>
 <p><strong>Local-first is a constraint, not a preference.</strong> Inference runs on-device because the alternative leaks financial context to a third party. The two Docker MCP servers are the only paths off the machine.</p>
 <p>The Telegram gateway consumes the <strong>same</strong> session API as the React UI (<a href="decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md">ADR-011</a>), which is why regenerate/continue/undo exist once rather than twice.</p>
+<h2 id="the-turn-pipeline">The turn pipeline</h2>
+<p>The diagram above shows which modules exist. It does not show what happens when someone actually sends a message, which is the thing most questions are really about.</p>
+<div class="figwrap"><svg id="fig-f2" viewBox="0 0 1076 228" width="1076" height="228" role="img" aria-label="One chat turn, from message to persisted reply."><g data-edge-from="arrive" data-edge-to="identity"><path class="wire" d="M179.0 57.0 L203.0 57.0"/><path class="wire-a" d="M179.0 57.0 L203.0 57.0"/></g><g data-edge-from="identity" data-edge-to="route"><path class="wire" d="M357.0 57.0 L381.0 57.0"/><path class="wire-a" d="M357.0 57.0 L381.0 57.0"/></g><g data-edge-from="route" data-edge-to="prompt"><path class="wire" d="M515.0 57.0 L539.0 57.0"/><path class="wire-a" d="M515.0 57.0 L539.0 57.0"/></g><g data-edge-from="prompt" data-edge-to="history"><path class="wire" d="M699.0 57.0 L723.0 57.0"/><path class="wire-a" d="M699.0 57.0 L723.0 57.0"/></g><g data-edge-from="history" data-edge-to="generate"><path class="wire" d="M869.0 57.0 L893.0 57.0"/><path class="wire-a" d="M869.0 57.0 L893.0 57.0"/></g><g data-edge-from="generate" data-edge-to="guard"><path class="wire" d="M975.5 84.0 L975.5 114.0 L945.0 114.0 L945.0 139.0"/><path class="wire-a" d="M975.5 84.0 L975.5 114.0 L945.0 114.0 L945.0 139.0"/></g><g data-edge-from="guard" data-edge-to="persist"><path class="wire" d="M837.0 171.0 L813.0 171.0"/><path class="wire-a" d="M837.0 171.0 L813.0 171.0"/></g><g data-edge-from="persist" data-edge-to="after"><path class="wire" d="M699.0 171.0 L675.0 171.0"/><path class="wire-a" d="M699.0 171.0 L675.0 171.0"/></g><g id="f2-nd-arrive" data-node="arrive" data-label="Message arrives" data-sub="React UI or Telegram" data-tech="" data-note="A message lands. Both clients use the same endpoint, which is the whole point of ADR-011." data-links="→ Load identity" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="Message arrives — React UI or Telegram"><rect class="nd nd-external" x="24" y="30" width="154" height="54" rx="3"/><text class="ndl" x="35" y="51">Message arrives</text><text class="nds" x="35" y="65">React UI or Telegram</text></g><g id="f2-nd-identity" data-node="identity" data-label="Load identity" data-sub="persona + cached CV" data-tech="" data-note="Persona and cached CV summary. The voice signature stays out of the cache key so edits take effect." data-links="← Message arrives   → Route the intent" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="Load identity — persona + cached CV"><rect class="nd nd-module" x="208" y="30" width="148" height="54" rx="3"/><text class="ndl" x="219" y="51">Load identity</text><text class="nds" x="219" y="65">persona + cached CV</text></g><g id="f2-nd-route" data-node="route" data-label="Route the intent" data-sub="semantic, bge-m3" data-tech="" data-note="Follow-up check, then a narrow keyword fast-path, then the semantic router. Wallet is never model-decided." data-links="← Load identity   → Build the prompt" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="Route the intent — semantic, bge-m3"><rect class="nd nd-module" x="386" y="30" width="128" height="54" rx="3"/><text class="ndl" x="396" y="51">Route the intent</text><text class="nds" x="396" y="65">semantic, bge-m3</text></g><g id="f2-nd-prompt" data-node="prompt" data-label="Build the prompt" data-sub="lean, exemplar-first" data-tech="" data-note="The lean prompt: exemplars first, voice last. It is cached, so anything per-turn is appended after it." data-links="← Route the intent   → Select history" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="Build the prompt — lean, exemplar-first"><rect class="nd nd-module" x="544" y="30" width="154" height="54" rx="3"/><text class="ndl" x="554" y="51">Build the prompt</text><text class="nds" x="554" y="65">lean, exemplar-first</text></g><g id="f2-nd-history" data-node="history" data-label="Select history" data-sub="token budget + RAG" data-tech="" data-note="Messages chosen against a token budget, with semantic recall over older sessions." data-links="← Build the prompt   → Generate" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="Select history — token budget + RAG"><rect class="nd nd-module" x="728" y="30" width="141" height="54" rx="3"/><text class="ndl" x="738" y="51">Select history</text><text class="nds" x="738" y="65">token budget + RAG</text></g><g id="f2-nd-generate" data-node="generate" data-label="Generate" data-sub="per-persona sampling" data-tech="" data-note="On-device generation with per-persona sampling overrides." data-links="← Select history   → Post-process" data-kind="something you do not control" tabindex="0" role="graphics-symbol" aria-label="Generate — per-persona sampling"><rect class="nd nd-external" x="898" y="30" width="154" height="54" rx="3"/><text class="ndl" x="910" y="51">Generate</text><text class="nds" x="910" y="65">per-persona sampling</text></g><g id="f2-nd-after" data-node="after" data-label="Post-turn updates" data-sub="progression, facts, summaries" data-tech="" data-note="Progression, fact extraction and summaries run after the reply is out, so none of them can slow it." data-links="← Persist" data-kind="code in this repo" tabindex="0" role="graphics-symbol" aria-label="Post-turn updates — progression, facts, summaries"><rect class="nd nd-module" x="457" y="144" width="212" height="54" rx="3"/><text class="ndl" x="468" y="165">Post-turn updates</text><text class="nds" x="468" y="179">progression, facts, summaries</text></g><g id="f2-nd-persist" data-node="persist" data-label="Persist" data-sub="SQLite" data-tech="" data-note="The exchange is written through the pooled repository layer." data-links="← Post-process   → Post-turn updates" data-kind="a database, table, queue or bucket" tabindex="0" role="graphics-symbol" aria-label="Persist — SQLite"><rect class="nd nd-store" x="700" y="144" width="108" height="54" rx="3"/><text class="ndl" x="710" y="165">Persist</text><text class="nds" x="710" y="179">SQLite</text></g><g id="f2-nd-guard" data-node="guard" data-label="Post-process" data-sub="strip tool leaks, first person" data-tech="" data-note="Validates every tool call before it runs — access, arguments, and a hard block on swaps that did not come from a human." data-links="← Generate   → Persist" data-kind="a credential store" tabindex="0" role="graphics-symbol" aria-label="Post-process — strip tool leaks, first person"><rect class="nd nd-secret" x="838" y="144" width="215" height="54" rx="3"/><text class="ndl" x="848" y="165">Post-process</text><text class="nds" x="848" y="179">strip tool leaks, first person</text></g></svg><div class="legend"><span class="lgi"><span class="lgs lgs-module" aria-hidden="true"></span>code in this repo</span><span class="lgi"><span class="lgs lgs-store" aria-hidden="true"></span>a database, table, queue or bucket</span><span class="lgi"><span class="lgs lgs-external" aria-hidden="true"></span>something you do not control</span><span class="lgi"><span class="lgs lgs-secret" aria-hidden="true"></span>a credential store</span></div><div class="inspect" data-inspect="fig-f2"><span class="ins-hint">Click a box to see what it is, what it does, and how it connects.</span><span class="ins-body" hidden aria-live="polite"><span class="ins-head"><b class="ins-t"></b><span class="ins-k"></span><span class="ins-tech"></span></span><span class="ins-s"></span><span class="ins-links"></span></span></div><div class="tour" data-tour="fig-f2" data-order="arrive,identity,route,prompt,history,generate,after,persist,guard"><span class="tourlbl" data-tour-lbl>Tour<span class="tourwhy"> &middot; layout order</span></span><button class="pz" type="button" data-tour-prev disabled>&#8592; prev</button><span class="tourpos" data-tour-pos>&#8212;</span><button class="pz" type="button" data-tour-next>next &#8594;</button><button class="pz tourclear" type="button" data-tour-clear>clear</button></div><table class="sr-only"><caption>One chat turn, from message to persisted reply. — text alternative</caption><thead><tr><th>Component</th><th>Kind</th><th>Role</th><th>Connects to</th></tr></thead><tbody><tr><td>Message arrives</td><td>something you do not control</td><td>React UI or Telegram</td><td>Load identity</td></tr><tr><td>Load identity</td><td>code in this repo</td><td>persona + cached CV</td><td>Route the intent</td></tr><tr><td>Route the intent</td><td>code in this repo</td><td>semantic, bge-m3</td><td>Build the prompt</td></tr><tr><td>Build the prompt</td><td>code in this repo</td><td>lean, exemplar-first</td><td>Select history</td></tr><tr><td>Select history</td><td>code in this repo</td><td>token budget + RAG</td><td>Generate</td></tr><tr><td>Generate</td><td>something you do not control</td><td>per-persona sampling</td><td>Post-process</td></tr><tr><td>Post-process</td><td>a credential store</td><td>strip tool leaks, first person</td><td>Persist</td></tr><tr><td>Persist</td><td>a database, table, queue or bucket</td><td>SQLite</td><td>Post-turn updates</td></tr><tr><td>Post-turn updates</td><td>code in this repo</td><td>progression, facts, summaries</td><td>—</td></tr></tbody></table><div class="figcap">One chat turn, from message to persisted reply.</div></div>
+<div class="flowctl" data-view="fig-f2" data-flows="[{&quot;id&quot;:&quot;chat-turn&quot;,&quot;label&quot;:&quot;A single chat turn&quot;,&quot;steps&quot;:[{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;arrive&quot;,&quot;note&quot;:&quot;Both clients hit the same session API. That is the whole point of ADR-011 \u2014 regenerate, continue and undo exist once, not twice.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;identity&quot;,&quot;note&quot;:&quot;The persona JSON and its cached CV summary are loaded. The cache is why the voice signature must stay OUT of the fingerprint, or edits would not take.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;route&quot;,&quot;note&quot;:&quot;Intent routing is semantic-primary: follow-up detection, then a narrow keyword fast-path, then the bge-m3 router. Wallet is never model-decided.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;prompt&quot;,&quot;note&quot;:&quot;The lean prompt is built exemplar-first and voice-last. It is lru_cached, so anything per-turn (lore, author&#x27;s note) must be appended AFTER it rather than baked in.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;history&quot;,&quot;note&quot;:&quot;Messages are selected against a token budget, with semantic recall over past sessions.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;generate&quot;,&quot;note&quot;:&quot;Ollama generates on-device with per-persona sampling overrides. Local-first is a constraint, not a preference \u2014 the alternative leaks financial context to a third party.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;guard&quot;,&quot;note&quot;:&quot;Leaked tool names are stripped, first person is enforced, and any tool call that ran had to pass the interceptor before execution.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;persist&quot;,&quot;note&quot;:&quot;The exchange is written to SQLite through the pooled BaseRepository \u2014 never a raw connection.&quot;},{&quot;t&quot;:&quot;node&quot;,&quot;k&quot;:&quot;after&quot;,&quot;note&quot;:&quot;Progression, resonance, fact extraction and summarisation run after the reply is already out, so none of them can slow the response.&quot;}]}]"><div class="flowhd"><span class="flowlbl" id="fl-2-lbl">Walk a flow</span><a class="flowjump" href="#fig-f2">jump to diagram &#8593;</a></div><ul class="flowlist" role="listbox" aria-labelledby="fl-2-lbl" tabindex="0"><li role="option" id="fo-2-chat-turn" data-flow="chat-turn" tabindex="-1" aria-selected="true">A single chat turn</li></ul><div class="flownav"><button class="pz" type="button" data-flow-prev disabled>&#8592; prev</button><span class="flowpos" data-flow-pos>&#8212;</span><button class="pz" type="button" data-flow-next disabled>next &#8594;</button><button class="pz flowclear" type="button" data-flow-clear>clear</button></div><p class="flowcap" data-flow-cap role="status" aria-live="polite" aria-atomic="true">Select a flow to trace it through the diagram.</p></div>
 <h2 id="components">Components</h2>
 <p>Layered: <strong>routes → services → repositories → models</strong>, mirrored on the frontend.</p>
 <div class="tw"><table><thead><tr><th>Component</th><th>Responsibility</th><th>Module</th></tr></thead><tbody><tr><td>API routes</td><td>HTTP endpoints: chat, sessions, personas, nephilim, auth, wallet</td><td><code>src/coordinator/routes/</code></td></tr><tr><td>Chat-turn orchestration</td><td>Per-turn phase pipeline (load identity → build prompt → select history → generate → persist → post-updates), typed <code>ChatDeps</code>/<code>ChatTurnState</code>; <code>persist_user</code>/<code>run_post_turn_updates</code> flags let regenerate/continue reuse it</td><td><code>services/chat_session_service.py</code></td></tr><tr><td>Conversation-control (ADR-011)</td><td>Shared session-API verbs consumed by BOTH the React UI and Telegram gateway: regenerate/continue/undo/narrate(<code>/sys</code>)/impersonate + session metadata + author's note. Reuses the standard finalize path (no parallel LLM plumbing)</td><td><code>services/conversation_control_service.py</code> (routes in <code>routes/chat.py</code> + <code>routes/sessions.py</code>)</td></tr><tr><td>Query routing</td><td>Intent → wallet / brave / agentic / pure-LLM; wallet ground-truth injection</td><td><code>services/query_handler_service.py</code></td></tr><tr><td>Wallet-creation flow</td><td>Guided multi-turn onboarding, typed <code>WalletFlowStep</code>(IntEnum)/<code>WalletFlowState</code> + <code>match</code> dispatch</td><td><code>services/wallet_creation_flow_service.py</code></td></tr><tr><td>LLM orchestration</td><td>Ollama completion, per-persona sampling, forced tool-calling</td><td><code>llm_client.py</code>, <code>services/llm_completion_service.py</code>, <code>services/tool_calling_service.py</code></td></tr><tr><td>Prompt construction</td><td>Lean exemplar-first / voice-last system prompt (XML-tagged bookend); <code>lru_cache</code>d</td><td><code>prompt_builder.py</code>, <code>persona_memory.py</code></td></tr><tr><td>Memory / RAG</td><td>Token-budget message selection, bge-m3 semantic search, summaries, fact extraction</td><td><code>memory_manager.py</code>, <code>memory_rag.py</code>, <code>cv_summarizer.py</code>, <code>fact_extractor.py</code></td></tr><tr><td>Companion memory — framing (ADR-006 M1)</td><td>Wrap injected memory in a per-persona non-echoable <code>&lt;remembered&gt;</code> frame over prose narratives (anti-homogenization, the Gate-0/0.1 fix)</td><td><code>context_framing.py</code></td></tr><tr><td>Companion memory — fact store (ADR-006 M2–M4)</td><td>Two-table temporal ontology-lite store + async triplet extraction (abstention + quote-span guard, off the interactive path) + recency-wins write + inject-all/top-k retrieval through the M1 frame</td><td><code>repositories/memory_fact_repository.py</code>, <code>triplet_extractor.py</code>, <code>fact_write_policy.py</code>, <code>fact_extraction_worker.py</code>, <code>memory_fact_retrieval.py</code></td></tr><tr><td>Lore</td><td>On-demand hybrid lore retrieval over the typed wiki; rank/affinity-gated capabilities</td><td><code>lore_loader.py</code>, <code>lore_retrieval.py</code></td></tr><tr><td>Tool-call safety middleware</td><td>Deterministic pre-execution gating on every tool-brain call: <code>mcp_access</code> + argument allowlist + HITL; plus RAG memory-write sanitization</td><td><code>services/tool_interceptor.py</code>, <code>services/injection_guard.py</code></td></tr><tr><td>Persistence</td><td>SQLite repositories — ALL extend <code>BaseRepository</code> via <code>db_adapter</code> (connection pooling, thread-safe)</td><td><code>repositories/</code></td></tr><tr><td>Configuration</td><td>Per-subsystem settings package (llm/search/memory/wallet/auth/routing/lore/agent) + <code>get_settings()</code></td><td><code>config/</code></td></tr><tr><td>Composition root</td><td><code>startup.py</code> = init sequencer (builds singletons, publishes an <code>AppState</code> snapshot on <code>app.state.container</code>); <code>dependencies.py</code> = FastAPI <code>Depends</code> providers (<code>require_*</code>→503-on-uninit, <code>optional_*</code>→None) resolving <code>startup.get_X()</code> at call time</td><td><code>app_state.py</code>, <code>dependencies.py</code>, <code>startup.py</code>, <code>server.py</code></td></tr></tbody></table></div>
 <h2 id="data">Data</h2>
 <div class="tw"><table><thead><tr><th>Source</th><th>Format</th><th>Writer</th><th>Readers</th></tr></thead><tbody><tr><td><code>chat_sessions</code>, <code>messages</code>, <code>conversation_summaries</code></td><td>SQLite (<code>messages.role</code> ∈ user/assistant/<strong>narrator</strong>, ADR-011)</td><td>session / message / summary repos</td><td><code>chat_session_service</code>, <code>memory_manager</code></td></tr><tr><td><code>session_notes</code> (ADR-011)</td><td>SQLite one-row-per-session author's note (FK-cascade to <code>chat_sessions</code>); alembic <code>5session_notes</code> + <code>_ensure_table</code> dual-cover</td><td><code>session_note_repository</code></td><td><code>chat_session_service._append_author_note</code> (injected every turn via <code>extra_system_context</code>)</td></tr><tr><td><code>emotional_state</code></td><td>SQLite</td><td><code>emotional_state_repository</code></td><td><code>chat_session_service</code> (trust/rapport/mood)</td></tr><tr><td><code>seeker_profiles</code>, <code>persona_affinity</code>, <code>resonance_log</code>, <code>unlocked_lore</code></td><td>SQLite</td><td><code>seeker_progression_repository</code></td><td><code>chat_session_service</code>, nephilim routes</td></tr><tr><td><code>user_profiles</code></td><td>SQLite</td><td><code>user_profile_repository</code></td><td>cross-session memory injection</td></tr><tr><td><code>memory_entities</code>, <code>memory_facts</code> (ADR-006)</td><td>SQLite S-P-O triples, bi-temporal <code>valid_from</code>/<code>valid_to</code>, confidence, provenance</td><td>fact worker (M3)</td><td>fact retrieval (M4)</td></tr><tr><td>wallet registry / summary / <strong>flow</strong></td><td>SQLite</td><td><code>wallet_registry</code> / <code>wallet_summary</code> / <strong><code>wallet_flow</code></strong> repos</td><td><code>query_handler_service</code>, <code>wallet_creation_flow_service</code></td></tr><tr><td>Session + lore vector indexes</td><td>FAISS</td><td><code>memory_rag</code></td><td><code>chat_session_service</code> (semantic recall, on-demand lore)</td></tr></tbody></table></div>
 <h2 id="key-invariants">Key invariants</h2>
-<ul><li><strong>nephilim is read-only</strong> w.r.t. the trading MongoDB (<code>btc_data</code>) — it never writes trading data.</li><li><strong>Wallet BIP39 mnemonic is NEVER persisted</strong> — generated at the password step, displayed once, only wiped. <code>WalletFlowState</code> has no field for it and the <code>wallet_flow_state</code> table has no mnemonic column (structurally enforced).</li><li><strong>Config import surface:</strong> import <code>get_settings</code> / settings classes from <code>..config</code> (the package root), never the submodules — the <code>__init__</code> re-export + <code>src.coordinator.config.get_settings</code> patch-path is a contract.</li><li><strong>All repositories extend <code>BaseRepository</code></strong> via <code>db_adapter</code> — never open a raw <code>sqlite3.connect()</code>.</li><li><strong>Per-turn content must never enter the <code>lru_cache</code>d prompt builder</strong> (<code>build_system_prompt</code>) — dynamic lore/memory is appended after the cached call.</li><li><strong>Companion memory (ADR-006) is default OFF</strong> (<code>MEMORY_CONTEXT_INJECT</code>, <code>MEMORY_FACTS_ENABLED</code>) — M5 gate passed 2026-07-05; kept OFF for a live soak + instant revert. Injected memory always goes through the per-persona <code>&lt;remembered&gt;</code> frame as prose (never an identical skeleton — Gate 0/0.1); facts are invalidated not deleted (<code>valid_to</code>); extraction runs off the interactive path (enqueue-and-return, a failing job never breaks a turn).</li><li><strong>Image-search result quality (ADR-010)</strong> is enforced in the bound search executor (<code>tools/executor_bindings.py</code>), the one choke point feeding both synthesis and citations: a deterministic junk denylist (<code>tools/result_filters.py</code>, always-on, images-only, never-empty fallback) plus a per-result bge-m3 relevance floor (<code>SEARCH_RELEVANCE_GATE_ENABLED</code>, code default OFF but enabled in the prod <code>.env</code>, so live on images at <code>min_cosine=0.36</code> — measured safe: 0% false-abstention across 39 post-denylist results, since the denylist strips junk before the floor runs). A spurious synthesis refusal (abliterated residual) triggers one prefill-steered retry and sets <code>ToolBrainResult.refused</code>; the route then never staples citations onto a refusal. The search <code>query</code> is length/control-char validated for all live tool names (<code>_SEARCH_QUERY_TOOLS</code>).</li><li><strong><code>PERSONA_TOOL_INTENT_IN_PROMPT</code> is default OFF</strong> — the dead <code>escalation_policy.tool_intent</code> field can be injected as a <code>&lt;tools&gt;</code> block, but the full-7 eval showed it voice-neutral (0.786 = 0.786), so it stays off (no-regression ≠ improvement). <code>PersonaCard.emoji</code> <code>max_length</code> is 8 (code points, not emoji — accommodates variation selectors).</li></ul>
+<div class="tw"><table><thead><tr><th>Invariant</th><th>What it guarantees</th><th>Where it is enforced</th></tr></thead><tbody><tr><td><strong>Read-only on trading data</strong></td><td>A companion bug can never reach capital</td><td>No write path to <code>btc_data</code> exists</td></tr><tr><td><strong>The mnemonic is never persisted</strong></td><td>Shown once at the password step, then wiped. There is nowhere for it to leak from</td><td>Structural — <code>WalletFlowState</code> has no field and the table has no column</td></tr><tr><td><strong>Settings import from the package root</strong></td><td>Test patch-paths keep working, because <code>..config</code> re-exports are the contract</td><td><code>config/__init__.py</code></td></tr><tr><td><strong>Every repository extends <code>BaseRepository</code></strong></td><td>One pooled, thread-safe connection rather than raw handles</td><td><code>db_adapter.py</code></td></tr><tr><td><strong>Per-turn content never enters the cached prompt</strong></td><td>Lore and memory are appended <em>after</em> <code>build_system_prompt</code>, or the <code>lru_cache</code> would serve one user's context to another</td><td><code>routes/chat.py</code>, via <code>extra_system_context</code></td></tr><tr><td><strong>Companion memory is default OFF</strong></td><td>The M5 gate passed on the previous model and does not hold on the current one — both injections homogenise the warm personas</td><td><code>MEMORY_CONTEXT_INJECT</code>, <code>MEMORY_FACTS_ENABLED</code></td></tr><tr><td><strong>Facts are invalidated, never deleted</strong></td><td>History stays reconstructable; a correction does not erase what was believed before</td><td><code>valid_to</code> on <code>memory_facts</code></td></tr><tr><td><strong>Search results pass one choke point</strong></td><td>Junk filtering and the relevance floor apply to synthesis and citations alike, so the two can never disagree</td><td><code>tools/executor_bindings.py</code></td></tr><tr><td><strong>Citations are never stapled to a refusal</strong></td><td>A refused answer stays a refusal instead of looking sourced</td><td><code>routes/chat.py</code>, on <code>ToolBrainResult.refused</code></td></tr></tbody></table></div>
 <h2 id="cross-repo-contracts">Cross-repo contracts</h2>
 <p>See ecosystem-level contracts (nephilim is read-only; these apply to CRA / btc_price_tracker):</p>
 <ul><li><a href="../../docs/shared/indicator_api.md">../../docs/shared/indicator_api.md</a></li><li><a href="../../docs/shared/launchd_schedule.md">../../docs/shared/launchd_schedule.md</a></li></ul>
 <p>The Telegram gateway (<code>services/telegram-gateway/</code>) couples to nephilim only through the localhost HTTP session API — never SQLite/FAISS directly.</p>
 <h2 id="decisions">Decisions</h2>
-<p>Architectural decisions affecting this repo live in <a href="decisions/">decisions/</a>.</p>
+<p>A pointer to a directory is not an index — it makes the reader open twelve files to find out which one governs the thing they are looking at. ADR-008 in particular decides the branch at the centre of the System context diagram above, and this page previously never named it.</p>
+<div class="tw"><table><thead><tr><th>ADR</th><th>Decides</th><th>Status</th></tr></thead><tbody><tr><td><a href="decisions/001-lore-as-typed-markdown-wiki-not-a-graph-db.md">001</a></td><td>Lore is a typed markdown wiki, not a graph DB</td><td>Accepted</td></tr><tr><td><a href="decisions/002-remove-mongodb-mcp.md">002</a></td><td>MongoDB MCP removed from the persona path</td><td>Accepted</td></tr><tr><td><a href="decisions/003-on-demand-hybrid-lore-retrieval.md">003</a></td><td>Lore is retrieved on demand, hybrid dense + lexical</td><td>Accepted</td></tr><tr><td><a href="decisions/004-persona-safe-agentic-tool-calls.md">004</a></td><td>Persona-safe agentic tool calls</td><td><strong>Superseded</strong> — by 008/009</td></tr><tr><td><a href="decisions/005-persona-architecture-simplification-eval-first.md">005</a></td><td>Persona simplification, gated eval-first</td><td>Accepted</td></tr><tr><td><a href="decisions/006-companion-memory-and-continuity-eval-first.md">006</a></td><td>Companion memory and continuity</td><td>Accepted</td></tr><tr><td><a href="decisions/007-generation-time-groundedness-gate.md">007</a></td><td>Groundedness gate at generation time</td><td>Proposed</td></tr><tr><td><a href="decisions/008-two-brain-split-tool-brain-voice-brain.md">008</a></td><td><strong>Two-brain split: tool brain vs voice brain</strong> — the branch the diagram above turns on</td><td>Proposed</td></tr><tr><td><a href="decisions/009-layered-toolkit-registry-generic-web-toolset-inner-wisdom-skills.md">009</a></td><td>Layered toolkit registry</td><td>Accepted</td></tr><tr><td><a href="decisions/010-image-search-result-quality-and-spurious-refusal-handling.md">010</a></td><td>Image-search quality and spurious refusals</td><td>Accepted</td></tr><tr><td><a href="decisions/011-conversation-control-commands-as-shared-session-api-endpoints.md">011</a></td><td>Conversation control as shared session API — consumed by both the React UI and the Telegram gateway</td><td>Proposed</td></tr><tr><td><a href="decisions/012-persona-configurable-deterministic-word-substitutions.md">012</a></td><td>Persona-configurable deterministic word substitutions</td><td>Accepted</td></tr></tbody></table></div>
+<p>"Proposed" here does not mean unbuilt. Several of these are implemented behind flags that are off, or on in production while the ADR is still open — the ADR status tracks the <em>decision</em>, not the deployment. Which flags are actually live is recorded in <code>CLAUDE.md</code>, deliberately not here: this page describes structure, and runtime state on a structural page is the thing that goes stale first.</p>
+<h2 id="glossary">Glossary</h2>
+<div class="tw"><table><thead><tr><th>Term</th><th>What it means here</th></tr></thead><tbody><tr><td><strong>Persona</strong></td><td>A JSON-defined character — lore, voice, behaviour, and which tools it may use</td></tr><tr><td><strong>Voice signature</strong></td><td>The per-persona diction and cadence block. Deliberately excluded from the CV-summary cache key so edits take effect</td></tr><tr><td><strong>Tool brain</strong></td><td>The model deciding and filling its own tool calls natively, rather than a deterministic router doing it</td></tr><tr><td><strong>Force-search</strong></td><td>The legacy path: the router decides a search is needed and runs it directly, bypassing the model's tool-calling</td></tr><tr><td><strong>Semantic router</strong></td><td>Intent classification by embedding similarity rather than keywords. Scored nearest-example, not by centroid</td></tr><tr><td><strong>RAG</strong></td><td>Retrieval-augmented generation — pulling relevant past messages or lore into the prompt</td></tr><tr><td><strong>FAISS</strong></td><td>The local vector index behind that retrieval</td></tr><tr><td><strong>MCP</strong></td><td>Model Context Protocol — how external tools (search, wallet) are exposed</td></tr><tr><td><strong>HITL</strong></td><td>Human in the loop. Required before anything that spends</td></tr><tr><td><strong>Groundedness gate</strong></td><td>A second cheap classification of the draft, catching a specific factual claim made with nothing to back it</td></tr><tr><td><strong>Interceptor</strong></td><td>Deterministic middleware that validates every tool call before it runs. It gates; it never executes</td></tr><tr><td><strong>Abliterated</strong></td><td>A model with its refusal behaviour removed. Leaves residue, which is why a spurious-refusal retry exists</td></tr><tr><td><strong>Seeker / resonance / affinity</strong></td><td>The progression system — the user's rank, the points earned, and per-persona familiarity</td></tr></tbody></table></div>
 <footer>
   <span>GENERATED FROM DOCS/ARCHITECTURE.MD — DO NOT EDIT THIS FILE</span>
   <span>STRUCTURE ONLY, NO RUNTIME STATE</span>
-  <button class="pz" id="pz" aria-pressed="false">&#9208; PAUSE</button>
+  <a href="https://claude.ai/code/artifact/335a787e-3444-4eb1-8b1b-b217319da38f">CANONICAL COPY</a>
+  <span class="spacer"></span>
+  <button class="pz" id="th" type="button">&#9681; LIGHT</button>
+  <button class="pz" id="pz" type="button" aria-pressed="false">&#9208; PAUSE</button>
 </footer>
 </div>
 <script>
 (function(){
+  var doc=document.documentElement;
+  /* One iteration helper. NodeList.forEach and Array.prototype.forEach.call were
+     both in use here; picking one keeps the intent obvious. */
+  function each(xs,fn){Array.prototype.forEach.call(xs,fn);}
+
+  /* theme toggle */
+  var t=document.getElementById('th');
+  function paint(){
+    var light=doc.getAttribute('data-theme')==='light';
+    t.textContent=light?'\u25D1 DARK':'\u25D1 LIGHT';
+    t.setAttribute('aria-label',light?'Switch to dark theme':'Switch to light theme');
+  }
+  paint();
+  t.addEventListener('click',function(){
+    var next=doc.getAttribute('data-theme')==='light'?'dark':'light';
+    doc.setAttribute('data-theme',next);
+    try{localStorage.setItem('arch-theme',next);}catch(e){}
+    paint();
+  });
+
+  /* pause. The animation is CSS keyframes, so a class is the whole mechanism.
+     The SVG animation-pause API this used to call drives SMIL, which no diagram
+     on this page uses — it was a no-op dressed up as a feature. */
   var b=document.getElementById('pz'),p=false;
   b.addEventListener('click',function(){
     p=!p;document.body.classList.toggle('paused',p);
     b.setAttribute('aria-pressed',String(p));
     b.textContent=p?'\u25B6 RESUME':'\u23F8 PAUSE';
-    Array.prototype.forEach.call(document.querySelectorAll('svg'),function(s){
-      if(p&&s.pauseAnimations)s.pauseAnimations();
-      if(!p&&s.unpauseAnimations)s.unpauseAnimations();
+  });
+
+  /* copy buttons */
+  each(document.querySelectorAll('[data-copy]'),function(btn){
+    btn.addEventListener('click',function(){
+      var code=btn.parentNode.querySelector('code');
+      if(!code) return;
+      var done=function(){
+        btn.textContent='copied';btn.setAttribute('data-done','');
+        setTimeout(function(){btn.textContent='copy';btn.removeAttribute('data-done');},1400);
+      };
+      /* navigator.clipboard needs a secure context, and this page is opened
+         from file:// as often as over https. Fall back rather than fail. */
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(code.textContent).then(done,function(){});
+      }else{
+        var r=document.createRange();r.selectNodeContents(code);
+        var s=getSelection();s.removeAllRanges();s.addRange(r);
+        try{document.execCommand('copy');done();}catch(e){}
+        s.removeAllRanges();
+      }
     });
+  });
+
+  /* node inspector + tour — on every diagram, flow or not */
+  each(document.querySelectorAll('.inspect'),function(box){
+    var svg=document.getElementById(box.getAttribute('data-inspect'));
+    if(!svg) return;
+    var hint=box.querySelector('.ins-hint'), body=box.querySelector('.ins-body'),
+        t=box.querySelector('.ins-t'), k=box.querySelector('.ins-k'),
+        tech=box.querySelector('.ins-tech'), s=box.querySelector('.ins-s'),
+        links=box.querySelector('.ins-links'),
+        tour=document.querySelector('.tour[data-tour="'+svg.id+'"]'),
+        order=tour?tour.getAttribute('data-order').split(','):[],
+        at=-1;
+
+    function show(g,quiet){
+      each(svg.querySelectorAll('[data-node].picked'),function(o){o.classList.remove('picked');});
+      g.classList.add('picked');
+      t.textContent=g.getAttribute('data-label')||'';
+      k.textContent=g.getAttribute('data-kind')||'';
+      var tv=g.getAttribute('data-tech'); tech.textContent=tv?'['+tv+']':'';
+      /* Purpose first. A node with no authored note says so rather than
+         showing a sentence assembled out of its own metadata. */
+      var note=g.getAttribute('data-note'), sub=g.getAttribute('data-sub');
+      if(note){ s.textContent=note; s.className='ins-s'; }
+      else if(sub){ s.textContent=sub; s.className='ins-s'; }
+      else { s.textContent='No description written for this one yet.';
+              s.className='ins-s ins-none'; }
+      links.textContent=g.getAttribute('data-links')||'';
+      hint.hidden=true; body.hidden=false;
+      if(!quiet){
+        var idx=order.indexOf(g.getAttribute('data-node'));
+        if(idx>=0) at=idx;
+        pos();
+      }
+      var ctl=document.querySelector('.flowctl[data-view="'+svg.id+'"]');
+      if(ctl&&ctl.__jump) ctl.__jump(g.getAttribute('data-node'));
+    }
+    function nodeAt(i){
+      return svg.querySelector('[data-node="'+
+        (typeof CSS!=='undefined'&&CSS.escape?CSS.escape(order[i]):order[i])+'"]');
+    }
+    function pos(){
+      if(!tour) return;
+      tour.querySelector('[data-tour-pos]').textContent =
+        at<0 ? '—' : (at+1)+' / '+order.length;
+      tour.querySelector('[data-tour-prev]').disabled = at<=0;
+      tour.querySelector('[data-tour-next]').disabled = at>=order.length-1;
+    }
+    each(svg.querySelectorAll('[data-node]'),function(g){
+      g.addEventListener('click',function(){show(g);});
+      g.addEventListener('keydown',function(e){
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();show(g);}
+      });
+    });
+    if(tour){
+      tour.querySelector('[data-tour-next]').addEventListener('click',function(){
+        if(at<order.length-1){at++;var g=nodeAt(at); if(g) show(g,true); pos();}
+      });
+      tour.querySelector('[data-tour-prev]').addEventListener('click',function(){
+        if(at>0){at--;var g=nodeAt(at); if(g) show(g,true); pos();}
+      });
+      tour.querySelector('[data-tour-clear]').addEventListener('click',function(){
+        each(svg.querySelectorAll('[data-node].picked'),function(o){o.classList.remove('picked');});
+        at=-1; hint.hidden=false; body.hidden=true; pos();
+      });
+      /* If a flow walks this view, the tour is that flow — say so. */
+      var ctl=document.querySelector('.flowctl[data-view="'+svg.id+'"]');
+      if(ctl) tour.querySelector('[data-tour-lbl]').innerHTML=
+        'Tour<span class="tourwhy"> &middot; or pick a flow below</span>';
+      pos();
+    }
+  });
+
+  /* flow walker */
+  each(document.querySelectorAll('.flowctl'),function(ctl){
+    var svg=document.getElementById(ctl.getAttribute('data-view'));
+    if(!svg) return;
+    var flows;
+    try{flows=JSON.parse(ctl.getAttribute('data-flows'));}catch(e){return;}
+    if(!flows||!flows.length) return;
+
+    var list=ctl.querySelector('.flowlist'),
+        cap=ctl.querySelector('[data-flow-cap]'),
+        pos=ctl.querySelector('[data-flow-pos]'),
+        prev=ctl.querySelector('[data-flow-prev]'),
+        next=ctl.querySelector('[data-flow-next]'),
+        clear=ctl.querySelector('[data-flow-clear]'),
+        cur=-1,step=0;
+
+    function marks(){
+      each(svg.querySelectorAll('.on-path,.at-step'),function(el){
+        el.classList.remove('on-path','at-step');
+        el.removeAttribute('aria-current');
+      });
+    }
+    function q(v){return typeof CSS!=='undefined'&&CSS.escape?CSS.escape(v):v;}
+    function find(s){
+      return s.t==='node'
+        ? svg.querySelector('[data-node="'+q(s.k)+'"]')
+        : svg.querySelector('[data-edge-from="'+q(s.f)+'"][data-edge-to="'+q(s.to)+'"]');
+    }
+    function draw(){
+      marks();
+      if(cur<0){
+        svg.classList.remove('flowing');
+        each(list.querySelectorAll('li'),function(li){li.setAttribute('aria-selected','false');});
+        cap.textContent='Select a flow to trace it through the diagram.';
+        pos.textContent='\u2014';
+        prev.disabled=next.disabled=true;
+        return;
+      }
+      var f=flows[cur];
+      svg.classList.add('flowing');
+      each(list.querySelectorAll('li'),function(li,k){
+        li.setAttribute('aria-selected',String(k===cur));
+      });
+      each(f.steps,function(s){
+        var el=find(s); if(el) el.classList.add('on-path');
+      });
+      var at=f.steps[step],el=at&&find(at);
+      if(el){el.classList.add('at-step');el.setAttribute('aria-current','step');}
+      pos.textContent='step '+(step+1)+' / '+f.steps.length;
+      /* One whole-text write, not an append — partial updates get dropped. */
+      cap.textContent=(at&&at.note)?at.note:f.label;
+      prev.disabled=step<=0;
+      next.disabled=step>=f.steps.length-1;
+      try{
+        history.replaceState(null,'','#flow='+encodeURIComponent(f.id)+'&step='+(step+1));
+      }catch(e){}
+    }
+    function pick(k,s){cur=k;step=s||0;draw();}
+
+    /* Clicking a box on the diagram jumps the walk to the step that uses it.
+       Searches the selected flow first so an id appearing in two flows does not
+       yank you out of the one you are reading. */
+    ctl.__jump=function(nodeId){
+      var order=[]; if(cur>=0) order.push(cur);
+      flows.forEach(function(_,j){ if(j!==cur) order.push(j); });
+      for(var a=0;a<order.length;a++){
+        var j=order[a], st=flows[j].steps;
+        for(var i=0;i<st.length;i++){
+          if(st[i].t==='node'&&st[i].k===nodeId){ pick(j,i); return true; }
+        }
+      }
+      return false;                          /* not on any flow: inspect only */
+    };
+
+    list.addEventListener('click',function(e){
+      var li=e.target.closest('li'); if(!li) return;
+      pick(Array.prototype.indexOf.call(list.children,li),0);
+    });
+    list.addEventListener('keydown',function(e){
+      var k=e.key;
+      if(k==='ArrowDown'||k==='ArrowRight'){e.preventDefault();pick(Math.min((cur<0?-1:cur)+1,flows.length-1),0);}
+      else if(k==='ArrowUp'||k==='ArrowLeft'){e.preventDefault();pick(Math.max((cur<0?flows.length:cur)-1,0),0);}
+      else if(k==='Home'){e.preventDefault();pick(0,0);}
+      else if(k==='End'){e.preventDefault();pick(flows.length-1,0);}
+      else if(k==='Escape'){e.preventDefault();cur=-1;draw();}
+    });
+    prev.addEventListener('click',function(){if(step>0){step--;draw();}});
+    next.addEventListener('click',function(){if(cur>=0&&step<flows[cur].steps.length-1){step++;draw();}});
+    clear.addEventListener('click',function(){cur=-1;draw();});
+
+    function fromHash(){
+      var m=/flow=([^&]+)(?:&step=(\d+))?/.exec(location.hash||'');
+      if(!m) return false;
+      var id=decodeURIComponent(m[1]),k=-1;
+      each(flows,function(f,j){if(f.id===id)k=j;});
+      if(k<0) return false;                       /* unknown id: stay neutral */
+      var s=Math.max(0,Math.min((parseInt(m[2],10)||1)-1,flows[k].steps.length-1));
+      pick(k,s);
+      return true;
+    }
+    window.addEventListener('hashchange',fromHash);
+    if(!fromHash()) draw();
   });
 })();
 </script>

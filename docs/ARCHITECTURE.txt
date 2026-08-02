@@ -1,12 +1,6 @@
----
-title: Architecture
-status: active
-created: 2026-04-19
-last_reviewed_on: 2026-07-17
-review_in: 6 months
-applies_to: nephilim
-published_url: https://claude.ai/code/artifact/335a787e-3444-4eb1-8b1b-b217319da38f
----
+# nephilim — Architecture
+
+Generated from docs/ARCHITECTURE.md. The rendered page is the same content with diagrams; this is the text of it.
 
 # Architecture
 
@@ -14,290 +8,56 @@ Reference-style: tables and diagrams, not prose narratives. A local-first,
 persona-driven chat platform — FastAPI backend + React 19 frontend + local Ollama,
 SQLite for persistence, FAISS for semantic memory.
 
-```archstat
-[
-  {
-    "label": "Trading data",
-    "value": "Read",
-    "note": "never writes",
-    "state": "ok"
-  },
-  {
-    "label": "Inference",
-    "value": "Local",
-    "note": "on-device"
-  },
-  {
-    "label": "Clients",
-    "value": "Two",
-    "note": "UI + Telegram"
-  },
-  {
-    "label": "Wallet path",
-    "value": "Manual",
-    "note": "never model-decided",
-    "state": "ok"
-  },
-  {
-    "label": "Off-machine",
-    "value": "Two",
-    "note": "MCP servers",
-    "state": "warn"
-  }
-]
-```
+  - Trading data: Read (never writes)
+  - Inference: Local (on-device)
+  - Clients: Two (UI + Telegram)
+  - Wallet path: Manual (never model-decided)
+  - Off-machine: Two (MCP servers)
 
 ## System context
 
 Verified against the call graph, not sketched from memory — every edge below is
 an import or call that exists in `src/coordinator/`.
 
-```archview
-{
-  "caption": "routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.",
-  "nodes": [
-    {
-      "id": "ui",
-      "label": "React UI",
-      "sub": "chat \u00b7 personas \u00b7 wallet",
-      "tech": "React 19 \u00b7 TS",
-      "kind": "external",
-      "note": "The React client. Hits the same session API the Telegram gateway does."
-    },
-    {
-      "id": "tg",
-      "label": "telegram-gateway",
-      "sub": "allowlisted single user",
-      "tech": "own venv \u00b7 launchd",
-      "kind": "external",
-      "note": "An allowlisted single-user bot. Deliberately thin \u2014 it holds no logic the UI does not also use."
-    },
-    {
-      "id": "routes",
-      "label": "routes/chat.py",
-      "sub": "orchestrator \u2014 picks the path",
-      "tech": "FastAPI",
-      "kind": "service",
-      "note": "The orchestrator. Decides which of three paths a turn takes, and is where the tool brain is gated."
-    },
-    {
-      "id": "chat",
-      "label": "handle_session_chat",
-      "sub": "per-turn phase pipeline",
-      "tech": "ChatDeps / ChatTurnState",
-      "kind": "module",
-      "note": "The per-turn pipeline: load identity, build the prompt, select history, generate, persist."
-    },
-    {
-      "id": "brain",
-      "label": "tool_brain_service",
-      "sub": "web intents only, never wallet",
-      "tech": "Ollama native tool-calling",
-      "kind": "module",
-      "note": "Native tool-calling on web intents only. It is never offered wallet tools \u2014 the full surface caused fixation and fabrication in a live test."
-    },
-    {
-      "id": "qh",
-      "label": "query_handler_service",
-      "sub": "legacy wallet + force-search",
-      "tech": "bge-m3 semantic router",
-      "kind": "module",
-      "note": "The legacy deterministic path. Still in charge of wallet, and the floor the tool brain falls through to."
-    },
-    {
-      "id": "persona",
-      "label": "persona_memory",
-      "sub": "-> prompt_builder, lean prompt",
-      "tech": "lru_cache",
-      "kind": "module",
-      "note": "Loads the persona and its cached CV summary. The cache is why per-turn context must be appended after it, never inside."
-    },
-    {
-      "id": "facts",
-      "label": "memory_fact_retrieval",
-      "sub": "through the M1 frame",
-      "tech": "bi-temporal store",
-      "kind": "module",
-      "note": "Retrieves stored facts through the per-persona frame. Off on prod \u2014 the injection homogenised the warm personas."
-    },
-    {
-      "id": "llm",
-      "label": "llm_client",
-      "sub": "per-persona sampling",
-      "tech": "Ollama",
-      "kind": "module",
-      "note": "Ollama, on-device, with per-persona sampling. Local-first is a constraint: the alternative leaks financial context."
-    },
-    {
-      "id": "repos",
-      "label": "repositories/",
-      "sub": "all extend BaseRepository",
-      "tech": "SQLite \u00b7 pooled",
-      "kind": "module",
-      "note": "Every repository extends BaseRepository, so nothing opens a raw SQLite connection."
-    },
-    {
-      "id": "guard",
-      "label": "tool_interceptor",
-      "sub": "validate() only \u2014 gates, never executes",
-      "tech": "deterministic middleware",
-      "kind": "secret",
-      "note": "Validates every tool call before it runs \u2014 access, arguments, and a hard block on swaps that did not come from a human."
-    },
-    {
-      "id": "exec",
-      "label": "executor_bindings",
-      "sub": "runs the tool the guard permitted",
-      "tech": "registry-bound",
-      "kind": "module",
-      "note": "Runs the tool the guard permitted. Separate from the guard on purpose: gating and executing are different jobs."
-    },
-    {
-      "id": "relevance",
-      "label": "search_relevance_service",
-      "sub": "per-result cosine floor",
-      "tech": "reuses the RAG embedder",
-      "kind": "module",
-      "note": "Drops search results that are non-empty but off-topic, which the no-results guard cannot catch."
-    },
-    {
-      "id": "rag",
-      "label": "memory_rag",
-      "sub": "EpisodicMemoryRAG \u00b7 startup singleton",
-      "tech": "bge-m3",
-      "kind": "module",
-      "note": "Semantic recall over past sessions and the lore wiki, sharing one embedder."
-    },
-    {
-      "id": "sqlite",
-      "label": "SQLite",
-      "sub": "chats \u00b7 progression \u00b7 facts \u00b7 wallets",
-      "tech": "local file",
-      "kind": "store",
-      "note": "Sessions, progression, facts and wallets. Local file, pooled access."
-    },
-    {
-      "id": "faiss",
-      "label": "FAISS",
-      "sub": "session + lore vectors",
-      "tech": "local index",
-      "kind": "store",
-      "note": "The vector index for session and lore search."
-    },
-    {
-      "id": "ollama",
-      "label": "Ollama",
-      "sub": "LLM + bge-m3 embeddings",
-      "tech": "on-device, Metal GPU",
-      "kind": "external",
-      "note": "On-device inference and embeddings, on the Metal GPU."
-    },
-    {
-      "id": "web",
-      "label": "SearXNG / Brave",
-      "sub": "ephemeral Docker",
-      "tech": "MCP",
-      "kind": "external",
-      "note": "Search, via SearXNG first so the query stays local, falling back to Brave."
-    },
-    {
-      "id": "jupiter",
-      "label": "Jupiter / Solana",
-      "sub": "long-running Docker",
-      "tech": "MCP",
-      "kind": "external",
-      "note": "The wallet path. Always propose then confirm then execute \u2014 never model-decided."
-    }
-  ],
-  "edges": [
-    {
-      "from": "ui",
-      "to": "routes",
-      "label": "session API"
-    },
-    {
-      "from": "tg",
-      "to": "routes",
-      "label": "the SAME API"
-    },
-    {
-      "from": "routes",
-      "to": "chat",
-      "label": "handle_session_chat"
-    },
-    {
-      "from": "routes",
-      "to": "brain",
-      "label": "_try_tool_brain"
-    },
-    {
-      "from": "routes",
-      "to": "qh",
-      "label": "legacy fallthrough"
-    },
-    {
-      "from": "chat",
-      "to": "persona"
-    },
-    {
-      "from": "chat",
-      "to": "facts"
-    },
-    {
-      "from": "chat",
-      "to": "llm"
-    },
-    {
-      "from": "chat",
-      "to": "repos"
-    },
-    {
-      "from": "brain",
-      "to": "guard",
-      "label": "every tool call"
-    },
-    {
-      "from": "guard",
-      "to": "exec",
-      "label": "only if permitted"
-    },
-    {
-      "from": "exec",
-      "to": "relevance"
-    },
-    {
-      "from": "relevance",
-      "to": "rag",
-      "label": "reuses the embedder"
-    },
-    {
-      "from": "exec",
-      "to": "web"
-    },
-    {
-      "from": "qh",
-      "to": "jupiter",
-      "label": "propose -> confirm -> execute"
-    },
-    {
-      "from": "llm",
-      "to": "ollama"
-    },
-    {
-      "from": "repos",
-      "to": "sqlite"
-    },
-    {
-      "from": "facts",
-      "to": "sqlite"
-    },
-    {
-      "from": "rag",
-      "to": "faiss"
-    }
-  ]
-}
-```
+[diagram] routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.
+  - React UI — chat · personas · wallet (something you do not control)
+  - telegram-gateway — allowlisted single user (something you do not control)
+  - routes/chat.py — orchestrator — picks the path (a process or entry point)
+  - handle_session_chat — per-turn phase pipeline (code in this repo)
+  - tool_brain_service — web intents only, never wallet (code in this repo)
+  - query_handler_service — legacy wallet + force-search (code in this repo)
+  - persona_memory — -> prompt_builder, lean prompt (code in this repo)
+  - memory_fact_retrieval — through the M1 frame (code in this repo)
+  - llm_client — per-persona sampling (code in this repo)
+  - repositories/ — all extend BaseRepository (code in this repo)
+  - tool_interceptor — validate() only — gates, never executes (a credential store)
+  - executor_bindings — runs the tool the guard permitted (code in this repo)
+  - search_relevance_service — per-result cosine floor (code in this repo)
+  - memory_rag — EpisodicMemoryRAG · startup singleton (code in this repo)
+  - SQLite — chats · progression · facts · wallets (a database, table, queue or bucket)
+  - FAISS — session + lore vectors (a database, table, queue or bucket)
+  - Ollama — LLM + bge-m3 embeddings (something you do not control)
+  - SearXNG / Brave — ephemeral Docker (something you do not control)
+  - Jupiter / Solana — long-running Docker (something you do not control)
+  - React UI -> routes/chat.py [session API]
+  - telegram-gateway -> routes/chat.py [the SAME API]
+  - routes/chat.py -> handle_session_chat [handle_session_chat]
+  - routes/chat.py -> tool_brain_service [_try_tool_brain]
+  - routes/chat.py -> query_handler_service [legacy fallthrough]
+  - handle_session_chat -> persona_memory
+  - handle_session_chat -> memory_fact_retrieval
+  - handle_session_chat -> llm_client
+  - handle_session_chat -> repositories/
+  - tool_brain_service -> tool_interceptor [every tool call]
+  - tool_interceptor -> executor_bindings [only if permitted]
+  - executor_bindings -> search_relevance_service
+  - search_relevance_service -> memory_rag [reuses the embedder]
+  - executor_bindings -> SearXNG / Brave
+  - query_handler_service -> Jupiter / Solana [propose -> confirm -> execute]
+  - llm_client -> Ollama
+  - repositories/ -> SQLite
+  - memory_fact_retrieval -> SQLite
+  - memory_rag -> FAISS
 
 **Wallet is never model-decided.** `_try_tool_brain` returns `None` on
 `NEEDS_WALLET` unconditionally, so the wallet path stays on the deterministic
@@ -323,134 +83,35 @@ The diagram above shows which modules exist. It does not show what happens when
 someone actually sends a message, which is the thing most questions are really
 about.
 
-```archview
-{
-  "id": "turn",
-  "caption": "One chat turn, from message to persisted reply.",
-  "nodes": [
-    {
-      "id": "arrive",
-      "label": "Message arrives",
-      "sub": "React UI or Telegram",
-      "kind": "external",
-      "note": "A message lands. Both clients use the same endpoint, which is the whole point of ADR-011."
-    },
-    {
-      "id": "identity",
-      "label": "Load identity",
-      "sub": "persona + cached CV",
-      "kind": "module",
-      "note": "Persona and cached CV summary. The voice signature stays out of the cache key so edits take effect."
-    },
-    {
-      "id": "route",
-      "label": "Route the intent",
-      "sub": "semantic, bge-m3",
-      "kind": "module",
-      "note": "Follow-up check, then a narrow keyword fast-path, then the semantic router. Wallet is never model-decided."
-    },
-    {
-      "id": "prompt",
-      "label": "Build the prompt",
-      "sub": "lean, exemplar-first",
-      "kind": "module",
-      "note": "The lean prompt: exemplars first, voice last. It is cached, so anything per-turn is appended after it."
-    },
-    {
-      "id": "history",
-      "label": "Select history",
-      "sub": "token budget + RAG",
-      "kind": "module",
-      "note": "Messages chosen against a token budget, with semantic recall over older sessions."
-    },
-    {
-      "id": "generate",
-      "label": "Generate",
-      "sub": "per-persona sampling",
-      "kind": "external",
-      "note": "On-device generation with per-persona sampling overrides."
-    },
-    {
-      "id": "guard",
-      "label": "Post-process",
-      "sub": "strip tool leaks, first person",
-      "kind": "secret",
-      "note": "Validates every tool call before it runs \u2014 access, arguments, and a hard block on swaps that did not come from a human."
-    },
-    {
-      "id": "persist",
-      "label": "Persist",
-      "sub": "SQLite",
-      "kind": "store",
-      "note": "The exchange is written through the pooled repository layer."
-    },
-    {
-      "id": "after",
-      "label": "Post-turn updates",
-      "sub": "progression, facts, summaries",
-      "kind": "module",
-      "note": "Progression, fact extraction and summaries run after the reply is out, so none of them can slow it."
-    }
-  ],
-  "edges": [
-    {
-      "from": "arrive",
-      "to": "identity"
-    },
-    {
-      "from": "identity",
-      "to": "route"
-    },
-    {
-      "from": "route",
-      "to": "prompt"
-    },
-    {
-      "from": "prompt",
-      "to": "history"
-    },
-    {
-      "from": "history",
-      "to": "generate"
-    },
-    {
-      "from": "generate",
-      "to": "guard"
-    },
-    {
-      "from": "guard",
-      "to": "persist"
-    },
-    {
-      "from": "persist",
-      "to": "after"
-    }
-  ]
-}
-```
+[diagram] One chat turn, from message to persisted reply.
+  - Message arrives — React UI or Telegram (something you do not control)
+  - Load identity — persona + cached CV (code in this repo)
+  - Route the intent — semantic, bge-m3 (code in this repo)
+  - Build the prompt — lean, exemplar-first (code in this repo)
+  - Select history — token budget + RAG (code in this repo)
+  - Generate — per-persona sampling (something you do not control)
+  - Post-process — strip tool leaks, first person (a credential store)
+  - Persist — SQLite (a database, table, queue or bucket)
+  - Post-turn updates — progression, facts, summaries (code in this repo)
+  - Message arrives -> Load identity
+  - Load identity -> Route the intent
+  - Route the intent -> Build the prompt
+  - Build the prompt -> Select history
+  - Select history -> Generate
+  - Generate -> Post-process
+  - Post-process -> Persist
+  - Persist -> Post-turn updates
 
-```archflow
-{
-  "view": "turn",
-  "flows": [
-    {
-      "id": "chat-turn",
-      "label": "A single chat turn",
-      "steps": [
-        {"node": "arrive", "note": "Both clients hit the same session API. That is the whole point of ADR-011 — regenerate, continue and undo exist once, not twice."},
-        {"node": "identity", "note": "The persona JSON and its cached CV summary are loaded. The cache is why the voice signature must stay OUT of the fingerprint, or edits would not take."},
-        {"node": "route", "note": "Intent routing is semantic-primary: follow-up detection, then a narrow keyword fast-path, then the bge-m3 router. Wallet is never model-decided."},
-        {"node": "prompt", "note": "The lean prompt is built exemplar-first and voice-last. It is lru_cached, so anything per-turn (lore, author's note) must be appended AFTER it rather than baked in."},
-        {"node": "history", "note": "Messages are selected against a token budget, with semantic recall over past sessions."},
-        {"node": "generate", "note": "Ollama generates on-device with per-persona sampling overrides. Local-first is a constraint, not a preference — the alternative leaks financial context to a third party."},
-        {"node": "guard", "note": "Leaked tool names are stripped, first person is enforced, and any tool call that ran had to pass the interceptor before execution."},
-        {"node": "persist", "note": "The exchange is written to SQLite through the pooled BaseRepository — never a raw connection."},
-        {"node": "after", "note": "Progression, resonance, fact extraction and summarisation run after the reply is already out, so none of them can slow the response."}
-      ]
-    }
-  ]
-}
-```
+[flow] A single chat turn
+  1. arrive — Both clients hit the same session API. That is the whole point of ADR-011 — regenerate, continue and undo exist once, not twice.
+  2. identity — The persona JSON and its cached CV summary are loaded. The cache is why the voice signature must stay OUT of the fingerprint, or edits would not take.
+  3. route — Intent routing is semantic-primary: follow-up detection, then a narrow keyword fast-path, then the bge-m3 router. Wallet is never model-decided.
+  4. prompt — The lean prompt is built exemplar-first and voice-last. It is lru_cached, so anything per-turn (lore, author's note) must be appended AFTER it rather than baked in.
+  5. history — Messages are selected against a token budget, with semantic recall over past sessions.
+  6. generate — Ollama generates on-device with per-persona sampling overrides. Local-first is a constraint, not a preference — the alternative leaks financial context to a third party.
+  7. guard — Leaked tool names are stripped, first person is enforced, and any tool call that ran had to pass the interceptor before execution.
+  8. persist — The exchange is written to SQLite through the pooled BaseRepository — never a raw connection.
+  9. after — Progression, resonance, fact extraction and summarisation run after the reply is already out, so none of them can slow the response.
 
 ## Components
 
