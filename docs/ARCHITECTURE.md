@@ -56,46 +56,245 @@ an import or call that exists in `src/coordinator/`.
 {
   "caption": "routes/chat.py is the orchestrator; the turn pipeline, the tool brain and the legacy wallet path are its three siblings.",
   "nodes": [
-    {"id":"ui","label":"React UI","sub":"chat · personas · wallet","tech":"React 19 · TS","kind":"external"},
-    {"id":"tg","label":"telegram-gateway","sub":"allowlisted single user","tech":"own venv · launchd","kind":"external"},
-    {"id":"routes","label":"routes/chat.py","sub":"orchestrator — picks the path","tech":"FastAPI","kind":"service"},
-    {"id":"chat","label":"handle_session_chat","sub":"per-turn phase pipeline","tech":"ChatDeps / ChatTurnState","kind":"module"},
-    {"id":"brain","label":"tool_brain_service","sub":"web intents only, never wallet","tech":"Ollama native tool-calling","kind":"module"},
-    {"id":"qh","label":"query_handler_service","sub":"legacy wallet + force-search","tech":"bge-m3 semantic router","kind":"module"},
-    {"id":"persona","label":"persona_memory","sub":"-> prompt_builder, lean prompt","tech":"lru_cache","kind":"module"},
-    {"id":"facts","label":"memory_fact_retrieval","sub":"through the M1 frame","tech":"bi-temporal store","kind":"module"},
-    {"id":"llm","label":"llm_client","sub":"per-persona sampling","tech":"Ollama","kind":"module"},
-    {"id":"repos","label":"repositories/","sub":"all extend BaseRepository","tech":"SQLite · pooled","kind":"module"},
-    {"id":"guard","label":"tool_interceptor","sub":"validate() only — gates, never executes","tech":"deterministic middleware","kind":"secret"},
-    {"id":"exec","label":"executor_bindings","sub":"runs the tool the guard permitted","tech":"registry-bound","kind":"module"},
-    {"id":"relevance","label":"search_relevance_service","sub":"per-result cosine floor","tech":"reuses the RAG embedder","kind":"module"},
-    {"id":"rag","label":"memory_rag","sub":"EpisodicMemoryRAG · startup singleton","tech":"bge-m3","kind":"module"},
-    {"id":"sqlite","label":"SQLite","sub":"chats · progression · facts · wallets","tech":"local file","kind":"store"},
-    {"id":"faiss","label":"FAISS","sub":"session + lore vectors","tech":"local index","kind":"store"},
-    {"id":"ollama","label":"Ollama","sub":"LLM + bge-m3 embeddings","tech":"on-device, Metal GPU","kind":"external"},
-    {"id":"web","label":"SearXNG / Brave","sub":"ephemeral Docker","tech":"MCP","kind":"external"},
-    {"id":"jupiter","label":"Jupiter / Solana","sub":"long-running Docker","tech":"MCP","kind":"external"}
+    {
+      "id": "ui",
+      "label": "React UI",
+      "sub": "chat \u00b7 personas \u00b7 wallet",
+      "tech": "React 19 \u00b7 TS",
+      "kind": "external",
+      "note": "The React client. Hits the same session API the Telegram gateway does."
+    },
+    {
+      "id": "tg",
+      "label": "telegram-gateway",
+      "sub": "allowlisted single user",
+      "tech": "own venv \u00b7 launchd",
+      "kind": "external",
+      "note": "An allowlisted single-user bot. Deliberately thin \u2014 it holds no logic the UI does not also use."
+    },
+    {
+      "id": "routes",
+      "label": "routes/chat.py",
+      "sub": "orchestrator \u2014 picks the path",
+      "tech": "FastAPI",
+      "kind": "service",
+      "note": "The orchestrator. Decides which of three paths a turn takes, and is where the tool brain is gated."
+    },
+    {
+      "id": "chat",
+      "label": "handle_session_chat",
+      "sub": "per-turn phase pipeline",
+      "tech": "ChatDeps / ChatTurnState",
+      "kind": "module",
+      "note": "The per-turn pipeline: load identity, build the prompt, select history, generate, persist."
+    },
+    {
+      "id": "brain",
+      "label": "tool_brain_service",
+      "sub": "web intents only, never wallet",
+      "tech": "Ollama native tool-calling",
+      "kind": "module",
+      "note": "Native tool-calling on web intents only. It is never offered wallet tools \u2014 the full surface caused fixation and fabrication in a live test."
+    },
+    {
+      "id": "qh",
+      "label": "query_handler_service",
+      "sub": "legacy wallet + force-search",
+      "tech": "bge-m3 semantic router",
+      "kind": "module",
+      "note": "The legacy deterministic path. Still in charge of wallet, and the floor the tool brain falls through to."
+    },
+    {
+      "id": "persona",
+      "label": "persona_memory",
+      "sub": "-> prompt_builder, lean prompt",
+      "tech": "lru_cache",
+      "kind": "module",
+      "note": "Loads the persona and its cached CV summary. The cache is why per-turn context must be appended after it, never inside."
+    },
+    {
+      "id": "facts",
+      "label": "memory_fact_retrieval",
+      "sub": "through the M1 frame",
+      "tech": "bi-temporal store",
+      "kind": "module",
+      "note": "Retrieves stored facts through the per-persona frame. Off on prod \u2014 the injection homogenised the warm personas."
+    },
+    {
+      "id": "llm",
+      "label": "llm_client",
+      "sub": "per-persona sampling",
+      "tech": "Ollama",
+      "kind": "module",
+      "note": "Ollama, on-device, with per-persona sampling. Local-first is a constraint: the alternative leaks financial context."
+    },
+    {
+      "id": "repos",
+      "label": "repositories/",
+      "sub": "all extend BaseRepository",
+      "tech": "SQLite \u00b7 pooled",
+      "kind": "module",
+      "note": "Every repository extends BaseRepository, so nothing opens a raw SQLite connection."
+    },
+    {
+      "id": "guard",
+      "label": "tool_interceptor",
+      "sub": "validate() only \u2014 gates, never executes",
+      "tech": "deterministic middleware",
+      "kind": "secret",
+      "note": "Validates every tool call before it runs \u2014 access, arguments, and a hard block on swaps that did not come from a human."
+    },
+    {
+      "id": "exec",
+      "label": "executor_bindings",
+      "sub": "runs the tool the guard permitted",
+      "tech": "registry-bound",
+      "kind": "module",
+      "note": "Runs the tool the guard permitted. Separate from the guard on purpose: gating and executing are different jobs."
+    },
+    {
+      "id": "relevance",
+      "label": "search_relevance_service",
+      "sub": "per-result cosine floor",
+      "tech": "reuses the RAG embedder",
+      "kind": "module",
+      "note": "Drops search results that are non-empty but off-topic, which the no-results guard cannot catch."
+    },
+    {
+      "id": "rag",
+      "label": "memory_rag",
+      "sub": "EpisodicMemoryRAG \u00b7 startup singleton",
+      "tech": "bge-m3",
+      "kind": "module",
+      "note": "Semantic recall over past sessions and the lore wiki, sharing one embedder."
+    },
+    {
+      "id": "sqlite",
+      "label": "SQLite",
+      "sub": "chats \u00b7 progression \u00b7 facts \u00b7 wallets",
+      "tech": "local file",
+      "kind": "store",
+      "note": "Sessions, progression, facts and wallets. Local file, pooled access."
+    },
+    {
+      "id": "faiss",
+      "label": "FAISS",
+      "sub": "session + lore vectors",
+      "tech": "local index",
+      "kind": "store",
+      "note": "The vector index for session and lore search."
+    },
+    {
+      "id": "ollama",
+      "label": "Ollama",
+      "sub": "LLM + bge-m3 embeddings",
+      "tech": "on-device, Metal GPU",
+      "kind": "external",
+      "note": "On-device inference and embeddings, on the Metal GPU."
+    },
+    {
+      "id": "web",
+      "label": "SearXNG / Brave",
+      "sub": "ephemeral Docker",
+      "tech": "MCP",
+      "kind": "external",
+      "note": "Search, via SearXNG first so the query stays local, falling back to Brave."
+    },
+    {
+      "id": "jupiter",
+      "label": "Jupiter / Solana",
+      "sub": "long-running Docker",
+      "tech": "MCP",
+      "kind": "external",
+      "note": "The wallet path. Always propose then confirm then execute \u2014 never model-decided."
+    }
   ],
   "edges": [
-    {"from":"ui","to":"routes","label":"session API"},
-    {"from":"tg","to":"routes","label":"the SAME API"},
-    {"from":"routes","to":"chat","label":"handle_session_chat"},
-    {"from":"routes","to":"brain","label":"_try_tool_brain"},
-    {"from":"routes","to":"qh","label":"legacy fallthrough"},
-    {"from":"chat","to":"persona"},
-    {"from":"chat","to":"facts"},
-    {"from":"chat","to":"llm"},
-    {"from":"chat","to":"repos"},
-    {"from":"brain","to":"guard","label":"every tool call"},
-    {"from":"guard","to":"exec","label":"only if permitted"},
-    {"from":"exec","to":"relevance"},
-    {"from":"relevance","to":"rag","label":"reuses the embedder"},
-    {"from":"exec","to":"web"},
-    {"from":"qh","to":"jupiter","label":"propose -> confirm -> execute"},
-    {"from":"llm","to":"ollama"},
-    {"from":"repos","to":"sqlite"},
-    {"from":"facts","to":"sqlite"},
-    {"from":"rag","to":"faiss"}
+    {
+      "from": "ui",
+      "to": "routes",
+      "label": "session API"
+    },
+    {
+      "from": "tg",
+      "to": "routes",
+      "label": "the SAME API"
+    },
+    {
+      "from": "routes",
+      "to": "chat",
+      "label": "handle_session_chat"
+    },
+    {
+      "from": "routes",
+      "to": "brain",
+      "label": "_try_tool_brain"
+    },
+    {
+      "from": "routes",
+      "to": "qh",
+      "label": "legacy fallthrough"
+    },
+    {
+      "from": "chat",
+      "to": "persona"
+    },
+    {
+      "from": "chat",
+      "to": "facts"
+    },
+    {
+      "from": "chat",
+      "to": "llm"
+    },
+    {
+      "from": "chat",
+      "to": "repos"
+    },
+    {
+      "from": "brain",
+      "to": "guard",
+      "label": "every tool call"
+    },
+    {
+      "from": "guard",
+      "to": "exec",
+      "label": "only if permitted"
+    },
+    {
+      "from": "exec",
+      "to": "relevance"
+    },
+    {
+      "from": "relevance",
+      "to": "rag",
+      "label": "reuses the embedder"
+    },
+    {
+      "from": "exec",
+      "to": "web"
+    },
+    {
+      "from": "qh",
+      "to": "jupiter",
+      "label": "propose -> confirm -> execute"
+    },
+    {
+      "from": "llm",
+      "to": "ollama"
+    },
+    {
+      "from": "repos",
+      "to": "sqlite"
+    },
+    {
+      "from": "facts",
+      "to": "sqlite"
+    },
+    {
+      "from": "rag",
+      "to": "faiss"
+    }
   ]
 }
 ```
@@ -129,25 +328,103 @@ about.
   "id": "turn",
   "caption": "One chat turn, from message to persisted reply.",
   "nodes": [
-    {"id": "arrive", "label": "Message arrives", "sub": "React UI or Telegram", "kind": "external"},
-    {"id": "identity", "label": "Load identity", "sub": "persona + cached CV", "kind": "module"},
-    {"id": "route", "label": "Route the intent", "sub": "semantic, bge-m3", "kind": "module"},
-    {"id": "prompt", "label": "Build the prompt", "sub": "lean, exemplar-first", "kind": "module"},
-    {"id": "history", "label": "Select history", "sub": "token budget + RAG", "kind": "module"},
-    {"id": "generate", "label": "Generate", "sub": "per-persona sampling", "kind": "external"},
-    {"id": "guard", "label": "Post-process", "sub": "strip tool leaks, first person", "kind": "secret"},
-    {"id": "persist", "label": "Persist", "sub": "SQLite", "kind": "store"},
-    {"id": "after", "label": "Post-turn updates", "sub": "progression, facts, summaries", "kind": "module"}
+    {
+      "id": "arrive",
+      "label": "Message arrives",
+      "sub": "React UI or Telegram",
+      "kind": "external",
+      "note": "A message lands. Both clients use the same endpoint, which is the whole point of ADR-011."
+    },
+    {
+      "id": "identity",
+      "label": "Load identity",
+      "sub": "persona + cached CV",
+      "kind": "module",
+      "note": "Persona and cached CV summary. The voice signature stays out of the cache key so edits take effect."
+    },
+    {
+      "id": "route",
+      "label": "Route the intent",
+      "sub": "semantic, bge-m3",
+      "kind": "module",
+      "note": "Follow-up check, then a narrow keyword fast-path, then the semantic router. Wallet is never model-decided."
+    },
+    {
+      "id": "prompt",
+      "label": "Build the prompt",
+      "sub": "lean, exemplar-first",
+      "kind": "module",
+      "note": "The lean prompt: exemplars first, voice last. It is cached, so anything per-turn is appended after it."
+    },
+    {
+      "id": "history",
+      "label": "Select history",
+      "sub": "token budget + RAG",
+      "kind": "module",
+      "note": "Messages chosen against a token budget, with semantic recall over older sessions."
+    },
+    {
+      "id": "generate",
+      "label": "Generate",
+      "sub": "per-persona sampling",
+      "kind": "external",
+      "note": "On-device generation with per-persona sampling overrides."
+    },
+    {
+      "id": "guard",
+      "label": "Post-process",
+      "sub": "strip tool leaks, first person",
+      "kind": "secret",
+      "note": "Validates every tool call before it runs \u2014 access, arguments, and a hard block on swaps that did not come from a human."
+    },
+    {
+      "id": "persist",
+      "label": "Persist",
+      "sub": "SQLite",
+      "kind": "store",
+      "note": "The exchange is written through the pooled repository layer."
+    },
+    {
+      "id": "after",
+      "label": "Post-turn updates",
+      "sub": "progression, facts, summaries",
+      "kind": "module",
+      "note": "Progression, fact extraction and summaries run after the reply is out, so none of them can slow it."
+    }
   ],
   "edges": [
-    {"from": "arrive", "to": "identity"},
-    {"from": "identity", "to": "route"},
-    {"from": "route", "to": "prompt"},
-    {"from": "prompt", "to": "history"},
-    {"from": "history", "to": "generate"},
-    {"from": "generate", "to": "guard"},
-    {"from": "guard", "to": "persist"},
-    {"from": "persist", "to": "after"}
+    {
+      "from": "arrive",
+      "to": "identity"
+    },
+    {
+      "from": "identity",
+      "to": "route"
+    },
+    {
+      "from": "route",
+      "to": "prompt"
+    },
+    {
+      "from": "prompt",
+      "to": "history"
+    },
+    {
+      "from": "history",
+      "to": "generate"
+    },
+    {
+      "from": "generate",
+      "to": "guard"
+    },
+    {
+      "from": "guard",
+      "to": "persist"
+    },
+    {
+      "from": "persist",
+      "to": "after"
+    }
   ]
 }
 ```
