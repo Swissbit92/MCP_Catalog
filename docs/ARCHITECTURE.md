@@ -489,14 +489,17 @@ Layered: **routes → services → repositories → models**, mirrored on the fr
 
 ## Key invariants
 
-- **nephilim is read-only** w.r.t. the trading MongoDB (`btc_data`) — it never writes trading data.
-- **Wallet BIP39 mnemonic is NEVER persisted** — generated at the password step, displayed once, only wiped. `WalletFlowState` has no field for it and the `wallet_flow_state` table has no mnemonic column (structurally enforced).
-- **Config import surface:** import `get_settings` / settings classes from `..config` (the package root), never the submodules — the `__init__` re-export + `src.coordinator.config.get_settings` patch-path is a contract.
-- **All repositories extend `BaseRepository`** via `db_adapter` — never open a raw `sqlite3.connect()`.
-- **Per-turn content must never enter the `lru_cache`d prompt builder** (`build_system_prompt`) — dynamic lore/memory is appended after the cached call.
-- **Companion memory (ADR-006) is default OFF** (`MEMORY_CONTEXT_INJECT`, `MEMORY_FACTS_ENABLED`) — M5 gate passed 2026-07-05; kept OFF for a live soak + instant revert. Injected memory always goes through the per-persona `<remembered>` frame as prose (never an identical skeleton — Gate 0/0.1); facts are invalidated not deleted (`valid_to`); extraction runs off the interactive path (enqueue-and-return, a failing job never breaks a turn).
-- **Image-search result quality (ADR-010)** is enforced in the bound search executor (`tools/executor_bindings.py`), the one choke point feeding both synthesis and citations: a deterministic junk denylist (`tools/result_filters.py`, always-on, images-only, never-empty fallback) plus a per-result bge-m3 relevance floor (`SEARCH_RELEVANCE_GATE_ENABLED`, code default OFF but enabled in the prod `.env`, so live on images at `min_cosine=0.36` — measured safe: 0% false-abstention across 39 post-denylist results, since the denylist strips junk before the floor runs). A spurious synthesis refusal (abliterated residual) triggers one prefill-steered retry and sets `ToolBrainResult.refused`; the route then never staples citations onto a refusal. The search `query` is length/control-char validated for all live tool names (`_SEARCH_QUERY_TOOLS`).
-- **`PERSONA_TOOL_INTENT_IN_PROMPT` is default OFF** — the dead `escalation_policy.tool_intent` field can be injected as a `<tools>` block, but the full-7 eval showed it voice-neutral (0.786 = 0.786), so it stays off (no-regression ≠ improvement). `PersonaCard.emoji` `max_length` is 8 (code points, not emoji — accommodates variation selectors).
+| Invariant | What it guarantees | Where it is enforced |
+|---|---|---|
+| **Read-only on trading data** | A companion bug can never reach capital | No write path to `btc_data` exists |
+| **The mnemonic is never persisted** | Shown once at the password step, then wiped. There is nowhere for it to leak from | Structural — `WalletFlowState` has no field and the table has no column |
+| **Settings import from the package root** | Test patch-paths keep working, because `..config` re-exports are the contract | `config/__init__.py` |
+| **Every repository extends `BaseRepository`** | One pooled, thread-safe connection rather than raw handles | `db_adapter.py` |
+| **Per-turn content never enters the cached prompt** | Lore and memory are appended *after* `build_system_prompt`, or the `lru_cache` would serve one user's context to another | `routes/chat.py`, via `extra_system_context` |
+| **Companion memory is default OFF** | The M5 gate passed on the previous model and does not hold on the current one — both injections homogenise the warm personas | `MEMORY_CONTEXT_INJECT`, `MEMORY_FACTS_ENABLED` |
+| **Facts are invalidated, never deleted** | History stays reconstructable; a correction does not erase what was believed before | `valid_to` on `memory_facts` |
+| **Search results pass one choke point** | Junk filtering and the relevance floor apply to synthesis and citations alike, so the two can never disagree | `tools/executor_bindings.py` |
+| **Citations are never stapled to a refusal** | A refused answer stays a refusal instead of looking sourced | `routes/chat.py`, on `ToolBrainResult.refused` |
 
 ## Cross-repo contracts
 
@@ -533,3 +536,21 @@ flags that are off, or on in production while the ADR is still open — the ADR
 status tracks the *decision*, not the deployment. Which flags are actually live
 is recorded in `CLAUDE.md`, deliberately not here: this page describes structure,
 and runtime state on a structural page is the thing that goes stale first.
+
+## Glossary
+
+| Term | What it means here |
+|---|---|
+| **Persona** | A JSON-defined character — lore, voice, behaviour, and which tools it may use |
+| **Voice signature** | The per-persona diction and cadence block. Deliberately excluded from the CV-summary cache key so edits take effect |
+| **Tool brain** | The model deciding and filling its own tool calls natively, rather than a deterministic router doing it |
+| **Force-search** | The legacy path: the router decides a search is needed and runs it directly, bypassing the model's tool-calling |
+| **Semantic router** | Intent classification by embedding similarity rather than keywords. Scored nearest-example, not by centroid |
+| **RAG** | Retrieval-augmented generation — pulling relevant past messages or lore into the prompt |
+| **FAISS** | The local vector index behind that retrieval |
+| **MCP** | Model Context Protocol — how external tools (search, wallet) are exposed |
+| **HITL** | Human in the loop. Required before anything that spends |
+| **Groundedness gate** | A second cheap classification of the draft, catching a specific factual claim made with nothing to back it |
+| **Interceptor** | Deterministic middleware that validates every tool call before it runs. It gates; it never executes |
+| **Abliterated** | A model with its refusal behaviour removed. Leaves residue, which is why a spurious-refusal retry exists |
+| **Seeker / resonance / affinity** | The progression system — the user's rank, the points earned, and per-persona familiarity |
