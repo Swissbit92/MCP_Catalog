@@ -7,13 +7,13 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/swissbit./nephilim/nephilim/scripts/launchd/ollama-tuning.sh</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/scripts/launchd/ollama-tuning.sh</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-ollama-tuning.out.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/logs/launchd-ollama-tuning.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-ollama-tuning.err.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/logs/launchd-ollama-tuning.err.log</string>
 </dict>
 </plist>

@@ -11,12 +11,12 @@
     -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/venv/bin/python</string>
-        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/bin/run_telegram_bot.py</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/venv/bin/python</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/bin/run_telegram_bot.py</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway</string>
 
     <!--
         Daemon semantics: start on load, restart if it ever exits. This is the
@@ -34,9 +34,9 @@
     <integer>15</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/logs/launchd-telegram.stdout.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/logs/launchd-telegram.stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/logs/launchd-telegram.stderr.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/logs/launchd-telegram.stderr.log</string>
 
     <!--
         SECURITY: only PATH here. No secrets in the plist (it is world-readable
@@ -47,7 +47,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 
     <key>Nice</key>

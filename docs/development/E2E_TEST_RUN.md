@@ -75,12 +75,12 @@ Note: Screenshots for Steps 6 (`06-wallet-deleted`, `06-deletion-confirmed`) wer
 
 **Root cause**: The Python seed script resolves the DB path as:
 ```python
-db_path = os.environ.get('COORDINATOR_DB_PATH', r'~/nephilim/nephilim/data/chats.db')
+db_path = os.environ.get('COORDINATOR_DB_PATH', r'~/nephilim-ecosystem/nephilim/data/chats.db')
 ```
 The running FastAPI backend likely uses `chats.db` in the project root (not `data/chats.db`), based on the default in `.env`: `OLLAMA_BASE=http://127.0.0.1:11434` — the backend's default DB path is `chats.db` (root). These are two different SQLite files.
 
 **Fix needed**: Either:
-- Set `COORDINATOR_DB_PATH=~/nephilim/nephilim/chats.db` in the Python seed script, OR
+- Set `COORDINATOR_DB_PATH=~/nephilim-ecosystem/nephilim/chats.db` in the Python seed script, OR
 - Use the `POST /wallet/create` REST endpoint (instead of direct Python write) so the seed writes to the same DB the backend reads from.
 
 ### Issue 2 — Balance Endpoint 500 + Non-JSON Body (Step 5 FAIL)

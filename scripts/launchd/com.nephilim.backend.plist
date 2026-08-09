@@ -6,7 +6,7 @@
     <string>com.nephilim.backend</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/swissbit./nephilim/nephilim/.venv/bin/python</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/.venv/bin/python</string>
         <string>-m</string>
         <string>uvicorn</string>
         <string>src.coordinator.server:app</string>
@@ -16,7 +16,7 @@
         <string>8000</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/swissbit./nephilim/nephilim</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim</string>
     <key>EnvironmentVariables</key>
     <dict>
         <!-- /usr/local/bin holds the `docker` CLI symlink (Docker Desktop). Without
@@ -30,8 +30,8 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-backend.out.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/logs/launchd-backend.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-backend.err.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/logs/launchd-backend.err.log</string>
 </dict>
 </plist>

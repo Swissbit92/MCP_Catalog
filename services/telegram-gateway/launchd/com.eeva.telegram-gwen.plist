@@ -14,12 +14,12 @@
     -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/venv/bin/python</string>
-        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/bin/run_telegram_bot.py</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/venv/bin/python</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/bin/run_telegram_bot.py</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -30,9 +30,9 @@
     <integer>15</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/logs/launchd-telegram-gwen.stdout.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/logs/launchd-telegram-gwen.stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/logs/launchd-telegram-gwen.stderr.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/logs/launchd-telegram-gwen.stderr.log</string>
 
     <!--
         SECURITY: no secrets in the plist (world-readable under
@@ -43,7 +43,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/swissbit./nephilim/nephilim/services/telegram-gateway/venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/services/telegram-gateway/venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>EEVA_TG_INSTANCE</key>
         <string>gwen</string>
     </dict>
