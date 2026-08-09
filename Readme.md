@@ -12,7 +12,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Latest-orange.svg)](https://ollama.ai)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57.svg?logo=sqlite)](https://sqlite.org)
 
-**[What Can This Do?](#-what-can-this-do) · [Docker Setup](#-quick-start-docker) · [Local Setup](#-local-development-setup) · [Architecture](#-architecture)**
+**[What Can This Do?](#what-can-this-do) · [Docker Setup](#quick-start-docker) · [Local Setup](#local-development-setup) · [Architecture](#architecture)**
 
 </div>
 
@@ -20,21 +20,21 @@
 
 ## Table of Contents
 
-- [What Can This Do?](#-what-can-this-do)
-- [How Does It Compare?](#-how-does-it-compare)
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [System Requirements](#-system-requirements)
-- [Quick Start (Docker)](#-quick-start-docker)
-- [Local Development Setup](#-local-development-setup)
-- [Architecture](#-architecture)
-- [Available AI Companions](#-available-ai-companions)
-- [NEPHILIM Worldbuilding System](#-nephilim-worldbuilding-system)
-- [Usage](#-usage)
-- [Testing & Quality](#-testing--quality)
-- [Documentation](#-documentation)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [What Can This Do?](#what-can-this-do)
+- [How Does It Compare?](#how-does-it-compare)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [System Requirements](#system-requirements)
+- [Quick Start (Docker)](#quick-start-docker)
+- [Local Development Setup](#local-development-setup)
+- [Architecture](#architecture)
+- [Available AI Companions](#available-ai-companions)
+- [NEPHILIM Worldbuilding System](#nephilim-worldbuilding-system)
+- [Usage](#usage)
+- [Testing & Quality](#testing--quality)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
