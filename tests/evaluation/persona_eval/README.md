@@ -119,6 +119,24 @@ abliterated model (ADR-010) that her adversarial/grounding probes may hit, and s
 absent from every prior voice gate (she + solace are on the `TOOL_BRAIN_UNGATED_WEB` soak
 watchlist).
 
+## CANONICAL 8-persona ruler — `baseline_abliterated-8p_20260810` (committed)
+
+The first 8-persona baseline, collected on the abliterated-24B prod config (bge-m3, groundedness
+gate + tool-brain ON) and **committed as the canonical ruler** (force-added past the
+`baselines/.gitignore`, unlike the local-only 7-persona baselines). Gate 8-persona candidates
+against **this**, not the 7-persona history.
+
+- **Distinctiveness overall `0.7812`** (chance `0.125`). Per-persona: nyx 1.0, eeva/solace/gwen
+  0.875, cipher/gojo 0.75, aurora 0.625, **aegis 0.50 (new differentiation target)**. Flatness
+  0.5% overall.
+- **gwen's baseline is trustworthy:** all 8 of her distinctiveness rows are genuine `llm` voice —
+  the ADR-010 residual-refusal concern did not materialize. The metric input is 100% clean
+  (64/64 distinctiveness rows `source=llm`); the only non-voice rows (2 `groundedness_abstain`,
+  web-search/wallet rows) are in the grounding/adversarial categories, which don't feed attribution.
+- Carries a `manifest`, so it is directly reusable as a `--gallery abliterated-8p` source.
+- **Content note:** gwen's rows are explicitly NSFW (her persona register) — that is committed
+  in the `results[]` text.
+
 ## Current baseline (frozen 2026-06-27)
 
 `baseline_legacy_20260627_024004.json` (168 responses): distinctiveness
