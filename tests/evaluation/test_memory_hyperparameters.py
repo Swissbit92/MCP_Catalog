@@ -351,7 +351,7 @@ class TestMemoryHyperparameters:
     """Pytest test class for memory hyperparameter tuning."""
 
     @pytest.mark.slow
-    def test_hyperparameter_tuning_full(self):
+    def test_hyperparameter_tuning_full(self, tmp_path):
         """Run full hyperparameter tuning grid search."""
         tuner = MemoryHyperparameterTuner()
 
@@ -363,8 +363,9 @@ class TestMemoryHyperparameters:
             embedding_models=["nomic-embed-text:latest"]
         )
 
-        # Save results
-        tuner.save_results()
+        # Save results to a pytest tmp dir — NOT the tracked repo path (a test must
+        # not dirty version-controlled files; the CLI __main__ path keeps the repo default).
+        tuner.save_results(str(tmp_path / "memory_tuning_results.json"))
 
         # Assertions
         assert best is not None
@@ -373,7 +374,7 @@ class TestMemoryHyperparameters:
         assert 0.0 <= best.context_precision <= 1.0
 
     @pytest.mark.slow
-    def test_hyperparameter_tuning_quick(self):
+    def test_hyperparameter_tuning_quick(self, tmp_path):
         """Run quick hyperparameter tuning (reduced grid)."""
         tuner = MemoryHyperparameterTuner()
 
@@ -385,8 +386,8 @@ class TestMemoryHyperparameters:
             embedding_models=["nomic-embed-text:latest"]
         )
 
-        # Save results
-        tuner.save_results("tests/evaluation/memory_tuning_results_quick.json")
+        # Save results to a pytest tmp dir — NOT the tracked repo path (see above).
+        tuner.save_results(str(tmp_path / "memory_tuning_results_quick.json"))
 
         # Assertions
         assert best is not None
