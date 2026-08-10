@@ -78,6 +78,14 @@ class LLMCompletionService:
             "num_predict": get_settings().ollama.max_output_tokens,
         }
 
+        # Reasoning ("think") control — only added when explicitly configured, so an
+        # unset OLLAMA_REASONING leaves this constructor byte-identical to legacy.
+        # A thinking model spends num_predict on its reasoning stream and returns an
+        # empty string here; reasoning=False is what makes such a model usable at all.
+        _reasoning = get_settings().ollama.reasoning
+        if _reasoning is not None:
+            ollama_params["reasoning"] = _reasoning
+
         # Apply sampling config if provided
         if sampling_config:
             config_params = sampling_config.to_ollama_params()
