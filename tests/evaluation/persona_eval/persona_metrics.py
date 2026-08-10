@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
@@ -262,10 +263,267 @@ def is_abstention(response: str) -> bool:
     return any(m in low for m in _ABSTENTION_MARKERS)
 
 
+# ----- research-depth metrics (pure, headless) -----
+#
+# These score ANALYTICAL quality, the axis attribution_accuracy is blind to. A
+# model swap justified by reasoning capability needs a ruler for reasoning, not
+# only one for voice.
+#
+# ⚠️ THESE ARE CROSS-CHECKS, NOT A SCORE. Never average them into a verdict and
+# never gate on them alone. Every one is inflatable by a model that has learned
+# to sound analytical — which is precisely the failure the retired keyword
+# `persona_voice` scorer walked into. Their job is to CONTRADICT the human judge
+# when the judge has been fooled by verbosity: if the judge says arm B is deeper
+# but B's causal density is flat and its word count is up 40%, the judge was
+# rating length. That tripwire is the whole point.
+#
+# Evidence: causal-connective density is the one proxy with published support for
+# tracking reasoning *correctness* rather than reading level (arXiv 2602.09832).
+# Hedging is deliberately BINARY — models' fine-grained hedge calibration is
+# unreliable (arXiv 2605.28778), but "did it hedge at all" maps cleanly onto the
+# uncertainty rubric dimension. Length is tracked because it is the single
+# largest documented judge bias, ~8-13x the effect of formatting (LMSYS 2024).
+
+# Causal/explanatory connectives (PDTB-style). "since" and "as" are omitted:
+# both are ambiguous with temporal/comparative senses and would inflate the count.
+_CAUSAL_CONNECTIVES = [
+    "because", "therefore", "thus", "hence", "consequently", "so that",
+    "as a result", "which is why", "due to", "owing to", "leads to", "lead to",
+    "results in", "result in", "causes", "caused by", "drives", "driven by",
+    "gives rise to", "that is why", "the reason", "explains why",
+]
+
+# Contrastive/concessive markers — evidence the answer weighed an alternative
+# rather than asserting one line.
+_CONTRASTIVE_CONNECTIVES = [
+    "however", "whereas", "although", "though", "on the other hand",
+    "conversely", "in contrast", "by contrast", "but if", "that said",
+    "on the contrary", "rather than", "instead of", "unlike",
+]
+
+# Epistemic-uncertainty markers. Checked as a BINARY signal (see note above).
+_HEDGE_MARKERS = [
+    "might", "may be", "could be", "possibly", "perhaps", "uncertain",
+    "unclear", "not sure", "hard to say", "i don't know", "i do not know",
+    "depends on", "assuming", "if that holds", "roughly", "approximately",
+    "in the region of", "order of magnitude", "i'd want to check",
+    "i would want to check", "cannot tell", "can't tell", "wide confidence",
+    "not enough data", "too few", "underpowered",
+]
+
+# Markers of a proposed test/measurement — the "falsify" rubric dimension.
+_FALSIFICATION_MARKERS = [
+    "test", "check", "measure", "verify", "compare", "recompute",
+    "backtest", "out-of-sample", "out of sample", "hold-out", "holdout",
+    "would settle", "would tell you", "would confirm", "would rule out",
+    "run a", "re-run", "rerun", "sanity check", "cross-check",
+]
+
+_NUMERIC = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?\s*(?:%|x\b|bps\b)?")
+_WORD = re.compile(r"[A-Za-z0-9']+")
+
+
+def word_count(text: str) -> int:
+    """Words in a response. The length-bias control variable."""
+    return len(_WORD.findall(text or ""))
+
+
+def _phrase_hits(text: str, phrases: List[str]) -> List[str]:
+    low = (text or "").lower()
+    return [p for p in phrases if p in low]
+
+
+def _density_per_100w(text: str, phrases: List[str]) -> float:
+    """Marker occurrences per 100 words — length-normalised by construction.
+
+    Normalising is essential: a raw count rewards a longer answer for being
+    longer, which is the exact bias this metric exists to detect.
+    """
+    n = word_count(text)
+    if n == 0:
+        return 0.0
+    low = (text or "").lower()
+    hits = sum(low.count(p) for p in phrases)
+    return round(100.0 * hits / n, 3)
+
+
+def causal_density(text: str) -> float:
+    """Causal connectives per 100 words. The best-evidenced depth proxy."""
+    return _density_per_100w(text, _CAUSAL_CONNECTIVES)
+
+
+def contrastive_density(text: str) -> float:
+    """Contrastive/concessive markers per 100 words (did it weigh alternatives?)."""
+    return _density_per_100w(text, _CONTRASTIVE_CONNECTIVES)
+
+
+def numeric_density(text: str) -> float:
+    """Numeric tokens per 100 words — the 'quantify' dimension, coarsely."""
+    n = word_count(text)
+    if n == 0:
+        return 0.0
+    return round(100.0 * len(_NUMERIC.findall(text or "")) / n, 3)
+
+
+def has_hedge(text: str) -> bool:
+    """Binary: did the response acknowledge uncertainty at all?"""
+    return bool(_phrase_hits(text, _HEDGE_MARKERS))
+
+
+def has_falsification(text: str) -> bool:
+    """Binary: did the response propose a test/measurement that would settle it?"""
+    return bool(_phrase_hits(text, _FALSIFICATION_MARKERS))
+
+
+def depth_profile(text: str) -> dict:
+    """Every deterministic depth signal for one response, as a flat dict."""
+    return {
+        "words": word_count(text),
+        "causal_density": causal_density(text),
+        "contrastive_density": contrastive_density(text),
+        "numeric_density": numeric_density(text),
+        "has_hedge": has_hedge(text),
+        "has_falsification": has_falsification(text),
+    }
+
+
+def aggregate_depth_profiles(texts: List[str]) -> dict:
+    """Mean densities + hedge/falsification RATES over a set of responses."""
+    profiles = [depth_profile(t) for t in texts if t]
+    if not profiles:
+        return {"n": 0}
+    n = len(profiles)
+    mean = lambda k: round(sum(p[k] for p in profiles) / n, 3)  # noqa: E731
+    rate = lambda k: round(sum(1 for p in profiles if p[k]) / n, 4)  # noqa: E731
+    return {
+        "n": n,
+        "mean_words": mean("words"),
+        "mean_causal_density": mean("causal_density"),
+        "mean_contrastive_density": mean("contrastive_density"),
+        "mean_numeric_density": mean("numeric_density"),
+        "hedge_rate": rate("has_hedge"),
+        "falsification_rate": rate("has_falsification"),
+    }
+
+
+# ----- paired statistics for a two-arm gate -----
+
+def pearson_r(xs: List[float], ys: List[float]) -> float | None:
+    """Pearson correlation. Returns None when undefined (n<2 or zero variance)."""
+    n = len(xs)
+    if n < 2 or n != len(ys):
+        return None
+    mx, my = sum(xs) / n, sum(ys) / n
+    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    dx = math.sqrt(sum((x - mx) ** 2 for x in xs))
+    dy = math.sqrt(sum((y - my) ** 2 for y in ys))
+    if dx == 0 or dy == 0:
+        return None
+    return round(num / (dx * dy), 4)
+
+
+def length_bias_check(
+    length_deltas: List[float], score_deltas: List[float], threshold: float = 0.5
+) -> dict:
+    """The verbosity tripwire.
+
+    Correlates per-probe (candidate_length − control_length) against
+    (candidate_score − control_score). A strong positive correlation means the
+    judge's preference tracked length, so the depth result is not trustworthy on
+    its own — the documented failure mode where a 91%-fooled judge rewards a
+    longer answer (Zheng et al. 2023) and the reason AlpacaEval 2.0 fits a
+    length term at all.
+
+    ``triggered`` is a flag to investigate, NOT a verdict: a genuinely deeper
+    answer is often legitimately longer. It says "re-check length-matched
+    before trusting this", not "the candidate lost".
+
+    **The sweep blind spot.** Correlation is undefined when the score deltas have
+    zero variance — which is exactly what a clean sweep looks like (every delta
+    +1). That is the case where the question matters most, and a bare Pearson
+    check passes it silently. So when r is undefined we fall back to *sign
+    concordance*: among pairs where both deltas are non-zero, how often did the
+    arm that won also happen to be the longer one? An all-wins, all-longer sweep
+    scores 1.0 and trips the wire. Concordance is only consulted when r is
+    undefined — where r exists it is the better statistic, and using both would
+    double-count.
+    """
+    r = pearson_r(length_deltas, score_deltas)
+    concordance = None
+    n_signed = 0
+    if r is None:
+        agree = 0
+        for ld, sd in zip(length_deltas, score_deltas):
+            if ld == 0 or sd == 0:
+                continue
+            n_signed += 1
+            if (ld > 0) == (sd > 0):
+                agree += 1
+        if n_signed:
+            concordance = round(agree / n_signed, 4)
+
+    by_r = r is not None and r >= threshold
+    # Require a few signed pairs before trusting concordance — 2-for-2 is noise.
+    by_concordance = concordance is not None and n_signed >= 5 and concordance >= 0.8
+    triggered = bool(by_r or by_concordance)
+    return {
+        "pearson_r": r,
+        "sign_concordance": concordance,
+        "n": len(length_deltas),
+        "n_signed": n_signed,
+        "threshold": threshold,
+        "triggered": triggered,
+        "note": (
+            "length may be driving the preference — re-judge length-matched"
+            if triggered
+            else "no strong length/score coupling"
+        ),
+    }
+
+
+def paired_bootstrap(
+    deltas: List[float],
+    n_resamples: int = 2000,
+    conf: float = 0.90,
+    seed: int = 0,
+) -> dict:
+    """Percentile bootstrap CI on the mean paired delta (candidate − control).
+
+    Nonparametric and pairing-preserving — the right tool at n≈12, where a
+    t-test's normality assumption is unverifiable. ``excludes_zero`` is the gate
+    condition: the interval must not straddle 0 for the difference to count.
+    """
+    n = len(deltas)
+    if n == 0:
+        return {"n": 0, "mean": None, "ci": None, "excludes_zero": False}
+    rng = random.Random(seed)
+    means = []
+    for _ in range(n_resamples):
+        means.append(sum(deltas[rng.randrange(n)] for _ in range(n)) / n)
+    means.sort()
+    lo_i = int((1 - conf) / 2 * n_resamples)
+    hi_i = min(n_resamples - 1, int((1 + conf) / 2 * n_resamples))
+    lo, hi = means[lo_i], means[hi_i]
+    return {
+        "n": n,
+        "mean": round(sum(deltas) / n, 4),
+        "ci": [round(lo, 4), round(hi, 4)],
+        "conf": conf,
+        "excludes_zero": (lo > 0 or hi < 0),
+    }
+
+
 # ----- helpers -----
 
 def load_probes(path: Path | str | None = None) -> dict:
     p = Path(path) if path else Path(__file__).parent / "probes.json"
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_depth_probes(path: Path | str | None = None) -> dict:
+    """The research-depth probe set (analytical quality, not voice)."""
+    p = Path(path) if path else Path(__file__).parent / "research_depth_probes.json"
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
 

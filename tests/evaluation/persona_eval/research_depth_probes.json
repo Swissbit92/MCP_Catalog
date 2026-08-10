@@ -1,0 +1,175 @@
+{
+  "description": "Research-depth probe set. Measures ANALYTICAL quality, not voice — the axis the ADR-005 attribution metric is blind to. Companion probes (probes.json) answer 'does she still sound like Eeva?'; these answer 'did she get smarter?'. A model swap motivated by reasoning capability must clear BOTH.",
+  "method": "Hand-written probes + hand-written reference keys. Deliberately NOT model-generated: replacing model-authored rubric criteria with human-authored ones improves judge accuracy ~27% (arXiv 2603.00077), and reference-guided grading cuts judge error 70%->15% on reasoning tasks (MT-Bench, arXiv 2306.05685). Domain is this operator's own trading ecosystem, so the human judge can grade authoritatively rather than plausibly.",
+  "scoring": "Each `key` entry is an analytic criterion in the HealthBench style (arXiv 2505.08775): scored independently, small signed weight, NOT summed into one holistic 1-10. `trap` entries are NEGATIVE criteria — a confident wrong claim scores worse than an honest 'I don't know'.",
+  "personas": ["nephilim_eeva"],
+  "dimensions": [
+    {"id": "mechanism", "desc": "Names a concrete causal mechanism, not a restatement of the question"},
+    {"id": "quantify", "desc": "Puts numbers, units, or magnitudes on the claim where the domain allows it"},
+    {"id": "assumptions", "desc": "States what must be true for the answer to hold"},
+    {"id": "uncertainty", "desc": "Acknowledges what it does not know, rather than asserting uniformly"},
+    {"id": "falsify", "desc": "Proposes a concrete test, measurement, or observation that would settle it"},
+    {"id": "causation", "desc": "Distinguishes correlation from causation; names confounders or common drivers"},
+    {"id": "specificity", "desc": "Avoids generic advice that would apply to any question in the domain"}
+  ],
+  "probes": [
+    {
+      "id": "depth-carry-negative",
+      "prompt": "A delta-neutral funding-carry position collects positive funding every single day for a month, and still ends the month down. What are the actual mechanisms that could cause that?",
+      "key": [
+        "Fee drag: entry+exit taker/maker fees on BOTH legs can exceed a month of small funding accrual",
+        "The hedge is not perfectly delta-neutral — basis moves between spot and perp legs produce PnL independent of funding",
+        "Slippage and the spread paid on rebalancing the hedge",
+        "Borrow/margin cost on the spot leg, or opportunity cost of posted collateral",
+        "Funding is per-interval (typically 8h) — 'positive every day' can still be small relative to per-trade costs",
+        "Mentions that the loss is a COST problem, not a funding-sign problem"
+      ],
+      "trap": [
+        "Claims funding turned negative (contradicts the premise as stated)",
+        "Generic 'markets are volatile' with no named cost mechanism"
+      ]
+    },
+    {
+      "id": "depth-carry-units",
+      "prompt": "I compute a funding moving average as a per-day figure, but my breakeven threshold is expressed per-8h-interval, and I compare them directly. How bad is that, and how would you find out?",
+      "key": [
+        "Identifies the unit mismatch as a factor-of-3 error (3 x 8h intervals per day)",
+        "States the DIRECTION: comparing a per-day MA against a per-8h threshold overstates the signal ~3x, so it enters trades it should not",
+        "Notes the error is systematic, not random — it biases every decision the same way",
+        "Proposes a concrete check: recompute both in one unit and diff the entry decisions on historical data",
+        "Sophisticated answer notes a deployed strategy VALIDATED with the inconsistency is not automatically invalid — its parameters were fit under the same convention, so fixing the unit without refitting changes behaviour"
+      ],
+      "trap": ["Says it 'probably does not matter much'", "Gets the direction of the bias backwards"]
+    },
+    {
+      "id": "depth-overfit-trials",
+      "prompt": "I ran 200 Optuna trials over three years of daily bars and the best configuration has a Sharpe of 1.9. How much should I believe that number?",
+      "key": [
+        "Multiple-testing / selection bias: the MAX of 200 trials is upward-biased even if every strategy is worthless",
+        "Quantifies: ~750 daily bars is a small sample; the standard error on Sharpe is roughly sqrt((1+S^2/2)/N), so a 3-year Sharpe has a wide CI",
+        "Names a correction: Deflated/Probabilistic Sharpe Ratio, or an explicit trials-adjusted threshold",
+        "Distinguishes in-sample selection from out-of-sample validation",
+        "Proposes a falsification: permutation/shuffle test, or hold-out data never touched by the search",
+        "Notes that reporting only the winner hides the distribution of the other 199"
+      ],
+      "trap": ["Accepts 1.9 as good because it is above some rule-of-thumb", "Recommends 'more trials' as the fix"]
+    },
+    {
+      "id": "depth-wfe-sufficient",
+      "prompt": "My walk-forward efficiency came out positive across five windows. Is that enough to deploy?",
+      "key": [
+        "No — five windows is a very small n; the sign test on 5 has almost no power",
+        "WFE > 0 only says OOS was not worse than IS; it does not establish the edge is economically meaningful",
+        "Asks about overlapping vs disjoint windows (overlap inflates apparent consistency)",
+        "Asks how many configurations were tried BEFORE these five windows were reported",
+        "Names what would raise confidence: more windows, disjoint data, trade count per window, a power floor",
+        "Distinguishes statistical significance from economic significance after costs"
+      ],
+      "trap": ["Yes, WFE>0 is the standard gate", "Suggests deploying at reduced size without addressing the power problem"]
+    },
+    {
+      "id": "depth-correlation-dominance",
+      "prompt": "My strategy's monthly returns correlate 0.7 with BTC dominance. Does that tell me the strategy is really just a bet on dominance?",
+      "key": [
+        "Correlation is not identification — a common driver can produce it without a causal link",
+        "Names plausible confounders: overall crypto risk appetite, market-wide vol regime, both being driven by the same flows",
+        "Asks about n: monthly returns over a few years is ~24-60 points; r=0.7 on small n has a wide CI",
+        "Notes correlation could be an artifact of a few shared extreme months — asks to check with those removed",
+        "Proposes a test: regress strategy returns on dominance and check residual alpha; or check whether the relationship holds out-of-sample / in sub-periods",
+        "Distinguishes 'exposed to dominance' from 'IS dominance' — partial exposure is normal and hedgeable"
+      ],
+      "trap": ["Yes, 0.7 means it is a dominance bet", "Dismisses it entirely as 'correlation is not causation' without proposing a test"]
+    },
+    {
+      "id": "depth-bar-truncation",
+      "prompt": "I discovered my daily OHLCV bars are written 50 minutes before the UTC close and never refreshed. What breaks, and how do I decide whether to backfill?",
+      "key": [
+        "The Close is wrong — it is a 23:10 snapshot, not the true daily close",
+        "Every Close-derived indicator is contaminated: returns, MAs, RSI, ATR, any crossover signal",
+        "This is NOT lookahead (it uses too little future, not too much) — it is a measurement error that biases toward stale prices",
+        "Magnitude depends on how much the asset moves in the final 50 minutes — quantifiable from intraday data",
+        "Backfill decision: compare corrected vs stored closes to size the error before deciding; if the error is small relative to signal thresholds it may not flip decisions",
+        "Notes downstream blast radius: anything already validated on the bad bars must be re-validated, not just recomputed"
+      ],
+      "trap": ["Calls it lookahead bias", "Says backfill everything immediately without sizing the error first"]
+    },
+    {
+      "id": "depth-permutation-null",
+      "prompt": "I want to permutation-test a strategy. What exactly should I be shuffling, and what could go wrong with the obvious choice?",
+      "key": [
+        "The null must destroy the edge being claimed while PRESERVING the properties you are not testing",
+        "Shuffling returns and re-chaining them destroys volatility clustering and autocorrelation — the synthetic series is not comparable to the real one",
+        "Specifically: naive re-chained permutation UNDERSTATES realised volatility, making the real strategy look better than it is",
+        "Names alternatives: block bootstrap, stationary bootstrap, vol-matched shuffle, or permuting signals rather than prices",
+        "Distinguishes permuting the SIGNAL (tests signal informativeness) from permuting PRICES (tests price-path dependence)",
+        "Proposes a sanity check: verify the synthetic series matches the real one on vol and autocorrelation before trusting the p-value"
+      ],
+      "trap": ["Just shuffle the returns", "Does not mention that the null distribution's properties must be checked"]
+    },
+    {
+      "id": "depth-weak-instances",
+      "prompt": "Several altcoin instances of my strategy have terrible standalone Sharpe ratios, but adding them to the portfolio improves the portfolio's Sharpe. Is that real or am I fooling myself?",
+      "key": [
+        "It can absolutely be real — portfolio Sharpe depends on correlation, not just standalone Sharpe",
+        "Mechanism: a low-Sharpe, low-correlation sleeve reduces portfolio variance more than it reduces return",
+        "States the condition: a component helps if its Sharpe exceeds (correlation x portfolio Sharpe) — quantifies rather than hand-waves",
+        "Names the way to fool yourself: correlations estimated in-sample on few observations are unstable and tend to rise in stress",
+        "Proposes a test: check the improvement out-of-sample, and stress it by assuming correlations go to 1 in drawdowns",
+        "Notes standalone Sharpe is the wrong lens for a component but the right lens for a standalone deployment"
+      ],
+      "trap": ["Says weak instances should always be cut", "Accepts the improvement without questioning correlation stability"]
+    },
+    {
+      "id": "depth-leverage-carry",
+      "prompt": "If I run a delta-neutral carry position at 2x instead of 1x, do I earn twice the funding? What about 4x?",
+      "key": [
+        "Funding accrues on notional, so 2x notional does roughly double gross funding income",
+        "But return on EQUITY is what matters, and the delta-neutral structure has a structural ceiling — both legs consume margin",
+        "Costs scale with notional too: fees, slippage, and borrow all double",
+        "Liquidation risk is the binding constraint — basis moves that were survivable at 1x are not at 4x",
+        "Quantifies: names the margin requirement or the basis move that would liquidate",
+        "Concludes leverage is the wrong lever for this structure — it scales income and ruin risk together without improving the ratio"
+      ],
+      "trap": ["Yes, 4x = 4x the income, full stop", "Warns vaguely about 'risk' without naming liquidation or the margin mechanism"]
+    },
+    {
+      "id": "depth-underpowered-verdict",
+      "prompt": "I ran 16 statistical tests on a strategy idea. Eleven of them had too few trades to be conclusive, and the other five came back negative. What is the honest verdict?",
+      "key": [
+        "The honest verdict is INCONCLUSIVE for the eleven, not negative — absence of evidence is not evidence of absence",
+        "Reporting this as '16 tests, all failed' would be wrong; the eleven carry almost no information",
+        "The five negatives are informative only if they were adequately powered — asks what the trade counts were",
+        "Names the fix: a minimum-trades power floor declared BEFORE running, so underpowered cells report a third state",
+        "Notes the multiple-testing angle cuts the other way here: with 16 tests you would expect some extremes by chance",
+        "Distinguishes 'this idea is dead' from 'this test cannot see it' — and says what data volume would be needed"
+      ],
+      "trap": ["Concludes the idea is dead", "Suggests lowering the significance threshold to get a verdict"]
+    },
+    {
+      "id": "depth-regime-momentum",
+      "prompt": "My momentum strategy made money for two years and has been flat for six months. How do I tell 'regime change' from 'the edge was never there'?",
+      "key": [
+        "Names the core difficulty: both hypotheses predict the same recent data, so recency alone cannot separate them",
+        "Proposes measuring the REGIME rather than the returns: realised vol, trend persistence / autocorrelation, dispersion — was the environment actually different?",
+        "Asks whether the flat period is within the historical drawdown distribution of the original backtest — if yes, it is uninformative",
+        "Quantifies: six months is a small number of independent observations for a slow strategy",
+        "Notes the base-rate problem: most strategies that stop working never worked, so the prior should lean that way",
+        "Proposes a pre-registered rule: define in advance what would constitute a kill, rather than deciding after the fact"
+      ],
+      "trap": ["Confidently declares regime change", "Recommends re-optimising parameters on the recent period"]
+    },
+    {
+      "id": "depth-dca-vs-lump",
+      "prompt": "Is daily DCA into BTC better than putting the same total amount in on day one? Give me the honest answer, not the comfortable one.",
+      "key": [
+        "In pure expected-value terms, if the asset has positive expected drift, lump-sum wins on average — time in the market dominates",
+        "Quantifies or names the reason: DCA holds cash that is not earning the drift",
+        "DCA's real benefits are variance of OUTCOME and behavioural: it reduces regret and the chance of a catastrophic entry timing",
+        "States the assumption the EV argument depends on: positive expected drift, which is exactly what is uncertain for BTC",
+        "Notes DCA is also a CASHFLOW strategy — if the money arrives monthly, lump-sum is not even available, and the comparison is a false one",
+        "Distinguishes the academic result from the operator's actual situation"
+      ],
+      "trap": ["DCA is always better because it lowers average cost", "Gives the textbook lump-sum answer without noting the cashflow case"]
+    }
+  ]
+}
