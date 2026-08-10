@@ -241,5 +241,46 @@ class TestLLMCompletionService:
         assert any("prompt_eval_count=42" in r.message for r in caplog.records)
 
 
+class TestReasoningControl:
+    """OLLAMA_REASONING — the thinking-model escape hatch.
+
+    The load-bearing property is the DEFAULT: unset must leave the OllamaLLM
+    constructor byte-identical to legacy, because the live backend serves from
+    this same checkout and would pick the change up on any restart.
+    """
+
+    @patch("src.coordinator.services.llm_completion_service.OllamaLLM")
+    def test_unset_never_passes_the_key_at_all(self, mock_ollama_class, monkeypatch):
+        monkeypatch.delenv("OLLAMA_REASONING", raising=False)
+        LLMCompletionService(base="http://localhost:11434", model="llama3.1:latest")
+        assert "reasoning" not in mock_ollama_class.call_args.kwargs
+
+    @patch("src.coordinator.services.llm_completion_service.OllamaLLM")
+    def test_false_is_forwarded_so_a_thinking_model_returns_content(
+        self, mock_ollama_class, monkeypatch
+    ):
+        """Without this a thinking model spends num_predict on its reasoning
+        stream and invoke() returns an empty string."""
+        monkeypatch.setenv("OLLAMA_REASONING", "false")
+        from src.coordinator.config import get_settings
+        get_settings.cache_clear()
+        try:
+            LLMCompletionService(base="http://localhost:11434", model="gemma4:26b")
+            assert mock_ollama_class.call_args.kwargs["reasoning"] is False
+        finally:
+            get_settings.cache_clear()
+
+    @patch("src.coordinator.services.llm_completion_service.OllamaLLM")
+    def test_true_is_forwarded_too(self, mock_ollama_class, monkeypatch):
+        monkeypatch.setenv("OLLAMA_REASONING", "true")
+        from src.coordinator.config import get_settings
+        get_settings.cache_clear()
+        try:
+            LLMCompletionService(base="http://localhost:11434", model="gemma4:26b")
+            assert mock_ollama_class.call_args.kwargs["reasoning"] is True
+        finally:
+            get_settings.cache_clear()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

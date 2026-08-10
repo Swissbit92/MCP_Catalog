@@ -51,6 +51,21 @@ class OllamaSettings(BaseSettings):
         ),
         alias="MODEL_MAX_OUTPUT_TOKENS"
     )
+    reasoning: bool | None = Field(
+        default=None,
+        description=(
+            "Ollama 'think' control for REASONING models. None (default) = the key is "
+            "never passed, so behaviour is byte-identical to a non-reasoning setup — "
+            "leave it unset for the current daily driver. Set false when running a "
+            "thinking model (gemma4, Hermes-4.3-36B/seed_oss, qwen3-thinking): those "
+            "emit a separate reasoning stream that consumes the whole num_predict "
+            "budget, so `OllamaLLM.invoke()` returns an EMPTY STRING through this path. "
+            "reasoning=False suppresses the thinking stream and restores real content. "
+            "Set true only to deliberately keep thinking on (costs ~3x the tokens per "
+            "turn, and at 400 output tokens the visible reply is usually truncated away)."
+        ),
+        alias="OLLAMA_REASONING"
+    )
 
     # Operation-specific temperature overrides
     temp_rewrite: float = Field(
