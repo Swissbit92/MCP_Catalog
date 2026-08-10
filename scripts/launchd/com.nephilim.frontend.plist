@@ -6,11 +6,11 @@
     <string>com.nephilim.frontend</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/swissbit./nephilim/nephilim/.venv/bin/python</string>
-        <string>/Users/swissbit./nephilim/nephilim/scripts/serve_frontend.py</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/.venv/bin/python</string>
+        <string>/Users/swissbit./nephilim-ecosystem/nephilim/scripts/serve_frontend.py</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/swissbit./nephilim/nephilim</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PORT</key>
@@ -21,8 +21,8 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-frontend.out.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/logs/launchd-frontend.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/swissbit./nephilim/nephilim/logs/launchd-frontend.err.log</string>
+    <string>/Users/swissbit./nephilim-ecosystem/nephilim/logs/launchd-frontend.err.log</string>
 </dict>
 </plist>
