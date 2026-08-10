@@ -120,7 +120,7 @@ python tests/manual/comprehensive_persona_test.py --persona nephilim_eeva --quic
 
 **Solana wallet integration and Jupiter DEX implementation**
 
-### [development/OAUTH_IMPLEMENTATION_PLAN.md](development/OAUTH_IMPLEMENTATION_PLAN.md)
+### [archive/2026-05/OAUTH_IMPLEMENTATION_PLAN.md](archive/2026-05/OAUTH_IMPLEMENTATION_PLAN.md)
 
 **Google OAuth integration design and implementation plan**
 
@@ -132,8 +132,8 @@ python tests/manual/comprehensive_persona_test.py --persona nephilim_eeva --quic
 
 | File | Description |
 |------|-------------|
-| [development/QA_WAVE1_REVIEW.md](development/QA_WAVE1_REVIEW.md) | Wave 1 QA gatekeeper review — Phase 7 component audit |
-| [development/UX_WAVE1_REVIEW.md](development/UX_WAVE1_REVIEW.md) | UX review findings for Phase 7 NEPHILIM UI |
+| [archive/2026-05/QA_WAVE1_REVIEW.md](archive/2026-05/QA_WAVE1_REVIEW.md) | Wave 1 QA gatekeeper review — Phase 7 component audit |
+| [archive/2026-05/UX_WAVE1_REVIEW.md](archive/2026-05/UX_WAVE1_REVIEW.md) | UX review findings for Phase 7 NEPHILIM UI |
 | [development/E2E_TEST_RUN.md](development/E2E_TEST_RUN.md) | Playwright E2E test results |
 | [development/EDGE_CASE_TEST_RESULTS.md](development/EDGE_CASE_TEST_RESULTS.md) | Edge case and adversarial test findings |
 | [development/UI_TESTING_BASELINE.md](development/UI_TESTING_BASELINE.md) | UI testing baseline snapshots and notes |
