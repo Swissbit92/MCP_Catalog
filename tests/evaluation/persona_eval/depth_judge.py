@@ -92,6 +92,28 @@ def depth_answers(results: List[dict]) -> Dict[str, str]:
     return out
 
 
+def _rebalance_sides(pairs: List[ab.BlindPair], rng: random.Random) -> List[ab.BlindPair]:
+    """Force a near-even left/right split of the two arms.
+
+    ``make_blind_pairs`` assigns sides by independent coin flip, which is
+    unbiased in expectation but not in any single small run — a seed that
+    happens to put the candidate on the left in 9 of 12 pairs hands a
+    left-preferring judge a free win. Since position bias is the largest
+    documented judge bias, at n=12 we want the split balanced by construction
+    rather than in expectation. Flips the minimum number of pairs (chosen at
+    random, so which pairs get flipped stays unpredictable) to reach
+    |#A_left - #B_left| <= 1.
+    """
+    a_left = [p for p in pairs if p.left_is == "A"]
+    b_left = [p for p in pairs if p.left_is == "B"]
+    over, under = (a_left, b_left) if len(a_left) > len(b_left) else (b_left, a_left)
+    n_flip = (len(over) - len(under)) // 2
+    for p in rng.sample(over, n_flip):
+        p.left, p.right = p.right, p.left
+        p.left_is = "B" if p.left_is == "A" else "A"
+    return pairs
+
+
 def build_depth_pairs(
     control_results: List[dict],
     candidate_results: List[dict],
@@ -111,7 +133,9 @@ def build_depth_pairs(
         }
         for pid in set(ctrl) & set(cand)
     }
-    return ab.make_blind_pairs(ctrl, cand, rng=random.Random(seed), meta=meta)
+    rng = random.Random(seed)
+    pairs = ab.make_blind_pairs(ctrl, cand, rng=rng, meta=meta)
+    return _rebalance_sides(pairs, rng)
 
 
 def _winner(pair: ab.BlindPair, pick: str) -> Optional[str]:

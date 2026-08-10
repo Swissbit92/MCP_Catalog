@@ -47,6 +47,29 @@ def test_pairs_carry_the_reference_key_for_the_judge():
     assert pairs[0].meta["prompt"] == "why?"
 
 
+def test_sides_are_balanced_by_construction_not_just_in_expectation():
+    """Independent coin flips gave 9/12 candidate-on-left for seed 0, which hands
+    a left-preferring judge a free win. Position bias is the largest documented
+    judge bias, so the split must be balanced, not merely unbiased on average."""
+    for seed in range(8):
+        ctrl = [_row(f"d{i}", f"c{i}") for i in range(12)]
+        cand = [_row(f"d{i}", f"x{i}") for i in range(12)]
+        pairs = dj.build_depth_pairs(ctrl, cand, seed=seed, probes={"probes": []})
+        a = sum(1 for p in pairs if p.left_is == "A")
+        assert abs(a - (len(pairs) - a)) <= 1, f"seed {seed}: lopsided {a}/{len(pairs) - a}"
+
+
+def test_rebalancing_preserves_which_text_belongs_to_which_arm():
+    """A flip must swap the TEXT and the label together — otherwise scoring
+    silently inverts and the candidate is credited with the control's answers."""
+    ctrl = [_row(f"d{i}", f"CONTROL{i}") for i in range(12)]
+    cand = [_row(f"d{i}", f"CANDIDATE{i}") for i in range(12)]
+    for seed in range(6):
+        for p in dj.build_depth_pairs(ctrl, cand, seed=seed, probes={"probes": []}):
+            control_text = p.left if p.left_is == "A" else p.right
+            assert control_text.startswith("CONTROL"), f"arm/text desync at seed {seed}"
+
+
 def test_arm_identity_is_hidden_but_recoverable_for_scoring():
     ctrl, cand = [_row("d1", "CONTROL")], [_row("d1", "CANDIDATE")]
     p = dj.build_depth_pairs(ctrl, cand, seed=3, probes={"probes": []})[0]
