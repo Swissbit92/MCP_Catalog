@@ -655,7 +655,7 @@ cd react-ui && npx playwright test --headed    # With browser visible
 | [CLAUDE.md](CLAUDE.md) | Developer guide, project structure, commands |
 | [docs/development/ADDING_MCP_SERVERS.md](docs/development/ADDING_MCP_SERVERS.md) | MCP integration guide |
 | [docs/development/TESTING_GUIDE.md](docs/development/TESTING_GUIDE.md) | Testing setup and best practices |
-| [docs/development/OAUTH_IMPLEMENTATION_PLAN.md](docs/development/OAUTH_IMPLEMENTATION_PLAN.md) | OAuth architecture and flow |
+| [docs/archive/2026-05/OAUTH_IMPLEMENTATION_PLAN.md](docs/archive/2026-05/OAUTH_IMPLEMENTATION_PLAN.md) | OAuth architecture and flow |
 | [docs/development/JUPITER_WALLET_IMPLEMENTATION.md](docs/development/JUPITER_WALLET_IMPLEMENTATION.md) | Wallet integration details |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 
