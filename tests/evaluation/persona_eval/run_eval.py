@@ -37,17 +37,30 @@ def responses_by_persona(results: List[dict], category: str = "distinctiveness")
     return out
 
 
-def compute_report(results: List[dict], embed_fn: Callable[[str], List[float]]) -> dict:
-    """Pure metric computation over collected results. No I/O, no live calls."""
+def compute_report(results: List[dict], embed_fn: Callable[[str], List[float]],
+                   frozen_personas: set = None) -> dict:
+    """Pure metric computation over collected results. No I/O, no live calls.
+
+    ``frozen_personas`` (frozen-gallery runs): those personas are reference
+    prototypes — only the active (non-frozen) personas are scored, so the gate
+    relaxes to >=2 responses for active personas (frozen are non-empty by
+    construction). Default None ⇒ byte-identical to the original full-run.
+    """
+    frozen = set(frozen_personas or ())
     dist = responses_by_persona(results, "distinctiveness")
     report: dict = {"n_results": len(results)}
 
-    # Headline: can we tell the personas apart by voice?
-    if len(dist) >= 2 and all(len(v) >= 2 for v in dist.values()):
-        report["distinctiveness"] = pm.attribution_accuracy(dist, embed_fn)
+    # Headline: can we tell the personas apart by voice? Only ACTIVE personas are scored.
+    active = [p for p in dist if p not in frozen]
+    if len(dist) >= 2 and len(active) >= 1 and all(len(dist[p]) >= 2 for p in active):
+        report["distinctiveness"] = pm.attribution_accuracy(dist, embed_fn, frozen_personas=frozen or None)
         report["mean_separation"] = pm.mean_separation(dist, embed_fn)
     else:
-        report["distinctiveness"] = {"error": "need >=2 personas with >=2 distinctiveness responses"}
+        # Original message verbatim when not a gallery run (byte-identical).
+        msg = "need >=2 personas with >=2 distinctiveness responses"
+        if frozen:
+            msg += " (active); frozen-gallery personas need >=1"
+        report["distinctiveness"] = {"error": msg}
 
     # Flatness per persona (across all categories) + overall.
     per_persona_answers: Dict[str, List[str]] = {}
@@ -124,12 +137,15 @@ def collect_live(base_url: str, probes: dict) -> List[dict]:  # pragma: no cover
     return results
 
 
-def freeze_baseline(label: str, results: List[dict], report: dict, stamp: str) -> Path:  # pragma: no cover - io
+def freeze_baseline(label: str, results: List[dict], report: dict, stamp: str,
+                    manifest: dict = None) -> Path:  # pragma: no cover - io
     _BASELINE_DIR.mkdir(exist_ok=True)
     path = _BASELINE_DIR / f"baseline_{label}_{stamp}.json"
+    payload = {"label": label, "stamp": stamp, "report": report, "results": results}
+    if manifest is not None:
+        payload["manifest"] = manifest  # additive: staleness-check inputs (frozen-gallery)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"label": label, "stamp": stamp, "report": report, "results": results},
-                  f, indent=2, ensure_ascii=True)
+        json.dump(payload, f, indent=2, ensure_ascii=True)
     return path
 
 
@@ -141,21 +157,59 @@ def main() -> int:  # pragma: no cover - live entry point
     ap.add_argument("--personas", default=None,
                     help="comma-separated canary subset (e.g. 'eeva,nyx'); default = all probe personas. "
                          "Dev-iteration only — the acceptance gate always runs the full set.")
+    ap.add_argument("--gallery", default=None,
+                    help="frozen reference gallery: a baseline label ('abliterated') or path. "
+                         "Re-probes only --personas live and freezes the OTHER personas from the "
+                         "gallery as reference prototypes, so chance stays 1/N and the result is "
+                         "comparable to that baseline. Requires --personas.")
     args = ap.parse_args()
+
+    import frozen_gallery as fg
 
     probes = pm.load_probes()
     if args.personas:
         subset = resolve_personas(args.personas.split(","), probes["personas"])
         probes = {**probes, "personas": subset}
         print(f"[canary] restricted to {len(subset)} personas: {subset}")
+
+    # Frozen-gallery mode: load dormant personas' responses + verify staleness.
+    frozen = None
+    dormant_rows: List[dict] = []
+    manifest = None
+    if args.gallery:
+        if not args.personas:
+            ap.error("--gallery requires --personas (the active subset to re-probe)")
+        active = set(probes["personas"])
+        gallery = fg.load_baseline(args.gallery)
+        dormant = fg.dormant_responses(gallery, active)
+        if not dormant:
+            ap.error(f"gallery {args.gallery!r} has no dormant personas outside {sorted(active)}")
+        manifest = fg.default_manifest(sorted(active | set(dormant)))
+        errors, warnings = fg.check_staleness(manifest, gallery.get("manifest"), active)
+        for w in warnings:
+            print(f"[gallery] ⚠️  {w}")
+        if errors:
+            for e in errors:
+                print(f"[gallery] ⛔ {e}")
+            print("Refusing: the frozen gallery is not comparable to a fresh run. Re-freeze it.")
+            return 2
+        frozen = set(dormant)
+        dormant_rows = fg.dormant_result_rows(dormant)
+        print(f"[gallery] frozen {len(frozen)} personas from {args.gallery}: {sorted(frozen)}")
+
     print(f"Collecting {args.label} over {len(probes['personas'])} personas...")
     results = collect_live(args.base_url, probes)
-    report = compute_report(results, pm.default_embed_fn())
+    results.extend(dormant_rows)  # empty unless --gallery
+    report = compute_report(results, pm.default_embed_fn(), frozen_personas=frozen)
+    if manifest is None:
+        manifest = fg.default_manifest(sorted(probes["personas"]))
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = freeze_baseline(args.label, results, report, stamp)
+    path = freeze_baseline(args.label, results, report, stamp, manifest=manifest)
     print(f"\nBaseline written → {path}")
     d = report.get("distinctiveness", {})
     print(f"distinctiveness overall={d.get('overall')} (random={d.get('random_baseline')})")
+    if frozen:
+        print(f"  scored={d.get('scored_personas')} frozen={d.get('frozen_personas')}")
     print(f"flatness overall={report.get('flatness_rate_overall')} grounding={report.get('grounding_flatness_rate')}")
     return 0
 

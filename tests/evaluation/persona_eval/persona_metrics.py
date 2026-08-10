@@ -23,7 +23,7 @@ import json
 import math
 import re
 from pathlib import Path
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional, Set
 
 EmbedFn = Callable[[str], List[float]]
 
@@ -63,42 +63,70 @@ def _centroid(vecs: List[List[float]]) -> List[float]:
 def attribution_accuracy(
     responses_by_persona: Dict[str, List[str]],
     embed_fn: EmbedFn,
+    frozen_personas: Optional[Set[str]] = None,
 ) -> dict:
     """Leave-one-out nearest-centroid persona attribution accuracy.
 
-    For each response, build every persona's centroid from its *other* responses
-    (the held-out sample is excluded from its own persona's centroid), then
-    predict the nearest centroid. Accuracy = fraction attributed to the true
-    persona. Higher ⇒ more distinct voices. Returns overall + per-persona +
-    random_baseline (1/num_personas).
+    For each *active* response, build every persona's centroid and predict the
+    nearest. Accuracy = fraction attributed to the true persona. Higher ⇒ more
+    distinct voices. Returns overall + per-persona + random_baseline
+    (1/num_personas — over ALL personas, active and frozen).
+
+    ``frozen_personas`` (frozen reference gallery, closed-set identification /
+    frozen-prototype NCM): personas whose centroid is a fixed reference prototype
+    — they compete in the nearest-centroid decision but are NOT themselves scored.
+    Use this to re-probe only the *active* personas while keeping the full label
+    space (so chance stays 1/N and the confusable dormant neighbours remain live
+    competitors — which is what prevents a subset run from inflating). Frozen
+    centroids need no leave-one-out (none of their responses are scored, so there
+    is nothing to hold out) and require only >=1 response; active personas are
+    scored via leave-one-out and require >=2. Default ``None`` ⇒ every persona is
+    active ⇒ byte-identical to the original full-run metric.
     """
     personas = [p for p, r in responses_by_persona.items() if r]
     if len(personas) < 2:
         raise ValueError("attribution needs >=2 personas with responses")
 
+    # Restrict frozen to personas that actually have responses — a frozen name
+    # with none can't be a competitor, so it's a silent no-op rather than an error.
+    frozen = set(frozen_personas or ()) & set(personas)
+    active = [p for p in personas if p not in frozen]
+    if not active:
+        raise ValueError("attribution needs >=1 non-frozen (active) persona to score")
+
     emb: Dict[str, List[List[float]]] = {
         p: [embed_fn(r) for r in responses_by_persona[p]] for p in personas
     }
-    for p in personas:
+    # Active personas are scored via leave-one-out → need >=2 responses each.
+    # (Frozen personas are reference prototypes, never scored, so >=1 suffices —
+    # already guaranteed non-empty by the `if r` filter above.)
+    for p in active:
         if len(emb[p]) < 2:
             raise ValueError(
                 f"persona '{p}' has <2 responses; leave-one-out attribution needs >=2"
             )
+
+    # Frozen reference centroids are static (full mean, no held-out sample).
+    frozen_cent: Dict[str, List[float]] = {p: _centroid(emb[p]) for p in frozen}
 
     correct = 0
     total = 0
     per_persona: Dict[str, float] = {}
     confusion: Dict[str, Dict[str, int]] = {}
 
-    for p in personas:
+    for p in active:
         p_correct = 0
         for i, vi in enumerate(emb[p]):
             best_q, best_sim = None, -2.0
             for q in personas:
-                vecs = [v for j, v in enumerate(emb[q]) if not (q == p and j == i)]
-                if not vecs:
-                    continue
-                sim = _cosine(vi, _centroid(vecs))
+                if q in frozen:
+                    cent = frozen_cent[q]
+                else:
+                    vecs = [v for j, v in enumerate(emb[q]) if not (q == p and j == i)]
+                    if not vecs:
+                        continue
+                    cent = _centroid(vecs)
+                sim = _cosine(vi, cent)
                 if sim > best_sim:
                     best_sim, best_q = sim, q
             total += 1
@@ -109,13 +137,19 @@ def attribution_accuracy(
                 p_correct += 1
         per_persona[p] = round(p_correct / len(emb[p]), 4)
 
-    return {
+    result = {
         "overall": round(correct / total, 4) if total else 0.0,
         "per_persona": per_persona,
         "confusion": confusion,
         "n": total,
         "random_baseline": round(1.0 / len(personas), 4),
     }
+    if frozen:
+        # Mark the run as a frozen-gallery run so compare_baselines / readers can
+        # see the scored subset without inferring it from key counts.
+        result["frozen_personas"] = sorted(frozen)
+        result["scored_personas"] = list(active)
+    return result
 
 
 def mean_separation(responses_by_persona: Dict[str, List[str]], embed_fn: EmbedFn) -> float:
@@ -237,14 +271,24 @@ def load_probes(path: Path | str | None = None) -> dict:
 
 
 def default_embed_fn() -> EmbedFn:  # pragma: no cover - live wiring
-    """bge-m3 embedder via Ollama, mirroring memory_rag's config. Live use only."""
+    """bge-m3 embedder via Ollama, mirroring memory_rag's config. Live use only.
+
+    Applies the SAME input normalization the coordinator uses everywhere else
+    (``memory_text_utils.truncate_for_embedding``: normalize whitespace + hard-cap
+    to one embeddable chunk). Without it, a response with unusual whitespace embeds
+    differently than the rest of the codebase, and a pathologically long response
+    can 500 Ollama at the bge-m3 8192-token window. Matches memory_rag's query
+    path, so a frozen gallery's re-embedded text stays in one consistent space.
+    """
     import sys
     # persona_eval → evaluation → tests → repo-root, then /src
     src = Path(__file__).resolve().parents[3] / "src"
     if str(src) not in sys.path:
         sys.path.insert(0, str(src))
     from coordinator.config import get_settings  # type: ignore
+    from coordinator.memory_text_utils import truncate_for_embedding  # type: ignore
     settings = get_settings()
+    max_tokens = settings.memory.embedding_max_tokens
     try:
         from langchain_ollama import OllamaEmbeddings  # type: ignore
     except ImportError:
@@ -254,4 +298,4 @@ def default_embed_fn() -> EmbedFn:  # pragma: no cover - live wiring
         base_url=settings.ollama.base,
         num_ctx=settings.memory.embedding_max_tokens,
     )
-    return lambda text: emb.embed_query(text)
+    return lambda text: emb.embed_query(truncate_for_embedding(text, max_tokens))

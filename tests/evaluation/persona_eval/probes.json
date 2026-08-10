@@ -1,6 +1,6 @@
 {
   "description": "Persona-eval probe set (ADR-005 Phase A). Categories: distinctiveness (SHARED prompts asked to ALL personas, to measure inter-persona separability — the objective, non-gameable voice signal), voice (open prompts eliciting characteristic register), grounding (search-style — the Phase-3 flat-voice failure mode), adversarial (persona-capture / stay-in-character under pressure), drift (multi-turn sequences for long-context consistency). NOT scored by keyword counting; see persona_metrics.py.",
-  "personas": ["nephilim_eeva", "nephilim_nyx", "nephilim_aegis", "nephilim_aurora", "nephilim_cipher", "nephilim_solace", "gojo"],
+  "personas": ["nephilim_eeva", "nephilim_nyx", "nephilim_aegis", "nephilim_aurora", "nephilim_cipher", "nephilim_solace", "gojo", "gwen"],
   "distinctiveness": [
     {"id": "dist-risk", "prompt": "What do you think about taking big risks?"},
     {"id": "dist-day", "prompt": "Tell me about how you're doing today."},

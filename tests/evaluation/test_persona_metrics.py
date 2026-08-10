@@ -105,7 +105,7 @@ def test_probes_load_and_have_categories():
     probes = pm.load_probes()
     for cat in ("distinctiveness", "voice", "grounding", "adversarial", "drift"):
         assert cat in probes, f"missing category {cat}"
-    assert len(probes["personas"]) == 7
+    assert len(probes["personas"]) == 8  # 6 NEPHILIM + gojo + gwen (gwen added → 8-persona ruler)
     # distinctiveness prompts are shared (asked to all personas) → need >=2 for attribution
     assert len(probes["distinctiveness"]) >= 2
     # drift probes carry multi-turn sequences
