@@ -143,7 +143,15 @@ def _apply_groundedness_gate(
     from ..services.groundedness_gate_service import GroundednessGateService
 
     try:
-        client = create_llm_client(card)
+        # Pass the classifier temperature EXPLICITLY. create_llm_client prefers
+        # the persona card's own model_preferences.temperature over the global,
+        # so without this the fact-checker inherits the SPEAKING persona's
+        # creative setting — cipher 0.65, eeva 0.7, nyx 0.95 — giving one safety
+        # control six sensitivities and different verdicts for a byte-identical
+        # draft. None restores the old inherit-from-persona behaviour.
+        client = create_llm_client(
+            card, temperature=get_settings().groundedness.classifier_temperature
+        )
         gate = GroundednessGateService(llm_client=client)
         verdict = gate.check(user_message, answer)
         if verdict.should_abstain:

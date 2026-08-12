@@ -112,3 +112,72 @@ def test_abstain_message_is_fixed_and_offers_search():
     # Never leak internals — must be a fixed voice-neutral string, not derived
     # from the flagged draft or user query.
     assert "Brazil" not in msg
+
+
+# ------------------------------------------------- classifier prompt (2026-08-12)
+
+from src.coordinator.services.groundedness_gate_service import (  # noqa: E402
+    _classifier_system,
+)
+
+
+def test_live_state_clause_is_present_by_default_and_removable():
+    """The measured blind spot: the gate passed 'your position is currently
+    unhedged' 5/5 because that is not a score/date/statistic about a real-world
+    EVENT. The clause closes it; the flag keeps the old trigger reachable."""
+    on = _classifier_system(live_state=True)
+    off = _classifier_system(live_state=False)
+    assert "hedged or unhedged" in on and "balance" in on
+    assert "hedged or unhedged" not in off
+    # Everything else must be identical — the flag isolates one clause.
+    assert len(on) > len(off)
+
+
+def test_reasoning_over_user_supplied_numbers_is_explicitly_excluded():
+    """The measured false-abstain: interpretive sentences over the USER's own
+    figures. Two of the destroyed answers had no digits, so a numeral rule
+    would not have helped — the exclusion has to name the concept."""
+    for s in (_classifier_system(True), _classifier_system(False)):
+        assert "THE USER SUPPLIED" in s
+        assert "0.7" in s  # the concrete anchor example
+        assert "mechanism" in s
+
+
+def test_classifier_is_told_to_judge_the_premise_not_the_argument():
+    """The adversarial case: valid reasoning from an invented figure. Without
+    this the judge grades 'is this reasoning?' and waves the premise through."""
+    s = _classifier_system(True)
+    assert "PREMISE" in s
+    assert "fabricated figure" in s
+
+
+def test_check_honours_the_live_state_flag(gate_enabled, monkeypatch):
+    monkeypatch.setenv("GROUNDEDNESS_LIVE_STATE_CLAIMS", "false")
+    get_settings.cache_clear()
+    client = MagicMock()
+    client.complete.return_value = "NO"
+    GroundednessGateService(llm_client=client).check("q", "draft")
+    system_arg = client.complete.call_args[0][0]
+    assert "hedged or unhedged" not in system_arg
+
+
+def test_full_draft_is_logged_when_the_gate_destroys_it(gate_enabled, caplog):
+    """Until 2026-08-12 only 80 chars were kept, so when the gate was found to
+    be binning good analysis the evidence had to be reconstructed from a
+    separate run. An unauditable safety control cannot be tuned."""
+    import logging
+
+    long_draft = "The mechanism is fee drag. " * 20  # ~540 chars
+    client = MagicMock()
+    client.complete.return_value = "YES"
+    with caplog.at_level(logging.WARNING,
+                         logger="src.coordinator.services.groundedness_gate_service"):
+        GroundednessGateService(llm_client=client).check("why?", long_draft)
+    logged = "\n".join(r.getMessage() for r in caplog.records)
+    assert long_draft in logged, "the destroyed draft must be recoverable from logs"
+
+
+def test_classifier_temperature_defaults_to_zero():
+    """A safety classifier that returns different verdicts for identical input
+    cannot be tuned. Measured: flip_rate 0.10 -> 0.00."""
+    assert get_settings().groundedness.classifier_temperature == 0.0

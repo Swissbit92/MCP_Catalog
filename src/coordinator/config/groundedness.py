@@ -45,6 +45,43 @@ class GroundednessSettings(BaseSettings):
         ),
         alias="GROUNDEDNESS_GATE_ENABLED",
     )
+    classifier_temperature: float | None = Field(
+        default=0.0,
+        ge=0.0,
+        le=2.0,
+        description=(
+            "Sampling temperature for the gate's CLASSIFIER call. None = inherit the "
+            "speaking persona's profile (pre-2026-08-12 behaviour). Default 0.0: the "
+            "classifier makes a binary decision, not creative writing, and it "
+            "previously inherited whatever the SPEAKING persona declared — cipher "
+            "0.65, eeva 0.7, nyx 0.95 — so one safety control had six sensitivities "
+            "and could return different verdicts for a byte-identical draft. "
+            "MEASURED (19-case eval set, 5 repeats): flip_rate 0.10 -> 0.00, with "
+            "catch_rate 0.90 and false_abstain_rate 0.10 BOTH UNCHANGED — this buys "
+            "reproducibility, not accuracy. NOTE: PERSONA_TEMPERATURE cannot control "
+            "this; create_llm_client prefers the persona card's own override, so the "
+            "value must be passed explicitly at the call site."
+        ),
+        alias="GROUNDEDNESS_CLASSIFIER_TEMPERATURE",
+    )
+    live_state_claims_enabled: bool = Field(
+        default=True,
+        description=(
+            "Extend the classifier's trigger to cover unverified claims about the "
+            "USER'S OWN LIVE STATE — position hedged/unhedged, balance, holdings, "
+            "open orders — not just real-world events. This is a TIGHTENING. "
+            "MEASURED 2026-08-12: the gate passed 'your position is currently "
+            "unhedged after the rebalance, so you're carrying directional risk' on "
+            "5 of 5 attempts, because that claim is not a score, date, statistic or "
+            "outcome about a real-world event and so falls outside the original "
+            "trigger. It contains no digits, and numeral-presence was separately "
+            "measured NOT to predict gate firing. This is the highest-blast-radius "
+            "shape in the system: an unverified assertion about live position state, "
+            "wrapped in valid reasoning, on the persona that proposes wallet swaps. "
+            "Set false to restore the pre-fix trigger definition."
+        ),
+        alias="GROUNDEDNESS_LIVE_STATE_CLAIMS",
+    )
     reinforcement_check_enabled: bool = Field(
         default=False,
         description=(
