@@ -21,9 +21,10 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import re
 from pathlib import Path
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional, Set
 
 EmbedFn = Callable[[str], List[float]]
 
@@ -63,42 +64,70 @@ def _centroid(vecs: List[List[float]]) -> List[float]:
 def attribution_accuracy(
     responses_by_persona: Dict[str, List[str]],
     embed_fn: EmbedFn,
+    frozen_personas: Optional[Set[str]] = None,
 ) -> dict:
     """Leave-one-out nearest-centroid persona attribution accuracy.
 
-    For each response, build every persona's centroid from its *other* responses
-    (the held-out sample is excluded from its own persona's centroid), then
-    predict the nearest centroid. Accuracy = fraction attributed to the true
-    persona. Higher ⇒ more distinct voices. Returns overall + per-persona +
-    random_baseline (1/num_personas).
+    For each *active* response, build every persona's centroid and predict the
+    nearest. Accuracy = fraction attributed to the true persona. Higher ⇒ more
+    distinct voices. Returns overall + per-persona + random_baseline
+    (1/num_personas — over ALL personas, active and frozen).
+
+    ``frozen_personas`` (frozen reference gallery, closed-set identification /
+    frozen-prototype NCM): personas whose centroid is a fixed reference prototype
+    — they compete in the nearest-centroid decision but are NOT themselves scored.
+    Use this to re-probe only the *active* personas while keeping the full label
+    space (so chance stays 1/N and the confusable dormant neighbours remain live
+    competitors — which is what prevents a subset run from inflating). Frozen
+    centroids need no leave-one-out (none of their responses are scored, so there
+    is nothing to hold out) and require only >=1 response; active personas are
+    scored via leave-one-out and require >=2. Default ``None`` ⇒ every persona is
+    active ⇒ byte-identical to the original full-run metric.
     """
     personas = [p for p, r in responses_by_persona.items() if r]
     if len(personas) < 2:
         raise ValueError("attribution needs >=2 personas with responses")
 
+    # Restrict frozen to personas that actually have responses — a frozen name
+    # with none can't be a competitor, so it's a silent no-op rather than an error.
+    frozen = set(frozen_personas or ()) & set(personas)
+    active = [p for p in personas if p not in frozen]
+    if not active:
+        raise ValueError("attribution needs >=1 non-frozen (active) persona to score")
+
     emb: Dict[str, List[List[float]]] = {
         p: [embed_fn(r) for r in responses_by_persona[p]] for p in personas
     }
-    for p in personas:
+    # Active personas are scored via leave-one-out → need >=2 responses each.
+    # (Frozen personas are reference prototypes, never scored, so >=1 suffices —
+    # already guaranteed non-empty by the `if r` filter above.)
+    for p in active:
         if len(emb[p]) < 2:
             raise ValueError(
                 f"persona '{p}' has <2 responses; leave-one-out attribution needs >=2"
             )
+
+    # Frozen reference centroids are static (full mean, no held-out sample).
+    frozen_cent: Dict[str, List[float]] = {p: _centroid(emb[p]) for p in frozen}
 
     correct = 0
     total = 0
     per_persona: Dict[str, float] = {}
     confusion: Dict[str, Dict[str, int]] = {}
 
-    for p in personas:
+    for p in active:
         p_correct = 0
         for i, vi in enumerate(emb[p]):
             best_q, best_sim = None, -2.0
             for q in personas:
-                vecs = [v for j, v in enumerate(emb[q]) if not (q == p and j == i)]
-                if not vecs:
-                    continue
-                sim = _cosine(vi, _centroid(vecs))
+                if q in frozen:
+                    cent = frozen_cent[q]
+                else:
+                    vecs = [v for j, v in enumerate(emb[q]) if not (q == p and j == i)]
+                    if not vecs:
+                        continue
+                    cent = _centroid(vecs)
+                sim = _cosine(vi, cent)
                 if sim > best_sim:
                     best_sim, best_q = sim, q
             total += 1
@@ -109,13 +138,19 @@ def attribution_accuracy(
                 p_correct += 1
         per_persona[p] = round(p_correct / len(emb[p]), 4)
 
-    return {
+    result = {
         "overall": round(correct / total, 4) if total else 0.0,
         "per_persona": per_persona,
         "confusion": confusion,
         "n": total,
         "random_baseline": round(1.0 / len(personas), 4),
     }
+    if frozen:
+        # Mark the run as a frozen-gallery run so compare_baselines / readers can
+        # see the scored subset without inferring it from key counts.
+        result["frozen_personas"] = sorted(frozen)
+        result["scored_personas"] = list(active)
+    return result
 
 
 def mean_separation(responses_by_persona: Dict[str, List[str]], embed_fn: EmbedFn) -> float:
@@ -228,6 +263,256 @@ def is_abstention(response: str) -> bool:
     return any(m in low for m in _ABSTENTION_MARKERS)
 
 
+# ----- research-depth metrics (pure, headless) -----
+#
+# These score ANALYTICAL quality, the axis attribution_accuracy is blind to. A
+# model swap justified by reasoning capability needs a ruler for reasoning, not
+# only one for voice.
+#
+# ⚠️ THESE ARE CROSS-CHECKS, NOT A SCORE. Never average them into a verdict and
+# never gate on them alone. Every one is inflatable by a model that has learned
+# to sound analytical — which is precisely the failure the retired keyword
+# `persona_voice` scorer walked into. Their job is to CONTRADICT the human judge
+# when the judge has been fooled by verbosity: if the judge says arm B is deeper
+# but B's causal density is flat and its word count is up 40%, the judge was
+# rating length. That tripwire is the whole point.
+#
+# Evidence: causal-connective density is the one proxy with published support for
+# tracking reasoning *correctness* rather than reading level (arXiv 2602.09832).
+# Hedging is deliberately BINARY — models' fine-grained hedge calibration is
+# unreliable (arXiv 2605.28778), but "did it hedge at all" maps cleanly onto the
+# uncertainty rubric dimension. Length is tracked because it is the single
+# largest documented judge bias, ~8-13x the effect of formatting (LMSYS 2024).
+
+# Causal/explanatory connectives (PDTB-style). "since" and "as" are omitted:
+# both are ambiguous with temporal/comparative senses and would inflate the count.
+_CAUSAL_CONNECTIVES = [
+    "because", "therefore", "thus", "hence", "consequently", "so that",
+    "as a result", "which is why", "due to", "owing to", "leads to", "lead to",
+    "results in", "result in", "causes", "caused by", "drives", "driven by",
+    "gives rise to", "that is why", "the reason", "explains why",
+]
+
+# Contrastive/concessive markers — evidence the answer weighed an alternative
+# rather than asserting one line.
+_CONTRASTIVE_CONNECTIVES = [
+    "however", "whereas", "although", "though", "on the other hand",
+    "conversely", "in contrast", "by contrast", "but if", "that said",
+    "on the contrary", "rather than", "instead of", "unlike",
+]
+
+# Epistemic-uncertainty markers. Checked as a BINARY signal (see note above).
+_HEDGE_MARKERS = [
+    "might", "may be", "could be", "possibly", "perhaps", "uncertain",
+    "unclear", "not sure", "hard to say", "i don't know", "i do not know",
+    "depends on", "assuming", "if that holds", "roughly", "approximately",
+    "in the region of", "order of magnitude", "i'd want to check",
+    "i would want to check", "cannot tell", "can't tell", "wide confidence",
+    "not enough data", "too few", "underpowered",
+]
+
+# Markers of a proposed test/measurement — the "falsify" rubric dimension.
+_FALSIFICATION_MARKERS = [
+    "test", "check", "measure", "verify", "compare", "recompute",
+    "backtest", "out-of-sample", "out of sample", "hold-out", "holdout",
+    "would settle", "would tell you", "would confirm", "would rule out",
+    "run a", "re-run", "rerun", "sanity check", "cross-check",
+]
+
+_NUMERIC = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?\s*(?:%|x\b|bps\b)?")
+_WORD = re.compile(r"[A-Za-z0-9']+")
+
+
+def word_count(text: str) -> int:
+    """Words in a response. The length-bias control variable."""
+    return len(_WORD.findall(text or ""))
+
+
+def _phrase_hits(text: str, phrases: List[str]) -> List[str]:
+    low = (text or "").lower()
+    return [p for p in phrases if p in low]
+
+
+def _density_per_100w(text: str, phrases: List[str]) -> float:
+    """Marker occurrences per 100 words — length-normalised by construction.
+
+    Normalising is essential: a raw count rewards a longer answer for being
+    longer, which is the exact bias this metric exists to detect.
+    """
+    n = word_count(text)
+    if n == 0:
+        return 0.0
+    low = (text or "").lower()
+    hits = sum(low.count(p) for p in phrases)
+    return round(100.0 * hits / n, 3)
+
+
+def causal_density(text: str) -> float:
+    """Causal connectives per 100 words. The best-evidenced depth proxy."""
+    return _density_per_100w(text, _CAUSAL_CONNECTIVES)
+
+
+def contrastive_density(text: str) -> float:
+    """Contrastive/concessive markers per 100 words (did it weigh alternatives?)."""
+    return _density_per_100w(text, _CONTRASTIVE_CONNECTIVES)
+
+
+def numeric_density(text: str) -> float:
+    """Numeric tokens per 100 words — the 'quantify' dimension, coarsely."""
+    n = word_count(text)
+    if n == 0:
+        return 0.0
+    return round(100.0 * len(_NUMERIC.findall(text or "")) / n, 3)
+
+
+def has_hedge(text: str) -> bool:
+    """Binary: did the response acknowledge uncertainty at all?"""
+    return bool(_phrase_hits(text, _HEDGE_MARKERS))
+
+
+def has_falsification(text: str) -> bool:
+    """Binary: did the response propose a test/measurement that would settle it?"""
+    return bool(_phrase_hits(text, _FALSIFICATION_MARKERS))
+
+
+def depth_profile(text: str) -> dict:
+    """Every deterministic depth signal for one response, as a flat dict."""
+    return {
+        "words": word_count(text),
+        "causal_density": causal_density(text),
+        "contrastive_density": contrastive_density(text),
+        "numeric_density": numeric_density(text),
+        "has_hedge": has_hedge(text),
+        "has_falsification": has_falsification(text),
+    }
+
+
+def aggregate_depth_profiles(texts: List[str]) -> dict:
+    """Mean densities + hedge/falsification RATES over a set of responses."""
+    profiles = [depth_profile(t) for t in texts if t]
+    if not profiles:
+        return {"n": 0}
+    n = len(profiles)
+    mean = lambda k: round(sum(p[k] for p in profiles) / n, 3)  # noqa: E731
+    rate = lambda k: round(sum(1 for p in profiles if p[k]) / n, 4)  # noqa: E731
+    return {
+        "n": n,
+        "mean_words": mean("words"),
+        "mean_causal_density": mean("causal_density"),
+        "mean_contrastive_density": mean("contrastive_density"),
+        "mean_numeric_density": mean("numeric_density"),
+        "hedge_rate": rate("has_hedge"),
+        "falsification_rate": rate("has_falsification"),
+    }
+
+
+# ----- paired statistics for a two-arm gate -----
+
+def pearson_r(xs: List[float], ys: List[float]) -> float | None:
+    """Pearson correlation. Returns None when undefined (n<2 or zero variance)."""
+    n = len(xs)
+    if n < 2 or n != len(ys):
+        return None
+    mx, my = sum(xs) / n, sum(ys) / n
+    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    dx = math.sqrt(sum((x - mx) ** 2 for x in xs))
+    dy = math.sqrt(sum((y - my) ** 2 for y in ys))
+    if dx == 0 or dy == 0:
+        return None
+    return round(num / (dx * dy), 4)
+
+
+def length_bias_check(
+    length_deltas: List[float], score_deltas: List[float], threshold: float = 0.5
+) -> dict:
+    """The verbosity tripwire.
+
+    Correlates per-probe (candidate_length − control_length) against
+    (candidate_score − control_score). A strong positive correlation means the
+    judge's preference tracked length, so the depth result is not trustworthy on
+    its own — the documented failure mode where a 91%-fooled judge rewards a
+    longer answer (Zheng et al. 2023) and the reason AlpacaEval 2.0 fits a
+    length term at all.
+
+    ``triggered`` is a flag to investigate, NOT a verdict: a genuinely deeper
+    answer is often legitimately longer. It says "re-check length-matched
+    before trusting this", not "the candidate lost".
+
+    **The sweep blind spot.** Correlation is undefined when the score deltas have
+    zero variance — which is exactly what a clean sweep looks like (every delta
+    +1). That is the case where the question matters most, and a bare Pearson
+    check passes it silently. So when r is undefined we fall back to *sign
+    concordance*: among pairs where both deltas are non-zero, how often did the
+    arm that won also happen to be the longer one? An all-wins, all-longer sweep
+    scores 1.0 and trips the wire. Concordance is only consulted when r is
+    undefined — where r exists it is the better statistic, and using both would
+    double-count.
+    """
+    r = pearson_r(length_deltas, score_deltas)
+    concordance = None
+    n_signed = 0
+    if r is None:
+        agree = 0
+        for ld, sd in zip(length_deltas, score_deltas):
+            if ld == 0 or sd == 0:
+                continue
+            n_signed += 1
+            if (ld > 0) == (sd > 0):
+                agree += 1
+        if n_signed:
+            concordance = round(agree / n_signed, 4)
+
+    by_r = r is not None and r >= threshold
+    # Require a few signed pairs before trusting concordance — 2-for-2 is noise.
+    by_concordance = concordance is not None and n_signed >= 5 and concordance >= 0.8
+    triggered = bool(by_r or by_concordance)
+    return {
+        "pearson_r": r,
+        "sign_concordance": concordance,
+        "n": len(length_deltas),
+        "n_signed": n_signed,
+        "threshold": threshold,
+        "triggered": triggered,
+        "note": (
+            "length may be driving the preference — re-judge length-matched"
+            if triggered
+            else "no strong length/score coupling"
+        ),
+    }
+
+
+def paired_bootstrap(
+    deltas: List[float],
+    n_resamples: int = 2000,
+    conf: float = 0.90,
+    seed: int = 0,
+) -> dict:
+    """Percentile bootstrap CI on the mean paired delta (candidate − control).
+
+    Nonparametric and pairing-preserving — the right tool at n≈12, where a
+    t-test's normality assumption is unverifiable. ``excludes_zero`` is the gate
+    condition: the interval must not straddle 0 for the difference to count.
+    """
+    n = len(deltas)
+    if n == 0:
+        return {"n": 0, "mean": None, "ci": None, "excludes_zero": False}
+    rng = random.Random(seed)
+    means = []
+    for _ in range(n_resamples):
+        means.append(sum(deltas[rng.randrange(n)] for _ in range(n)) / n)
+    means.sort()
+    lo_i = int((1 - conf) / 2 * n_resamples)
+    hi_i = min(n_resamples - 1, int((1 + conf) / 2 * n_resamples))
+    lo, hi = means[lo_i], means[hi_i]
+    return {
+        "n": n,
+        "mean": round(sum(deltas) / n, 4),
+        "ci": [round(lo, 4), round(hi, 4)],
+        "conf": conf,
+        "excludes_zero": (lo > 0 or hi < 0),
+    }
+
+
 # ----- helpers -----
 
 def load_probes(path: Path | str | None = None) -> dict:
@@ -236,15 +521,32 @@ def load_probes(path: Path | str | None = None) -> dict:
         return json.load(f)
 
 
+def load_depth_probes(path: Path | str | None = None) -> dict:
+    """The research-depth probe set (analytical quality, not voice)."""
+    p = Path(path) if path else Path(__file__).parent / "research_depth_probes.json"
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def default_embed_fn() -> EmbedFn:  # pragma: no cover - live wiring
-    """bge-m3 embedder via Ollama, mirroring memory_rag's config. Live use only."""
+    """bge-m3 embedder via Ollama, mirroring memory_rag's config. Live use only.
+
+    Applies the SAME input normalization the coordinator uses everywhere else
+    (``memory_text_utils.truncate_for_embedding``: normalize whitespace + hard-cap
+    to one embeddable chunk). Without it, a response with unusual whitespace embeds
+    differently than the rest of the codebase, and a pathologically long response
+    can 500 Ollama at the bge-m3 8192-token window. Matches memory_rag's query
+    path, so a frozen gallery's re-embedded text stays in one consistent space.
+    """
     import sys
     # persona_eval → evaluation → tests → repo-root, then /src
     src = Path(__file__).resolve().parents[3] / "src"
     if str(src) not in sys.path:
         sys.path.insert(0, str(src))
     from coordinator.config import get_settings  # type: ignore
+    from coordinator.memory_text_utils import truncate_for_embedding  # type: ignore
     settings = get_settings()
+    max_tokens = settings.memory.embedding_max_tokens
     try:
         from langchain_ollama import OllamaEmbeddings  # type: ignore
     except ImportError:
@@ -254,4 +556,4 @@ def default_embed_fn() -> EmbedFn:  # pragma: no cover - live wiring
         base_url=settings.ollama.base,
         num_ctx=settings.memory.embedding_max_tokens,
     )
-    return lambda text: emb.embed_query(text)
+    return lambda text: emb.embed_query(truncate_for_embedding(text, max_tokens))
