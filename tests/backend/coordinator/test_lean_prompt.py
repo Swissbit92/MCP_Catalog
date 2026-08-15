@@ -293,3 +293,94 @@ def test_eeva_exemplars_no_longer_route_to_solace():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+# --------------------------------------------------------------------------
+# Per-persona <format> override (2026-08-12)
+#
+# Root cause it addresses: LEAN_FORMAT ("reply like texting, not essays...
+# 1-2 sentences") applies to every persona and caps analytical depth. Adding a
+# counter-instruction to a persona card was MEASURED not to win — small models
+# default to the dominant trained pattern when instructions conflict. So the
+# block is swapped, never supplemented.
+# --------------------------------------------------------------------------
+
+from src.coordinator.config import get_settings  # noqa: E402
+
+
+@pytest.fixture
+def _fresh_settings():
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def format_override_on(monkeypatch, _fresh_settings):
+    monkeypatch.setenv("PERSONA_FORMAT_OVERRIDE_ENABLED", "true")
+    get_settings.cache_clear()
+    return True
+
+
+def _card(style=None):
+    return {"dialogue_prefs": {"format_style": style}} if style else {"dialogue_prefs": {}}
+
+
+def test_default_is_byte_identical_texting(_fresh_settings):
+    """Flag off => every persona keeps LEAN_FORMAT, even one asking for analytical."""
+    assert pb._resolve_format_block(_card()) == pb.LEAN_FORMAT
+    assert pb._resolve_format_block(_card("analytical")) == pb.LEAN_FORMAT
+
+
+def test_analytical_style_swaps_the_block_when_enabled(format_override_on):
+    assert pb._resolve_format_block(_card("analytical")) == pb.LEAN_FORMAT_ANALYTICAL
+
+
+def test_a_persona_that_declares_nothing_still_gets_texting(format_override_on):
+    assert pb._resolve_format_block(_card()) == pb.LEAN_FORMAT
+    assert pb._resolve_format_block({}) == pb.LEAN_FORMAT
+
+
+def test_the_blocks_replace_each_other_and_never_coexist(format_override_on):
+    """The load-bearing property. If both reached the prompt the model would
+    face the exact contradiction ('texting, not essays' vs 'answer first, then
+    explain') that small models resolve by defaulting to chat brevity — which
+    is the bug this exists to fix."""
+    analytical = pb._resolve_format_block(_card("analytical"))
+    assert "texting" not in analytical.lower()
+    assert "1-2 sentences" not in analytical
+    texting = pb._resolve_format_block(_card("texting"))
+    assert "Answer first" not in texting
+
+
+def test_analytical_block_carries_the_anti_deferral_instruction(format_override_on):
+    """The measured symptom was structure-then-defer: name the method, then ask
+    a question instead of giving the finding."""
+    a = pb._resolve_format_block(_card("analytical"))
+    assert "Answer first" in a
+    assert "only when you genuinely cannot answer" in a
+    assert "never close on an offer to look something up" in a
+    assert "<msg>" in a  # multi-message rendering must survive
+
+
+def test_unknown_or_malformed_style_degrades_to_texting_never_raises(format_override_on):
+    """A typo in a persona file must not take chat down."""
+    assert pb._resolve_format_block(_card("ANALYTIC")) == pb.LEAN_FORMAT
+    assert pb._resolve_format_block(_card("essays")) == pb.LEAN_FORMAT
+    assert pb._resolve_format_block({"dialogue_prefs": {"format_style": 42}}) == pb.LEAN_FORMAT
+    assert pb._resolve_format_block({"dialogue_prefs": "not-a-dict"}) == pb.LEAN_FORMAT
+    assert pb._resolve_format_block({"dialogue_prefs": None}) == pb.LEAN_FORMAT
+
+
+def test_style_matching_is_case_and_whitespace_tolerant(format_override_on):
+    assert pb._resolve_format_block(_card("  Analytical ")) == pb.LEAN_FORMAT_ANALYTICAL
+
+
+def test_no_shipped_persona_opts_in():
+    """Regression guard: this feature must stay inert on prod by absence, not
+    only by flag. If a persona ever declares format_style, that is a deliberate
+    behavioural change and should fail here until the eval gate has run."""
+    for p in Path("personas").glob("*.json"):
+        card = json.loads(p.read_text())
+        style = (card.get("dialogue_prefs") or {}).get("format_style")
+        assert style is None, f"{p.name} declares format_style={style!r} — eval-gate it first"

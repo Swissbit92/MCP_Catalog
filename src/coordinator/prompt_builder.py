@@ -36,6 +36,34 @@ LEAN_FORMAT = """Reply like texting, not essays. When your reply has multiple be
 <msg>First beat — react or answer</msg>
 <msg>Then a follow-up or a question</msg>"""
 
+# Alternative <format> block for personas whose job is analysis rather than
+# company. REPLACES LEAN_FORMAT — it is never appended alongside it.
+#
+# Why a swap and not an extra instruction: measured 2026-08-12, adding
+# "finish the analysis" to a persona card while LEAN_FORMAT still said "reply
+# like texting, not essays" moved the needle barely at all. Small models do not
+# arbitrate conflicting instructions — they fall back on whichever pattern is
+# stronger in training, and chat-shaped brevity wins every time. Instruction
+# position does not fix it either. The conflicting block has to go.
+#
+# Shape of the fix, from the evidence: lead with the conclusion (a late-stage
+# stylistic reflex can intercept an answer that arrives last), give explicit
+# permission to stop asking questions (LEAN_COMPANION_PREAMBLE's "answer first
+# then ask" was being executed as ask-and-skip-the-answer), and keep <msg>
+# chunking so multi-message rendering still works.
+LEAN_FORMAT_ANALYTICAL = """Answer first, then explain. Open with the actual conclusion — the number, the mechanism, the verdict — in your first <msg>, then give the reasoning that supports it. Split into 3-6 <msg> chunks; a chunk may run several sentences when the substance needs them.
+Finish the thought before handing it back. Ask a question only when you genuinely cannot answer without it, and never close on an offer to look something up in place of saying what you already know.
+<msg>The direct answer, stated plainly</msg>
+<msg>Why — the mechanism, with numbers where they exist</msg>
+<msg>What would change it, or what you are unsure of</msg>"""
+
+# persona dialogue_prefs.format_style -> block. A constrained enum, not free
+# text: a persona file must not be able to inject arbitrary system instructions.
+_FORMAT_STYLES = {
+    "texting": LEAN_FORMAT,
+    "analytical": LEAN_FORMAT_ANALYTICAL,
+}
+
 LEAN_COMPANION_PREAMBLE = """You are a companion, not a Q&A bot. Lead with genuine curiosity, answer first then ask (2-3 questions max), and let your personality shape every reply."""
 
 LEAN_MEMORY = """Use the full conversation history: recall the names, holdings, goals, and preferences the Seeker shared, and build on earlier turns instead of repeating basics."""
@@ -240,6 +268,34 @@ def _lean_voice_block(card: Dict) -> str:
     return "\n".join(lines)
 
 
+def _resolve_format_block(card: Dict) -> str:
+    """Pick the <format> block for this persona.
+
+    Returns LEAN_FORMAT unless BOTH the feature flag is on AND the persona
+    explicitly declares a known `dialogue_prefs.format_style`. Two independent
+    conditions on purpose: no shipped persona declares one, so the feature is
+    already inert by absence, and the flag adds a single-env-var kill switch
+    for the case where an analytical persona is live and misbehaving.
+
+    An unknown style falls back to LEAN_FORMAT rather than raising — a typo in
+    a persona file should degrade to today's behaviour, not take chat down.
+
+    Static per-persona data + a process-level flag, so this stays safe inside
+    build_system_prompt's lru_cache (same reasoning as the tool-intent block).
+    """
+    from .config import get_settings  # noqa: PLC0415 - avoid import cycle at module load
+
+    if not get_settings().agent.persona_format_override:
+        return LEAN_FORMAT
+    dialog = card.get("dialogue_prefs") or {}
+    if not isinstance(dialog, dict):
+        return LEAN_FORMAT
+    style = dialog.get("format_style")
+    if not isinstance(style, str):
+        return LEAN_FORMAT
+    return _FORMAT_STYLES.get(style.strip().lower(), LEAN_FORMAT)
+
+
 def _lean_companion_block(card: Dict) -> str:
     """Compressed behavior + psychology — a few high-signal positive lines."""
     behavior = card.get("behavior") or {}
@@ -403,7 +459,7 @@ def _build_system_prompt_lean(selector: Optional[str]) -> str:
         parts.extend(["", "<tools>", "\n\n".join(tool_sections), "</tools>"])
 
     parts.extend(["", "<memory>", LEAN_MEMORY, "</memory>"])
-    parts.extend(["", "<format>", LEAN_FORMAT, "</format>"])
+    parts.extend(["", "<format>", _resolve_format_block(card), "</format>"])
     parts.extend(["", "<safety>", LEAN_SAFETY, "</safety>"])
 
     parts.extend([

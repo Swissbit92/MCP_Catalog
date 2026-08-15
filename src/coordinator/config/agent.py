@@ -47,6 +47,25 @@ class AgentSettings(BaseSettings):
         ),
         alias="PERSONA_TOOL_INTENT_IN_PROMPT",
     )
+    persona_format_override: bool = Field(
+        default=False,
+        description=(
+            "Let a persona choose its <format> block via "
+            "dialogue_prefs.format_style ('texting' | 'analytical') instead of "
+            "always receiving LEAN_FORMAT. Default OFF = byte-identical; and no "
+            "shipped persona declares a format_style, so the feature is inert by "
+            "absence too — the flag is a single-env-var kill switch. WHY A SWAP "
+            "AND NOT AN ADDITION: measured 2026-08-12, adding 'finish the "
+            "analysis' to a persona card while LEAN_FORMAT still said 'reply "
+            "like texting, not essays' barely moved the output. Small models do "
+            "not arbitrate conflicting instructions — they fall back on the "
+            "pattern that is stronger in training, and instruction position does "
+            "not decide it. Behavioral for any persona that opts in, so it is "
+            "eval-gated (analytical depth AND voice) before a flip. Set "
+            "PERSONA_FORMAT_OVERRIDE_ENABLED=true to enable."
+        ),
+        alias="PERSONA_FORMAT_OVERRIDE_ENABLED",
+    )
 
     model_config = {
         "env_file": ".env",
