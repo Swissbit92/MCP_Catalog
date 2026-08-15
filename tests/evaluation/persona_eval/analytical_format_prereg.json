@@ -1,0 +1,61 @@
+{
+  "title": "Does swapping LEAN_FORMAT for LEAN_FORMAT_ANALYTICAL raise analytical depth?",
+  "registered": "2026-08-12",
+  "registered_before_any_data_collected": true,
+  "why_this_document_exists": "Three times in this programme a promising mean failed to survive a paired test: gemma4 vs abliterated, Cipher vs Eeva, and the first Cipher persona-card variant. Each time the temptation was to pick the metric that looked best after seeing the numbers. Fixing the endpoint, the test and the decision rule in advance is the only defence, and it costs nothing to write down first.",
+
+  "hypothesis": "Cipher receiving LEAN_FORMAT_ANALYTICAL instead of LEAN_FORMAT produces answers with greater analytical depth, because the swap removes the instruction conflict rather than adding to it.",
+
+  "design": {
+    "arms": {
+      "control": "prod Cipher, PERSONA_FORMAT_OVERRIDE_ENABLED unset -> LEAN_FORMAT",
+      "candidate": "Cipher with dialogue_prefs.format_style='analytical', flag on -> LEAN_FORMAT_ANALYTICAL"
+    },
+    "single_variable": "Only the <format> block differs. Same model, same persona card otherwise, same probes, same sampling, same backend build, same groundedness-gate configuration.",
+    "items": 12,
+    "repeats_per_item_per_arm": 5,
+    "temperature": "persona default (cipher 0.65) — production behaviour, not temp 0",
+    "total_generations": 120
+  },
+
+  "primary_endpoint": {
+    "metric": "causal_density",
+    "unit": "per-item mean over the 5 repeats, then the paired difference (candidate - control) across the 12 items",
+    "why": "It is the one deterministic signal with published support for tracking reasoning CORRECTNESS rather than reading level, and it is length-normalised, so it cannot be won by writing more. Word count is deliberately NOT the primary endpoint: the change is expected to increase length, and rewarding that would measure compliance with the instruction rather than improved reasoning."
+  },
+
+  "primary_test": {
+    "name": "exact item-level permutation test",
+    "procedure": "Flip the arm label independently within each of the 12 items (2^12 = 4096 assignments, enumerated exhaustively — no sampling), recompute the mean paired difference each time, two-sided p = fraction of permutations with |statistic| >= |observed|.",
+    "why_not_pooled": "Pooling all 60 samples per arm as independent is pseudo-replication: repeats within an item are correlated. The unit of independence is the ITEM. Repeats sharpen each item's estimate; they cannot add degrees of freedom.",
+    "alpha": 0.05,
+    "sided": "two"
+  },
+
+  "confirmatory_test": {
+    "name": "exact sign test on the 12 item-level paired differences",
+    "note": "Reported for auditability. At n=12 this needs 10/12 items favouring the candidate to reach p<0.05 (exact p=0.0386); 9/12 gives p=0.146 and is NOT significant."
+  },
+
+  "secondary_metrics": {
+    "metrics": ["words", "numeric_density", "contrastive_density", "hedge_rate", "falsification_rate"],
+    "status": "DESCRIPTIVE ONLY — reported with effect sizes, excluded from the ship decision, no p-values consulted. Testing all of them and reporting the winner is the p-hacking this document exists to prevent."
+  },
+
+  "decision_rule": {
+    "SHIP": "primary permutation p < 0.05 AND the direction favours the candidate AND >= 10/12 items favour the candidate on the primary endpoint.",
+    "KILL": "primary permutation p >= 0.05 AND paired Cohen's d < 0.3 — i.e. genuinely flat, not merely underpowered.",
+    "INCONCLUSIVE": "primary permutation p >= 0.05 AND paired Cohen's d >= 0.5. At n=12 a large true effect still has only ~71-88% power, so this outcome means 'the design cannot see it', NOT 'it does not work'. Correct follow-up is MORE ITEMS (n~18-20), not more repeats — repeats are already spent and hit diminishing returns."
+  },
+
+  "voice_gate": {
+    "rule": "Independent of the depth verdict, the candidate must not break Cipher's voice. Any SHIP is provisional until an ADR-005 attribution run clears match-or-beat. A depth win bought with a voice regression is not a win for a companion.",
+    "note": "Not run in this round; recorded so a later reader does not mistake a depth SHIP for full authorisation to flip."
+  },
+
+  "known_limitations": [
+    "n=12 items is the binding constraint on power, not sampling noise.",
+    "Single persona (Cipher). A result here does not license flipping the format for warm/companion personas, where the tradeoff is the opposite one.",
+    "The probes and their reference criteria were written by the same author as the format block, so in-sample enthusiasm is a real risk — this is why the endpoint and rule are fixed in advance."
+  ]
+}

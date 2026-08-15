@@ -1,0 +1,58 @@
+{
+  "primary_endpoint": "causal_density",
+  "secondary_are_descriptive_only": true,
+  "causal_density": {
+    "n_items": 12,
+    "control_mean": 0.2673,
+    "candidate_mean": 0.3428,
+    "mean_delta": 0.0755,
+    "sign_test": {
+      "favour_candidate": 6,
+      "favour_control": 4,
+      "ties": 2,
+      "p": 0.753906
+    },
+    "cohens_d": 0.1554,
+    "permutation_p": 0.595703,
+    "VERDICT": "KILL \u2014 p=0.595703, d=0.1554: genuinely flat, not merely underpowered."
+  },
+  "words": {
+    "n_items": 12,
+    "control_mean": 73.3833,
+    "candidate_mean": 51.5167,
+    "mean_delta": -21.8667,
+    "sign_test": {
+      "favour_candidate": 0,
+      "favour_control": 12,
+      "ties": 0,
+      "p": 0.000488
+    },
+    "cohens_d": -1.6866
+  },
+  "numeric_density": {
+    "n_items": 12,
+    "control_mean": 0.9276,
+    "candidate_mean": 0.6825,
+    "mean_delta": -0.2451,
+    "sign_test": {
+      "favour_candidate": 3,
+      "favour_control": 5,
+      "ties": 4,
+      "p": 0.726562
+    },
+    "cohens_d": -0.3322
+  },
+  "contrastive_density": {
+    "n_items": 12,
+    "control_mean": 0.1113,
+    "candidate_mean": 0.212,
+    "mean_delta": 0.1007,
+    "sign_test": {
+      "favour_candidate": 6,
+      "favour_control": 2,
+      "ties": 4,
+      "p": 0.289062
+    },
+    "cohens_d": 0.4875
+  }
+}
