@@ -26,6 +26,9 @@ not an always-on service. It therefore runs in **exclusive mode**: the resident 
 LLM may be briefly unloaded during a generation session, freeing the full 48 GB. This removes the
 memory pressure that would otherwise force small models and cheap sampling.
 
+- **Style scope (decided 2026-08-19 — keep distinct, two bases):** each persona keeps her own
+  established look rather than unifying to one house style. gwen → cartoon/NSFW (Pony); eeva and
+  all other personas → anime (Illustrious/NoobAI). Per-persona LoRAs make two bases cheap to run.
 - **Serving runtime:** **ComfyUI**, run headless as a launchd-style local HTTP/WebSocket server,
   driven by the FastAPI coordinator (templated workflow-JSON per persona; submit → poll/`/ws` →
   fetch PNG; async job, never a synchronous route — a single quality-pipeline image is tens of
@@ -96,10 +99,6 @@ trainer for FLUX/Qwen matures. The operator declined the cloud step for now (202
 
 ## Open questions (not yet decided)
 
-- **Distinct vs unified style:** keep each persona's current distinct look (nyx anime / gwen
-  cartoon → the two-base plan above), or unify toward one house style (one base + restyle). Leaning
-  keep-distinct, which validates the two-base plan; a quick pilot could test whether a single
-  Pony-based anime merge renders *both* looks well enough via per-persona LoRAs.
 - **Exact checkpoints/merges** for each family (settle at build time).
 - **Trigger + surface wiring:** how a persona decides to generate an image (tool/intent —
   candidate home is the ADR-008 tool brain surface + ADR-009 registry, alongside `image_search`),
