@@ -66,11 +66,15 @@ class LLMCompletionService:
             # Without this, Ollama falls back to its own default (32K), ignoring
             # MODEL_CONTEXT_WINDOW. See config.OllamaSettings.context_window.
             "num_ctx": get_settings().ollama.context_window,
-            # keep_alive=-1 keeps the model loaded INDEFINITELY (always-warm) so a
-            # chat never pays a cold ~17GB reload (default is 5min idle). Chosen for
-            # the always-on desktop station: holds ~17GB RAM (fine on 48GB) and costs
-            # no heat/CPU — an idle resident model doesn't compute.
-            "keep_alive": -1,
+            # keep_alive defaults to "-1" — the model stays loaded INDEFINITELY
+            # (always-warm) so a chat never pays a cold ~17GB reload (Ollama's own
+            # default is 5min idle). Deliberate for this always-on station: a resident
+            # model holds VRAM but computes nothing, so it costs no heat or CPU.
+            # Now configurable via OLLAMA_KEEP_ALIVE — the summarisation utilities use
+            # the SEPARATE, shorter OLLAMA_UTILITY_KEEP_ALIVE, because they run on the
+            # default model and would otherwise pin a SECOND model for the process
+            # lifetime (7.46GB of gemma2 alongside this 17.54GB, observed 2026-08-22).
+            "keep_alive": get_settings().ollama.keep_alive,
             # num_predict caps generated tokens per turn. Turn latency is ~linear in
             # output tokens at ~16 tok/s, so an unbounded reply can run 30s+. This is a
             # generous backstop against runaway verbosity; typical brevity is driven by

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Ollama `keep_alive` is configurable, and the summarisation utilities no longer pin a model indefinitely.** It was hardcoded to `-1` in three places. For the chat path that is deliberate and documented — an always-warm ~17GB model costs VRAM but no CPU, and avoids a cold reload on every conversation. For `prompt_builder` and `cv_summarizer` it was not: both are rarely-run summarisation helpers, and pinning them held a model resident for the entire process lifetime. Observed 2026-08-22: **25.66GB across three models on a 52GB box, 30% free, 162k pageouts.** Two new settings — `OLLAMA_KEEP_ALIVE` (chat, default `"-1"`, behaviour unchanged) and `OLLAMA_UTILITY_KEEP_ALIVE` (utilities, default `"10m"`). The chat default is deliberately left at `-1` so warm-start latency is not silently regressed; lower it only if the box is under memory pressure and a cold first chat is acceptable. 1967 backend tests unchanged.
+
+
 ### Changed (2026-08-22) — Decompose `startup.py` into `di/{repositories,services,jupiter}.py` (repo-audit rec #7)
 
 Behavior-preserving, zero test changes required. Suite 2156 passing / 43 skipped (unchanged before/after); `coverage_delta.py` exit 0 (no collected test lost); full-repo ruff **1855 → 1825** (net reduction — the split's mechanical `Optional[X]`→`X | None`/import-sort backlog additions were auto-fixed with `ruff --fix` scoped to just the touched files). Live startup wiring smoke-tested end-to-end (`init_db → init_repositories → init_memory_manager → init_phase3_memory → init_brave_client → init_jupiter → init_strategy_scheduler → cleanup_orphaned_sessions → build_app_state`) against a scratch SQLite DB with Jupiter/Brave disabled, confirming `AppState.wallet_repo`/`trade_proposal_repo`/`brave_client` correctly resolve to `None` rather than raising.
