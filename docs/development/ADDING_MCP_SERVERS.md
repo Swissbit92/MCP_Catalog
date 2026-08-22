@@ -1211,7 +1211,7 @@ When adding a new MCP server, ensure:
 
 ## Related Documentation
 
-- **[CLAUDE.md](../CLAUDE.md)** - Developer guide and project structure
+- **[CLAUDE.md](../../CLAUDE.md)** - Developer guide and project structure
 - **[README.md](../README.md)** - User-facing documentation
 
 ---
