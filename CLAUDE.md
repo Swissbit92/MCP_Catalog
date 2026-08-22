@@ -60,7 +60,8 @@ docker-compose --env-file .env.docker up -d
 ### Backend (`src/coordinator/`)
 
 ```
-server.py, startup.py          # App entry, lifecycle (startup = init sequencer; publishes AppState on app.state.container)
+server.py, startup.py          # App entry, lifecycle (startup.py = thin orchestrator: initialize_all() ordering + build_app_state(); publishes AppState on app.state.container)
+di/                            # 2026-08-22: startup.py's 25 get_*/8 init_* functions + globals, split by cluster — repositories.py (12 SQLite repos + init_db/Alembic), services.py (Brave/memory/RAG/facts/tool-interceptor), jupiter.py (Jupiter MCP/wallet exec/strategy/scheduler). startup.py re-exports every name (`from .di.X import name`) so `startup.get_X`/`init_X` keep resolving unchanged — do not import di/* directly elsewhere, go through startup.get_X() as before
 app_state.py, dependencies.py  # DI composition root: AppState (typed snapshot of every startup singleton) + FastAPI Depends providers (require_*→503 when uninit, optional_*→None). Providers resolve startup.get_X() at CALL TIME (module-attr, not `from ..startup import`), so tests patching src.coordinator.startup.get_X still intercept
 config/, schemas.py            # Settings package (per-subsystem: llm/search/memory/wallet/auth/routing/lore/agent/groundedness; __init__ = composition root + get_settings), API schemas
 routes/                        # chat.py, sessions.py, personas.py, nephilim.py, auth.py

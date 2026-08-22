@@ -1,588 +1,117 @@
 # src/coordinator/startup.py
-"""Application startup and initialization logic."""
+"""Application startup and initialization logic — the composition root.
+
+The 25 ``get_*``/8 ``init_*`` functions that used to live directly in this
+file (752 lines, flagged as the #1 structural fix in the 2026-07-04 and
+2026-08-22 repo audits) are now split by cluster into ``di/``:
+
+- ``di.repositories`` — the 12 SQLite repositories + DB/Alembic init + orphan
+  cleanup.
+- ``di.services`` — Brave MCP, memory manager, Phase 3 RAG/fact-extraction,
+  tool interceptor.
+- ``di.jupiter`` — Jupiter MCP, wallet execution/strategy services, scheduler.
+
+This module re-exports every one of those names via plain
+``from .di.X import name`` — a *name binding*, not a copy — so
+``src.coordinator.startup.get_X`` / ``startup.init_X`` keep resolving exactly
+as before. That is deliberate, not a shim to be "cleaned up" later:
+
+- ``dependencies.py``'s FastAPI providers resolve through
+  ``startup.get_X()`` (module-attribute lookup, not ``from .startup import
+  get_X``) specifically so tests patching ``src.coordinator.startup.get_X``
+  still intercept. Moving the *definitions* to ``di/*.py`` does not disturb
+  this: patching the ``startup`` module's attribute still overrides what
+  every caller sees, because every caller (routes, services, tests) resolves
+  through this module's namespace, either via ``from .. import startup`` +
+  ``startup.get_X()``, or via ``from ..startup import get_X`` (which binds
+  the same function object at import time — unaffected by *where* that
+  object's code lives).
+- What stays here, and only here: ``initialize_all()`` (the ordered startup
+  sequence), ``build_app_state()``/``get_app_state()`` (the AppState
+  snapshot), and the three background pre-warm threads that don't belong to
+  any one cluster (semantic router centroids, persona system-prompt cache).
+
+See ``app_state.py`` and ``dependencies.py`` for the typed-DI layer this
+composition root feeds (added 2026-07 M1-M3, ADR referenced in CLAUDE.md).
+"""
 
 from __future__ import annotations
 
-import os
 import logging
-from typing import Optional
 
-from .config import get_settings
-from .ollama_utils import assert_model_available
-from .mcp_client_stdio import BraveMCPClientStdio
-from .persona_memory import _load_all_cards_cached, ensure_all_summaries_serialized
-from .repositories.session_repository import SessionRepository
-from .repositories.message_repository import MessageRepository
-from .repositories.session_note_repository import SessionNoteRepository
-from .repositories.summary_repository import SummaryRepository
-from .repositories.emotional_state_repository import EmotionalStateRepository
-from .repositories.user_profile_repository import UserProfileRepository
-from .repositories.seeker_progression_repository import SeekerProgressionRepository
-from .repositories.user_repository import UserRepository
-from .repositories.wallet_registry_repository import WalletRegistryRepository
-from .repositories.wallet_summary_repository import WalletSummaryRepository
-from .repositories.wallet_flow_repository import WalletFlowRepository
-from .repositories.trade_history_repository import TradeHistoryRepository
-from .memory_manager import MemoryManager, ConversationSummarizer
-from .memory_rag import EpisodicMemoryRAG
-from .fact_extractor import FactExtractor
 from .app_state import AppState
+from .config import get_settings
+from .di.jupiter import (  # noqa: F401 - re-exported for startup.get_X()/init_X()
+    get_jupiter_client,
+    get_jupiter_ops,
+    get_strategy_scheduler,
+    get_strategy_service,
+    get_trade_proposal_repo,
+    get_wallet_execution_service,
+    get_wallet_repo,
+    init_jupiter,
+    init_strategy_scheduler,
+)
+from .di.repositories import (  # noqa: F401 - re-exported for startup.get_X()/init_X()
+    _DB_PATH,
+    cleanup_orphaned_sessions,
+    get_emotional_state_repo,
+    get_message_repo,
+    get_seeker_progression_repo,
+    get_session_note_repo,
+    get_session_repo,
+    get_summary_repo,
+    get_trade_history_repo,
+    get_user_profile_repo,
+    get_user_repo,
+    get_wallet_flow_repo,
+    get_wallet_registry_repo,
+    get_wallet_summary_repo,
+    init_db,
+    init_repositories,
+)
+from .di.services import (  # noqa: F401 - re-exported for startup.get_X()/init_X()
+    get_brave_client,
+    get_conversation_summarizer,
+    get_episodic_memory_rag,
+    get_fact_extraction_worker,
+    get_fact_extractor,
+    get_memory_fact_repo,
+    get_memory_manager,
+    get_tool_interceptor,
+    init_brave_client,
+    init_memory_manager,
+    init_phase3_memory,
+    prewarm_session_indexes,
+)
+from .ollama_utils import assert_model_available
+from .persona_memory import _load_all_cards_cached, ensure_all_summaries_serialized
 
 logger = logging.getLogger(__name__)
 
-# ----------------- Global State -----------------
-_DB_PATH = os.environ.get("COORDINATOR_DB_PATH", "data/chats.db")
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True) if os.path.dirname(_DB_PATH) else None
-
-# MCP Clients
-_brave_client: Optional[BraveMCPClientStdio] = None
-
-# Jupiter MCP + Strategy Scheduler
-_jupiter_client = None
-_jupiter_ops = None
-_wallet_execution_service = None
-_strategy_service = None
-_wallet_repo = None
-_trade_proposal_repo = None
-_strategy_scheduler = None
-
-# Repositories
-_session_repo: Optional[SessionRepository] = None
-_message_repo: Optional[MessageRepository] = None
-_session_note_repo: Optional[SessionNoteRepository] = None
-_summary_repo: Optional[SummaryRepository] = None
-_emotional_state_repo: Optional[EmotionalStateRepository] = None
-_user_profile_repo: Optional[UserProfileRepository] = None
-_seeker_progression_repo: Optional[SeekerProgressionRepository] = None
-_user_repo: Optional[UserRepository] = None
-
-# Wallet Metadata Layer
-_wallet_registry_repo: Optional[WalletRegistryRepository] = None
-_wallet_summary_repo: Optional[WalletSummaryRepository] = None
-_wallet_flow_repo: Optional[WalletFlowRepository] = None
-_trade_history_repo: Optional[TradeHistoryRepository] = None
-
-# Memory Management (Phase 2)
-_memory_manager: Optional[MemoryManager] = None
-_conversation_summarizer: Optional[ConversationSummarizer] = None
-
-# Phase 3: Advanced AI Memory
-_episodic_memory_rag: Optional[EpisodicMemoryRAG] = None
-_fact_extractor: Optional[FactExtractor] = None
-
-# ADR-006 Phase 1 (M3/M4): ontology-lite fact store + async extraction worker
-_memory_fact_repo = None        # Optional[MemoryFactRepository] (shared read/write)
-_fact_extraction_worker = None  # Optional[FactExtractionWorker]
-
-# Composition root: an AppState snapshot of the globals above, built at the tail
-# of initialize_all() and mirrored onto app.state.container (see server.py).
-_app_state: Optional[AppState] = None
-
-
-# ----------------- Getters -----------------
-
-def get_brave_client() -> Optional[BraveMCPClientStdio]:
-    """Get the global Brave MCP client instance (STDIO ephemeral containers)."""
-    return _brave_client
-
-
-def get_session_repo() -> SessionRepository:
-    """Get the session repository."""
-    if _session_repo is None:
-        raise RuntimeError("SessionRepository not initialized — server startup incomplete")
-    return _session_repo
-
-
-def get_session_note_repo() -> SessionNoteRepository:
-    """Return the per-session author's-note repo (ADR-011)."""
-    if _session_note_repo is None:
-        raise RuntimeError("SessionNoteRepository not initialized — server startup incomplete")
-    return _session_note_repo
-
-
-def get_message_repo() -> MessageRepository:
-    """Get the message repository."""
-    if _message_repo is None:
-        raise RuntimeError("MessageRepository not initialized — server startup incomplete")
-    return _message_repo
-
-
-def get_summary_repo() -> SummaryRepository:
-    """Get the summary repository."""
-    if _summary_repo is None:
-        raise RuntimeError("SummaryRepository not initialized — server startup incomplete")
-    return _summary_repo
-
-
-def get_emotional_state_repo() -> EmotionalStateRepository:
-    """Get the emotional state repository."""
-    if _emotional_state_repo is None:
-        raise RuntimeError("EmotionalStateRepository not initialized — server startup incomplete")
-    return _emotional_state_repo
-
-
-def get_memory_manager() -> MemoryManager:
-    """Get the memory manager."""
-    if _memory_manager is None:
-        raise RuntimeError("MemoryManager not initialized — server startup incomplete")
-    return _memory_manager
-
-
-def get_conversation_summarizer() -> ConversationSummarizer:
-    """Get the conversation summarizer."""
-    if _conversation_summarizer is None:
-        raise RuntimeError("ConversationSummarizer not initialized — server startup incomplete")
-    return _conversation_summarizer
-
-
-def get_user_profile_repo() -> UserProfileRepository:
-    """Get the user profile repository."""
-    if _user_profile_repo is None:
-        raise RuntimeError("UserProfileRepository not initialized — server startup incomplete")
-    return _user_profile_repo
-
-
-def get_user_repo() -> UserRepository:
-    """Get the OAuth user repository."""
-    if _user_repo is None:
-        raise RuntimeError("UserRepository not initialized — server startup incomplete")
-    return _user_repo
-
-
-def get_seeker_progression_repo() -> SeekerProgressionRepository:
-    """Get the NEPHILIM seeker progression repository."""
-    if _seeker_progression_repo is None:
-        raise RuntimeError("SeekerProgressionRepository not initialized — server startup incomplete")
-    return _seeker_progression_repo
-
-
-def get_wallet_registry_repo() -> Optional[WalletRegistryRepository]:
-    """Get the wallet registry repository."""
-    return _wallet_registry_repo
-
-
-def get_wallet_summary_repo() -> Optional[WalletSummaryRepository]:
-    """Get the wallet summary repository."""
-    return _wallet_summary_repo
-
-
-def get_wallet_flow_repo() -> Optional[WalletFlowRepository]:
-    """Get the guided wallet-creation flow-state repository."""
-    return _wallet_flow_repo
-
-
-def get_trade_history_repo() -> Optional[TradeHistoryRepository]:
-    """Get the trade history repository."""
-    return _trade_history_repo
-
-
-def get_episodic_memory_rag() -> Optional[EpisodicMemoryRAG]:
-    """Get the episodic memory RAG system."""
-    return _episodic_memory_rag
-
-
-def get_fact_extractor() -> Optional[FactExtractor]:
-    """Get the fact extractor."""
-    return _fact_extractor
-
-
-def get_fact_extraction_worker():
-    """Get the async ontology-lite fact-extraction worker (None when facts disabled)."""
-    return _fact_extraction_worker
-
-
-def get_memory_fact_repo():
-    """Get the shared ontology-lite fact store (None until initialised)."""
-    return _memory_fact_repo
-
-
-# HERMES-Agents Phase 3: deterministic tool-call interceptor (stateless singleton)
-_tool_interceptor = None
-
-
-def get_tool_interceptor():
-    """Get the shared ToolCallInterceptor (lazy; stateless, safe to share)."""
-    global _tool_interceptor
-    if _tool_interceptor is None:
-        from .services.tool_interceptor import ToolCallInterceptor
-        _tool_interceptor = ToolCallInterceptor()
-    return _tool_interceptor
-
-
-# Jupiter MCP getters
-
-def get_jupiter_client():
-    """Get the global Jupiter MCP client instance."""
-    return _jupiter_client
-
-
-def get_jupiter_ops():
-    """Get the global Jupiter operations instance."""
-    return _jupiter_ops
-
-
-def get_wallet_execution_service():
-    """Get the wallet execution service."""
-    return _wallet_execution_service
-
-
-def get_strategy_service():
-    """Get the strategy service."""
-    return _strategy_service
-
-
-def get_wallet_repo():
-    """Get the wallet repository."""
-    if _wallet_repo is None:
-        raise RuntimeError("WalletRepository not initialized — server startup incomplete")
-    return _wallet_repo
-
-
-def get_trade_proposal_repo():
-    """Get the trade proposal repository."""
-    if _trade_proposal_repo is None:
-        raise RuntimeError("TradeProposalRepository not initialized — server startup incomplete")
-    return _trade_proposal_repo
-
-
-def get_strategy_scheduler():
-    """Get the global APScheduler instance."""
-    return _strategy_scheduler
-
-
-# ----------------- Initialization Functions -----------------
-
-def init_brave_client():
-    """Initialize Brave MCP client if enabled."""
-    global _brave_client
-
-    brave_cfg = get_settings().brave
-    if not brave_cfg.enabled:
-        logger.info("Brave MCP is disabled (no API key)")
-        return
-
-    try:
-        api_key = brave_cfg.api_key
-        max_results = brave_cfg.max_results
-        safesearch = brave_cfg.safesearch
-        timeout = brave_cfg.timeout
-
-        _brave_client = BraveMCPClientStdio(
-            image=os.getenv("BRAVE_MCP_IMAGE", "docker.io/mcp/brave-search"),
-            api_key=api_key,
-            max_results=max_results,
-            safesearch=safesearch,
-            timeout=timeout
-        )
-
-        # Verify Docker daemon is reachable (Brave MCP requires Docker)
-        if not _brave_client.health_check():
-            logger.error(
-                "Brave MCP client created but Docker is NOT running. "
-                "Web search will fail until Docker Desktop is started."
-            )
-            _brave_client = None
-        else:
-            logger.info(f"Brave MCP STDIO client initialized (image={_brave_client.image}, max_results={max_results}, timeout={timeout}s)")
-    except Exception as e:
-        logger.error(f"Failed to initialize Brave MCP client: {e}")
-        _brave_client = None
-
-
-def init_repositories():
-    """Initialize database repositories."""
-    global _session_repo, _message_repo, _summary_repo, _emotional_state_repo
-    global _user_profile_repo, _seeker_progression_repo, _user_repo
-    global _wallet_registry_repo, _wallet_summary_repo, _trade_history_repo
-    global _wallet_flow_repo, _session_note_repo
-
-    _session_repo = SessionRepository(_DB_PATH)
-    _message_repo = MessageRepository(_DB_PATH)
-    _session_note_repo = SessionNoteRepository(_DB_PATH)
-    _summary_repo = SummaryRepository(_DB_PATH)
-    _emotional_state_repo = EmotionalStateRepository(_DB_PATH)
-    _user_profile_repo = UserProfileRepository(_DB_PATH)
-    _seeker_progression_repo = SeekerProgressionRepository(_DB_PATH)
-    _user_repo = UserRepository(_DB_PATH)
-    _user_repo._ensure_tables()
-
-    # Wallet Metadata Layer
-    _wallet_registry_repo = WalletRegistryRepository(_DB_PATH)
-    _wallet_summary_repo = WalletSummaryRepository(_DB_PATH)
-    _trade_history_repo = TradeHistoryRepository(_DB_PATH)
-    _wallet_flow_repo = WalletFlowRepository(_DB_PATH)
-
-    # Reset all wallet unlock states on startup (wallets are locked until user provides password)
-    _wallet_summary_repo.reset_all_unlock_states()
-    # Sweep any wallet-creation flows abandoned before a restart
-    _wallet_flow_repo.sweep_stale()
-
-    logger.info("Repositories initialized (Phase 1-3 + NEPHILIM Progression + OAuth + Wallet Metadata)")
-
-
-def init_memory_manager():
-    """Initialize memory management components."""
-    global _memory_manager, _conversation_summarizer
-
-    _memory_manager = MemoryManager(max_tokens=get_settings().ollama.context_window)
-    _conversation_summarizer = ConversationSummarizer()
-    logger.info("Memory manager initialized (Phase 2)")
-
-
-def prewarm_session_indexes(rag, session_repo, message_repo, limit: int) -> int:
-    """ADR-006 M1: pre-index the ``limit`` most-recently-updated sessions.
-
-    Rebuilds each session's FAISS index from its SQLite messages (the same path
-    the chat flow runs lazily on first access), so a restart doesn't impose a
-    cold-start re-index latency on the user's first message. SQLite remains the
-    source of truth — this loses no data and is safe to skip.
-
-    Pure and synchronous for testability; the caller runs it in a daemon thread.
-    Each session is isolated so one failure can't abort the rest. Returns the
-    number of sessions successfully warmed.
+# Composition root: an AppState snapshot of the di/* singletons, built at the
+# tail of initialize_all() and mirrored onto app.state.container (see server.py).
+_app_state: AppState | None = None
+
+
+def _safe(getter):
+    """Call a raise-on-missing di getter, collapsing "not initialized" to None.
+
+    build_app_state() wants the raw nullable value (a disabled/failed
+    subsystem is a legitimate None in the snapshot), while several di
+    getters raise RuntimeError instead of returning None so route/service
+    callers get a clean 503 via dependencies.py. This reconciles the two: the
+    result is identical to reading the underlying global directly, whether
+    or not it happens to be initialized yet.
     """
-    if rag is None or limit <= 0:
-        return 0
-    warmed = 0
     try:
-        sessions = session_repo.get_all_sessions()
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.debug(f"[SessionPrewarm] could not list sessions (non-fatal): {exc}")
-        return 0
-    for s in sessions[:limit]:
-        if s.get("message_count", 0) <= 0:
-            continue
-        try:
-            msgs = message_repo.get_messages_by_session(s["id"])
-            if msgs:
-                rag.index_session(s["id"], msgs)
-                warmed += 1
-        except Exception as exc:
-            logger.debug(f"[SessionPrewarm] session {s.get('id')} skipped (non-fatal): {exc}")
-    return warmed
-
-
-def init_phase3_memory():
-    """Initialize Phase 3 advanced memory systems (RAG + Fact Extraction)."""
-    global _episodic_memory_rag, _fact_extractor, _fact_extraction_worker, _memory_fact_repo
-
-    try:
-        # Initialize RAG memory with embeddings (uses config default)
-        _episodic_memory_rag = EpisodicMemoryRAG()
-        logger.info("Episodic Memory RAG initialized (Phase 3)")
-
-        # Phase-2 (HERMES): pre-warm the global lore corpus in a background thread.
-        # On-demand lore retrieval is always on (LORE_ONDEMAND_ENABLED retired
-        # 2026-07-04). Reuses the RAG embedder; daemon so it never blocks startup.
-        try:
-            import threading as _threading
-
-            def _prewarm_lore():
-                try:
-                    _episodic_memory_rag.index_lore_corpus()
-                    logger.info("[LoreRAG] Lore corpus pre-warm complete")
-                except Exception as exc:
-                    logger.debug(f"[LoreRAG] Lore corpus pre-warm failed (non-fatal): {exc}")
-            _threading.Thread(target=_prewarm_lore, daemon=True, name="prewarm-lore").start()
-        except Exception as e:
-            logger.debug(f"[LoreRAG] Lore pre-warm thread start failed (non-fatal): {e}")
-
-        # ADR-006 M1: pre-warm the N most-recently-updated session indexes from
-        # SQLite in a background daemon thread. The per-session FAISS index is
-        # otherwise rebuilt lazily on the first chat after a restart (no data is
-        # lost — SQLite is the source of truth); this only removes that one-time
-        # cold-start re-index latency. Daemon so it never blocks startup; each
-        # session is isolated so one failure can't abort the rest. No-op when
-        # MEMORY_PREWARM_SESSIONS=0.
-        try:
-            from .config import get_settings
-            prewarm_n = get_settings().memory.prewarm_sessions
-            if prewarm_n > 0:
-                import threading as _threading
-
-                def _prewarm_sessions():
-                    warmed = prewarm_session_indexes(
-                        _episodic_memory_rag,
-                        get_session_repo(),
-                        get_message_repo(),
-                        prewarm_n,
-                    )
-                    logger.info(f"[SessionPrewarm] pre-warmed {warmed} session index(es)")
-                _threading.Thread(
-                    target=_prewarm_sessions, daemon=True, name="prewarm-sessions"
-                ).start()
-        except Exception as e:
-            logger.debug(f"[SessionPrewarm] pre-warm thread start failed (non-fatal): {e}")
-
-        # Initialize fact extractor
-        # Note: Will need LLM client, initialized later in chat flow
-        # For now, mark as ready for lazy init
-        _fact_extractor = None  # Will be initialized with LLM client on first use
-        logger.info("Fact Extractor ready for initialization (Phase 3)")
-
-        # ADR-006 Phase 1 (M3): start the async ontology-lite fact-extraction worker
-        # ONLY when MEMORY_FACTS_ENABLED. Off (default) → no worker thread, no fact
-        # store writes. The extractor's LLM client is built lazily on first job (off
-        # the request path), so startup stays cheap.
-        try:
-            from .config import get_settings
-            if get_settings().memory.facts_enabled:
-                from .fact_extraction_worker import FactExtractionWorker
-                from .repositories.memory_fact_repository import MemoryFactRepository
-
-                _memory_fact_repo = MemoryFactRepository()  # shared read (M4) + write (M3)
-
-                def _make_extractor():
-                    from .llm_client import create_llm_client
-                    from .triplet_extractor import TripletExtractor
-                    llm = create_llm_client(
-                        {}, temperature=get_settings().ollama.temp_fact_extraction
-                    )
-                    return TripletExtractor(llm)
-
-                _fact_extraction_worker = FactExtractionWorker(
-                    _make_extractor, _memory_fact_repo
-                )
-                _fact_extraction_worker.start()
-                logger.info("[FactWorker] ontology-lite fact store ENABLED (ADR-006 M3/M4)")
-        except Exception as e:
-            logger.warning(f"[FactWorker] init skipped (non-fatal): {e}")
-            _fact_extraction_worker = None
-
-    except Exception as e:
-        logger.error(f"Failed to initialize Phase 3 memory systems: {e}")
-        logger.warning("Phase 3 features (RAG, cross-session memory) will be disabled")
-        _episodic_memory_rag = None
-        _fact_extractor = None
-
-
-def init_db():
-    """Initialize database using Alembic migrations (if available), otherwise repositories auto-initialize schema."""
-    try:
-        from alembic.config import Config
-        from alembic import command
-
-        alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{_DB_PATH}")
-
-        # Run migrations to latest version
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Database migrations applied successfully")
-
-    except ImportError:
-        # Alembic not installed - repositories will auto-initialize schema when first used
-        logger.info("Alembic not available, repositories will auto-initialize database schema")
-
-    except Exception as e:
-        # Alembic config or migration files not found (e.g., Docker without alembic dir)
-        # Repositories with _ensure_tables() will self-initialize schema
-        logger.warning(f"Alembic migration skipped ({e}), repositories will auto-initialize schema")
-
-    # Users table creation is handled by UserRepository._ensure_tables() in init_repositories()
-
-
-def init_jupiter():
-    """Initialize Jupiter MCP client, execution service, and strategy service."""
-    global _jupiter_client, _jupiter_ops, _wallet_execution_service, _strategy_service
-    global _wallet_repo, _trade_proposal_repo
-
-    from .config import get_settings
-    jupiter_cfg = get_settings().jupiter
-
-    if not jupiter_cfg.enabled:
-        logger.info("Jupiter MCP is disabled (JUPITER_ENABLED=false)")
-        return
-
-    try:
-        from .jupiter.jupiter_mcp_client import JupiterDockerClient
-        from .jupiter.jupiter_operations import JupiterOperations
-        from .services.wallet_execution_service import WalletExecutionService
-        from .services.strategy_service import StrategyService
-        from .repositories.wallet_repository import WalletRepository
-        from .repositories.trade_proposal_repository import TradeProposalRepository
-
-        # Init repositories
-        _wallet_repo = WalletRepository(_DB_PATH)
-        _trade_proposal_repo = TradeProposalRepository(_DB_PATH)
-
-        # Init Jupiter Docker client (deferred — starts on set_private_key())
-        _jupiter_client = JupiterDockerClient(
-            image=jupiter_cfg.mcp_image,
-            solana_rpc_url=jupiter_cfg.solana_rpc_url,
-            timeout=jupiter_cfg.timeout,
-        )
-        _jupiter_ops = JupiterOperations(_jupiter_client)
-
-        # Init services
-        _wallet_execution_service = WalletExecutionService(
-            jupiter_ops=_jupiter_ops,
-            trade_history_repo=_trade_history_repo,
-            wallet_summary_repo=_wallet_summary_repo,
-            wallet_registry_repo=_wallet_registry_repo,
-        )
-        _strategy_service = StrategyService(
-            strategies_dir=jupiter_cfg.strategies_dir,
-        )
-
-        logger.info(f"Jupiter MCP initialized (image={jupiter_cfg.mcp_image}, rpc={jupiter_cfg.solana_rpc_url})")
-
-    except Exception as e:
-        logger.error(f"Jupiter MCP initialization failed: {e}")
-        _jupiter_client = None
-        _jupiter_ops = None
-
-
-def init_strategy_scheduler():
-    """Initialize the APScheduler for autonomous strategy execution."""
-    global _strategy_scheduler
-
-    if _jupiter_ops is None or _wallet_execution_service is None:
-        logger.info("Strategy scheduler skipped — Jupiter not initialized")
-        return
-
-    try:
-        from .jupiter.strategy_scheduler import init_scheduler
-        _strategy_scheduler = init_scheduler(
-            jupiter_ops=_jupiter_ops,
-            execution_service=_wallet_execution_service,
-            strategy_service=_strategy_service,
-        )
-        if _strategy_scheduler:
-            _strategy_scheduler.start()
-            logger.info("Strategy scheduler started")
-    except Exception as e:
-        logger.error(f"Strategy scheduler initialization failed: {e}")
-        _strategy_scheduler = None
-
-
-def cleanup_orphaned_sessions():
-    """Remove chat sessions for personas that no longer exist."""
-    if _session_repo is None:
-        logger.debug("cleanup_orphaned_sessions skipped: repo not yet initialized")
-        return
-    try:
-        cards = _load_all_cards_cached()
-        current_persona_keys = {card.get("key") for card in cards if card.get("key")}
-
-        all_sessions = _session_repo.get_all_sessions()
-
-        orphaned_persona_keys = []
-        for session in all_sessions:
-            persona_key = session["persona_key"]
-            if persona_key not in current_persona_keys:
-                orphaned_persona_keys.append(persona_key)
-
-        if orphaned_persona_keys:
-            orphaned_personas = list(set(orphaned_persona_keys))
-            deleted_count = _session_repo.delete_sessions_by_persona(orphaned_personas)
-            logger.info(f"Cleaned up {deleted_count} orphaned sessions for removed personas: {orphaned_personas}")
-
-    except Exception as e:
-        logger.warning(f"Failed to cleanup orphaned sessions: {e}")
+        return getter()
+    except RuntimeError:
+        return None
 
 
 def build_app_state() -> AppState:
-    """Snapshot the initialized module globals into an :class:`AppState`.
+    """Snapshot the initialized di/* singletons into an :class:`AppState`.
 
     Read-only view of what ``initialize_all`` has wired up so far — the request
     path reaches these through ``dependencies.py``/``app.state.container`` while
@@ -590,35 +119,35 @@ def build_app_state() -> AppState:
     fields not yet initialized are simply ``None``.
     """
     return AppState(
-        session_repo=_session_repo,
-        message_repo=_message_repo,
-        summary_repo=_summary_repo,
-        emotional_state_repo=_emotional_state_repo,
-        user_profile_repo=_user_profile_repo,
-        seeker_progression_repo=_seeker_progression_repo,
-        user_repo=_user_repo,
-        memory_manager=_memory_manager,
-        conversation_summarizer=_conversation_summarizer,
-        episodic_memory_rag=_episodic_memory_rag,
-        fact_extractor=_fact_extractor,
-        fact_extraction_worker=_fact_extraction_worker,
-        memory_fact_repo=_memory_fact_repo,
-        wallet_registry_repo=_wallet_registry_repo,
-        wallet_summary_repo=_wallet_summary_repo,
-        wallet_flow_repo=_wallet_flow_repo,
-        trade_history_repo=_trade_history_repo,
-        brave_client=_brave_client,
-        jupiter_client=_jupiter_client,
-        jupiter_ops=_jupiter_ops,
-        wallet_execution_service=_wallet_execution_service,
-        strategy_service=_strategy_service,
-        wallet_repo=_wallet_repo,
-        trade_proposal_repo=_trade_proposal_repo,
-        strategy_scheduler=_strategy_scheduler,
+        session_repo=_safe(get_session_repo),
+        message_repo=_safe(get_message_repo),
+        summary_repo=_safe(get_summary_repo),
+        emotional_state_repo=_safe(get_emotional_state_repo),
+        user_profile_repo=_safe(get_user_profile_repo),
+        seeker_progression_repo=_safe(get_seeker_progression_repo),
+        user_repo=_safe(get_user_repo),
+        memory_manager=_safe(get_memory_manager),
+        conversation_summarizer=_safe(get_conversation_summarizer),
+        episodic_memory_rag=get_episodic_memory_rag(),
+        fact_extractor=get_fact_extractor(),
+        fact_extraction_worker=get_fact_extraction_worker(),
+        memory_fact_repo=get_memory_fact_repo(),
+        wallet_registry_repo=get_wallet_registry_repo(),
+        wallet_summary_repo=get_wallet_summary_repo(),
+        wallet_flow_repo=get_wallet_flow_repo(),
+        trade_history_repo=get_trade_history_repo(),
+        brave_client=get_brave_client(),
+        jupiter_client=get_jupiter_client(),
+        jupiter_ops=get_jupiter_ops(),
+        wallet_execution_service=get_wallet_execution_service(),
+        strategy_service=get_strategy_service(),
+        wallet_repo=_safe(get_wallet_repo),
+        trade_proposal_repo=_safe(get_trade_proposal_repo),
+        strategy_scheduler=get_strategy_scheduler(),
     )
 
 
-def get_app_state() -> Optional[AppState]:
+def get_app_state() -> AppState | None:
     """Return the composition-root snapshot built at the end of startup."""
     return _app_state
 
@@ -652,7 +181,7 @@ def initialize_all():
     # Initialize Phase 3 advanced memory (RAG + fact extraction)
     try:
         init_phase3_memory()
-        if _episodic_memory_rag:
+        if get_episodic_memory_rag():
             logger.info("Phase 3: RAG memory enabled (semantic search)")
         else:
             logger.info("Phase 3: RAG memory disabled")
@@ -662,7 +191,7 @@ def initialize_all():
     # Initialize Brave MCP
     try:
         init_brave_client()
-        if _brave_client:
+        if get_brave_client():
             logger.info("Brave MCP enabled (web search available)")
         else:
             logger.info("Brave MCP disabled (web search not available)")
@@ -724,6 +253,7 @@ def initialize_all():
     # Eliminates blocking CV-summary LLM call on the first user request per persona.
     try:
         import threading
+
         from .persona_memory import build_system_prompt as _build_sp
 
         def _prewarm_prompts():
