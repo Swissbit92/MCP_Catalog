@@ -32,6 +32,25 @@ class OllamaSettings(BaseSettings):
                     "Dynamically filters low-probability tokens based on top token confidence.",
         alias="PERSONA_MIN_P"
     )
+    keep_alive: str = Field(
+        default="-1",
+        description="How long Ollama keeps the CHAT model resident after its last request. "
+                    "'-1' pins it indefinitely (always-warm; the deliberate choice for this "
+                    "always-on station — a resident model costs VRAM but no CPU). '0' unloads "
+                    "immediately; '30m'/'2h' keep it warm for that long. Lower this if the box "
+                    "is under memory pressure and you can accept a cold reload on first chat.",
+        alias="OLLAMA_KEEP_ALIVE",
+    )
+    utility_keep_alive: str = Field(
+        default="10m",
+        description="Same, for the SUMMARISATION utilities (prompt_builder, cv_summarizer). "
+                    "These run rarely and use the DEFAULT model, which is usually a different "
+                    "model from the chat one — so pinning them indefinitely holds a SECOND "
+                    "model in VRAM for the life of the process. Observed 2026-08-22: gemma2:9b "
+                    "held 7.46GB alongside the intended 17.54GB chat pin, 25.66GB total on a "
+                    "52GB box with 162k pageouts. Set '-1' only if you genuinely want both warm.",
+        alias="OLLAMA_UTILITY_KEEP_ALIVE",
+    )
     context_window: int = Field(
         default=4096,
         ge=512,
