@@ -66,6 +66,32 @@ class AgentSettings(BaseSettings):
         ),
         alias="PERSONA_FORMAT_OVERRIDE_ENABLED",
     )
+    constraints_in_prompt: bool = Field(
+        default=False,
+        description=(
+            "Render each persona's behavioural constraints — do / dont / "
+            "boundaries.ethics / user_relationship / "
+            "escalation_policy.when_to_decline — as a <constraints> block, and "
+            "re-state the hardest of them just before the latest user turn. "
+            "Default OFF = byte-identical. WHY THIS EXISTS: none of those fields "
+            "had a single reader anywhere in src/; persona_schema.py even "
+            "documents the workaround ('the lean prompt omits do/dont'). A "
+            "persona could declare exclusivity and the model was never told — "
+            "the constraint violation observed 2026-08-23. WHY NEGATIONS ARE "
+            "REFRAMED: open models violate negated instructions 77-100% of the "
+            "time versus affirmative framing (arXiv 'When Prohibitions Become "
+            "Permissions'), so the dont list is anchored to the affirmative "
+            "identity rather than emitted as a bare prohibition list. WHY "
+            "LOW-DEPTH RE-INJECTION: recall is worst in the middle of a long "
+            "context (arXiv:2307.03172), so a rule stated once at position 0 is "
+            "the least-attended part of the prompt by turn 80. Behavioral — adds "
+            "~120-180 tokens for a persona that has these fields, and this repo "
+            "has twice measured a prompt-content addition as neutral-or-negative, "
+            "so it is eval-gated before any flip. Set "
+            "PERSONA_CONSTRAINTS_IN_PROMPT=true to enable."
+        ),
+        alias="PERSONA_CONSTRAINTS_IN_PROMPT",
+    )
 
     model_config = {
         "env_file": ".env",

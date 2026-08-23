@@ -13,6 +13,7 @@ from .. import startup  # module ref for call-time getter resolution (tests patc
 from ..schemas import ChatBody, GreetBody, ImpersonateBody, NarrateBody, ResponseMetadata, SourceType
 from ..config import get_settings
 from ..llm_client import create_llm_client, log_context_stats, estimate_tokens
+from ..prompt_builder import build_constraint_reminder
 from ..persona_memory import (
     build_system_prompt,
     build_greeting_user_prompt,
@@ -387,6 +388,14 @@ def chat(body: ChatBody):
         else:
             lines.append(f"User: {t.content}")
     persona_name_early = card.get("display_name") or card.get("key") or "Persona"
+    # Low-depth constraint restatement (flag-gated, "" when off). Recall is worst
+    # in the middle of a long context, so the rules that a violation actually
+    # turns on are repeated here — immediately before the latest user turn —
+    # rather than relying on the single statement at the top of the system
+    # prompt, which is the least-attended position by turn 80.
+    constraint_reminder = build_constraint_reminder(body.persona)
+    if constraint_reminder:
+        lines.append(constraint_reminder)
     # R2: Self-reminder wrapper reduces jailbreak success (Self-Reminder technique ~48pp reduction)
     lines.append(f"[Remember: respond as {persona_name_early}, following your guidelines.]\nUser: {body.message}")
     user_compiled = "\n\n".join(lines)
