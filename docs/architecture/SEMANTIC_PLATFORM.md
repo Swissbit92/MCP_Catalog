@@ -23,7 +23,9 @@ ai_summary: >
 
 # Semantic platform (concept architecture)
 
-**Status: concept only.** Nothing in this document has been built. It exists to
+**Status: concept only, and substantially revised 2026-08-23 after research —
+see the revision section immediately below, which supersedes anything later
+that contradicts it.** Nothing in this document has been built. It exists to
 settle *where things belong* before any technology is chosen, so that the
 technology argument is about fit rather than preference.
 
@@ -41,6 +43,152 @@ FAISS and the summary table, assembles a prompt, and hands it to a model. There
 is no layer between them, so nothing owns the question "is this still true?"
 
 This document proposes the layer.
+
+## Revision 2026-08-23 — what the research found
+
+**Read this before the rest of the document.** Eleven parallel research agents
+fact-checked the claims below against primary sources. Much of what follows was
+weakened or refuted. The sections after this one are kept because the reasoning
+is still useful, but **the recommendation has shrunk considerably** and the
+corrections here take precedence over anything later that contradicts them.
+
+### The central diagnosis was wrong
+
+This document says the previous memory attempts were reverted for want of an
+eval. **That is false.** ADR-006 had a rigorous eval, it worked, and it is what
+caught the regression — twice (three framing variants scoring 0.708, 0.542,
+0.500 against a 0.792 OFF ruler).
+
+The real failure is that **retrieved facts flatten the persona's voice when
+injected**. The sequencing table below spends five of six steps on storage and
+governance and does not touch that problem at all. It is the blocker; nothing
+else matters until it moves.
+
+### Claims that did not survive
+
+| Claim in this document | Finding |
+|---|---|
+| Ontology-constrained extraction lets a local 24B extract reliably (GraphMERT) | GraphMERT's pipeline **uses Qwen3-32B as a helper throughout**. It shows constrained *pipelines* beat naive prompting — not that a mid-size model extracts unaided. A frontier model also beats it on raw factuality |
+| "~30 predicates is safe, 50-80 needs subsetting" | Invented. The cited study's smallest tested schema is **100 relations** — the rule extrapolates below the measured range |
+| The ontology compiles into graph constraints | **Neo4j Community enforces property uniqueness only.** Existence, type and key constraints are Enterprise. Cardinality exists in no edition. Validation lives in application code regardless — which removes one of the main reasons to have the graph |
+| Policy must not live in the store it governs (implied as standard) | Real principle — its name is **separation of mechanism and policy** — but most production systems (Neo4j Enterprise, Postgres RLS) do the opposite behind a bypass privilege. This design is *stricter than typical*, and should be argued on trusted-computing-base grounds, not as convention |
+| Constraints beat scale, generally | **Task-dependent.** Schema constraints help closed-set selection and *degrade* open-ended reasoning. Constrain the classification steps, not the discovery steps |
+| Text2Cypher is unproven on a local 24B | Refuted as framed. Neo4j benchmarked and fine-tuned 8B/9B models; **fine-tuning is the dominant lever, not scale** |
+| The graph is cheap to drop and rebuild | **Unproven anywhere.** Graphiti's maintainers state they have no migration path; cognee's equivalent is undocumented; LightRAG rebuilds its *vector* index, not the graph. Measure a real rebuild before treating droppability as a property |
+| Sleep-time consolidation is a differentiator | Now baseline practice (MemOS, cognee, others) |
+
+Two statistics used here to dismiss vendor benchmarking — "6.4% of LoCoMo's
+answer keys are corrupted" and "its judge accepts 62.8% of wrong answers" —
+**have no locatable primary source and are retracted.**
+
+### Claims that held, or strengthened
+
+- **Canonical vs derived**: genealogy (Mills's source/information/evidence
+  stack), library science (**authority control**) and archival practice
+  (**provenance**) all reached the same rule independently — the curated human
+  layer stays narrow, human-owned and separate from machine enrichment. And
+  GEDCOM collapsed that distinction, every downstream tool inherited the
+  breakage, and GEDCOM X never displaced it: **retrofitting this later is
+  brutally hard**, which is the argument for one cheap column now.
+- **Ontology-first is defended in 2026**, not dated (arXiv:2606.04903).
+- **Plain files in git**: verified 20-year and 15-year practitioner accounts
+  converge — the failure mode is *tooling* churn, not format churn.
+- **Consolidation over per-turn extraction**: RecMem reports **87% lower token
+  cost while exceeding** state-of-the-art memory accuracy.
+- **Append-only log with derived views**: independently validated by the
+  Jul-Aug 2026 arXiv cluster (MemTxn, ChronoMem, GitOfThoughts) — and by
+  double-entry bookkeeping, which has run this pattern for 500 years.
+- **Verification beats introspection**: self-correction works against
+  mechanically checkable rules and fails as "was that good?".
+
+### Over-specified, per practitioners in those fields
+
+Formal OntoClean (essentially no papers since 2020 — keep the two mental
+questions, skip the apparatus); NeOn module machinery (four namespaces at ~7-8
+predicates each are *sections in one file*; split at ~15-20); SHACL (neosemantics'
+own docs warn it degrades on a property graph, and Neo4j Labs' attempt to make it
+usable has been abandoned since 2023); four tiers as peer stores (**Tulving
+revised episodic/semantic from competing to integrated** — the tiers are not
+independent); bi-temporal by default (proposed as a general SQL feature in the
+1990s, **rejected as too complex**; most systems use transaction-time only and
+add valid-time where a specific question demands it); the control plane as
+infrastructure (it is **ABAC**, NIST SP 800-162, and it is a YAML file); the
+five-verb contract (no precedent anywhere — real libraries converge on *one*
+retrieval verb, and `verify`/`assemble` are plausibly ordinary application code).
+
+### Holes found in the design
+
+- **Provenance laundering during consolidation** (arXiv:2607.29167) — the write-
+  authority tiers guard the *extraction* path, but consolidation *rewrites*
+  facts and can promote a low-authority fact by rephrasing it. Verify what
+  consolidation emits, not only what extraction consumes.
+- **Rebuild is only sound for additive schema changes.** A predicate rename or
+  split needs a fact-rewrite pass through the YAML, or the rebuild faithfully
+  reproduces the old, wrong categorisation.
+- **No "held for adjudication" state** — conflicting writes are forced into
+  accept or reject (MELD, arXiv:2608.16357).
+- **MemTrapBench (Aug 2026): every current memory strategy underperformed a
+  no-memory baseline by >10%** on reasoning-integration tasks. Memory is not
+  automatically an improvement, and the eval should test for harm.
+
+### The insight to carry furthest
+
+From decades of personal-knowledge-management research: **the multi-year failure
+mode is review debt, not authoring debt.** A solo curator does not forget their
+own thirty predicates. What kills these systems is that automation removes the
+*writing* bottleneck and not the *reading and verifying* one, and that gap widens
+silently. Budget review time as the real constraint — every mechanism that
+produces facts faster makes the actual bottleneck worse unless it also makes
+verification cheaper.
+
+### The revised recommendation
+
+```
+ WHAT EXISTS AND WORKS                                     (don't touch)
+   SQLite · FAISS · persona JSON · lore wiki (34 typed entities)
+   FastAPI + services   ← hand-rolled loop; the biggest agent codebases
+                          are hand-rolled. The evidence says keep it.
+
+ THE THREE REAL GAPS                                       (build these)
+   1. INVARIANT TESTS                                        ~1 day
+      every persona field has a reader
+      every session-scoped table clears on reset
+      every declared sampler reaches the model
+      retrieved text is always tagged, never a live turn
+      -- all four defects had this shape; this is the discipline --
+
+   2. BEHAVIOURAL EVAL                                       ~1 day
+      30 probes: 12 continuity · 6 commitment · 6 pressure
+                 4 knowledge-update · 2 abstention
+      20 tune / 10 HELD OUT · binary pass/fail
+      judge = purpose-tuned small model, NOT a generic local LLM
+      -- gates everything after it --
+
+   3. THE VOICE PROBLEM                                      unknown
+      injected facts flatten the persona. killed two attempts.
+      THIS is the blocker -- not storage, not schema.
+
+ SMALL, CHEAP, PROVEN ELSEWHERE                          (add when easy)
+   memory_facts.source = human | agent    <- ONE column, ONE `if`
+   lore wiki -> retrieval                 <- hand-written, no extractor
+   event log + checkpoint/replay          <- SQLite. the real gap.
+   two-tier memory: session vs long-term  <- every framework converged
+   consolidation, not per-turn extraction <- 87% cheaper AND better
+
+ DEFERRED -- with the trigger that would change it              (not now)
+   ontology, formal      -> predicates outgrow one YAML file
+   graph store / Neo4j   -> ADR-001's own trigger: traversal becomes the
+                            primary access pattern, OR thousands of
+                            densely-linked nodes. You have 34.
+   bi-temporal validity  -> a specific question needs it
+   control plane, 5 verbs-> a SECOND consumer exists
+   graph-as-projection   -> UNPROVEN ANYWHERE. Measure a real rebuild
+                            before believing it is cheap.
+```
+
+Everything below this section predates the research and is retained for its
+reasoning, not as a plan.
+
 
 ## The frame
 
