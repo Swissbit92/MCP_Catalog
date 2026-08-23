@@ -289,6 +289,7 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for: backend startup, M
 - `docs/development/ADDING_MCP_SERVERS.md` - MCP integration guide
 - `docs/development/TESTING_GUIDE.md` - Testing guide
 - `docs/lore/` - All NEPHILIM worldbuilding and lore documents (see `docs/lore/README.md`)
+- **Semantic platform (concept architecture)** — lives at the ecosystem root, not here, because it spans projects: [../docs/architecture/SEMANTIC_PLATFORM.md](../docs/architecture/SEMANTIC_PLATFORM.md). Implementation starts in this repo; the document explains why.
 
 ### Protected Reference Files (do NOT delete)
 
