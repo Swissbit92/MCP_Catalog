@@ -965,10 +965,33 @@ and, unlike the graph, a query cannot be un-run:
 | Gated runner — grammar constraint, schema filter, read-only role, row/depth caps | **Yes** | This is the actual build; both reference implementations leave this work undone |
 | The operator using `CYPHER` to explore the graph by hand | **Yes** | No agent-facing risk, and it is how the schema gets learned on real data |
 | **Measuring** valid-Cypher and execution-accuracy rate on *this* ontology and *this* model | **Yes** | Converts the open question into a number. This is the point of building it early |
-| **An agent** composing queries autonomously | **Flag-gated** | Flipped only when that number clears a bar set in advance — the same discipline as every other behavioural flag in this repo |
+| **An agent** composing queries autonomously | **Yes, live** | See the blast-radius argument below. Ships behind a kill-switch flag defaulting ON — a revert path, not a dark launch |
 
-Building it dark and flipping on evidence is what makes "conditional GO"
-mean something rather than being a hedge.
+**Why live rather than dark.** An earlier draft gated the agent-facing verb
+until a measured rate cleared a bar. That was over-cautious, because it never
+analysed the blast radius properly. With the guards in place a bad query cannot
+write (read-only role), cannot be malformed (grammar constraint), cannot flood
+or hang (row and depth caps), and cannot reference things that do not exist
+(schema-vocabulary validator). The residual risk is not safety but quality: a
+valid-but-wrong query returns wrong facts and the persona repeats them. Blast
+radius is **one bad reply** — nothing persists and nothing corrupts.
+
+The comparison that matters is also not "wrong facts versus correct facts". It
+is **wrong facts versus no facts and confabulation**, which is the current
+behaviour. A query layer correct some of the time may beat that outright.
+
+Four conditions make this defensible, and none is expensive:
+
+- **The read-only database role is non-negotiable.** It is what bounds the
+  blast radius to a bad reply rather than a corrupted graph; without it the
+  argument above does not hold.
+- **A kill-switch flag defaulting ON** — a revert path, not a dark launch.
+- **Every query, its result, and the turn it served are logged.** When a reply
+  is wrong, the question "was the query wrong?" must be answerable after the
+  fact rather than requiring a separate harness.
+- **Measure it anyway.** Going live removes the gate, not the need for the
+  number. Without it there is no way to tell whether the graph is earning its
+  place, which is the question this whole document rests on.
 
 
 ### What the target changes from earlier reasoning
