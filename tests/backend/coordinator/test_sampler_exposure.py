@@ -20,6 +20,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
@@ -78,7 +79,7 @@ def test_absent_prefs_stay_absent():
 
 def test_schema_accepts_repeat_last_n():
     assert SamplingPreset(repeat_last_n=-1).repeat_last_n == -1
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         SamplingPreset(repeat_last_n=-2)
 
 
