@@ -868,6 +868,48 @@ disposability of the projection is what makes that acceptable rather than the
 headroom.
 
 
+## What the graph is, and is not, for
+
+Most of the general agentic failure classes this design targets are addressed
+by the **semantic layer** — the typed fact store, the contract, the
+write-authority tiers, the assembly discipline. Only some are addressed by the
+**graph**. Keeping that line clear matters, because a graph credited with wins
+the fact store produced can never be evaluated on its own terms.
+
+| Failure class | What addresses it | Graph-shaped? |
+|---|---|---|
+| Context rot — degradation with input volume | Just-in-time retrieval, smaller assembled prompts | **No** — an assembly discipline |
+| Grounding and hallucination | `verify(claim)` against canonical facts | **No** — needs a typed fact store; a table suffices |
+| Stale beliefs | Bi-temporal validity, supersede-not-delete | **No** — schema; `memory_facts` already carries it |
+| Agent write safety | Write-authority tiers, provenance | **No** — schema and policy |
+| **Multi-hop relational** — how a relationship stands now and how it changed | Traversal | **Yes** |
+| **Disambiguation** — an alias resolving to one entity, deterministically | Alias edges | **Yes** |
+| **Cross-session aggregation** | Graph queries | **Yes** |
+
+The graph is load-bearing for the bottom three. It is not what delivers
+context management or validation, and should not be judged on them.
+
+**The reference class points the same way, and it is instructive.** The two
+knowledge-graph teams whose postmortems inform this document did not abandon
+*graphs* — they abandoned **ontology-first design**, after upfront schema work
+froze them for months and lost information. Zep went the opposite direction
+entirely and made the graph its authoritative store. The closest open-source
+peer has no ontology layer at all. One practitioner replaced the whole
+apparatus with two curated files and reports it working; a solo builder
+independently converged on nearly this consolidation hierarchy.
+
+So the documented failure mode is **ontology-phase, not graph-phase** — which
+is precisely what a living ontology with human review in the loop is designed
+to avoid.
+
+**One consequence worth stating plainly.** The three capabilities above are
+measurable; benefits that are expected but unnamed are not. An unnamed benefit
+will be credited to the graph whether or not it occurred. The cheapest guard
+is the query log: **the fraction of persona queries that traverse depth > 1**
+is the direct measure of whether multi-hop — the primary stated purpose — is
+real in this data rather than anticipated.
+
+
 ## Scale, and what is deliberately deferred
 
 ### The target
@@ -903,10 +945,34 @@ where it earns its keep.
 A system that *can* scale is not the same as a system that *is* scaled. The
 first is nearly free; the second is where projects die.
 
-### The irreversible list
+### The day-1 list, in two classes
 
-Ten items. None is a subsystem — each is a shape decision. All are
-independent of current volume.
+Ten items. None is a subsystem — each is a shape decision, and all are
+independent of current volume. But they are **not all irreversible**, and an
+earlier draft of this document called them that uniformly. The distinction
+matters, because it decides how much it costs to get one wrong:
+
+**Truly irreversible — data you fail to record.** There is no later remedy;
+the information simply does not exist.
+
+- No hard-delete in the fact tier (destroyed data)
+- Extraction-output table (output never persisted)
+- Tombstone tier (retractions never recorded)
+- Ontology- and extractor-version stamps (facts never stamped)
+- Metrics table (history never captured)
+
+**Expensive to retrofit — but possible.** These are refactors: painful,
+sometimes very, never impossible.
+
+- Owner/principal dimension · `ctx` threading · grant tuple shape · node
+  identity scheme · interface version field
+
+Both classes belong on day 1, for different reasons: the first because the
+option disappears, the second because the cost only grows. **Neither class
+includes the ontology**, which is a living artifact — versioned, extended and
+deprecated as standard practice, with human review in the loop. Calling it
+irreversible was a category error; slowest-changing is not the same as
+unchangeable.
 
 | # | Decision | Why it cannot wait |
 |---|---|---|
