@@ -41,6 +41,7 @@ class LLMCompletionService:
         sampling_config: Optional[SamplingConfig] = None,
         # Individual sampling params (override sampling_config if provided)
         repeat_penalty: Optional[float] = None,
+        repeat_last_n: Optional[int] = None,
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
         min_p: Optional[float] = None,
@@ -53,6 +54,9 @@ class LLMCompletionService:
             temperature: Sampling temperature (0.0-2.0)
             sampling_config: Optional SamplingConfig for preset-based configuration
             repeat_penalty: Optional repetition penalty (1.0-2.0)
+            repeat_last_n: Optional repetition-penalty lookback in tokens.
+                Ollama defaults to 64, which cannot see a repeated paragraph;
+                -1 scales the window to the full context.
             top_k: Optional Top-K sampling (0-100)
             top_p: Optional nucleus sampling threshold (0.0-1.0)
             min_p: Optional Min-P dynamic threshold (0.0-1.0)
@@ -108,6 +112,8 @@ class LLMCompletionService:
         # Individual params override sampling_config
         if repeat_penalty is not None:
             ollama_params["repeat_penalty"] = repeat_penalty
+        if repeat_last_n is not None:
+            ollama_params["repeat_last_n"] = repeat_last_n
         if top_k is not None:
             ollama_params["top_k"] = top_k
         if top_p is not None:
