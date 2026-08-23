@@ -6,20 +6,15 @@ last_reviewed_on: 2026-08-23
 review_in: 6 months
 applies_to: nephilim
 ai_summary: >
-  Concept-level layering for an agent/companion platform: data -> semantic ->
-  consumer, plus an orthogonal control plane. Open it when deciding where a new
-  capability belongs - knowledge vs policy vs behaviour vs config - before
-  choosing any technology. Covers the write-authority tiers that double as the
-  agent permission model, the "what must not be a fact" boundary rule, where
-  the tool brain and the ToolSpec definition/policy split belong, the case for
-  running a graph store as a rebuildable projection rather than a system of
-  record including what that projection should and should not hold, how
-  consumers read through the contract rather than from any store, how the
-  interface/policy/ontology split is stored and governed (git compiles,
-  data projects), how monitoring/security/install fall out of those choices,
-  and the sequencing that gates all of it on an eval that does not
-  exist yet. Not an implementation plan and not an ADR - nothing here has
-  been built.
+  Concept architecture for an agent/companion platform, written to settle where
+  things belong before any technology is chosen. Open it when deciding which
+  layer a new capability goes in - knowledge, policy, behaviour or config -
+  when choosing a store, or when arguing about what to build now versus later.
+  It carries the ten decisions judged irreversible (make them now) and, for
+  every deferred piece, the trigger that would end the deferral. It records
+  external research and the arguments AGAINST the design as well as for it,
+  including where its own claims are currently unfalsifiable. Concept only:
+  nothing here has been built, and it is not an implementation plan or an ADR.
 ---
 
 # Semantic platform (concept architecture)
@@ -773,37 +768,40 @@ is invisible in any single number and obvious in a chart. Drift is precisely
 what a time series shows and a threshold does not, so visualisation is not a
 nice-to-have here — it is the instrument matched to the failure being watched.
 
-#### Tooling, sequenced
+#### Tooling: three things on day one, for three different reasons
 
 A visualisation tool stores nothing; it connects to backends through plugins.
-So the question is never "should we run Grafana" but *what emits metrics and
-where do they land*.
+So the question is never "should we run a dashboard" but *what emits metrics
+and where do they land*.
 
-1. **An LLM-eval platform first — Langfuse or equivalent.** The eval is the
-   gating problem for this whole document, and an eval platform is the tool
-   that addresses it: datasets, scoring runs, prompt versioning, multi-turn
-   traces, LLM-as-judge. Grafana does none of that natively — LLM-specific
-   evaluation is handled through integrations, and the common pairing is an
-   eval platform for model concerns plus Grafana for infrastructure. This is
-   the tool on the critical path.
+An earlier draft of this section sequenced these as "eval first, then a chart,
+then defer the rest", which conflated two independent axes — **is it
+irreversible?** and **is it on the critical path?** Something can be perfectly
+reversible and still be the first thing to build. Corrected:
 
-2. **Then Grafana against SQLite directly.** The interesting metrics —
-   residue counts, extraction failures, gate outcomes, rebuild diffs — are
-   already rows in a relational store. A SQLite datasource plugin means one
-   container, no scrape config, no separate time-series database. That is
-   sufficient at this scale and is where the drift chart should start.
+| | When | Because |
+|---|---|---|
+| **Metrics table + emitting** — timestamp, metric name, value, dimensions | **Day 1** | **Irreversible.** History cannot be generated retroactively for a metric that was never recorded, and the residue rate's whole value is as a trend |
+| **An LLM-eval platform** (Langfuse or equivalent) | **Day 1** | **Critical path.** Everything downstream — flag flips, ontology slices, the graph decision — waits on being able to measure. Datasets, scoring runs, prompt versioning, multi-turn traces, LLM-as-judge; a general dashboard does none of this natively |
+| **A dashboard against SQLite directly** | **Day 1** | **Someone will actually look.** The documented failure mode is that leading indicators get logged and ignored; a chart in front of the operator mitigates exactly that. One container, no scrape config, no separate time-series store |
 
-3. **Defer the full collection stack.** Prometheus, Loki and Tempo are built
-   for distributed systems with many services; this is one process. Prometheus
-   now has experimental OTLP ingest, so OpenTelemetry remains the escape hatch
-   if the architecture ever grows into multiple services — it is not the
-   starting point.
+Deferred means **"real cost and no consumer yet"** — not merely "reversible":
+
+- **The full collection stack** (metrics scraping, log aggregation, tracing) is
+  built for distributed systems with many services; this is one process.
+  OTLP ingest into a scraping backend remains the escape hatch if the
+  architecture ever grows that way — it is not the starting point.
 
 Cost is worth stating plainly: an eval platform's production stack is typically
-two containers, and Prometheus plus Grafana would be two more, on a machine
-already running a document store and a large resident model. This ecosystem has
-been bitten by unplanned always-on service growth before, so each addition
-should be justified by a question it answers that nothing cheaper can.
+two containers, on a machine already running a document store and a large
+resident model. This ecosystem has been bitten by unplanned always-on service
+growth before, so each addition should answer a question nothing cheaper can.
+These three do; a scraping stack does not, yet.
+
+The metrics table is **not** part of the semantic layer. Telemetry is not facts
+about the world — a time series of gate false-positives is not something a
+persona should be able to `traverse` to. Separate table, separate lifecycle,
+consumer-side.
 
 ### Security: the write path, not the read path
 
@@ -868,6 +866,138 @@ box; roughly 1-2 GB heap plus 1-2 GB pagecache is a reasonable starting budget
 ecosystem has been bitten before by unplanned always-on service growth, so the
 disposability of the projection is what makes that acceptable rather than the
 headroom.
+
+
+## Scale, and what is deliberately deferred
+
+### The target
+
+**A multi-project platform under one operator first; multi-user or shared
+eventually.** Several distinct agent systems — companions, trading-aware
+agents, future projects — binding to one semantic layer, with a second
+operator or external consumers arriving later.
+
+That target is a design input, not a forecast. Measuring current volume does
+not settle it: fact extraction is flag-gated off, the lore wiki never reaches
+inference, the trading subject area does not exist, and the second and third
+consumers have not been built. Extrapolating from that measures the throttle,
+not the demand.
+
+**"Scalable" is not one design.** Scalable to tens of thousands of facts and
+scalable to millions are different systems, and several decisions below flip
+depending on which. What follows is calibrated to the target above.
+
+### Decisions are not machinery
+
+This is the discipline the whole document rests on, and the scale question is
+where it earns its keep.
+
+- **Make every irreversible decision now.** These cost design attention and
+  almost no code, and they are painful-to-impossible to retrofit.
+- **Build only what a working consumer needs.** Machinery built ahead of a
+  consumer is what freezes projects — two independent knowledge-graph teams
+  abandoned ontology-first designs after upfront schema work stalled them for
+  months, and the data-mesh literature's transferable lesson is precisely
+  *don't build the platform before one working consumer proves the pattern.*
+
+A system that *can* scale is not the same as a system that *is* scaled. The
+first is nearly free; the second is where projects die.
+
+### The irreversible list
+
+Ten items. None is a subsystem — each is a shape decision. All are
+independent of current volume.
+
+| # | Decision | Why it cannot wait |
+|---|---|---|
+| 1 | **Owner/principal dimension** in the data model | Retrofitting a tenant column into every fact, entity, grant and episode after real history exists is the worst migration in this design. One column now; it may hold a single value for years |
+| 2 | **`ctx: CallerContext` in every verb signature** | Adding a first parameter across every call site later is expensive, and without it nothing can be enforced at the contract seam |
+| 3 | **Grants as `(principal, verb, resource)` tuples** | Same information as a nested grants map, but this shape migrates to relationship-based access control as a backend swap rather than a remodel |
+| 4 | **Deterministic, content-derived node identity** | Retrofit means re-keying everything that exists — and without it every rebuild diff reports spurious drift |
+| 5 | **No hard-delete in the fact-bearing tier** | Data already destroyed cannot be recovered, and hard deletes invert the rebuild oracle |
+| 6 | **Extraction-output table, distinct from raw input** | If extraction output was never persisted, a rebuild can never replay it — only re-run a non-deterministic model |
+| 7 | **Tombstone tier** for retracted and rejected values | A retraction not recorded at the time is unrecoverable, and correction-propagation is where most memory systems fail |
+| 8 | **Ontology-version and extractor-version stamps** per fact | Without them, a bad extraction batch cannot be identified, let alone invalidated |
+| 9 | **Interface version field** | The field is free; committing to *support* old versions is the expensive part and waits for multi-user |
+| 10 | **Metrics table, and emitting into it** | A trend cannot be reconstructed after the fact. The baseline that makes slow drift visible only exists if recording started early |
+
+### Deferred, with the trigger that ends the deferral
+
+Stating the trigger is what makes a deferral a decision rather than an
+oversight — and what makes it falsifiable.
+
+| Deferred | Build it when |
+|---|---|
+| *(none — graph store and the `CYPHER` plumbing moved to day 1; see below)* | |
+| Policy engine (Rego or similar) | Real boolean composition, independently testable decisions, or a second enforcement process |
+| Relationship-based access control | Hundreds of grant pairs, hierarchical inheritance, sub-10ms reverse queries, or set-algebraic exceptions |
+| Tenancy *enforcement* | A second operator exists. The tenancy *dimension* ships now regardless |
+| Interface support policy, docs, deprecation | External consumers exist |
+| Blue-green projection cutover | Rebuilds must happen without a maintenance window |
+| Full collection stack (metrics scraping, log aggregation, tracing) | The architecture grows into multiple processes |
+
+### Graph store and `CYPHER`: day 1, with the agent-facing half flag-gated
+
+An earlier draft deferred both until "traversals the relational store cannot
+answer become routine." That reasoning was weak for the graph specifically:
+**deferring the one component that is disposable by construction is backwards.**
+A rebuildable projection costs almost nothing to have and nothing to remove,
+and building it early means the extraction-output table, node identity and the
+rebuild path are designed against a real target rather than a hypothetical one.
+
+So the graph store ships day 1. Two consequences follow honestly:
+
+- **It pulls the ontology forward.** A graph with no schema is a worse
+  relational store. Day-1 graph implies at least the competency questions and
+  a first predicate set.
+- **It does not license skipping the eval.** Graph, ontology and projection
+  together are a large surface, and the two prior attempts in this territory
+  were reverted for want of a measurement. Adding a graph makes the next revert
+  bigger, not smaller. These do not compete conceptually; they compete for
+  attention.
+
+`CYPHER` splits, because it is the one component with measured evidence against
+it (frontier models around 60% execution accuracy; sub-10B never clearing 20%)
+and, unlike the graph, a query cannot be un-run:
+
+| Piece | Day 1 | Rationale |
+|---|---|---|
+| Gated runner — grammar constraint, schema filter, read-only role, row/depth caps | **Yes** | This is the actual build; both reference implementations leave this work undone |
+| The operator using `CYPHER` to explore the graph by hand | **Yes** | No agent-facing risk, and it is how the schema gets learned on real data |
+| **Measuring** valid-Cypher and execution-accuracy rate on *this* ontology and *this* model | **Yes** | Converts the open question into a number. This is the point of building it early |
+| **An agent** composing queries autonomously | **Flag-gated** | Flipped only when that number clears a bar set in advance — the same discipline as every other behavioural flag in this repo |
+
+Building it dark and flipping on evidence is what makes "conditional GO"
+mean something rather than being a hedge.
+
+
+### What the target changes from earlier reasoning
+
+Two recommendations in this document were calibrated to a single-user,
+single-session system and no longer hold:
+
+- **Concurrent-write locking is not over-built.** A sleep-time consolidator, a
+  live agent and a projection writer running together is a genuine race. Keep
+  it.
+- **Subject-area modularity is load-bearing, not decorative.** It is the
+  mechanism by which several agent systems stay out of each other's data.
+
+And one boundary worth restating, because the target could appear to threaten
+it: a trading-aware *agent* binding to the semantic layer is a **consumer** and
+entirely fine. The trading *repositories* remain **sources** feeding a
+read-only projection. The ecosystem's no-direct-imports invariant
+([ADR-004](../decisions/004-persona-safe-agentic-tool-calls.md) and the root
+CLAUDE.md) is intact, and only becomes a question if those repositories ever
+start *reading from* the layer.
+
+### The measurement that is still missing
+
+The fact store holds a handful of rows because extraction is switched off, not
+because the domain is small. **How many facts 1,275 existing messages actually
+yield is the single most decision-relevant unknown in this document**, and it
+costs one flag flip plus a backfill to find out. It determines whether a graph
+ever has enough to traverse, and it is the same measurement that would begin to
+falsify the ontology-first choice.
 
 
 ## Sequencing
