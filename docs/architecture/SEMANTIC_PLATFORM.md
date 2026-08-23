@@ -16,16 +16,15 @@ ai_summary: >
   record including what that projection should and should not hold, how
   consumers read through the contract rather than from any store, how the
   interface/policy/ontology split is stored and governed (git compiles,
-  data projects), and the sequencing that gates all of it on an eval that does not
+  data projects), how monitoring/security/install fall out of those choices,
+  and the sequencing that gates all of it on an eval that does not
   exist yet. Not an implementation plan and not an ADR - nothing here has
   been built.
 ---
 
 # Semantic platform (concept architecture)
 
-**Status: concept only, and substantially revised 2026-08-23 after research —
-see the revision section immediately below, which supersedes anything later
-that contradicts it.** Nothing in this document has been built. It exists to
+**Status: concept only.** Nothing in this document has been built. It exists to
 settle *where things belong* before any technology is chosen, so that the
 technology argument is about fit rather than preference.
 
@@ -44,152 +43,6 @@ is no layer between them, so nothing owns the question "is this still true?"
 
 This document proposes the layer.
 
-## Revision 2026-08-23 — what the research found
-
-**Read this before the rest of the document.** Eleven parallel research agents
-fact-checked the claims below against primary sources. Much of what follows was
-weakened or refuted. The sections after this one are kept because the reasoning
-is still useful, but **the recommendation has shrunk considerably** and the
-corrections here take precedence over anything later that contradicts them.
-
-### The central diagnosis was wrong
-
-This document says the previous memory attempts were reverted for want of an
-eval. **That is false.** ADR-006 had a rigorous eval, it worked, and it is what
-caught the regression — twice (three framing variants scoring 0.708, 0.542,
-0.500 against a 0.792 OFF ruler).
-
-The real failure is that **retrieved facts flatten the persona's voice when
-injected**. The sequencing table below spends five of six steps on storage and
-governance and does not touch that problem at all. It is the blocker; nothing
-else matters until it moves.
-
-### Claims that did not survive
-
-| Claim in this document | Finding |
-|---|---|
-| Ontology-constrained extraction lets a local 24B extract reliably (GraphMERT) | GraphMERT's pipeline **uses Qwen3-32B as a helper throughout**. It shows constrained *pipelines* beat naive prompting — not that a mid-size model extracts unaided. A frontier model also beats it on raw factuality |
-| "~30 predicates is safe, 50-80 needs subsetting" | Invented. The cited study's smallest tested schema is **100 relations** — the rule extrapolates below the measured range |
-| The ontology compiles into graph constraints | **Neo4j Community enforces property uniqueness only.** Existence, type and key constraints are Enterprise. Cardinality exists in no edition. Validation lives in application code regardless — which removes one of the main reasons to have the graph |
-| Policy must not live in the store it governs (implied as standard) | Real principle — its name is **separation of mechanism and policy** — but most production systems (Neo4j Enterprise, Postgres RLS) do the opposite behind a bypass privilege. This design is *stricter than typical*, and should be argued on trusted-computing-base grounds, not as convention |
-| Constraints beat scale, generally | **Task-dependent.** Schema constraints help closed-set selection and *degrade* open-ended reasoning. Constrain the classification steps, not the discovery steps |
-| Text2Cypher is unproven on a local 24B | Refuted as framed. Neo4j benchmarked and fine-tuned 8B/9B models; **fine-tuning is the dominant lever, not scale** |
-| The graph is cheap to drop and rebuild | **Unproven anywhere.** Graphiti's maintainers state they have no migration path; cognee's equivalent is undocumented; LightRAG rebuilds its *vector* index, not the graph. Measure a real rebuild before treating droppability as a property |
-| Sleep-time consolidation is a differentiator | Now baseline practice (MemOS, cognee, others) |
-
-Two statistics used here to dismiss vendor benchmarking — "6.4% of LoCoMo's
-answer keys are corrupted" and "its judge accepts 62.8% of wrong answers" —
-**have no locatable primary source and are retracted.**
-
-### Claims that held, or strengthened
-
-- **Canonical vs derived**: genealogy (Mills's source/information/evidence
-  stack), library science (**authority control**) and archival practice
-  (**provenance**) all reached the same rule independently — the curated human
-  layer stays narrow, human-owned and separate from machine enrichment. And
-  GEDCOM collapsed that distinction, every downstream tool inherited the
-  breakage, and GEDCOM X never displaced it: **retrofitting this later is
-  brutally hard**, which is the argument for one cheap column now.
-- **Ontology-first is defended in 2026**, not dated (arXiv:2606.04903).
-- **Plain files in git**: verified 20-year and 15-year practitioner accounts
-  converge — the failure mode is *tooling* churn, not format churn.
-- **Consolidation over per-turn extraction**: RecMem reports **87% lower token
-  cost while exceeding** state-of-the-art memory accuracy.
-- **Append-only log with derived views**: independently validated by the
-  Jul-Aug 2026 arXiv cluster (MemTxn, ChronoMem, GitOfThoughts) — and by
-  double-entry bookkeeping, which has run this pattern for 500 years.
-- **Verification beats introspection**: self-correction works against
-  mechanically checkable rules and fails as "was that good?".
-
-### Over-specified, per practitioners in those fields
-
-Formal OntoClean (essentially no papers since 2020 — keep the two mental
-questions, skip the apparatus); NeOn module machinery (four namespaces at ~7-8
-predicates each are *sections in one file*; split at ~15-20); SHACL (neosemantics'
-own docs warn it degrades on a property graph, and Neo4j Labs' attempt to make it
-usable has been abandoned since 2023); four tiers as peer stores (**Tulving
-revised episodic/semantic from competing to integrated** — the tiers are not
-independent); bi-temporal by default (proposed as a general SQL feature in the
-1990s, **rejected as too complex**; most systems use transaction-time only and
-add valid-time where a specific question demands it); the control plane as
-infrastructure (it is **ABAC**, NIST SP 800-162, and it is a YAML file); the
-five-verb contract (no precedent anywhere — real libraries converge on *one*
-retrieval verb, and `verify`/`assemble` are plausibly ordinary application code).
-
-### Holes found in the design
-
-- **Provenance laundering during consolidation** (arXiv:2607.29167) — the write-
-  authority tiers guard the *extraction* path, but consolidation *rewrites*
-  facts and can promote a low-authority fact by rephrasing it. Verify what
-  consolidation emits, not only what extraction consumes.
-- **Rebuild is only sound for additive schema changes.** A predicate rename or
-  split needs a fact-rewrite pass through the YAML, or the rebuild faithfully
-  reproduces the old, wrong categorisation.
-- **No "held for adjudication" state** — conflicting writes are forced into
-  accept or reject (MELD, arXiv:2608.16357).
-- **MemTrapBench (Aug 2026): every current memory strategy underperformed a
-  no-memory baseline by >10%** on reasoning-integration tasks. Memory is not
-  automatically an improvement, and the eval should test for harm.
-
-### The insight to carry furthest
-
-From decades of personal-knowledge-management research: **the multi-year failure
-mode is review debt, not authoring debt.** A solo curator does not forget their
-own thirty predicates. What kills these systems is that automation removes the
-*writing* bottleneck and not the *reading and verifying* one, and that gap widens
-silently. Budget review time as the real constraint — every mechanism that
-produces facts faster makes the actual bottleneck worse unless it also makes
-verification cheaper.
-
-### The revised recommendation
-
-```
- WHAT EXISTS AND WORKS                                     (don't touch)
-   SQLite · FAISS · persona JSON · lore wiki (34 typed entities)
-   FastAPI + services   ← hand-rolled loop; the biggest agent codebases
-                          are hand-rolled. The evidence says keep it.
-
- THE THREE REAL GAPS                                       (build these)
-   1. INVARIANT TESTS                                        ~1 day
-      every persona field has a reader
-      every session-scoped table clears on reset
-      every declared sampler reaches the model
-      retrieved text is always tagged, never a live turn
-      -- all four defects had this shape; this is the discipline --
-
-   2. BEHAVIOURAL EVAL                                       ~1 day
-      30 probes: 12 continuity · 6 commitment · 6 pressure
-                 4 knowledge-update · 2 abstention
-      20 tune / 10 HELD OUT · binary pass/fail
-      judge = purpose-tuned small model, NOT a generic local LLM
-      -- gates everything after it --
-
-   3. THE VOICE PROBLEM                                      unknown
-      injected facts flatten the persona. killed two attempts.
-      THIS is the blocker -- not storage, not schema.
-
- SMALL, CHEAP, PROVEN ELSEWHERE                          (add when easy)
-   memory_facts.source = human | agent    <- ONE column, ONE `if`
-   lore wiki -> retrieval                 <- hand-written, no extractor
-   event log + checkpoint/replay          <- SQLite. the real gap.
-   two-tier memory: session vs long-term  <- every framework converged
-   consolidation, not per-turn extraction <- 87% cheaper AND better
-
- DEFERRED -- with the trigger that would change it              (not now)
-   ontology, formal      -> predicates outgrow one YAML file
-   graph store / Neo4j   -> ADR-001's own trigger: traversal becomes the
-                            primary access pattern, OR thousands of
-                            densely-linked nodes. You have 34.
-   bi-temporal validity  -> a specific question needs it
-   control plane, 5 verbs-> a SECOND consumer exists
-   graph-as-projection   -> UNPROVEN ANYWHERE. Measure a real rebuild
-                            before believing it is cheap.
-```
-
-Everything below this section predates the research and is retained for its
-reasoning, not as a plan.
-
-
 ## The frame
 
 Three layers on the knowledge axis, plus one plane that cuts across all of
@@ -198,72 +51,90 @@ them.
 ```
                                         ┌────────────────────────────┐
  ╔════════════════════════════════════╗ │ CONTROL PLANE              │
- ║ CONSUMER LAYER      (behaviour)    ║ │ (policy — "what MAY happen")│
+ ║ CONSUMER LAYER      (behaviour)    ║ │ policy — "what MAY happen" │
+ ║                                    ║ │ fail CLOSED (Cube defaults │
+ ║  Gwen  Nyx  Aegis  Eeva  …  UI     ║ │ open — diverge on purpose) │
  ║                                    ║ │                            │
- ║  Gwen  Nyx  Aegis  Solace  Eeva …  ║ │  toolset grants per persona│
- ║  React UI    Telegram gateway      ║ │  blast_radius · HITL       │
- ║                                    ║ │  nsfw / safesearch floor   │
- ║  ┌──────────────────────────────┐  ║ │  lane eligibility          │
- ║  │ TOOL BRAIN — decide + fill   │  ║◀┤    (bge-m3 router, 0.66)   │
- ║  │ args, then synthesise        │  ║ │  agentic workflows         │
- ║  └──────────────┬───────────────┘  ║ │                            │
- ║                 │ every call       ║ │  ENFORCEMENT POINT:        │
- ║                 ▼                  ║ │  ToolCallInterceptor       │
- ║        ┌─────────────────┐         ║ │  (consumer action meets    │
- ║        │  INTERCEPTOR    │─────────╫▶│   control-plane policy)    │
- ║        └─────────────────┘         ║ │                            │
- ║                                    ║ │                            │
- ║  VOLATILE scene state lives HERE,  ║ │                            │
- ║  in the turn. Never persisted.     ║ │                            │
- ╚════════════════════════════════════╝ │                            │
-            │ asks         ▲ answers    │                            │
-            ▼              │            │                            │
+ ║  ┌──────────────────────────────┐  ║ │  grants: subject_area,     │
+ ║  │ TOOL BRAIN / AGENT           │  ║◀┤   tier, toolset            │
+ ║  │  PROPOSES a call or query    │  ║ │  + status: proposed|active │
+ ║  └──────────────┬───────────────┘  ║ │        |deprecated|retired │
+ ║                 │                  ║ │  + reason: why it exists   │
+ ║  VOLATILE scene state — in the     ║ │                            │
+ ║  turn only. Never persisted.       ║ │  ENFORCE AT QUERY-BUILD,   │
+ ╚═════════════════╪══════════════════╝ │  never post-filter         │
+                   │ every call         │                            │
+                   ▼                    │                            │
+        ┌─────────────────────┐         │                            │
+        │  GATED RUNNER       │◀────────┤  ctx: CallerContext        │
+        │  • grammar-checked  │         │  threaded through EVERY    │
+        │  • schema vocab ok  │         │  verb. No framework does   │
+        │  • READ-ONLY role   │         │  this — it is the gap.     │
+        │  • row/depth caps   │         │                            │
+        └──────────┬──────────┘         │                            │
+                   ▼                    │                            │
  ┌────────────────────────────────────┐ │                            │
  │ resolve · traverse · search ·      │ │                            │
- │ verify · assemble · CYPHER ◀───────┼─┤  ← the agentic verb:       │
- │                        THE CONTRACT│ │    an agent that COMPOSES  │
- ├────────────────────────────────────┤ │    a query, not one that   │
- │ SEMANTIC LAYER    ("what is TRUE") │ │    is handed facts         │
+ │ verify(3-valued) · assemble ·      │ │                            │
+ │ CYPHER          ◀── THE CONTRACT   │ │                            │
+ ├────────────────────────────────────┤ │                            │
+ │ SEMANTIC LAYER    "what is TRUE"   │ │                            │
  │                                    │ │                            │
- │   ┌──────────────────────────┐     │ │                            │
- │   │ ONTOLOGY — the spine     │     │ │                            │
- │   │ drives extraction, not   │     │ │                            │
- │   │ emergent from it         │     │ │                            │
- │   └──────────────────────────┘     │ │                            │
+ │   ONTOLOGY — the spine.            │ │                            │
+ │   Fails by SILENT STALENESS,       │ │                            │
+ │   not by needing migration.        │ │                            │
  │                                    │ │                            │
  │  CANONICAL  ← human-write-only     │ │                            │
- │    persona identity · hard rules   │ │                            │
- │    world lore · asserted bio       │ │                            │
- │    ★ VERIFICATION TARGET           │ │                            │
- │                                    │ │                            │
+ │    ▲                               │ │                            │
+ │    │ REVIEW GATE (sleep-time agent │ │                            │
+ │    │ proposes; promotion is gated) │ │                            │
+ │    │                               │ │                            │
  │  DERIVED    ← agent-writable       │ │                            │
- │    bi-temporal · provenance ·      │ │                            │
- │    confidence · supersession       │ │                            │
- │                                    │ │                            │
- │  CAPABILITY MODEL                  │ │                            │
- │    what a tool IS (defn, args)     │ │   ...vs the control plane, │
- │    ── discoverable by an agent ──  │ │      which owns who may    │
- │                                    │ │      fire it               │
- │  ══ vector index over EPISODIC ══  │ │                            │
- │     graph holds the vector ids     │ │                            │
+ │    4 timestamps, not 2:            │ │                            │
+ │    created_at · valid_at ·         │ │                            │
+ │    invalid_at · expired_at         │ │                            │
+ │    (system-time = "what did we     │ │                            │
+ │     BELIEVE on this date")         │ │                            │
  │                                    │ │                            │
  │  ┌─ STORES ────────────────────┐   │ │                            │
- │  │ SQLite   = source of truth  │   │ │                            │
- │  │ FAISS    = embeddings       │   │ │                            │
- │  │ Neo4j    = PROJECTION       │   │ │                            │
- │  │   rebuildable · droppable · │   │ │                            │
- │  │   never written to directly │   │ │                            │
+ │  │ SQLite = source of truth    │   │ │                            │
+ │  │   ⚠ MUST NOT hard-delete    │   │ │                            │
+ │  │     the fact-bearing tier,  │   │ │                            │
+ │  │     or the rebuild oracle   │   │ │                            │
+ │  │     INVERTS                 │   │ │                            │
+ │  │ Vectors = most likely to    │   │ │                            │
+ │  │   go stale SILENTLY         │   │ │                            │
+ │  │ Graph  = PROJECTION         │   │ │                            │
+ │  │   node id MUST be a         │   │ │                            │
+ │  │   deterministic fn of       │   │ │                            │
+ │  │   source keys — or every    │   │ │                            │
+ │  │   diff is spurious drift    │   │ │                            │
  │  └─────────────────────────────┘   │ │                            │
  └────────────────────────────────────┘ │                            │
-            │ projects     ▲ extracts   │                            │
-            ▼  (read)      │  (write)   │                            │
+        ▲ projects    │ extracts        │                            │
+        │  (read)     ▼  (write)        │                            │
+   ┌────┴─────────────────────────┐     │                            │
+   │  GRAPH PRUNING               │     │                            │
+   │  drops anything violating    │     │                            │
+   │  the schema — correctness    │     │                            │
+   │  moves OFF model quality     │     │                            │
+   │         │                    │     │                            │
+   │         └──▶ RESIDUE METRIC  │     │                            │
+   │              what could NOT  │     │                            │
+   │              map = the ONLY  │     │                            │
+   │              staleness alarm │     │                            │
+   └────┬─────────────────────────┘     │                            │
+        ▼                               │                            │
  ┌────────────────────────────────────┐ │                            │
  │ DATA LAYER — raw, append-only      │ │                            │
  │   chat history — verbatim, forever │ │                            │
  │   lore source — md + frontmatter   │ │                            │
- │   ╌╌ trading collections ╌╌╌╌╌╌╌   │ │                            │
- │      READ-ONLY. Never bind back.   │ └────────────────────────────┘
+ │   tombstone log (if deletes exist) │ │                            │
+ │   ╌╌ trading collections ╌╌ R/O ╌╌ │ └────────────────────────────┘
  └────────────────────────────────────┘
+
+ LITMUS TEST: delete the derived layer and rebuild from canonical alone.
+              If you can't, the separation isn't clean.
 ```
 
 Seven choices in that picture are deliberate.
@@ -690,6 +561,119 @@ That is a migration, and it is the part most likely to be skipped and then
 regretted.
 
 
+## What external research changed (2026-08-23)
+
+Five parallel research streams reviewed this design with a brief to *improve*
+it rather than accept or reject it. The strongest single finding was not
+agreement in the literature but **independent convergence**: a production
+postmortem (Jeremy Daly, *Context Engineering for Commercial Agent Systems*)
+arrives at the same canonical/projection split — *"the inference loop writes
+minimal canonical records, everything else is projection"* — and reports three
+failures this design already guards against: guardrails silently crowded out of
+context, vector indexes becoming unaudited systems of record, and subagent
+context-inheritance causing nondeterminism.
+
+### Two hazards found — both cheap now, expensive later
+
+**1. The rebuild oracle inverts if the source hard-deletes.** If the
+fact-bearing tier ever hard-deletes rows, a rebuild reading *current* state
+cannot reconstruct history the incremental path already captured through a
+supersede fact. The diff then flags the **correct** path as buggy. This is live
+today: `/reset` hard-deletes messages. **Decision required before building
+anything**: either the fact-bearing tier never hard-deletes, or the rebuild
+takes an append-only tombstone log as a second input rather than current state
+alone. Debezium's tombstone events and XTDB's "deleting only erases visibility,
+never the log" both confirm supersede-never-delete is textbook — but only if the
+source honours it too.
+
+**2. Node identity must be a deterministic function of source-fact keys**, never
+an ingestion-order-dependent surrogate id. Otherwise every rebuild reports
+spurious drift and the oracle becomes noise people learn to ignore.
+
+### The correction that matters most
+
+The design had been guarding against **migration pain** ("rebuild, don't
+migrate"). That is the wrong threat. Practitioner evidence is that **ontologies
+fail by silent staleness and drift, not by needing migrations** — the schema
+quietly stops describing reality while everything keeps running and nothing
+errors.
+
+That **promotes the residue metric from a nice property to the primary
+safeguard.** Extraction output that cannot map to any predicate is the only
+signal that the ontology is drifting.
+
+A sharper statement of the projection principle, worth adopting verbatim
+(Oracle, *Persistent Memory and Derived Context*):
+
+> Delete the derived layer and rebuild it from canonical alone. If you can't,
+> the separation isn't clean.
+
+...with the specific hazard it names: a fact corrected in canonical storage
+while the **embedding built from the old text was never invalidated**. The
+vector index is the component most likely to go stale silently.
+
+### Upgrades adopted
+
+| Change | Source |
+|---|---|
+| **Four timestamps, not two** — `created_at`/`valid_at`/`invalid_at`/`expired_at`. System-time answers "what did we *believe* on this date", which is how a bad extractor batch gets audited | Graphiti |
+| **`CYPHER` becomes propose/execute.** The agent composes; a gated runner validates grammar and schema vocabulary and executes read-only | AG2's `register_for_llm` vs `register_for_execution` |
+| **A review gate on DERIVED → CANONICAL.** Background consolidation *proposes* a promotion; it lands through a gate. This path was previously unspecified | Letta sleep-time agents |
+| **Extraction correctness moves off model quality.** Deterministic post-hoc pruning drops anything violating the schema | Neo4j `GraphPruning` |
+| **Enforce at query construction, not post-filtering** | Cube `access_policy` / `queryRewrite` |
+| **Fail closed.** Cube defaults to all-rows-public; diverge deliberately | Cube |
+| **Add `status` (proposed/active/deprecated/retired) and `reason` to grants** — both matter more for an agent consumer than a human one | Open Data Contract Standard |
+
+### The `CYPHER` verb: conditional GO
+
+Raw prompted Text2Cypher on an unconstrained local model is **not safe to hand
+an agent**. Bracketing evidence: CypherBench's gpt-4o-mini reached 87.4%
+*executable* but only **31.4% execution-accurate**; instruction-tuned 7-8B
+baselines score 27.7-40.2%. A 24B lands around 60-85% executable and well under
+40% semantically correct — and a query that runs and returns the wrong answer
+is worse than one that errors, because nothing signals the failure.
+
+It ships only with: grammar-constrained decoding to a read-only Cypher subset,
+a schema-vocabulary post-validator, a read-only database role, and row/depth
+caps. Note that **both reference implementations leave this work undone** —
+LangChain's `GraphCypherQAChain` has no read-only enforcement, clause
+allowlist, timeout or row cap and requires `allow_dangerous_requests=True`, and
+Neo4j's own `Text2CypherRetriever` is prompt-only. That enforcement *is* the
+build.
+
+The grammar exists (`openCypher.bnf`) and production CFG-constrained decoders
+exist (`xgrammar` is the default structured-output backend for vLLM, SGLang and
+TensorRT-LLM; `outlines`, `guidance` and llama.cpp GBNF all support arbitrary
+CFGs). A code search found **zero published Cypher grammar files** — nobody has
+wired them together. Assembly work, not a research gap.
+
+### Where the design fills a real gap
+
+No surveyed framework combines enforced subject-area memory scoping with an
+end-to-end typed principal. Namespaces in LangGraph's `BaseStore` and
+Zep/Graphiti's `group_id` are **filters, not fences** — both explicitly
+documented as unenforced, and mem0's and Graphiti's own docs concede ID-scoping
+is not access control. Cognee comes closest with a real principal model but has
+no Agent principal type. **No framework threads one typed principal through both
+tool calls and memory calls**, which is why `ctx` in every signature stays
+non-negotiable.
+
+### An honest counterweight
+
+One practitioner deliberately kept their always-on memory tier to **two small
+curated files** rather than building a graph, and reports it working. That is
+the "a maintained profile document might do" argument from someone actually
+doing it, and it deserves weighing rather than burying.
+
+### Coverage caveat
+
+Anthropic's context-engineering post, Chroma's Context Rot report, Simon
+Willison's archive and Zep's blog were named as seeds and **not reached**. The
+catalog (Unity/Polaris/OpenMetadata) and ReBAC/OpenFGA findings were
+search-synthesised rather than raw-fetched, so treat those as softer than the
+rest.
+
+
 ## Write authority is the primary axis
 
 Not topic — *who may write it*. This is also the agent permission model, which
@@ -753,6 +737,138 @@ and none planned, so there is no interface-stability obligation. Buy modularity
 (clean seams so it *can* be lifted later); buy no generality (abstraction over
 consumers that do not exist). The rule of three applies: do not abstract until
 the third real consumer.
+
+## Operations: monitoring, security, install
+
+These three are architectural concerns, not afterthoughts — each one changes
+where a component belongs.
+
+### Monitoring: alarms interrupt, trends need a chart
+
+Monitoring is a **consumer**, not a layer. It reads through the same contract
+everything else does, which is what stops it becoming another bypass.
+
+What is worth watching here is not CPU or p99 latency. It is:
+
+| Signal | Why it matters |
+|---|---|
+| **Residue rate** — extraction output that mapped to no predicate | The only staleness alarm the ontology has |
+| **Rebuild diff** — incremental graph vs freshly rebuilt | The correctness oracle. Non-zero = a bug in the incremental path (or non-deterministic node ids) |
+| **Extraction parse-failure rate** | Currently unmeasured; the foundation everything else rests on |
+| **Gate false-positive / false-negative**, reported separately | A blended "accuracy" hides exactly the class of bug that shipped in ADR-007 |
+| **Policy denials, with the `reason` field** | Catches "exceptions silently becoming policy" |
+| **Verb latency by verb** | Tells you which of the five is hot and whether the graph is on the default path when it should not be |
+
+**Delivery matters as much as collection.** This project's own history
+(`project_dca_funding_outage_july_2026`) records the lesson: a dead-man's
+switch catches "the process stopped", never "the process ran and correctly
+refused" — that needs a leading indicator. The residue rate *is* that leading
+indicator, and one nobody looks at is worthless. This system already has a
+Telegram gateway; threshold breaches belong there, where the operator already
+reads.
+
+But a digest is the wrong instrument for the *primary* failure mode. **Silent
+staleness is a trend**: a residue rate creeping from 3% to 11% over two months
+is invisible in any single number and obvious in a chart. Drift is precisely
+what a time series shows and a threshold does not, so visualisation is not a
+nice-to-have here — it is the instrument matched to the failure being watched.
+
+#### Tooling, sequenced
+
+A visualisation tool stores nothing; it connects to backends through plugins.
+So the question is never "should we run Grafana" but *what emits metrics and
+where do they land*.
+
+1. **An LLM-eval platform first — Langfuse or equivalent.** The eval is the
+   gating problem for this whole document, and an eval platform is the tool
+   that addresses it: datasets, scoring runs, prompt versioning, multi-turn
+   traces, LLM-as-judge. Grafana does none of that natively — LLM-specific
+   evaluation is handled through integrations, and the common pairing is an
+   eval platform for model concerns plus Grafana for infrastructure. This is
+   the tool on the critical path.
+
+2. **Then Grafana against SQLite directly.** The interesting metrics —
+   residue counts, extraction failures, gate outcomes, rebuild diffs — are
+   already rows in a relational store. A SQLite datasource plugin means one
+   container, no scrape config, no separate time-series database. That is
+   sufficient at this scale and is where the drift chart should start.
+
+3. **Defer the full collection stack.** Prometheus, Loki and Tempo are built
+   for distributed systems with many services; this is one process. Prometheus
+   now has experimental OTLP ingest, so OpenTelemetry remains the escape hatch
+   if the architecture ever grows into multiple services — it is not the
+   starting point.
+
+Cost is worth stating plainly: an eval platform's production stack is typically
+two containers, and Prometheus plus Grafana would be two more, on a machine
+already running a document store and a large resident model. This ecosystem has
+been bitten by unplanned always-on service growth before, so each addition
+should be justified by a question it answers that nothing cheaper can.
+
+### Security: the write path, not the read path
+
+For a single-user local system the dominant risk is **not** who can read what.
+It is that **a crafted message becomes a durable fact and then influences every
+future turn** — memory poisoning, which Unit 42 documents as a structural
+consequence of content arriving in the model's own voice.
+
+That reframes the priorities:
+
+- **The `extracts (write)` arrow is the attack surface.** The write-authority
+  split is the mitigation: an extractor may write DERIVED, never CANONICAL, and
+  promotion runs through a review gate. `InjectionGuard.sanitize_memory_write`
+  already exists in this repo and is the right component in the right place.
+- **The `CYPHER` verb is a query-injection surface.** Grammar constraint plus a
+  read-only database role plus row/depth caps is the mitigation, and none of it
+  comes free from the reference libraries.
+- **MCP has no per-tool authorization concept** — verified against the full
+  spec, not inferred. A third-party MCP server is therefore exactly as
+  privileged as a native tool unless the control plane gates it. Custom plugins
+  and MCP servers must pass the same enforcement point as everything else;
+  there is no second door.
+- **RBAC is already expressed** as write-authority tiers plus subject-area
+  grants. It does not need a separate mechanism, and at this scale it does not
+  need a policy engine (Cube ships inline YAML grants in production).
+- **The projection is a security property, not only an ops one.** A graph that
+  can be dropped and rebuilt from canonical sources means a corrupted or
+  poisoned graph is *recoverable by deletion*. Compromise of a derived store is
+  survivable in a way compromise of a system of record is not.
+- **Local-only is doing heavy lifting.** No network exposure, no multi-tenancy,
+  no credential distribution. The one credential surface is the read-only
+  projection from the trading collections.
+
+### Install and configuration: simpler because of the projection decision
+
+The three-artifact split (interface as code, policy and ontology as declarative
+files, all in git) means configuration is version-controlled and reviewable,
+and the install reduces to:
+
+```
+clone  →  restore SQLite  →  compile ontology + policy  →  rebuild projection
+```
+
+**No graph backup, no graph migration, no dump/restore.** The container is
+disposable by construction. That is a real operational simplification and it
+follows directly from the projection decision rather than being an extra
+feature.
+
+Two constraints worth stating:
+
+- **The compile step must be a command**, not a manual procedure — something
+  like `semantic build`, runnable in CI and as a pre-flight check. An ontology
+  that compiles only in someone's head is not in git.
+- **Policy must load before anything serves.** This is the bootstrap argument
+  made operational: startup order is policy → stores → consumers. OPA's own
+  behaviour is the precedent — it caches its bundle to local disk and loads
+  last-known-good even when the remote source is unreachable.
+
+Docker cost is one more container beside the MongoDB already running on this
+box; roughly 1-2 GB heap plus 1-2 GB pagecache is a reasonable starting budget
+(inferred from general sizing guidance, not measured for this workload). The
+ecosystem has been bitten before by unplanned always-on service growth, so the
+disposability of the projection is what makes that acceptable rather than the
+headroom.
+
 
 ## Sequencing
 
