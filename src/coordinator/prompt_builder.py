@@ -537,8 +537,8 @@ def _lean_voice_examples_block(card: Dict, who: str) -> str:
     return header + "\n\n" + "\n\n".join(rendered)
 
 
-@lru_cache(maxsize=32)
-def _build_system_prompt_lean(selector: Optional[str]) -> str:
+@lru_cache(maxsize=64)
+def _build_system_prompt_lean(selector: Optional[str], include_examples: bool = True) -> str:
     """Build the persona system prompt (ADR-005 Phase B — the only builder).
 
     Exemplar-first / voice-last, deduplicated, positive-framed; drops the wiki
@@ -617,7 +617,7 @@ def _build_system_prompt_lean(selector: Optional[str]) -> str:
 
     # Voice-last: exemplars are the final thing the model reads before generating
     # (recency re-anchor — the highest-leverage slot for voice distinctiveness).
-    examples_block = _lean_voice_examples_block(card, who)
+    examples_block = _lean_voice_examples_block(card, who) if include_examples else ""
     if examples_block:
         parts.extend(["", "<voice_examples>", examples_block, "</voice_examples>"])
         parts.extend(["", f"Stay fully in {who}'s voice."])
@@ -634,7 +634,7 @@ def _build_system_prompt_lean(selector: Optional[str]) -> str:
 
 # ---------------- Public API ----------------
 
-def build_system_prompt(selector: Optional[str]) -> str:
+def build_system_prompt(selector: Optional[str], include_examples: bool = True) -> str:
     """Build the persona system prompt (lean builder — ADR-005 Phase B).
 
     The lean exemplar-first / voice-last builder is the only builder:
@@ -644,7 +644,7 @@ def build_system_prompt(selector: Optional[str]) -> str:
 
     Preserves a ``.cache_clear()`` attribute (callers/tests rely on it).
     """
-    return _build_system_prompt_lean(selector)
+    return _build_system_prompt_lean(selector, include_examples)
 
 
 def build_constraint_reminder(selector: Optional[str]) -> str:

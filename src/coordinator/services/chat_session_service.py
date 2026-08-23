@@ -684,11 +684,21 @@ def _select_turn_history(state: ChatTurnState, deps: ChatDeps) -> None:
 
     all_context_messages = selected_messages.copy()
     if rag_relevant_messages:
+        # Mark semantically-recalled messages so they can be rendered as
+        # background rather than as dialogue. Without this they reach the model
+        # formatted byte-identically to the immediately-previous turn, and get
+        # reproduced verbatim — the repetition defect observed 2026-08-23.
+        recalled_keys = {id(m) for m in rag_relevant_messages}
         all_context_messages.extend(rag_relevant_messages)
         all_context_messages.sort(key=lambda x: x.get("index", 0))
+    else:
+        recalled_keys = set()
 
     raw_turns = [
-        ChatTurn(role=msg["role"], content=msg["content"])
+        ChatTurn(
+            role=MessageRole.RECALLED if id(msg) in recalled_keys else msg["role"],
+            content=msg["content"],
+        )
         for msg in all_context_messages
     ]
 

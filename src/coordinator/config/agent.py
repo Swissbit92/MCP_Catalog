@@ -92,6 +92,34 @@ class AgentSettings(BaseSettings):
         ),
         alias="PERSONA_CONSTRAINTS_IN_PROMPT",
     )
+    unpin_on_depth: bool = Field(
+        default=False,
+        description=(
+            "Once a session has real history, stop force-feeding it the two "
+            "permanently-pinned blocks: the 3 cached voice_examples and the "
+            "first 3 messages of the session. Default OFF = today's behaviour. "
+            "WHY: both are fixed text that reaches the model on EVERY turn "
+            "forever, formatted identically to real dialogue, which is a "
+            "standing invitation to reproduce them (arXiv:2402.09954 — few-shot "
+            "examples resembling the live context induce verbatim copying, and "
+            "the effect grows with the number of similar examples). "
+            "SillyTavern's own guidance is that example dialogues should be "
+            "evicted once real history establishes the voice. Behavioral for "
+            "any session past the threshold, so eval-gated before a flip. Set "
+            "PERSONA_UNPIN_ON_DEPTH=true to enable."
+        ),
+        alias="PERSONA_UNPIN_ON_DEPTH",
+    )
+    unpin_depth_turns: int = Field(
+        default=6,
+        ge=1,
+        description=(
+            "How many real turns count as 'the voice is established' before "
+            "voice_examples stop being injected. Only consulted when "
+            "PERSONA_UNPIN_ON_DEPTH is on."
+        ),
+        alias="PERSONA_UNPIN_DEPTH_TURNS",
+    )
 
     model_config = {
         "env_file": ".env",
