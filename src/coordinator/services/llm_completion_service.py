@@ -121,7 +121,31 @@ class LLMCompletionService:
         if min_p is not None:
             ollama_params["min_p"] = min_p
 
-        self.llm = OllamaLLM(**ollama_params)
+        # min_p cannot survive the langchain transport (ollama.Options has no
+        # such field), so a persona that sets it needs the direct HTTP client.
+        # Flag-gated; 'langchain' keeps today's behaviour exactly.
+        if get_settings().ollama.completion_backend == "http":
+            from .ollama_http import OllamaHTTPClient  # noqa: PLC0415
+
+            options = {
+                k: v for k, v in ollama_params.items()
+                if k not in ("base_url", "model", "keep_alive")
+            }
+            self.llm = OllamaHTTPClient(
+                base_url=ollama_params["base_url"],
+                model=ollama_params["model"],
+                options=options,
+                keep_alive=ollama_params.get("keep_alive"),
+            )
+        else:
+            if "min_p" in ollama_params:
+                logger.warning(
+                    "[Sampling] min_p=%s requested but the langchain transport drops it "
+                    "silently (ollama.Options has no min_p field). Set "
+                    "OLLAMA_COMPLETION_BACKEND=http to actually apply it.",
+                    ollama_params["min_p"],
+                )
+            self.llm = OllamaLLM(**ollama_params)
         self.sampling_config = sampling_config
 
         # Log sampling parameters
